@@ -1,0 +1,2063 @@
+openapi: 3.1.0
+info:
+  title: Kemani POS Platform API
+  version: 1.0.0
+  description: |
+    Multi-tenant POS-first super app platform API for Nigerian retail businesses.
+
+    ## Authentication
+    Uses Supabase Auth with phone/email OTP (5-minute expiration).
+    Include JWT token in Authorization header: `Bearer {token}`
+
+    ## Multi-Tenancy
+    All requests scoped to authenticated user's tenant via RLS policies.
+
+    ## Offline-First
+    API designed for optimistic updates and eventual consistency.
+
+  contact:
+    name: Kemani API Support
+    url: https://kemani.app
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.kemani.app/v1
+    description: Production API
+  - url: https://staging-api.kemani.app/v1
+    description: Staging API
+  - url: http://localhost:3000/api
+    description: Local development
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Tenants
+    description: Tenant management
+  - name: Branches
+    description: Branch operations
+  - name: Products
+    description: Product catalog and inventory
+  - name: Sales
+    description: Point-of-sale transactions
+  - name: Customers
+    description: Customer management
+  - name: Orders
+    description: Marketplace orders
+  - name: Delivery
+    description: Delivery management
+  - name: Staff
+    description: Staff and attendance
+  - name: Analytics
+    description: Reports and analytics
+  - name: Integrations
+    description: Third-party integrations
+  - name: Payments
+    description: Subscription and billing
+
+paths:
+  # ============================================================
+  # AUTHENTICATION
+  # ============================================================
+  /auth/send-otp:
+    post:
+      tags: [Authentication]
+      summary: Send OTP code to phone or email
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identifier, type]
+              properties:
+                identifier:
+                  type: string
+                  description: Phone number (E.164) or email address
+                  examples:
+                    - +2348012345678
+                    - user@example.com
+                type:
+                  type: string
+                  enum: [phone, email]
+                  description: Authentication type
+      responses:
+        '200':
+          description: OTP sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: OTP sent successfully
+                  expires_in:
+                    type: integer
+                    example: 300
+                    description: OTP expiration in seconds (5 minutes)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /auth/verify-otp:
+    post:
+      tags: [Authentication]
+      summary: Verify OTP code and obtain JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identifier, otp]
+              properties:
+                identifier:
+                  type: string
+                  description: Phone number or email used for OTP
+                otp:
+                  type: string
+                  description: 6-digit OTP code
+                  pattern: '^[0-9]{6}$'
+      responses:
+        '200':
+          description: OTP verified, JWT token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: JWT bearer token
+                  refresh_token:
+                    type: string
+                    description: Refresh token for token renewal
+                  user:
+                    $ref: '#/components/schemas/User'
+                  tenant:
+                    $ref: '#/components/schemas/Tenant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Invalid or expired OTP
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh access token using refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: New access token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============================================================
+  # TENANTS
+  # ============================================================
+  /tenants:
+    post:
+      tags: [Tenants]
+      summary: Create new tenant account
+      description: Register new business on the platform (self-service onboarding)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, phone]
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                  example: "Chidi's Pharmacy"
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                  pattern: '^\+[1-9]\d{1,14}$'
+                  example: +2348012345678
+      responses:
+        '201':
+          description: Tenant created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /tenants/me:
+    get:
+      tags: [Tenants]
+      summary: Get current tenant details
+      responses:
+        '200':
+          description: Current tenant information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+
+    patch:
+      tags: [Tenants]
+      summary: Update current tenant details
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                logo_url:
+                  type: string
+                  format: uri
+                brand_color:
+                  type: string
+                  pattern: '^#[0-9A-Fa-f]{6}$'
+      responses:
+        '200':
+          description: Tenant updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+
+  # ============================================================
+  # BRANCHES
+  # ============================================================
+  /branches:
+    get:
+      tags: [Branches]
+      summary: List all tenant branches
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: List of branches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Branch'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      tags: [Branches]
+      summary: Create new branch
+      description: Tenant admins can create branches (subject to subscription limits)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, business_type]
+              properties:
+                name:
+                  type: string
+                  example: "Ikeja Branch"
+                business_type:
+                  type: string
+                  enum: [supermarket, pharmacy, grocery, mini_mart, restaurant]
+                address:
+                  type: string
+                latitude:
+                  type: number
+                  format: double
+                  minimum: -90
+                  maximum: 90
+                longitude:
+                  type: number
+                  format: double
+                  minimum: -180
+                  maximum: 180
+                phone:
+                  type: string
+                tax_rate:
+                  type: number
+                  format: double
+                  minimum: 0
+                  maximum: 100
+                  example: 7.5
+      responses:
+        '201':
+          description: Branch created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Branch'
+        '403':
+          description: Subscription limit reached
+
+  /branches/{branchId}:
+    parameters:
+      - name: branchId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Branches]
+      summary: Get branch details
+      responses:
+        '200':
+          description: Branch information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Branch'
+
+    patch:
+      tags: [Branches]
+      summary: Update branch details
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                address:
+                  type: string
+                phone:
+                  type: string
+                tax_rate:
+                  type: number
+                  format: double
+      responses:
+        '200':
+          description: Branch updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Branch'
+
+    delete:
+      tags: [Branches]
+      summary: Delete branch (soft delete)
+      responses:
+        '204':
+          description: Branch deleted successfully
+
+  # ============================================================
+  # PRODUCTS
+  # ============================================================
+  /products:
+    get:
+      tags: [Products]
+      summary: List products for current branch
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: branch_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by branch (tenant admins only)
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name, SKU, or barcode
+        - name: is_low_stock
+          in: query
+          schema:
+            type: boolean
+        - name: is_expiring_soon
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      tags: [Products]
+      summary: Create new product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+
+  /products/bulk-import:
+    post:
+      tags: [Products]
+      summary: Bulk import products from CSV
+      description: Import multiple products via CSV file (FR-005)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, branch_id]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV file with columns (name, sku, barcode, category, unit_price, stock_quantity, expiry_date)
+                branch_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Import completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  imported_count:
+                    type: integer
+                  failed_count:
+                    type: integer
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        row:
+                          type: integer
+                        error:
+                          type: string
+
+  /products/{productId}:
+    parameters:
+      - name: productId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Products]
+      summary: Get product details
+      responses:
+        '200':
+          description: Product information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+
+    patch:
+      tags: [Products]
+      summary: Update product details
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '200':
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+
+    delete:
+      tags: [Products]
+      summary: Delete product (soft delete)
+      responses:
+        '204':
+          description: Product deleted successfully
+
+  /products/{productId}/inventory:
+    parameters:
+      - name: productId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Products]
+      summary: Adjust product inventory
+      description: Manual stock adjustment (restock, adjustment, expiry removal)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [transaction_type, quantity_delta]
+              properties:
+                transaction_type:
+                  type: string
+                  enum: [restock, adjustment, expiry]
+                quantity_delta:
+                  type: integer
+                  description: Positive for increase, negative for decrease
+                unit_cost:
+                  type: number
+                  format: double
+                  description: Cost per unit (for restock)
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Inventory adjusted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryTransaction'
+
+  # ============================================================
+  # SALES
+  # ============================================================
+  /sales:
+    get:
+      tags: [Sales]
+      summary: List sales transactions
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: branch_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: cashier_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [completed, voided, refunded]
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: List of sales
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Sale'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      tags: [Sales]
+      summary: Create new sale transaction
+      description: Process POS sale (FR-001)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [branch_id, items, payment_method]
+              properties:
+                branch_id:
+                  type: string
+                  format: uuid
+                customer_id:
+                  type: string
+                  format: uuid
+                  description: Optional registered customer
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required: [product_id, quantity, unit_price]
+                    properties:
+                      product_id:
+                        type: string
+                        format: uuid
+                      quantity:
+                        type: integer
+                        minimum: 1
+                      unit_price:
+                        type: number
+                        format: double
+                      discount_percent:
+                        type: number
+                        format: double
+                        minimum: 0
+                        maximum: 100
+                payment_method:
+                  type: string
+                  enum: [cash, card, bank_transfer, mobile_money]
+                payment_reference:
+                  type: string
+                  description: External payment reference (for card/transfer)
+                discount_amount:
+                  type: number
+                  format: double
+                  minimum: 0
+      responses:
+        '201':
+          description: Sale created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sale'
+
+  /sales/{saleId}:
+    parameters:
+      - name: saleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Sales]
+      summary: Get sale details
+      responses:
+        '200':
+          description: Sale information with items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sale'
+
+    post:
+      tags: [Sales]
+      summary: Void or refund sale
+      description: Cancel completed sale (manager permission required)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, reason]
+              properties:
+                action:
+                  type: string
+                  enum: [void, refund]
+                reason:
+                  type: string
+                  minLength: 10
+      responses:
+        '200':
+          description: Sale voided/refunded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sale'
+
+  /sales/{saleId}/receipt:
+    parameters:
+      - name: saleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Sales]
+      summary: Get sale receipt
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [pdf, thermal_print, html]
+            default: pdf
+      responses:
+        '200':
+          description: Receipt document
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            text/html:
+              schema:
+                type: string
+
+  # ============================================================
+  # CUSTOMERS
+  # ============================================================
+  /customers:
+    get:
+      tags: [Customers]
+      summary: List customers
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name, phone, email
+      responses:
+        '200':
+          description: List of customers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Customer'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      tags: [Customers]
+      summary: Create new customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, full_name]
+              properties:
+                phone:
+                  type: string
+                  pattern: '^\+[1-9]\d{1,14}$'
+                email:
+                  type: string
+                  format: email
+                full_name:
+                  type: string
+                whatsapp_number:
+                  type: string
+      responses:
+        '201':
+          description: Customer created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+
+  /customers/{customerId}:
+    parameters:
+      - name: customerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Customers]
+      summary: Get customer details
+      responses:
+        '200':
+          description: Customer information with purchase history
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Customer'
+                  - type: object
+                    properties:
+                      recent_purchases:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Sale'
+
+  # ============================================================
+  # ORDERS (Marketplace)
+  # ============================================================
+  /orders:
+    get:
+      tags: [Orders]
+      summary: List orders
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: branch_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: order_status
+          in: query
+          schema:
+            type: string
+            enum: [pending, confirmed, preparing, ready, completed, cancelled]
+        - name: fulfillment_type
+          in: query
+          schema:
+            type: string
+            enum: [pickup, delivery]
+      responses:
+        '200':
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      tags: [Orders]
+      summary: Create new order
+      description: Customer places order via marketplace or AI chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [branch_id, customer_id, items, fulfillment_type]
+              properties:
+                branch_id:
+                  type: string
+                  format: uuid
+                customer_id:
+                  type: string
+                  format: uuid
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required: [product_id, quantity]
+                    properties:
+                      product_id:
+                        type: string
+                        format: uuid
+                      quantity:
+                        type: integer
+                        minimum: 1
+                fulfillment_type:
+                  type: string
+                  enum: [pickup, delivery]
+                delivery_address_id:
+                  type: string
+                  format: uuid
+                  description: Required if fulfillment_type = delivery
+                special_instructions:
+                  type: string
+                payment_method:
+                  type: string
+                  enum: [cash, card, bank_transfer, mobile_money]
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  /orders/{orderId}:
+    parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Orders]
+      summary: Get order details
+      responses:
+        '200':
+          description: Order information with items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+    patch:
+      tags: [Orders]
+      summary: Update order status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order_status]
+              properties:
+                order_status:
+                  type: string
+                  enum: [confirmed, preparing, ready, completed, cancelled]
+      responses:
+        '200':
+          description: Order updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  # ============================================================
+  # DELIVERY
+  # ============================================================
+  /deliveries:
+    get:
+      tags: [Delivery]
+      summary: List deliveries
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: branch_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: rider_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: delivery_status
+          in: query
+          schema:
+            type: string
+            enum: [pending, assigned, picked_up, in_transit, delivered, failed, cancelled]
+      responses:
+        '200':
+          description: List of deliveries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Delivery'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /deliveries/{deliveryId}:
+    parameters:
+      - name: deliveryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Delivery]
+      summary: Get delivery details
+      responses:
+        '200':
+          description: Delivery information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delivery'
+
+    patch:
+      tags: [Delivery]
+      summary: Update delivery status
+      description: Rider updates delivery progress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [delivery_status]
+              properties:
+                delivery_status:
+                  type: string
+                  enum: [picked_up, in_transit, delivered, failed]
+                proof_type:
+                  type: string
+                  enum: [photo, signature, recipient_name]
+                proof_data:
+                  type: string
+                  description: Photo URL or recipient name
+                failure_reason:
+                  type: string
+      responses:
+        '200':
+          description: Delivery updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delivery'
+
+  /deliveries/tracking/{trackingNumber}:
+    parameters:
+      - name: trackingNumber
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      tags: [Delivery]
+      summary: Track delivery by public tracking number
+      description: Public endpoint (no authentication required)
+      security: []
+      responses:
+        '200':
+          description: Delivery tracking information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tracking_number:
+                    type: string
+                  order_number:
+                    type: string
+                  delivery_status:
+                    type: string
+                  estimated_delivery_time:
+                    type: string
+                    format: date-time
+                  status_history:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        status:
+                          type: string
+                        timestamp:
+                          type: string
+                          format: date-time
+
+  # ============================================================
+  # STAFF & ATTENDANCE
+  # ============================================================
+  /staff:
+    get:
+      tags: [Staff]
+      summary: List staff members
+      parameters:
+        - name: branch_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [tenant_admin, branch_manager, cashier, driver]
+      responses:
+        '200':
+          description: List of staff members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+    post:
+      tags: [Staff]
+      summary: Create staff account
+      description: Tenant/branch admin creates new staff member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [full_name, role, branch_id]
+              properties:
+                full_name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                role:
+                  type: string
+                  enum: [branch_manager, cashier, driver]
+                branch_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Staff account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /staff/attendance/clock-in:
+    post:
+      tags: [Staff]
+      summary: Clock in for shift
+      description: Staff member starts shift (FR-030)
+      responses:
+        '200':
+          description: Clocked in successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffAttendance'
+
+  /staff/attendance/clock-out:
+    post:
+      tags: [Staff]
+      summary: Clock out from shift
+      description: Staff member ends shift
+      responses:
+        '200':
+          description: Clocked out successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffAttendance'
+
+  /staff/attendance:
+    get:
+      tags: [Staff]
+      summary: Get attendance records
+      parameters:
+        - name: staff_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: branch_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Attendance records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StaffAttendance'
+
+  # ============================================================
+  # ANALYTICS
+  # ============================================================
+  /analytics/dashboard:
+    get:
+      tags: [Analytics]
+      summary: Get analytics dashboard data
+      description: Key metrics for branch or consolidated tenant view (FR-057)
+      parameters:
+        - name: branch_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by branch (null for consolidated view)
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Dashboard analytics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_revenue:
+                    type: number
+                    format: double
+                  transaction_count:
+                    type: integer
+                  average_order_value:
+                    type: number
+                    format: double
+                  top_products:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product_id:
+                          type: string
+                          format: uuid
+                        product_name:
+                          type: string
+                        sales_count:
+                          type: integer
+                        revenue:
+                          type: number
+                          format: double
+                  growth_trends:
+                    type: object
+                    properties:
+                      revenue_growth_percent:
+                        type: number
+                      transaction_growth_percent:
+                        type: number
+
+  /analytics/sales-history:
+    get:
+      tags: [Analytics]
+      summary: Get product sales history
+      description: Sales trends over time (FR-058, FR-059)
+      parameters:
+        - name: product_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: group_by
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month]
+            default: day
+      responses:
+        '200':
+          description: Sales history with time series data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  time_series:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                        sales_count:
+                          type: integer
+                        revenue:
+                          type: number
+                          format: double
+
+  # ============================================================
+  # INTEGRATIONS
+  # ============================================================
+  /integrations/ecommerce:
+    get:
+      tags: [Integrations]
+      summary: List e-commerce platform connections
+      responses:
+        '200':
+          description: Connected platforms
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ECommerceConnection'
+
+    post:
+      tags: [Integrations]
+      summary: Connect e-commerce platform
+      description: Authenticate with WooCommerce, Shopify, etc. (FR-043)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [platform_type, store_url, api_key]
+              properties:
+                platform_type:
+                  type: string
+                  enum: [woocommerce, shopify, custom]
+                platform_name:
+                  type: string
+                store_url:
+                  type: string
+                  format: uri
+                api_key:
+                  type: string
+                api_secret:
+                  type: string
+                sync_interval_minutes:
+                  type: integer
+                  default: 15
+      responses:
+        '201':
+          description: Platform connected successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ECommerceConnection'
+
+  /integrations/ecommerce/{connectionId}/sync:
+    parameters:
+      - name: connectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Integrations]
+      summary: Trigger manual sync
+      description: Force sync with connected platform
+      responses:
+        '202':
+          description: Sync initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  sync_job_id:
+                    type: string
+                    format: uuid
+
+# ============================================================
+# COMPONENTS
+# ============================================================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  schemas:
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        logo_url:
+          type: string
+          format: uri
+        brand_color:
+          type: string
+        subscription:
+          $ref: '#/components/schemas/Subscription'
+        created_at:
+          type: string
+          format: date-time
+
+    Branch:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        business_type:
+          type: string
+          enum: [supermarket, pharmacy, grocery, mini_mart, restaurant]
+        address:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        phone:
+          type: string
+        tax_rate:
+          type: number
+          format: double
+        currency:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        full_name:
+          type: string
+        role:
+          type: string
+          enum: [platform_admin, tenant_admin, branch_manager, cashier, driver]
+        branch_id:
+          type: string
+          format: uuid
+        avatar_url:
+          type: string
+          format: uri
+        created_at:
+          type: string
+          format: date-time
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        branch_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        sku:
+          type: string
+        barcode:
+          type: string
+        category:
+          type: string
+        unit_price:
+          type: number
+          format: double
+        cost_price:
+          type: number
+          format: double
+        stock_quantity:
+          type: integer
+        low_stock_threshold:
+          type: integer
+        expiry_date:
+          type: string
+          format: date
+        expiry_alert_days:
+          type: integer
+        image_url:
+          type: string
+          format: uri
+        is_active:
+          type: boolean
+        is_low_stock:
+          type: boolean
+        is_expiring_soon:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    ProductInput:
+      type: object
+      required: [name, unit_price, branch_id]
+      properties:
+        branch_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        sku:
+          type: string
+        barcode:
+          type: string
+        category:
+          type: string
+        unit_price:
+          type: number
+          format: double
+        cost_price:
+          type: number
+          format: double
+        stock_quantity:
+          type: integer
+          default: 0
+        low_stock_threshold:
+          type: integer
+          default: 10
+        expiry_date:
+          type: string
+          format: date
+        image_url:
+          type: string
+          format: uri
+
+    Sale:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        branch_id:
+          type: string
+          format: uuid
+        sale_number:
+          type: string
+        cashier_id:
+          type: string
+          format: uuid
+        customer_id:
+          type: string
+          format: uuid
+        subtotal:
+          type: number
+          format: double
+        tax_amount:
+          type: number
+          format: double
+        discount_amount:
+          type: number
+          format: double
+        total_amount:
+          type: number
+          format: double
+        payment_method:
+          type: string
+          enum: [cash, card, bank_transfer, mobile_money]
+        payment_reference:
+          type: string
+        status:
+          type: string
+          enum: [completed, voided, refunded]
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SaleItem'
+        created_at:
+          type: string
+          format: date-time
+
+    SaleItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sale_id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        product_name:
+          type: string
+        quantity:
+          type: integer
+        unit_price:
+          type: number
+          format: double
+        discount_percent:
+          type: number
+          format: double
+        discount_amount:
+          type: number
+          format: double
+        subtotal:
+          type: number
+          format: double
+
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+        whatsapp_number:
+          type: string
+        loyalty_points:
+          type: integer
+        total_purchases:
+          type: number
+          format: double
+        purchase_count:
+          type: integer
+        last_purchase_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        branch_id:
+          type: string
+          format: uuid
+        order_number:
+          type: string
+        customer_id:
+          type: string
+          format: uuid
+        order_type:
+          type: string
+          enum: [marketplace, ecommerce_sync, ai_chat]
+        order_status:
+          type: string
+          enum: [pending, confirmed, preparing, ready, completed, cancelled]
+        payment_status:
+          type: string
+          enum: [unpaid, paid, refunded]
+        payment_method:
+          type: string
+          enum: [cash, card, bank_transfer, mobile_money]
+        subtotal:
+          type: number
+          format: double
+        delivery_fee:
+          type: number
+          format: double
+        tax_amount:
+          type: number
+          format: double
+        total_amount:
+          type: number
+          format: double
+        fulfillment_type:
+          type: string
+          enum: [pickup, delivery]
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id:
+                type: string
+                format: uuid
+              product_name:
+                type: string
+              quantity:
+                type: integer
+              unit_price:
+                type: number
+                format: double
+              subtotal:
+                type: number
+                format: double
+        created_at:
+          type: string
+          format: date-time
+
+    Delivery:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        branch_id:
+          type: string
+          format: uuid
+        order_id:
+          type: string
+          format: uuid
+        tracking_number:
+          type: string
+        delivery_type:
+          type: string
+          enum: [local_bike, local_bicycle, intercity]
+        rider_id:
+          type: string
+          format: uuid
+        delivery_status:
+          type: string
+          enum: [pending, assigned, picked_up, in_transit, delivered, failed, cancelled]
+        customer_address:
+          type: string
+        customer_phone:
+          type: string
+        distance_km:
+          type: number
+          format: double
+        estimated_delivery_time:
+          type: string
+          format: date-time
+        actual_delivery_time:
+          type: string
+          format: date-time
+        proof_type:
+          type: string
+          enum: [photo, signature, recipient_name]
+        proof_data:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    StaffAttendance:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        branch_id:
+          type: string
+          format: uuid
+        staff_id:
+          type: string
+          format: uuid
+        clock_in_at:
+          type: string
+          format: date-time
+        clock_out_at:
+          type: string
+          format: date-time
+        total_hours:
+          type: number
+          format: double
+        shift_date:
+          type: string
+          format: date
+
+    ECommerceConnection:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        platform_type:
+          type: string
+          enum: [woocommerce, shopify, custom]
+        platform_name:
+          type: string
+        store_url:
+          type: string
+          format: uri
+        sync_enabled:
+          type: boolean
+        sync_interval_minutes:
+          type: integer
+        last_sync_at:
+          type: string
+          format: date-time
+        sync_status:
+          type: string
+          enum: [pending, syncing, success, error]
+        created_at:
+          type: string
+          format: date-time
+
+    InventoryTransaction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        branch_id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        transaction_type:
+          type: string
+          enum: [sale, restock, adjustment, expiry, transfer_out, transfer_in]
+        quantity_delta:
+          type: integer
+        previous_quantity:
+          type: integer
+        new_quantity:
+          type: integer
+        unit_cost:
+          type: number
+          format: double
+        notes:
+          type: string
+        staff_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        plan_tier:
+          type: string
+          enum: [free, basic, pro, enterprise]
+        monthly_fee:
+          type: number
+          format: double
+        commission_rate:
+          type: number
+          format: double
+        max_branches:
+          type: integer
+        max_staff_users:
+          type: integer
+        max_products:
+          type: integer
+        monthly_transaction_quota:
+          type: integer
+        features:
+          type: object
+        status:
+          type: string
+          enum: [active, suspended, cancelled]
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              details:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    field:
+                      type: string
+                    message:
+                      type: string
+
+    Unauthorized:
+      description: Unauthorized - missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Unauthorized
+
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Forbidden
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Resource not found
+
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Rate limit exceeded
+              retry_after:
+                type: integer
+                description: Seconds until rate limit resets
