@@ -1,6 +1,11 @@
 {
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "supabase"
   ],
-  "enableAllProjectMcpServers": true
+  "permissions": {
+    "allow": [
+      "Bash(powershell.exe -Command \"New-Item -ItemType File -Path ''specs/001-multi-tenant-pos/research.md'' -Force\")"
+    ]
+  }
 }

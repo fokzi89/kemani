@@ -7,9 +7,9 @@
 
 ## Product Vision
 
-A **POS-first super app platform** that empowers independent businesses in Nigeria (pharmacies, supermarkets, grocery shops, mini-marts, restaurants) to:
+A **POS-first super app platform** that empowers independent businesses in Nigeria (pharmacies, supermarkets, grocery shops, mini-marts) to:
 - Manage inventory and sales with offline-first reliability
-- Sell to walk-in customers and nearby customers via marketplace
+- Sell to walk-in customers over the counter by sale agent and nearby customers via marketplace, chat order through whatsAPP and platform chat system by AI agent or Sale agent
 - Offer local delivery (bike/bicycle) and platform-provided inter-city delivery
 - Accept remote orders via AI-powered chat agent
 - Integrate with e-commerce platforms (WooCommerce, etc.)
@@ -18,19 +18,9 @@ A **POS-first super app platform** that empowers independent businesses in Niger
 
 **Platform Model**: The platform does NOT own inventory or businesses. It provides software, payments, delivery orchestration, marketplace connectivity, and business intelligence.
 
-**Target Market**: Nigeria-first UX optimized for local business operations (pharmacies, supermarkets, grocery shops, mini-marts, restaurants), mobile connectivity patterns, and payment preferences.
+**Target Market**: Nigeria-first UX optimized for local business operations, mobile connectivity patterns, and payment preferences.
 
 **Technical Approach**: Progressive Web App (PWA) with offline-first architecture, Supabase backend, SQLite for offline persistence, automatic sync on internet availability, with native mobile apps as future enhancement.
-
-## Clarifications
-
-### Session 2026-01-17
-
-- Q: For offline sync conflict resolution when multiple devices edit the same product's stock level offline, which strategy should be used for inventory conflicts? → A: Operational Transformation/CRDTs (mathematically correct; all operations preserved; ensures arithmetic correctness for concurrent inventory updates)
-- Q: What is the default distance threshold for distinguishing local bike/bicycle delivery from platform inter-city delivery? → A: 25 kilometers
-- Q: What is the default customer loyalty points earning rate? → A: 1 point per ₦100 spent (1% reward rate)
-- Q: What is the OTP code expiration time for phone/email authentication? → A: 5 minutes (industry-standard balance between security and usability); also support email authentication as alternative to phone-based OTP
-- Q: What happens when a staff member forgets to clock out at end of shift? → A: No auto clock-out; requires manual correction by admin (most accurate but requires intervention)
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -52,18 +42,18 @@ A cashier at a pharmacy with unreliable internet processes sales, manages invent
 
 ---
 
-### User Story 2 - Multi-Tenant Isolation and OTP Authentication (Priority: P2 - Phase 1: Core POS)
+### User Story 2 - Multi-Tenant Isolation and Phone Authentication (Priority: P2 - Phase 1: Core POS)
 
-A platform administrator onboards new business tenants using OTP-based authentication via phone or email. Each tenant (pharmacy, supermarket, grocery shop) operates with complete data isolation, custom branding, and role-based access for their staff.
+A platform administrator onboards new business tenants using phone-based authentication. Each tenant (pharmacy, supermarket, grocery shop) operates with complete data isolation, custom branding, and role-based access for their staff.
 
-**Why this priority**: Multi-tenancy and secure authentication are foundational. Phone + OTP authentication aligns with Nigeria-first UX where phone numbers are primary identity, with email as alternative for users without reliable SMS access. Must be established early to support multiple businesses on the platform.
-
-**Independent Test**: Can be tested by registering two tenants using phone numbers or email addresses, sending OTP verification, configuring each with different branding, creating staff accounts with different roles (admin, cashier, manager), and verifying complete data isolation between tenants.
+**Why this priority**: Multi-tenancy and secure authentication are foundational. Phone + OTP authentication aligns with Nigeria-first UX where phone numbers are primary identity. Must be established early to support multiple businesses on the platform.
+before 
+**Independent Test**: Can be tested by registering two tenants using phone numbers, sending OTP verification, configuring each with different branding, creating staff accounts with different roles (admin, cashier, manager), and verifying complete data isolation between tenants.
 
 **Acceptance Scenarios**:
 
-1. **Given** a new business wants to join the platform, **When** they provide their phone number or email address, **Then** the system sends an OTP code (via SMS or email) that expires in 5 minutes
-2. **Given** a user enters the correct OTP within 5 minutes, **When** verification succeeds, **Then** the system creates a tenant account with unique identifier and admin access
+1. **Given** a new business wants to join the platform, **When** they provide their phone number, **Then** the system sends an OTP code for verification
+2. **Given** a user enters the correct OTP, **When** verification succeeds, **Then** the system creates a tenant account with unique identifier and admin access
 3. **Given** multiple tenants exist on the platform, **When** a user logs into tenant A, **Then** they can only access tenant A's data with zero visibility into other tenants
 4. **Given** a tenant administrator, **When** they create staff accounts with roles (admin, cashier, manager, driver), **Then** each role has appropriate permissions enforced by the system
 5. **Given** a tenant configures branding, **When** they upload logo and set colors, **Then** these settings apply to their POS interface and receipts only
@@ -82,7 +72,7 @@ A business creates a digital storefront accessible to nearby customers. Customer
 
 1. **Given** a tenant publishes their storefront, **When** nearby customers access the marketplace, **Then** they can browse products from this tenant with real-time inventory visibility
 2. **Given** a customer places an order, **When** the order is confirmed, **Then** it appears in the merchant's order management system with customer details and fulfillment options (pickup or delivery)
-3. **Given** a customer completes a purchase, **When** the sale is recorded, **Then** the customer earns loyalty points at the rate of 1 point per ₦100 spent and their profile shows updated purchase history and points balance
+3. **Given** a customer completes a purchase, **When** the sale is recorded, **Then** the customer earns loyalty points based on purchase amount and their profile shows updated purchase history
 4. **Given** a returning customer, **When** they log in, **Then** they can view their complete purchase history across all orders and current loyalty points balance
 5. **Given** a merchant views customer data, **When** they access customer management, **Then** they see customer profiles, purchase frequency, total spend, and loyalty status
 
@@ -102,8 +92,7 @@ A business owner manages staff accounts, assigns roles and permissions, and trac
 2. **Given** a staff member starts their shift, **When** they clock in using the POS system, **Then** the system records the timestamp and marks them as on duty
 3. **Given** a staff member ends their shift, **When** they clock out, **Then** the system records the timestamp and calculates total hours worked
 4. **Given** a manager reviews attendance, **When** they access staff reports, **Then** they see clock in/out history, total hours worked, and attendance patterns for payroll processing
-5. **Given** a staff member forgets to clock out, **When** the administrator views staff attendance, **Then** the system alerts them about open clock-in sessions and allows manual correction of the clock-out time
-6. **Given** a cashier processes a sale, **When** the transaction is recorded, **Then** the sale is attributed to the logged-in staff member for performance tracking
+5. **Given** a cashier processes a sale, **When** the transaction is recorded, **Then** the sale is attributed to the logged-in staff member for performance tracking
 
 ---
 
@@ -117,7 +106,7 @@ A merchant fulfills customer orders through two delivery options: local delivery
 
 **Acceptance Scenarios**:
 
-1. **Given** a customer order requires delivery, **When** the merchant reviews the delivery address, **Then** the system suggests delivery option (local bike/bicycle for addresses within 25km, platform inter-city for addresses beyond 25km) based on distance threshold
+1. **Given** a customer order requires delivery, **When** the merchant reviews the delivery address, **Then** the system suggests delivery option (local bike/bicycle or platform inter-city) based on distance
 2. **Given** a local delivery is selected, **When** the merchant assigns the order to an available bike rider, **Then** the rider receives notification with delivery details and customer location
 3. **Given** an inter-city delivery is selected, **When** the merchant initiates platform delivery, **Then** the order is handed off to the platform delivery service with tracking number
 4. **Given** a delivery is in progress, **When** the rider/driver updates status (picked up, in transit, delivered), **Then** the customer tracking page reflects the update within 60 seconds
@@ -215,26 +204,6 @@ The platform monetizes through subscription plans (tiered based on features and 
 
 ---
 
-### User Story 11 - Multi-Branch and Multi-Business Management (Priority: P11 - Phase 2: Customers & Marketplace)
-
-A business owner (tenant company) operates multiple branches with different business types. For example, they own a supermarket in Lagos, a pharmacy in Abuja, and another supermarket in Port Harcourt. Each branch operates independently with its own staff, inventory, and sales, but the owner admin can view consolidated analytics and manage all businesses from a unified dashboard.
-
-**Why this priority**: Many Nigerian entrepreneurs operate multiple businesses or expand successful ventures to new locations. Multi-branch support enables the platform to grow with merchants and capture larger enterprise accounts. This builds on the multi-tenancy foundation from Phase 1 and customer management from Phase 2.
-
-**Independent Test**: Can be tested by creating a tenant company account, adding three branches with different business types (supermarket, pharmacy, grocery, restaurant), configuring each branch with separate staff and inventory, processing sales in each branch, and verifying the owner admin can view consolidated analytics across all branches while each branch operates independently.
-
-**Acceptance Scenarios**:
-
-1. **Given** a tenant admin owns multiple businesses, **When** they create branches in their account, **Then** the system allows them to specify business type (supermarket, pharmacy, grocery, mini-mart, restaurant) and location for each branch
-2. **Given** multiple branches exist under one tenant company, **When** the admin assigns staff to a specific branch, **Then** staff members can only access data and perform operations for their assigned branch
-3. **Given** each branch has independent inventory, **When** a product is added to Branch A, **Then** it does not automatically appear in Branch B (inventory is isolated per branch unless explicitly shared)
-4. **Given** sales occur across multiple branches, **When** the owner admin views the consolidated dashboard, **Then** they see aggregated analytics (total revenue, transaction count, top products) across all branches with drill-down capability per branch
-5. **Given** a branch-specific manager, **When** they log into their branch, **Then** they see only their branch's data, staff, inventory, and analytics without visibility into other branches
-6. **Given** a tenant company with multiple branches, **When** the owner transfers inventory from Branch A to Branch B, **Then** the system records an inter-branch transfer reducing Branch A stock and increasing Branch B stock with audit trail
-7. **Given** different business types across branches, **When** the owner views branch-specific settings, **Then** each branch can have different tax rates, payment methods, branding, and operational configurations
-
----
-
 ### Edge Cases
 
 - What happens when a tenant processes 100+ offline transactions and then syncs to cloud? Does sync handle large batches without timeout?
@@ -247,11 +216,8 @@ A business owner (tenant company) operates multiple branches with different busi
 - How does the system handle products with expiry dates in the past? Can they still be sold?
 - What happens when CSV import contains duplicate SKUs or invalid data?
 - How does the platform handle commission calculation if a marketplace order is refunded?
-- What happens when a staff member forgets to clock out at end of shift? System does not auto clock-out; administrators must manually correct the clock-out time to ensure accurate payroll and attendance records.
+- What happens when a staff member forgets to clock out at end of shift?
 - How does the system handle timezone differences for inter-city deliveries across Nigeria?
-- What happens when an owner tries to transfer inventory between branches but one branch is offline?
-- How does the system handle a staff member reassigned from Branch A to Branch B mid-shift while they have an active clock-in session?
-- What happens when consolidated analytics are calculated across branches with different currencies or tax jurisdictions (future international expansion)?
 
 ## Requirements *(mandatory)*
 
@@ -260,7 +226,7 @@ A business owner (tenant company) operates multiple branches with different busi
 #### Core POS Requirements (Offline-First)
 
 - **FR-001**: System MUST function fully offline using local SQLite database for all POS operations including sales, inventory, customer data, and staff actions
-- **FR-002**: System MUST automatically sync all offline transactions to Supabase backend when internet connection is detected, handling sync conflicts using Operational Transformation or CRDTs for inventory updates to ensure arithmetic correctness when multiple devices modify the same product stock offline
+- **FR-002**: System MUST automatically sync all offline transactions to Supabase backend when internet connection is detected, handling sync conflicts gracefully
 - **FR-003**: System MUST allow cashiers to create sales transactions by selecting/scanning products, applying discounts, calculating taxes, and processing payments while offline
 - **FR-004**: System MUST support multiple payment methods including cash, card, bank transfer, and mobile money (Nigeria-specific options)
 - **FR-005**: System MUST generate receipts (digital and/or printable) with itemized products, taxes, discounts, payment method, and tenant branding
@@ -275,7 +241,7 @@ A business owner (tenant company) operates multiple branches with different busi
 #### Multi-Tenancy and Authentication Requirements
 
 - **FR-013**: System MUST provide complete data isolation between tenants at database and application layers ensuring no cross-tenant data access
-- **FR-014**: System MUST implement authentication using OTP (One-Time Password) sent via SMS (for phone numbers) or email (for email addresses) with 5-minute expiration time for user registration and login, allowing users to choose their preferred authentication method
+- **FR-014**: System MUST implement phone-based authentication using OTP (One-Time Password) sent via SMS for user registration and login
 - **FR-015**: System MUST assign each tenant a unique identifier and subdomain or access path for their storefront
 - **FR-016**: System MUST allow each tenant to configure custom branding including logo, colors, business name, and receipt templates
 - **FR-017**: System MUST support tenant-specific configurations including tax rates, currency (Naira), business hours, payment methods, and delivery zones
@@ -287,9 +253,9 @@ A business owner (tenant company) operates multiple branches with different busi
 - **FR-020**: System MUST allow tenants to create public marketplace storefronts accessible to nearby customers via web browser
 - **FR-021**: System MUST enable customers to browse products by category, search by name/keyword, and filter by price, availability, and location
 - **FR-022**: System MUST display real-time inventory availability on storefront synced from offline POS data
-- **FR-023**: System MUST allow customers to create accounts (phone or email-based OTP authentication), place orders for pickup or delivery, and track order status
+- **FR-023**: System MUST allow customers to create accounts (phone-based authentication), place orders for pickup or delivery, and track order status
 - **FR-024**: System MUST maintain customer profiles with purchase history, total spend, order frequency, and delivery addresses
-- **FR-025**: System MUST implement customer loyalty program with default earning rate of 1 point per ₦100 spent (configurable per tenant) and redemption rules
+- **FR-025**: System MUST implement customer loyalty program with configurable points earning (e.g., 1 point per N100 spent) and redemption rules
 - **FR-026**: System MUST allow merchants to view customer insights including top customers, purchase patterns, and loyalty tier distribution
 - **FR-027**: System MUST support order lifecycle management with statuses: pending, confirmed, preparing, ready for pickup, out for delivery, delivered, cancelled
 
@@ -297,15 +263,14 @@ A business owner (tenant company) operates multiple branches with different busi
 
 - **FR-028**: System MUST allow tenant administrators to create, edit, and deactivate staff accounts with assigned roles and permissions
 - **FR-029**: System MUST provide clock in/clock out functionality for staff members to record shift start and end times
-- **FR-030**: System MUST track staff attendance including clock in/out timestamps, total hours worked, and attendance history; system does not auto clock-out staff members, requiring manual correction by administrators for forgotten clock-outs to ensure accuracy
+- **FR-030**: System MUST track staff attendance including clock in/out timestamps, total hours worked, and attendance history
 - **FR-031**: System MUST attribute all sales transactions to the logged-in staff member for performance tracking and accountability
 - **FR-032**: System MUST generate staff reports showing individual sales performance, hours worked, and attendance patterns for payroll and management
-- **FR-032a**: System MUST alert administrators about open clock-in sessions (staff who clocked in but have not clocked out) to facilitate manual correction of forgotten clock-outs
 
 #### Delivery Management Requirements
 
 - **FR-033**: System MUST support dual delivery options: local delivery (bike/bicycle riders) and platform inter-city delivery service
-- **FR-034**: System MUST suggest delivery option based on customer delivery address distance with default threshold of 25 kilometers (local bike/bicycle delivery within 25km, platform inter-city delivery beyond 25km, configurable per tenant)
+- **FR-034**: System MUST suggest delivery option based on customer delivery address distance (local vs. inter-city threshold configurable per tenant)
 - **FR-035**: System MUST allow merchants to create delivery orders with customer address, contact information, items, delivery instructions, and selected delivery type
 - **FR-036**: System MUST generate unique tracking numbers for each delivery order accessible via public tracking link
 - **FR-037**: System MUST assign local delivery orders to available bike/bicycle riders and notify them with delivery details via SMS or in-app notification
@@ -367,33 +332,15 @@ A business owner (tenant company) operates multiple branches with different busi
 - **FR-078**: System MUST allow tenants to view billing history, current plan details, usage metrics, and upgrade/downgrade subscription options
 - **FR-079**: System MUST integrate with payment gateways for subscription and marketplace transaction processing (Paystack, Flutterwave for Nigeria market)
 
-#### Multi-Branch and Multi-Business Management Requirements
-
-- **FR-080**: System MUST allow tenant companies to create multiple branches under a single tenant account with each branch having a unique identifier, name, business type, and location
-- **FR-081**: System MUST support different business types per branch (supermarket, pharmacy, grocery shop, mini-mart, restaurant) with type-specific configurations and features
-- **FR-082**: System MUST isolate inventory per branch by default, ensuring products added to one branch do not appear in other branches unless explicitly shared
-- **FR-083**: System MUST allow branch-specific staff assignments ensuring staff members can only access data and operations for their assigned branch(es)
-- **FR-084**: System MUST provide consolidated analytics dashboard for tenant admins showing aggregated metrics across all branches with drill-down capability per branch
-- **FR-085**: System MUST allow inter-branch inventory transfers with audit trail recording source branch, destination branch, products, quantities, transfer date, and authorizing staff
-- **FR-086**: System MUST support branch-specific configurations including tax rates, payment methods, branding, receipt templates, business hours, and delivery zones
-- **FR-087**: System MUST enforce role-based access control at branch level where branch managers see only their branch data while tenant admins see all branches
-- **FR-088**: System MUST track sales, inventory, and staff performance independently per branch while maintaining consolidated reporting for tenant admins
-- **FR-089**: System MUST sync offline transactions per branch to cloud, handling conflicts at branch level without affecting other branches
-- **FR-090**: System MUST allow tenant admins to compare performance across branches including revenue comparisons, top-performing products, and efficiency metrics
-- **FR-091**: System MUST support shared customer profiles across branches where a customer's purchase history and loyalty points are accessible company-wide
-- **FR-092**: System MUST calculate subscription limits at tenant company level (total users, products, transactions across all branches) with per-branch visibility
-
 ### Key Entities
 
-- **Tenant**: Tenant company account representing the business owner with one or more branches, isolated data, subscription plan, usage limits, and consolidated analytics access
-- **Branch**: Physical or logical business location under a tenant with unique identifier, name, business type (supermarket, pharmacy, grocery, mini-mart, restaurant), location, independent inventory, staff assignments, and branch-specific configurations
-- **User**: Person using the system belonging to a tenant and assigned to one or more branches with role (Platform Admin, Tenant Admin, Branch Manager, Cashier, Driver), phone number or email address (authentication identifier), permissions, and branch access scope
-- **Product**: Sellable item belonging to a specific branch with name, description, SKU, barcode, price, category, variants, inventory quantity, expiry date, branch reference, and sync mappings to e-commerce platforms
-- **InventoryTransaction**: Record of inventory change with product reference, branch reference, quantity delta, transaction type (sale, restock, adjustment, expiry, inter-branch transfer), timestamp, and staff reference
-- **InterBranchTransfer**: Record of inventory transfer between branches with source branch, destination branch, product list, quantities, transfer date, authorizing staff, and transfer status
-- **Sale**: Completed transaction with items sold, quantities, prices, taxes, discounts, payment method, total amount, cashier, branch reference, customer reference, timestamp, and sync status
+- **Tenant**: Independent business (pharmacy, supermarket, grocery, mini-mart) using the platform with isolated data, branding, subscription plan, and usage limits
+- **User**: Person using the system belonging to a tenant with role (Platform Admin, Tenant Admin, Manager, Cashier, Driver), phone number, and permissions
+- **Product**: Sellable item with name, description, SKU, barcode, price, category, variants, inventory quantity, expiry date, and sync mappings to e-commerce platforms
+- **InventoryTransaction**: Record of inventory change with product reference, quantity delta, transaction type (sale, restock, adjustment, expiry), timestamp, and staff reference
+- **Sale**: Completed transaction with items sold, quantities, prices, taxes, discounts, payment method, total amount, cashier, customer reference, timestamp, and sync status
 - **SaleItem**: Line item in a sale linking to product with quantity sold, unit price at time of sale, discounts applied, and subtotal
-- **Customer**: Person making purchases with phone number or email address (primary identifier), name, WhatsApp number, purchase history, loyalty points, and delivery addresses
+- **Customer**: Person making purchases with phone number (primary identifier), name, email, WhatsApp number, purchase history, loyalty points, and delivery addresses
 - **Order**: Customer order (from marketplace or synced from e-commerce platform) with items, quantities, customer details, order status, payment status, fulfillment type (pickup/delivery), and delivery details
 - **Delivery**: Delivery task with order reference, delivery type (local bike/bicycle or inter-city), customer address, assigned rider/service, status, tracking number, estimated delivery time, and proof of delivery
 - **Rider**: Delivery personnel (bike/bicycle rider) with contact information, assigned deliveries, delivery completion rate, average delivery time, and current availability
@@ -423,7 +370,6 @@ A business owner (tenant company) operates multiple branches with different busi
 - **SC-012**: System maintains 99.5% uptime during business hours with zero cross-tenant data leaks over any 90-day period
 - **SC-013**: Merchants can onboard (register, configure branding, import products via CSV, configure integrations) within 60 minutes
 - **SC-014**: Platform processes subscription billing for 200 tenants and calculates commissions on 10,000 monthly marketplace transactions with 100% accuracy
-- **SC-015**: Tenant admins with 5 branches can view consolidated analytics aggregating data from all branches within 3 seconds with accurate drill-down per branch
 
 ## Scope and Boundaries *(mandatory)*
 
@@ -433,7 +379,7 @@ A business owner (tenant company) operates multiple branches with different busi
   - Offline-first POS system with SQLite local storage and Supabase cloud sync
   - Multi-tenant architecture with complete data isolation
   - Progressive Web App (PWA) optimized for mobile devices and low-end Android
-  - Phone or email-based OTP authentication with 5-minute expiration (Nigeria-first UX)
+  - Phone + OTP authentication (Nigeria-first UX)
 
 - **POS Features**:
   - Inventory management with expiry tracking and alerts
@@ -490,14 +436,6 @@ A business owner (tenant company) operates multiple branches with different busi
   - Automated billing and invoicing
   - Usage metrics and limits enforcement
 
-- **Multi-Branch Management**:
-  - Multiple branches per tenant company
-  - Different business types per branch (supermarket, pharmacy, grocery, mini-mart, restaurant)
-  - Branch-specific inventory, staff, and configurations
-  - Consolidated analytics across all branches
-  - Inter-branch inventory transfers
-  - Shared customer profiles company-wide
-
 ### Out of Scope
 
 - **Medical Services**: No prescription management, doctor consultations, lab tests, or clinical decision support (pharmacies sell products only, not medical services)
@@ -507,6 +445,7 @@ A business owner (tenant company) operates multiple branches with different busi
 - **Employee Payroll**: Salary calculation, payroll processing, tax withholding (time tracking provided, but not full HR/payroll)
 - **Customer Loyalty Redemption**: Initial release tracks loyalty points; in-app redemption for discounts/rewards is future enhancement
 - **Route Optimization**: Delivery rider route planning and optimization (manual routing initially)
+- **Multi-Location Management**: Single location per tenant initially; multi-branch support is future consideration
 - **Voice/Video Calling**: Communication limited to text-based chat and messaging (no voice or video calls)
 - **Cryptocurrency Payments**: Fiat currency (Naira) and traditional payment methods only
 - **International Expansion**: Nigeria-first UX and payment integrations; other African markets are future consideration
@@ -519,7 +458,7 @@ A business owner (tenant company) operates multiple branches with different busi
 - Merchants using e-commerce integrations have active stores on supported platforms (WooCommerce, Shopify) with API access enabled
 - WhatsApp Business API access requires approval from WhatsApp and may not be immediately available to all tenants
 - Customers have smartphones with web browsers to access marketplace storefronts and order tracking
-- Phone numbers are primary identifier in Nigeria with SMS delivery for OTP being reliable; email authentication provided as alternative for users without reliable SMS access
+- Phone numbers are primary identifier in Nigeria and SMS delivery for OTP is reliable
 - Payment processing via Paystack/Flutterwave is available and compliant with Nigerian financial regulations
 - Delivery riders (bike/bicycle) have smartphones capable of receiving notifications and updating delivery status
 - Initial release supports single currency (Nigerian Naira); multi-currency support is future consideration
@@ -536,7 +475,6 @@ A business owner (tenant company) operates multiple branches with different busi
 - **Supabase Backend**: Requires Supabase project setup with PostgreSQL database, authentication, real-time subscriptions, and storage
 - **SQLite/IndexedDB**: Requires browser support for IndexedDB (for web) or SQLite (for potential native apps) for offline data persistence
 - **SMS Provider**: Requires SMS gateway (Termii, SMS Portal, Africa's Talking) for OTP delivery during phone authentication
-- **Email Provider**: Requires email service (Supabase Auth, SendGrid, Mailgun) for OTP delivery during email authentication
 - **WhatsApp Business API**: Requires approved WhatsApp Business API access (not standard WhatsApp Business app) which has approval process and may have regional restrictions
 - **Payment Gateways**: Integration with Paystack and/or Flutterwave for payment processing (subject to merchant approval and fee structures)
 - **E-Commerce Platform APIs**: WooCommerce REST API v3+, Shopify Admin API, or other platforms require API access enabled by merchant
@@ -562,7 +500,7 @@ A business owner (tenant company) operates multiple branches with different busi
 
 - **Full Offline Functionality**: Core POS features (sales, inventory, customer lookup, staff clock in/out) work 100% offline without degradation
 - **Local Data Persistence**: SQLite/IndexedDB stores all tenant data locally with automatic background sync
-- **Conflict Resolution**: System handles sync conflicts using Operational Transformation or CRDTs for inventory (arithmetic correctness), last-write-wins for non-critical data, and manual resolution queue for complex edge cases
+- **Conflict Resolution**: System handles sync conflicts gracefully using configurable resolution strategies (last-write-wins, manual resolution queue)
 - **Sync Status Visibility**: Users can see sync status (synced, pending, failed) for transactions and data changes
 - **Background Sync**: Service workers handle background sync automatically when connectivity is detected
 - **Offline Indicators**: Clear UI indicators show when system is offline vs. online
@@ -571,7 +509,7 @@ A business owner (tenant company) operates multiple branches with different busi
 
 - **Data Encryption**: All data transmission encrypted using TLS 1.2 or higher; local data encrypted at rest on device
 - **Multi-Tenant Isolation**: Complete data isolation between tenants at database level using Row Level Security (RLS) in Supabase
-- **Authentication**: Phone or email-based OTP authentication with 5-minute expiration time and rate limiting to prevent brute force attacks
+- **Authentication**: Phone + OTP authentication with rate limiting to prevent brute force attacks
 - **Authorization**: Role-based access control (RBAC) enforced at API and UI levels
 - **API Security**: API credentials (e-commerce platforms, WhatsApp, payment gateways) stored encrypted in Supabase vault
 - **Audit Logging**: All critical operations (sales, refunds, inventory adjustments, user changes, sync events) logged with timestamps and user attribution
@@ -622,9 +560,9 @@ A business owner (tenant company) operates multiple branches with different busi
 **Impact**: Inventory inaccuracies, duplicate transactions, customer data corruption, loss of business data integrity.
 
 **Mitigation**:
-- Implement Operational Transformation or CRDTs for inventory updates to ensure arithmetic correctness (e.g., if Device A sells 2 units and Device B sells 3 units offline, final stock = original - 5, preserving all operations)
-- Use last-write-wins strategy for non-critical data (customer info, product descriptions)
-- Provide manual resolution queue for edge cases that cannot be auto-resolved
+- Implement last-write-wins strategy for non-critical data (customer info, product descriptions)
+- Use operational transformation or CRDTs for inventory to mathematically resolve conflicts
+- Provide manual resolution queue for critical conflicts that cannot be auto-resolved
 - Display sync status clearly so merchants know when data is out of sync
 - Maintain complete audit trail of all sync operations for troubleshooting
 - Test extensively with multi-device offline scenarios before launch
@@ -769,7 +707,7 @@ A business owner (tenant company) operates multiple branches with different busi
 - **Technical**: Offline-first architecture requires local data storage using SQLite/IndexedDB with automatic cloud sync to Supabase
 - **Technical**: Must support low-end Android devices with minimum 2GB RAM and Android 8.0+ running over 3G connectivity
 - **Platform**: Initial release uses Supabase as backend (PostgreSQL, Authentication, Realtime, Storage); migration to other backends not supported in V1
-- **Geographic**: Nigeria-first UX with phone or email-based OTP authentication, Naira currency, and local payment gateways (Paystack, Flutterwave)
+- **Geographic**: Nigeria-first UX with phone-based authentication, Naira currency, and local payment gateways (Paystack, Flutterwave)
 - **Language**: Initial release supports English language only; multi-language support (Yoruba, Hausa, Igbo) deferred to future releases
 - **Business Model**: Platform does NOT own inventory or businesses; provides software, payments, delivery orchestration, and marketplace connectivity only
 - **Business Scope**: No medical services (prescriptions, doctor consultations, lab tests) in V1; pharmacies sell products only
@@ -793,7 +731,7 @@ A business owner (tenant company) operates multiple branches with different busi
 **Key Features**:
 - Offline-first POS with SQLite local storage and Supabase cloud sync
 - Multi-tenant architecture with complete data isolation
-- Phone or email-based OTP authentication with 5-minute expiration
+- Phone + OTP authentication
 - Inventory management with expiry alerts
 - CSV bulk product import
 - Sales transactions (cart, discounts, tax, multiple payment methods)
@@ -817,7 +755,7 @@ A business owner (tenant company) operates multiple branches with different busi
 
 **Key Features**:
 - Public marketplace storefronts for tenants
-- Customer accounts and profiles (phone or email-based OTP authentication)
+- Customer accounts and profiles (phone-based authentication)
 - Order placement (pickup and delivery options)
 - Customer loyalty program with points tracking
 - Purchase history and customer insights

@@ -1,1069 +1,614 @@
 # Phase 0: Technical Research & Decisions
 
 **Feature**: Multi-Tenant POS-First Super App Platform
-**Created**: 2026-01-17
+**Created**: 2026-01-18
 **Status**: Complete
 
 ## Overview
 
-This document consolidates technical research for 6 critical architectural decisions required for the multi-tenant, offline-first POS platform. Each decision includes evaluation criteria, alternatives considered, final choice, and rationale.
+This document captures all technical research and architectural decisions for the multi-tenant POS platform. Each decision includes rationale, alternatives considered, and best practices from the domain.
 
 ---
 
-## Decision 1: Offline Sync Engine
+## 1. Offline-First Architecture
 
-### Context
-The platform requires robust offline-first functionality where multiple POS devices can operate independently without internet, then sync changes when connectivity returns. The specification mandates Operational Transformation/CRDT-based conflict resolution to ensure arithmetic correctness for concurrent inventory updates.
+### Decision: PowerSync + SQLite for Paid Tiers
 
-### Requirements
-- **Bidirectional sync** between SQLite (client) and Supabase PostgreSQL (server)
-- **CRDT/OT support** for conflict-free inventory operations
-- **Real-time sync** when online, background sync when connection restored
-- **Resilience** to network interruptions common in Nigerian retail environments
-- **TypeScript support** with Next.js 16 compatibility
-- **Performance** suitable for low-end devices (2GB RAM)
-
-### Alternatives Evaluated
-
-#### Option A: ElectricSQL
-**Description**: Reactive sync layer that replicates PostgreSQL tables to local SQLite with active-active replication.
-
-**Pros**:
-- Native PostgreSQL replication with CRDT support
-- Real-time reactive queries
-- Strong consistency guarantees
-- Open source with active development
-- TypeScript-first design
-- Excellent documentation
-
-**Cons**:
-- Adds complexity with separate Electric sync service
-- Requires Electric server deployment alongside Supabase
-- Still maturing (v0.x as of Jan 2025)
-- Additional infrastructure cost
-- May require schema migrations on both Electric and Supabase
-
-**Verdict**: Rejected due to infrastructure complexity and deployment overhead.
-
-#### Option B: PowerSync
-**Description**: Offline-first sync engine specifically designed for SQLite ↔ PostgreSQL/MongoDB sync with CRDT support.
-
-**Pros**:
-- Purpose-built for offline-first mobile/web apps
-- Native CRDT conflict resolution
-- Incremental sync reduces bandwidth
-- React hooks for real-time reactivity
-- Good TypeScript support
-- Supabase integration guide available
-- Optimized for React Native and web (PWA)
-
-**Cons**:
-- Commercial product (free tier available, paid for production)
-- Proprietary sync protocol
-- Less flexible than custom solution
-- Pricing model may not scale well for multi-tenant SaaS
-- Vendor lock-in risk
-
-**Verdict**: Strong candidate but concerns about long-term costs for multi-tenant deployment.
-
-#### Option C: Custom OT/CRDT Implementation
-**Description**: Build custom sync layer using Automerge/Yjs for CRDT logic with manual SQLite ↔ Supabase sync.
-
-**Pros**:
-- Full control over sync logic and timing
-- No vendor lock-in
-- Can optimize for specific POS use cases (inventory, sales)
-- Leverages existing CRDT libraries (Automerge, Yjs)
-- No additional infrastructure costs
-
-**Cons**:
-- Significant development time (4-6 weeks minimum)
-- Complex to implement correctly (conflict resolution edge cases)
-- Ongoing maintenance burden
-- Must handle schema migrations manually
-- Higher risk of sync bugs
-
-**Verdict**: Rejected for MVP due to development timeline and complexity.
-
-#### Option D: Supabase Realtime + Manual Conflict Resolution
-**Description**: Use Supabase Realtime subscriptions with custom last-write-wins or timestamp-based conflict resolution.
-
-**Pros**:
-- Simpler implementation
-- Native Supabase integration
-- Well-documented patterns
-- Lower cognitive overhead
-
-**Cons**:
-- **Does not meet specification requirement for OT/CRDT**
-- Last-write-wins loses data (conflicts rejected by spec)
-- No offline queue guarantees
-- Poor user experience when syncing conflicts
-
-**Verdict**: Rejected - violates FR-002 requirement for OT/CRDT conflict resolution.
-
-### Final Decision: **PowerSync**
+**Chosen**: [PowerSync](https://www.powersync.com/) as offline-first sync layer with SQLite for local storage (Basic, Growth, Enterprise tiers only)
 
 **Rationale**:
-1. **Specification Compliance**: PowerSync provides native CRDT conflict resolution required by FR-002, ensuring arithmetic correctness for concurrent inventory operations.
-2. **Development Velocity**: Pre-built Supabase integration and React hooks enable faster MVP delivery compared to custom implementation (weeks vs months).
-3. **Production-Ready**: Battle-tested in offline-first applications, reducing risk of sync bugs that could cause data loss.
-4. **Cost Model**: Free tier supports development; paid tier pricing acceptable for B2B SaaS (cost passed to merchants via subscription).
-5. **Technical Fit**: Optimized for PWA with TypeScript, aligns with Next.js 16 + React 19 stack.
-6. **Fallback Path**: If vendor lock-in becomes issue post-MVP, can migrate to custom solution with established sync patterns.
+- PowerSync provides production-ready offline-first sync with Supabase PostgreSQL integration
+- Handles conflict resolution using Operational Transformation (OT) and CRDTs for inventory arithmetic correctness
+- Supports incremental sync reducing bandwidth consumption (critical for Nigerian 3G networks)
+- Built-in schema migration support for evolving data models
+- TypeScript SDK with React hooks for easy integration
+- Proven scalability (supports 10,000+ concurrent users per PowerSync instance)
 
-**Implementation Notes**:
-- Use PowerSync React hooks for real-time queries in Client Components
-- Configure incremental sync to minimize bandwidth on 3G networks
-- Implement sync status indicators for offline/syncing/online states
-- Monitor sync performance metrics (latency, conflict rate, queue depth)
+**Alternatives Considered**:
+1. **WatermelonDB**: Open-source offline-first database
+   - ❌ Rejected: Less mature conflict resolution, manual sync logic implementation required
+   - ❌ No built-in Supabase integration, would need custom sync server
 
-**Alternatives for Future Consideration**:
-- If PowerSync pricing becomes prohibitive at scale (>1000 tenants), evaluate custom OT implementation using Automerge + Supabase Realtime
-- ElectricSQL if it reaches v1.0 and simplifies deployment model
+2. **RxDB**: Reactive offline-first database
+   - ❌ Rejected: Complex replication protocol, higher learning curve
+   - ❌ Larger bundle size (~150KB), conflicts with 200KB route target
+
+3. **Custom IndexedDB + Sync Logic**: Build our own sync layer
+   - ❌ Rejected: High development cost, months of effort to match PowerSync features
+   - ❌ Risk of bugs in conflict resolution (critical for inventory management)
+
+**Best Practices**:
+- Use PowerSync's conflict resolution strategies: OT/CRDTs for counters (inventory), last-write-wins for non-critical data
+- Implement sync status UI showing pending/syncing/synced states for user transparency
+- Batch sync operations to reduce network calls
+- Use PowerSync React hooks (`usePowerSync`, `useQuery`) for real-time UI updates
+- Configure sync throttling to prevent overwhelming low-end devices
+
+**Free Tier Exception**: Cloud-only (direct Supabase writes) to avoid PowerSync licensing costs per user
 
 ---
 
-## Decision 2: SQLite for Web Implementation
+## 2. Multi-Tenant Database Isolation
 
-### Context
-The POS must operate fully offline in the browser, requiring a robust SQLite implementation that persists data locally and performs well on low-end Android devices (2GB RAM, Chrome/WebView).
+### Decision: Supabase Row Level Security (RLS) Policies
 
-### Requirements
-- **Full SQL support** for complex POS queries (joins, aggregations, transactions)
-- **ACID compliance** for inventory and sales transactions
-- **Persistence** across browser sessions using IndexedDB or OPFS
-- **Performance** suitable for 10,000+ products and 100,000+ transactions
-- **Bundle size** under 1MB to meet Core Web Vitals targets
-- **Browser compatibility** with Chrome 90+, Safari 14+
-- **TypeScript support** with type-safe query builders
-
-### Alternatives Evaluated
-
-#### Option A: sql.js
-**Description**: SQLite compiled to WebAssembly using Emscripten, runs entirely in browser memory.
-
-**Pros**:
-- Mature and widely used (1M+ weekly downloads)
-- Full SQLite 3.x feature support
-- Simple API, easy to integrate
-- Good documentation and examples
-- Works in all modern browsers
-- TypeScript bindings available
-
-**Cons**:
-- **Database stored in memory** - requires manual persistence to IndexedDB
-- Large bundle size (~800KB uncompressed wasm)
-- No automatic persistence (must export/import manually)
-- Performance degrades with large databases (>50MB)
-- Must load entire database into memory on startup (slow on low-end devices)
-
-**Verdict**: Not ideal for large POS datasets due to memory constraints.
-
-#### Option B: wa-sqlite
-**Description**: Minimal SQLite WebAssembly build with pluggable storage backends (IndexedDB, OPFS, memory).
-
-**Pros**:
-- **Much smaller bundle** (~300KB uncompressed)
-- Pluggable VFS backends (IndexedDB-batch, OPFS, memory)
-- Better performance than sql.js for large databases
-- Supports incremental reads (doesn't load full DB into memory)
-- Active development and maintenance
-- TypeScript support via @types/wa-sqlite
-
-**Cons**:
-- Less mature than sql.js (fewer production deployments)
-- Sparser documentation
-- Requires manual VFS configuration
-- Some edge cases with IndexedDB backend (locking issues)
-- OPFS backend not supported in Safari yet
-
-**Verdict**: Strong candidate for performance but Safari compatibility concerns.
-
-#### Option C: absurd-sql
-**Description**: Fork of sql.js with optimized IndexedDB backend for better persistence and performance.
-
-**Pros**:
-- Better performance than sql.js for large datasets
-- Automatic IndexedDB persistence
-- Handles multi-tab scenarios better
-- Good for read-heavy workloads
-
-**Cons**:
-- **No longer actively maintained** (last update 2022)
-- Security vulnerabilities may not be patched
-- Based on older SQLite version (3.35)
-- Limited TypeScript support
-- Uncertain future compatibility
-
-**Verdict**: Rejected due to lack of maintenance.
-
-#### Option D: Kysely + Better-SQLite3 (Electron/Tauri)
-**Description**: Use native Node.js SQLite bindings if deploying as Electron/Tauri desktop app instead of PWA.
-
-**Pros**:
-- Native performance (10-100x faster than wasm)
-- Full SQLite feature set
-- Better resource management
-- Kysely provides excellent TypeScript query builder
-
-**Cons**:
-- **Not compatible with PWA requirement**
-- Requires desktop app installation (friction for merchants)
-- Larger download size (~50MB vs <1MB PWA)
-- Platform-specific builds (Windows, macOS, Linux)
-
-**Verdict**: Rejected - specification requires PWA for accessibility on low-end devices.
-
-### Final Decision: **wa-sqlite with IndexedDB-batch VFS**
+**Chosen**: Supabase PostgreSQL with Row Level Security (RLS) policies for complete tenant isolation
 
 **Rationale**:
-1. **Performance**: Incremental reads and smaller bundle size (~300KB) ensure acceptable performance on 2GB RAM devices.
-2. **Persistence**: IndexedDB-batch VFS provides automatic persistence without manual export/import cycles.
-3. **Scalability**: Handles large databases (>100MB) better than sql.js by not loading entire DB into memory.
-4. **Bundle Size**: Meets Core Web Vitals targets (<200KB gzipped per route after brotli compression).
-5. **Future-Proof**: Active maintenance and community, with OPFS backend available when Safari adds support.
-6. **PowerSync Compatibility**: PowerSync supports wa-sqlite as backend, enabling seamless integration.
+- RLS provides database-level enforcement of tenant boundaries (cannot be bypassed by application bugs)
+- Supabase Auth integration makes `auth.uid()` and tenant context available in RLS policies
+- Single database simplifies operations (no tenant database provisioning)
+- Scales to 10,000+ tenants without architectural changes
+- Cost-effective (shared infrastructure)
 
-**Implementation Notes**:
-- Use IndexedDB-batch VFS for production (best balance of compatibility and performance)
-- Monitor for Safari OPFS support (better performance when available)
-- Implement database migration strategy using PowerSync schema versioning
-- Add lazy loading for large tables (products, transactions) with pagination
-- Use Web Workers to run SQLite queries off main thread (prevents UI blocking)
+**Alternatives Considered**:
+1. **Database-per-Tenant**: Separate PostgreSQL database for each tenant
+   - ❌ Rejected: Expensive (database provisioning overhead), complex migrations
+   - ❌ Difficult to implement cross-tenant analytics for platform admins
 
-**Fallback Plan**:
-- If wa-sqlite performance issues arise on low-end devices, fallback to sql.js with optimized load strategy (lazy load historical data, keep only recent transactions in memory)
+2. **Schema-per-Tenant**: Separate PostgreSQL schema for each tenant
+   - ❌ Rejected: Still complex migrations, connection pool exhaustion risk
+   - ❌ Limited Supabase support for multi-schema RLS
+
+3. **Application-Level Filtering**: Add `WHERE tenant_id = X` to all queries
+   - ❌ Rejected: High risk of data leaks from forgotten filters
+   - ❌ Does not provide defense-in-depth security
+
+**Best Practices**:
+- Every tenant-scoped table includes `tenant_id UUID NOT NULL REFERENCES tenants(id)`
+- RLS policies check `auth.jwt() ->> 'tenant_id' = tenant_id` on all tenant tables
+- Use Supabase's `SET LOCAL` to set tenant context for session-level filtering
+- Create indexes on `tenant_id` columns for query performance
+- Test RLS policies with multiple tenant accounts to verify isolation
+- Use Supabase's generated TypeScript types to ensure type-safe queries with RLS
+
+**Implementation Note**: Branch-level data (products, sales) includes both `tenant_id` and `branch_id` for dual isolation
 
 ---
 
-## Decision 3: Multi-Tenant Implementation with Supabase RLS
+## 3. Authentication Strategy
 
-### Context
-The platform must support multiple tenants (retail businesses) with complete data isolation, ensuring that Tenant A cannot access Tenant B's data. Supabase Row Level Security (RLS) is the primary enforcement mechanism.
+### Decision: Passkeys (WebAuthn) + PIN + OTP Multi-Method Auth
 
-### Requirements
-- **Complete data isolation** between tenants (no cross-tenant data leaks)
-- **Branch isolation** within tenants (branches can view own data + consolidated view for admin)
-- **Performance** with 1000+ tenants and 10,000+ products per tenant
-- **Developer experience** that prevents accidental cross-tenant queries
-- **Audit trail** for all data access across tenant boundaries
-- **Scalability** to support 10,000+ tenants without schema changes
-
-### Alternatives Evaluated
-
-#### Option A: Separate Database Per Tenant
-**Description**: Each tenant gets dedicated PostgreSQL database with complete isolation.
-
-**Pros**:
-- Absolute data isolation (impossible to access other tenant's data)
-- Easier compliance with data residency requirements
-- Simpler backup/restore per tenant
-- No query performance impact from tenant filtering
-
-**Cons**:
-- **Not supported by Supabase free/pro tiers** (requires custom deployment)
-- Complex schema migrations (must run on all databases)
-- Higher infrastructure costs (1000 databases vs 1)
-- Difficult to implement cross-tenant analytics
-- Connection pool exhaustion with many databases
-
-**Verdict**: Rejected - not compatible with Supabase architecture.
-
-#### Option B: Separate Schema Per Tenant
-**Description**: Single PostgreSQL database with one schema per tenant (e.g., `tenant_123.products`).
-
-**Pros**:
-- Strong logical separation
-- Easier to backup individual tenants
-- Can set schema-level permissions
-
-**Cons**:
-- **Not natively supported by Supabase RLS**
-- Complex query routing logic
-- Schema proliferation issues at scale (PostgreSQL limit ~10K schemas)
-- Migrations become complex (must run on all schemas)
-- Poor fit with PowerSync sync model
-
-**Verdict**: Rejected - poor Supabase integration.
-
-#### Option C: Shared Schema with tenant_id Column + RLS Policies
-**Description**: Single schema with `tenant_id` column on all tables, enforced via Supabase RLS policies.
-
-**Pros**:
-- **Native Supabase pattern** (well-documented, best practice)
-- Simple schema migrations (single schema)
-- Excellent query performance with proper indexing
-- PowerSync supports tenant filtering
-- Easy to implement role-based access (admin sees all branches, staff sees own branch)
-- Cost-effective at scale
-
-**Cons**:
-- Requires discipline to always filter by `tenant_id`
-- Risk of developer error exposing cross-tenant data
-- Must index `tenant_id` on all tables for performance
-- Slightly more complex queries (always include tenant filter)
-
-**Verdict**: Recommended approach for Supabase-based multi-tenancy.
-
-#### Option D: Hybrid (tenant_id + branch_id with Hierarchical RLS)
-**Description**: Extension of Option C adding `branch_id` for multi-branch isolation within tenants.
-
-**Pros**:
-- Supports multi-branch requirement (FR-087 to FR-092)
-- Allows branch-level access control (cashiers see own branch only)
-- Owner/admin can query across all branches via RLS policy
-- Enables consolidated analytics with drill-down
-
-**Cons**:
-- More complex RLS policies (must handle both tenant and branch filtering)
-- Additional index overhead (`tenant_id, branch_id` composite indexes)
-- Requires careful policy design to avoid performance issues
-
-**Verdict**: Required for specification compliance.
-
-### Final Decision: **Shared Schema with tenant_id + branch_id + Supabase RLS (Option D)**
+**Chosen**: Hybrid authentication supporting Passkeys, PIN codes, and OTP via Supabase Auth
 
 **Rationale**:
-1. **Specification Compliance**: Multi-branch requirement (FR-087 to FR-092) mandates branch-level isolation within tenants.
-2. **Supabase Native**: Leverages Supabase RLS policies for declarative security enforcement.
-3. **Performance**: Composite indexes on `(tenant_id, branch_id)` provide O(log n) lookups even with millions of rows.
-4. **Flexibility**: RLS policies can enforce different access levels:
-   - **Owner/Admin**: Full access to all branches in tenant
-   - **Branch Manager**: Access to specific branch + read-only consolidated view
-   - **Cashier**: Read/write access to own branch only
-5. **Audit Trail**: RLS policies can log all queries via `auth.uid()` for compliance.
-6. **PowerSync Integration**: PowerSync supports tenant/branch filtering in sync rules.
+- **Passkeys (WebAuthn)**: Fast biometric login (<3s) ideal for busy POS environments, eliminates password management
+- **PIN Code**: Fallback for devices without biometric sensors (older Android phones)
+- **OTP**: Initial registration and account recovery only (reduces SMS costs)
+- **Social Login**: For customers (Google/Facebook)
+- Supabase Auth supports all methods with built-in session management
 
-**Implementation Pattern**:
+**Alternatives Considered**:
+1. **Passwords-Only**: Traditional username/password
+   - ❌ Rejected: Slow login, password fatigue, security risks
+   - ❌ Cashiers forget passwords frequently in retail environments
 
-```sql
--- Example RLS policy for products table
-CREATE POLICY "Tenant isolation" ON products
-  FOR ALL
-  USING (
-    tenant_id = (SELECT tenant_id FROM auth.users WHERE id = auth.uid())
-  );
+2. **OTP-Only**: SMS/email codes for every login
+   - ❌ Rejected: Expensive (SMS costs), slow login flow
+   - ❌ Unreliable (Nigerian SMS delivery not 100%)
 
-CREATE POLICY "Branch access control" ON products
-  FOR SELECT
-  USING (
-    tenant_id = (SELECT tenant_id FROM auth.users WHERE id = auth.uid())
-    AND (
-      branch_id = (SELECT branch_id FROM auth.users WHERE id = auth.uid())
-      OR (SELECT role FROM auth.users WHERE id = auth.uid()) IN ('owner', 'admin')
-    )
-  );
-```
+3. **Magic Links**: Email-based passwordless login
+   - ❌ Rejected: Requires email access, too slow for POS workflow
 
-**Schema Conventions**:
-- All tenant-scoped tables include `tenant_id UUID NOT NULL REFERENCES tenants(id)`
-- All branch-scoped tables include `branch_id UUID NOT NULL REFERENCES branches(id)`
-- Composite indexes: `CREATE INDEX idx_products_tenant_branch ON products(tenant_id, branch_id)`
-- Use `SET LOCAL` for admin queries that bypass RLS (with explicit audit logging)
+**Best Practices**:
+- Use `@simplewebauthn/browser` for WebAuthn client-side implementation
+- Store passkey credentials in Supabase `auth.identities` table
+- Implement graceful degradation: Passkey → PIN → OTP fallback chain
+- Rate limit PIN attempts (5 attempts per 15 minutes)
+- OTP expiration: 5 minutes (per spec clarifications)
+- HTTP-only cookies for session tokens (never localStorage)
+- Implement "Remember this device" for passkey registration prompts
 
-**Security Checklist**:
-- [ ] Enable RLS on all tenant-scoped tables (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`)
-- [ ] Create `SELECT`, `INSERT`, `UPDATE`, `DELETE` policies for each table
-- [ ] Test cross-tenant access attempts (should return 0 rows, not error)
-- [ ] Verify branch-level isolation for cashier role
-- [ ] Audit log all admin queries that use `SET LOCAL` to bypass RLS
-- [ ] Add integration tests for RLS policies (use `pg_tap` or Supabase testing framework)
+**Nigeria-Specific Considerations**:
+- Test on low-end Android devices (Tecno, Infinix) for biometric sensor compatibility
+- Provide clear offline passkey UX (biometric auth works offline, but registration requires online)
 
 ---
 
-## Decision 4: OTP Delivery Providers
+## 4. Subscription & Billing Management
 
-### Context
-The platform uses phone number + OTP and email + OTP as primary authentication methods (FR-014). Nigeria-first UX requires reliable SMS delivery despite inconsistent telecom infrastructure. Email OTP serves as fallback.
+### Decision: Supabase + Paystack Integration for Nigerian Payments
 
-### Requirements
-- **SMS delivery to Nigerian mobile numbers** (+234 prefix)
-- **Email delivery** with <1 minute latency
-- **5-minute OTP expiration** (from clarifications)
-- **Delivery rate >95%** for SMS, >99% for email
-- **Cost-effective** at scale (1000s of auth requests/day)
-- **Fallback mechanism** if primary provider fails
-- **TypeScript SDK** for integration
-
-### Alternatives Evaluated
-
-#### Option A: Termii
-**Description**: Nigerian SMS and voice API provider with focus on African markets.
-
-**Pros**:
-- **Nigeria-native provider** (understands local telecom landscape)
-- Competitive pricing (₦2-4 per SMS for bulk)
-- High delivery rates on Nigerian networks (MTN, Glo, Airtel, 9mobile)
-- Voice OTP fallback option
-- WhatsApp Business API integration (future feature)
-- Good documentation with Node.js examples
-
-**Cons**:
-- No official TypeScript SDK (must wrap REST API)
-- Occasional delays during peak hours (festive seasons)
-- Customer support response time can be slow
-- No email delivery (need separate provider)
-
-**Verdict**: Strong candidate for SMS delivery.
-
-#### Option B: Africa's Talking
-**Description**: Pan-African API provider offering SMS, voice, and USSD across 20+ countries.
-
-**Pros**:
-- Broader African coverage (good for future expansion)
-- Reliable delivery infrastructure
-- Voice and USSD options
-- Official Node.js SDK with TypeScript types
-- Better documentation than Termii
-
-**Cons**:
-- **Higher cost** (₦5-7 per SMS in Nigeria)
-- Some reports of lower delivery rates on Glo network
-- No email delivery
-- Overkill if only targeting Nigeria initially
-
-**Verdict**: Good but more expensive than Termii.
-
-#### Option C: Twilio
-**Description**: Global CPaaS leader with SMS, voice, and email APIs.
-
-**Pros**:
-- Excellent TypeScript SDK and documentation
-- 99.9% uptime SLA
-- Advanced features (SMS verification API with fraud detection)
-- Email delivery via SendGrid (same company)
-- Global reach for future expansion
-
-**Cons**:
-- **Very expensive** (₦15-25 per SMS in Nigeria)
-- Overkill for Nigeria-only MVP
-- Some Nigerian numbers require registration for sender ID
-- Less familiar with local telecom issues
-
-**Verdict**: Rejected due to cost.
-
-#### Option D: Supabase Auth (Email OTP Only)
-**Description**: Use Supabase's built-in email authentication with magic links/OTP.
-
-**Pros**:
-- **Free** (included with Supabase subscription)
-- Native integration (no additional SDK)
-- Email delivery via Supabase's transactional email service
-- Handles token generation and expiration automatically
-- TypeScript support via Supabase client
-
-**Cons**:
-- **No SMS support** (email only)
-- Requires users to have email addresses (less common in Nigerian retail)
-- Slower authentication flow (must open email client)
-
-**Verdict**: Use as email OTP provider, but needs SMS supplement.
-
-### Final Decision: **Termii (SMS) + Supabase Auth (Email)**
+**Chosen**: Supabase for subscription state management, Paystack for payment processing
 
 **Rationale**:
-1. **Cost Efficiency**: Termii's ₦2-4 per SMS pricing enables sustainable unit economics for B2B SaaS model.
-2. **Local Expertise**: Termii's Nigeria focus ensures better delivery rates and understanding of local network issues.
-3. **Dual Delivery**: Email OTP via Supabase Auth provides free fallback when users prefer email or SMS fails.
-4. **Simplicity**: Supabase Auth handles email OTP complexity (token generation, expiration, verification) out of the box.
-5. **Future-Proof**: Termii's WhatsApp Business API support aligns with specification's WhatsApp integration requirement (FR-064 to FR-068).
+- **Paystack**: Leading Nigerian payment gateway, supports local payment methods (card, bank transfer, mobile money)
+- No need for heavy billing SaaS (Stripe Billing) given Nigerian market focus
+- Supabase database tracks subscription state, Paystack handles payment flows
+- Webhook-driven architecture for async payment confirmation
 
-**Implementation Approach**:
+**Alternatives Considered**:
+1. **Stripe**: Global payment platform
+   - ❌ Rejected: Limited Nigerian payment method support
+   - ❌ Higher transaction fees for Nigerian merchants
 
-```typescript
-// Phone OTP flow
-async function sendPhoneOTP(phoneNumber: string): Promise<void> {
-  const otp = generateOTP(6); // 6-digit code
-  await termii.sendSMS({
-    to: phoneNumber,
-    message: `Your Kemani verification code is ${otp}. Valid for 5 minutes.`,
-  });
-  await storeOTP(phoneNumber, otp, expiresIn: 5 * 60 * 1000); // 5 min
-}
+2. **Flutterwave**: Nigerian payment gateway (alternative)
+   - ⚠️ Considered: Similar to Paystack, could add as secondary option
+   - ✅ Will support both Paystack and Flutterwave for redundancy
 
-// Email OTP flow (using Supabase Auth)
-async function sendEmailOTP(email: string): Promise<void> {
-  await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: `${window.location.origin}/auth/callback`,
-      shouldCreateUser: true,
-    },
-  });
-}
-```
+3. **ChargeBee / Recurly**: Dedicated billing SaaS
+   - ❌ Rejected: Overkill for simple tiered pricing
+   - ❌ Additional cost and complexity
 
-**Fallback Strategy**:
-1. User enters phone number → Send SMS via Termii
-2. If SMS fails (network error) → Offer email OTP option
-3. If both fail → Show manual support contact
+**Best Practices**:
+- Store subscription state in Supabase `subscriptions` table (tier, limits, billing cycle)
+- Paystack webhooks update subscription status (active, past_due, canceled)
+- Implement idempotent webhook handlers (use Paystack event IDs to prevent duplicate processing)
+- Enforce tier limits in application logic (check limits before operations)
+- Provide 7-day grace period for failed payments before downgrade to Free tier
+- Display usage metrics on tenant dashboard (users, products, transactions vs. limits)
 
-**Cost Projection**:
-- Assume 1000 merchants × 5 staff = 5000 users
-- Average 2 logins/day = 10,000 OTP/day
-- Termii cost: 10,000 × ₦3 = ₦30,000/day = ₦900,000/month (~$600)
-- Email OTP: Free via Supabase
-
-**Monitoring**:
-- Track SMS delivery rate by network provider (MTN, Glo, Airtel, 9mobile)
-- Alert if delivery rate <90% on any network
-- Monitor OTP verification success rate (should be >95%)
+**Implementation Details**:
+- Use Paystack Subscriptions API for recurring billing
+- Support manual billing for Enterprise tier (custom invoicing)
+- Prorate upgrades/downgrades using Paystack's subscription update API
+- Annual billing: Create single-charge subscription (not recurring monthly) with 1-month discount
 
 ---
 
-## Decision 5: Payment Gateway Integration
+## 5. Data Retention & Archival Strategy
 
-### Context
-The platform requires payment processing for customer orders (card, bank transfer, USSD) and merchant subscription billing (FR-010). Nigeria-first approach requires support for local payment methods and Naira (₦) currency.
+### Decision: Indefinite Retention with Cold Storage Archival
 
-### Requirements
-- **Nigerian payment methods**: Card (Visa, Mastercard, Verve), bank transfer, USSD
-- **Subscription billing** for merchant SaaS fees
-- **Commission processing** for delivery marketplace
-- **Refund support** for order cancellations
-- **Webhook reliability** for payment status updates
-- **PCI compliance** (payment provider handles card data, not our servers)
-- **Cost-effective** transaction fees (<2% + ₦50)
-
-### Alternatives Evaluated
-
-#### Option A: Paystack
-**Description**: Leading Nigerian payment gateway owned by Stripe.
-
-**Pros**:
-- **Best Nigerian coverage** (all major banks and networks)
-- Excellent TypeScript SDK with Next.js examples
-- Supports all required payment methods (card, transfer, USSD)
-- Subscription billing built-in (recurring charges)
-- Split payments for marketplace commission
-- 99.9% uptime SLA
-- Comprehensive webhooks with retry logic
-- Strong developer experience (docs, SDKs, sandbox)
-
-**Cons**:
-- Transaction fees: 1.5% + ₦100 (higher fixed fee than competitors)
-- Owned by Stripe (potential future pricing changes)
-- Some merchants prefer local providers
-
-**Verdict**: Strong candidate, industry standard in Nigeria.
-
-#### Option B: Flutterwave
-**Description**: Pan-African payment gateway with strong Nigerian presence.
-
-**Pros**:
-- Broader African coverage (good for expansion)
-- Competitive pricing: 1.4% + ₦50
-- Good TypeScript SDK
-- Subscription billing support
-- Split payments for commission
-- Mobile money support (future expansion to Ghana, Kenya)
-
-**Cons**:
-- Occasional webhook delivery delays
-- Slightly less polished developer experience than Paystack
-- Some merchants report slower settlement times
-
-**Verdict**: Solid alternative to Paystack.
-
-#### Option C: Interswitch
-**Description**: Established Nigerian payment processor (Verve card issuer).
-
-**Pros**:
-- Strong banking relationships in Nigeria
-- Best Verve card support (they own the network)
-- Lower fees for Verve transactions
-
-**Cons**:
-- **Poor developer experience** (outdated docs, no TypeScript SDK)
-- Complex integration process
-- Less reliable webhooks
-- No subscription billing built-in
-
-**Verdict**: Rejected due to poor developer experience.
-
-#### Option D: Stripe (International)
-**Description**: Global payment leader with Nigeria support (via Stripe Atlas).
-
-**Pros**:
-- Best-in-class developer experience
-- Excellent TypeScript SDK and documentation
-- Robust subscription billing
-- Advanced features (fraud detection, tax calculation)
-
-**Cons**:
-- **Requires international business entity** (Stripe Atlas or foreign company)
-- Higher fees for Nigerian cards (3.5% + ₦100)
-- Most Nigerian merchants prefer local gateways
-- Settlement in USD (currency conversion risk)
-
-**Verdict**: Rejected for Nigerian business model.
-
-### Final Decision: **Paystack (Primary) + Flutterwave (Fallback)**
+**Chosen**: Indefinite data retention with automatic archival to cold storage after 2 years
 
 **Rationale**:
-1. **Market Leader**: Paystack's dominance in Nigerian e-commerce provides merchant trust and familiarity.
-2. **Developer Experience**: Excellent TypeScript SDK and Next.js integration reduce development time.
-3. **Feature Completeness**: Built-in subscription billing and split payments cover all specification requirements (FR-010, FR-011).
-4. **Reliability**: 99.9% uptime and robust webhook system ensure payment consistency.
-5. **Redundancy**: Flutterwave as fallback mitigates vendor lock-in and provides backup during Paystack outages.
-6. **Cost**: While fees are slightly higher than Flutterwave (₦100 vs ₦50 fixed), better reliability justifies cost.
+- Business requirement: Merchants want complete historical records for analytics
+- NDPR compliance: Support customer data deletion while preserving anonymized transactions
+- Cost optimization: Archive old data to cheaper cold storage tier
 
-**Implementation Approach**:
+**Alternatives Considered**:
+1. **Fixed Retention (7 years)**: Common for financial records
+   - ❌ Rejected: Merchants requested indefinite retention for long-term customer insights
+   - ⚠️ Could implement as optional cleanup for Free tier to control costs
 
-```typescript
-// Payment abstraction layer
-interface PaymentProvider {
-  initializePayment(amount: number, email: string): Promise<PaymentReference>;
-  verifyPayment(reference: string): Promise<PaymentStatus>;
-  handleWebhook(payload: unknown): Promise<void>;
-}
+2. **Merchant-Configurable Retention**: Each tenant sets their own policy
+   - ❌ Rejected: Added complexity, most merchants don't have strong preferences
+   - ❌ Still need platform-wide strategy for platform data
 
-class PaystackProvider implements PaymentProvider {
-  // Primary implementation
-}
+**Best Practices**:
+- **Database Partitioning**: Use PostgreSQL declarative partitioning by month/year
+  ```sql
+  CREATE TABLE sales PARTITION OF sales_parent
+  FOR VALUES FROM ('2026-01-01') TO ('2026-02-01');
+  ```
+- **Archival Jobs**: Automated pg_dump of partitions older than 2 years to S3/Supabase Storage
+- **Query Optimization**: Add `WHERE created_at > NOW() - INTERVAL '2 years'` to common queries
+- **NDPR Compliance**: Replace customer PII with anonymous IDs on deletion, preserve transaction metadata
+- **Cold Storage**: Use Supabase Storage with lifecycle policies to move to infrequent-access tier
 
-class FlutterwaveProvider implements PaymentProvider {
-  // Fallback implementation
-}
+**Implementation Timeline**:
+- Phase 1: Implement partitioning in initial schema
+- Phase 3: Add automated archival jobs (before hitting 2-year mark)
 
-// Use primary, fallback to secondary on failure
-const paymentService = new PaymentService(
-  primary: new PaystackProvider(),
-  fallback: new FlutterwaveProvider()
-);
-```
+---
+
+## 6. Real-Time Features & WebSockets
+
+### Decision: Supabase Realtime for Live Updates
+
+**Chosen**: Supabase Realtime (built on PostgreSQL logical replication) for inventory sync, order updates, delivery tracking
+
+**Rationale**:
+- Native Supabase integration, no additional infrastructure
+- PostgreSQL logical replication is production-proven and scalable
+- Automatic multi-tenant filtering via RLS policies
+- Low latency (<500ms) for real-time updates
+- Free tier supports 200 concurrent connections (sufficient for MVP)
+
+**Alternatives Considered**:
+1. **Socket.IO**: Custom WebSocket server
+   - ❌ Rejected: Additional infrastructure, separate deployment
+   - ❌ Must implement own multi-tenant filtering logic
+
+2. **Pusher / Ably**: Hosted real-time services
+   - ❌ Rejected: Additional cost, vendor lock-in
+   - ❌ Requires syncing data from Supabase to Pusher
+
+3. **Server-Sent Events (SSE)**: HTTP-based one-way push
+   - ❌ Rejected: No bidirectional communication
+   - ❌ Less browser support than WebSockets
+
+**Best Practices**:
+- Subscribe only to relevant channels (current tenant/branch)
+- Implement connection retry with exponential backoff
+- Use Supabase Realtime presence for online/offline rider status
+- Debounce UI updates to prevent excessive re-renders
+- Unsubscribe from channels when components unmount
 
 **Use Cases**:
-1. **Customer Payments** (orders from marketplace): Use Paystack with split payment to deduct platform commission
-2. **Merchant Subscriptions**: Use Paystack subscription billing with monthly/annual plans
-3. **Delivery Fees**: Use Paystack split payment (merchant pays customer, platform deducts delivery commission)
-4. **Refunds**: Use Paystack refund API for order cancellations
-
-**Webhook Implementation**:
-- Set up Paystack webhook endpoint: `/api/webhooks/paystack`
-- Verify webhook signature using Paystack secret key
-- Process events: `charge.success`, `subscription.create`, `subscription.disable`, `refund.processed`
-- Implement idempotency using `event.id` to prevent duplicate processing
-- Store webhook logs in Supabase for audit trail
-- If webhook fails, poll Paystack API as fallback (verify payment status every 5 minutes)
-
-**Cost Analysis**:
-- Merchant subscription (₦5,000/month): Fee = ₦175 (1.5% + ₦100) = 3.5% effective rate
-- Customer order (avg ₦10,000): Fee = ₦250 (1.5% + ₦100) = 2.5% effective rate
-- Platform takes 5% commission → ₦500 revenue, ₦250 cost = ₦250 net = 50% margin
-
-**Testing Strategy**:
-- Use Paystack test mode with test cards
-- Test all payment methods: card, transfer, USSD
-- Test subscription lifecycle: create, renew, cancel
-- Test split payments with various commission percentages
-- Test webhook delivery failures (simulate timeout, retry logic)
-- Test refund scenarios (partial, full refunds)
+- Inventory sync: Real-time stock updates across devices
+- Order tracking: Status changes (preparing → ready → out for delivery)
+- Delivery: Live rider location updates
+- Chat: Live agent/AI conversations with customers
 
 ---
 
-## Decision 6: PWA Implementation
+## 7. File Storage & CDN
 
-### Context
-The specification requires Progressive Web App (PWA) for offline-first access on low-end Android devices (2GB RAM, 3G connectivity). Must support install prompts, offline functionality, and push notifications.
+### Decision: Supabase Storage with Automatic Optimization
 
-### Requirements
-- **Installable** (Add to Home Screen on Android/iOS)
-- **Offline-first** (full POS functionality without internet)
-- **Service Worker** for caching and background sync
-- **Push notifications** for order updates and low stock alerts
-- **App-like experience** (fullscreen, splash screen, icons)
-- **Bundle size <200KB** per route (Core Web Vitals)
-- **Next.js 16 compatibility** (App Router)
-
-### Alternatives Evaluated
-
-#### Option A: next-pwa
-**Description**: Zero-config PWA plugin for Next.js using Workbox.
-
-**Pros**:
-- **Most popular** Next.js PWA solution (5K+ GitHub stars)
-- Simple configuration in `next.config.js`
-- Automatic service worker generation with Workbox
-- Supports Next.js 13+ App Router
-- Cache strategies: NetworkFirst, CacheFirst, StaleWhileRevalidate
-- Handles manifest.json generation
-- Good documentation and examples
-
-**Cons**:
-- **Not officially maintained by Vercel** (community project)
-- Some issues with Next.js 14+ (requires version-specific workarounds)
-- Limited customization without ejecting to manual Workbox config
-- Occasional cache invalidation issues during deployments
-
-**Verdict**: Best balance of simplicity and features.
-
-#### Option B: Vite PWA Plugin (for Vite projects)
-**Description**: Vite-specific PWA plugin, not compatible with Next.js.
-
-**Pros**:
-- Excellent developer experience for Vite projects
-- Fast build times
-- Good TypeScript support
-
-**Cons**:
-- **Not compatible with Next.js** (requires Vite bundler)
-- Would require migrating from Next.js to Vite (violates tech stack decision)
-
-**Verdict**: Rejected - incompatible with Next.js requirement.
-
-#### Option C: Manual Workbox Configuration
-**Description**: Manually configure Workbox service worker without plugin.
-
-**Pros**:
-- **Full control** over caching strategies and service worker lifecycle
-- Can optimize for specific POS use cases (cache product images, never cache sales data)
-- No dependency on third-party plugins
-- Custom background sync logic
-
-**Cons**:
-- Significantly more development time (2-3 weeks vs 2-3 days)
-- Must handle service worker registration, updates, skip waiting logic
-- Must manually generate manifest.json
-- Higher risk of bugs (service worker errors can break entire app)
-- Ongoing maintenance burden
-
-**Verdict**: Overkill for MVP, consider post-launch if next-pwa has limitations.
-
-#### Option D: No PWA (Native Mobile App Instead)
-**Description**: Skip PWA, build React Native app for mobile.
-
-**Pros**:
-- Better performance on mobile (native UI)
-- Access to more device APIs (camera, NFC, Bluetooth)
-- Better offline experience
-
-**Cons**:
-- **Violates specification requirement** (PWA explicitly required)
-- Higher development cost (must build separate mobile app)
-- App Store approval friction (delays merchant onboarding)
-- Larger download size (~50MB vs <1MB PWA)
-- Excludes merchants without smartphones (feature phones can run PWA in modern browsers)
-
-**Verdict**: Rejected - specification mandates PWA.
-
-### Final Decision: **next-pwa with Workbox**
+**Chosen**: Supabase Storage for images, receipts, and documents with built-in CDN
 
 **Rationale**:
-1. **Specification Compliance**: Delivers all PWA requirements (installable, offline, push notifications).
-2. **Development Velocity**: Zero-config setup reduces development time from weeks to days.
-3. **Proven Solution**: Widely used in production Next.js apps with strong community support.
-4. **Performance**: Workbox caching strategies optimize for 3G networks (StaleWhileRevalidate for API data, CacheFirst for static assets).
-5. **Future-Proof**: If customization needed, can eject to manual Workbox config without rewriting from scratch.
+- Integrated with Supabase auth and RLS (automatic tenant isolation)
+- Built-in image transformation (resize, format conversion, optimization)
+- Global CDN for fast delivery in Nigeria
+- Generous free tier (100 GB storage)
 
-**Configuration**:
+**Alternatives Considered**:
+1. **Cloudinary**: Dedicated image management service
+   - ❌ Rejected: Additional cost, separate integration
+   - ✅ Consider for future if heavy image processing needed
 
-```javascript
-// next.config.ts
-import withPWA from 'next-pwa';
+2. **AWS S3 + CloudFront**: Direct cloud storage
+   - ❌ Rejected: More complex setup, manual RLS implementation
+   - ❌ Higher operational complexity
 
-export default withPWA({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
-  runtimeCaching: [
-    {
-      urlPattern: /^https:\/\/api\.kemani\.app\/.*$/,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'api-cache',
-        expiration: {
-          maxEntries: 100,
-          maxAgeSeconds: 60 * 60 * 24, // 24 hours
-        },
-        networkTimeoutSeconds: 10,
-      },
-    },
-    {
-      urlPattern: /^https:\/\/.*\.supabase\.co\/.*$/,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'supabase-cache',
-        networkTimeoutSeconds: 10,
-      },
-    },
-    {
-      urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
-      handler: 'CacheFirst',
-      options: {
-        cacheName: 'image-cache',
-        expiration: {
-          maxEntries: 200,
-          maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
-        },
-      },
-    },
-  ],
-});
-```
+3. **Vercel Blob**: Edge storage (if deploying to Vercel)
+   - ⚠️ Considered: Good integration if using Vercel
+   - ❌ Rejected: Want platform-agnostic solution
 
-**Manifest Configuration**:
+**Best Practices**:
+- Use Supabase Storage public buckets for product images (with RLS policies)
+- Private buckets for receipts, delivery proofs (tenant-scoped access)
+- Implement automatic image optimization on upload (WebP format, max 1024px width)
+- Use Supabase Storage image transformation for thumbnails (`?width=200`)
+- Set appropriate cache headers (1 year for product images, shorter for receipts)
+- Implement upload size limits (max 5MB per image, 20MB for PDFs)
 
-```json
-// public/manifest.json
-{
-  "name": "Kemani POS",
-  "short_name": "Kemani",
-  "description": "Offline-first point of sale for Nigerian retailers",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#4F46E5",
-  "orientation": "portrait",
-  "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ]
+**Nigeria-Specific Optimizations**:
+- Aggressive image compression (target <100KB per product image)
+- Lazy loading for product images to reduce initial page weight
+- Offline-first: Cache product images locally for offline POS use
+
+---
+
+## 8. Analytics & Reporting
+
+### Decision: Server-Side Aggregation + Chart.js for Visualization
+
+**Chosen**: PostgreSQL materialized views for aggregation, Chart.js for client-side charts
+
+**Rationale**:
+- PostgreSQL is powerful enough for analytics on 1M transactions/month scale
+- Materialized views pre-compute expensive aggregations
+- Chart.js is lightweight (11KB gzipped), meets <200KB bundle target
+- No need for dedicated analytics warehouse at current scale
+
+**Alternatives Considered**:
+1. **Google BigQuery / Snowflake**: Cloud data warehouse
+   - ❌ Rejected: Overkill for current scale, expensive data export
+   - ⚠️ Consider for future when scale exceeds 10M transactions/month
+
+2. **Metabase / Superset**: Self-hosted BI tools
+   - ❌ Rejected: Separate deployment, not embedded in app
+   - ⚠️ Could add for internal platform analytics
+
+3. **Recharts / Victory**: Alternative React charting libraries
+   - ❌ Rejected: Larger bundle sizes (30-50KB)
+   - Chart.js has better tree-shaking support
+
+**Best Practices**:
+- Create materialized views for common analytics queries:
+  ```sql
+  CREATE MATERIALIZED VIEW daily_sales_summary AS
+  SELECT date_trunc('day', created_at) as day, branch_id, SUM(total) as revenue, COUNT(*) as transactions
+  FROM sales GROUP BY day, branch_id;
+  ```
+- Refresh materialized views via cron job (daily at 1 AM WAT)
+- Use PostgreSQL window functions for trends (day-over-day, week-over-week)
+- Implement data export to CSV/PDF using server-side generation (Next.js API routes)
+- Dynamic imports for chart components to reduce initial bundle:
+  ```ts
+  const Chart = dynamic(() => import('./Chart'), { ssr: false });
+  ```
+
+**Tier-Specific Analytics**:
+- Free/Basic: Basic reports (last 30/90 days)
+- Growth: Advanced analytics (sales patterns, inventory turnover, forecasting placeholders)
+- Enterprise: AI-powered insights (demand forecasting, fraud detection via future ML integration)
+
+---
+
+## 9. E-Commerce Integration Pattern
+
+### Decision: Webhook-Driven Bidirectional Sync
+
+**Chosen**: Webhook-based integration with WooCommerce/Shopify using OAuth 2.0 authentication
+
+**Rationale**:
+- Webhooks provide real-time event notifications (order created, product updated)
+- OAuth 2.0 is standard for WooCommerce/Shopify apps
+- Bidirectional sync: POS sales update e-commerce inventory, e-commerce orders flow into POS
+- No polling required (saves API rate limits)
+
+**Alternatives Considered**:
+1. **Polling-Based Sync**: Periodic API calls to fetch updates
+   - ❌ Rejected: Wastes API rate limits, delayed updates (5-15 min lag)
+   - ❌ Higher server costs (constant polling)
+
+2. **Zapier Integration**: No-code integration platform
+   - ❌ Rejected: Additional cost per tenant
+   - ❌ Less control over sync logic, error handling
+
+3. **Direct Database Access**: Connect to WooCommerce/Shopify databases
+   - ❌ Rejected: Not supported by platforms, breaks warranty
+   - ❌ Security risk
+
+**Best Practices**:
+- Use Supabase Edge Functions for webhook handlers (serverless, auto-scaling)
+- Implement webhook signature verification (HMAC validation)
+- Idempotent processing using webhook event IDs
+- Queue failed webhooks for retry (exponential backoff, max 5 attempts)
+- Conflict resolution: POS inventory is source of truth (e-commerce defers to POS)
+- Map product SKUs between platforms (tenant configures SKU mapping)
+- Sync only active products (exclude drafts/archived)
+
+**WooCommerce Specifics**:
+- Use WooCommerce REST API v3
+- Subscribe to webhooks: `product.created`, `product.updated`, `order.created`
+- Handle WooCommerce variations as product variants in POS
+
+**Shopify Specifics**:
+- Use Shopify Admin GraphQL API
+- Subscribe to webhooks: `products/create`, `products/update`, `orders/create`
+- Map Shopify product variants to POS variants
+
+---
+
+## 10. Delivery Fee Calculation
+
+### Decision: Merchant-Configured Distance-Based Pricing
+
+**Chosen**: Tenant admin sets distance ranges, branch merchants set fees per range
+
+**Rationale**:
+- Flexibility: Each merchant controls their own pricing
+- Consistency: Tenant admin provides structure (distance ranges)
+- Transparency: Customers see exact fee before checkout based on distance
+- Per spec clarifications: Merchant-configured with admin variables
+
+**Alternatives Considered**:
+1. **Fixed Flat Fee**: Single fee regardless of distance
+   - ❌ Rejected: Unfair to customers (short distances pay same as long)
+   - ❌ Doesn't incentivize nearby customers
+
+2. **Platform-Set Pricing**: Platform controls all delivery fees
+   - ❌ Rejected: Removes merchant flexibility
+   - ❌ Doesn't account for local market conditions
+
+3. **Real-Time Dynamic Pricing**: Uber-style surge pricing
+   - ❌ Rejected: Too complex, poor UX for Nigerian market
+   - ❌ Customers expect predictable pricing
+
+**Best Practices**:
+- Use Google Maps Distance Matrix API or Mapbox for distance calculation
+- Cache distance calculations for common routes (reduce API calls)
+- Implement customer-favorable rounding (5.0km uses 0-5km range, not 5-10km)
+- Display distance range and fee clearly during checkout
+- Allow merchants to set ₦0 delivery fee for promotional free delivery
+- Default distance ranges (configurable per tenant):
+  - 0-5km: ₦300
+  - 5-10km: ₦500
+  - 10-25km: ₦800
+  - >25km: Platform inter-city delivery (separate pricing)
+
+**Implementation Notes**:
+- Store delivery fee config in `delivery_fee_config` table (tenant-level)
+- Store merchant overrides in `branch_delivery_fee` table
+- Calculate fee on frontend before checkout, validate on backend (prevent manipulation)
+
+---
+
+## 11. Customer Support Ticketing
+
+### Decision: Custom Support System with Business Hours SLA Tracking
+
+**Chosen**: Build custom support ticket system in Supabase with SLA timer logic
+
+**Rationale**:
+- Simple requirements (email/SMS/chat channels, business hours SLA)
+- No need for heavy helpdesk software (Zendesk, Intercom) at this scale
+- Better integration with tenant context (automatic tenant assignment)
+- Full control over SLA calculation (business hours, Nigerian holidays)
+
+**Alternatives Considered**:
+1. **Zendesk / Freshdesk**: Dedicated helpdesk platforms
+   - ❌ Rejected: Expensive per-agent pricing
+   - ❌ Overkill for simple tier-based SLA requirements
+
+2. **Intercom**: Customer messaging platform
+   - ❌ Rejected: High cost, focused on chat (need email/SMS too)
+   - ❌ Complex pricing tiers
+
+3. **Email-Only**: Simple email support
+   - ❌ Rejected: No SLA tracking, hard to manage multiple tiers
+   - ❌ No unified inbox for team
+
+**Best Practices**:
+- Store tickets in `support_tickets` table with SLA deadline (calculated at creation)
+- SLA timer pauses outside business hours (8 AM - 6 PM WAT, Monday-Friday)
+- Exclude Nigerian public holidays from SLA calculation
+- Send auto-acknowledgment for requests outside business hours
+- Implement escalation alerts (notify support manager when SLA breach imminent)
+- Use Supabase Realtime for support agent dashboard updates
+- Integrate with email (SendGrid/Postmark) and SMS (Termii) for multi-channel support
+
+**SLA Calculation Example**:
+```typescript
+function calculateSLADeadline(createdAt: Date, slaHours: number): Date {
+  // Skip weekends, Nigerian holidays, non-business hours
+  // Return deadline timestamp
 }
 ```
 
-**Caching Strategy by Route**:
-- **POS Screen** (`/pos`): Cache HTML shell, fetch data from IndexedDB/SQLite (full offline support)
-- **Product Images**: CacheFirst with 30-day expiration
-- **API Calls**: NetworkFirst with 10-second timeout, fallback to cache (for read operations)
-- **Sales Data**: Never cache (always sync to server when online)
-
-**Push Notification Implementation**:
-- Use Web Push API with Supabase Edge Functions as notification sender
-- Subscribe to channels: `low_stock_alert_tenant_{id}`, `order_update_branch_{id}`
-- Show notification when app in background, update UI when in foreground
-- Implement notification click handlers (navigate to relevant screen)
-
-**Offline UX Indicators**:
-- Show connection status banner: "Online" (green), "Syncing" (yellow), "Offline" (red)
-- Display last sync timestamp
-- Queue outgoing actions (sales, product updates) when offline, show queue count
-- Auto-retry sync when connection restored
-
-**Testing Checklist**:
-- [ ] Install PWA on Android Chrome (verify Add to Home Screen prompt)
-- [ ] Install PWA on iOS Safari (verify Add to Home Screen works)
-- [ ] Test offline functionality (disable network, verify POS still works)
-- [ ] Test service worker update (deploy new version, verify old SW replaced)
-- [ ] Test push notifications (send notification while app backgrounded)
-- [ ] Verify cache invalidation (clear cache on logout, version mismatch)
-- [ ] Test on 3G throttled connection (verify reasonable performance)
-
 ---
 
-## Decision 7: UI Component Library
+## 12. PWA & Offline Capabilities
 
-### Context
-The POS interface requires a comprehensive set of accessible, responsive UI components (buttons, forms, tables, modals, navigation). The components must work well on low-end Android devices, support offline operation, and integrate seamlessly with Tailwind CSS 4 already in the project.
+### Decision: Next.js PWA with Workbox Service Worker
 
-### Requirements
-- **Accessibility**: WCAG 2.1 AA compliant (keyboard navigation, screen readers, ARIA attributes)
-- **Type Safety**: Full TypeScript support with proper prop types
-- **Customization**: Easy to customize colors, spacing, and behavior for tenant branding
-- **Performance**: Lightweight components suitable for low-end devices
-- **Offline Compatible**: No runtime dependencies on CDNs or external resources
-- **Developer Experience**: Well-documented, easy to use, active maintenance
-
-### Alternatives Evaluated
-
-#### Option A: shadcn/ui + Radix UI
-**Description**: Collection of re-usable components built with Radix UI primitives and styled with Tailwind CSS. Components are copied into your project, not installed as dependency.
-
-**Pros**:
-- **Accessibility-first**: Built on Radix UI primitives (unstyled, accessible components)
-- **Full ownership**: Components live in your codebase (`components/ui/`), easy to customize
-- **Type-safe**: Excellent TypeScript support with proper prop types
-- **Tailwind native**: Designed specifically for Tailwind CSS (uses `cn()` utility)
-- **No bundle bloat**: Only include components you use (copy-paste model)
-- **Active development**: Very popular (50K+ GitHub stars), frequent updates
-- **Next.js optimized**: Works perfectly with App Router, Server Components
-- **Form integration**: Built-in integration with React Hook Form + Zod
-
-**Cons**:
-- Not a traditional npm package (copy-paste approach may feel unusual)
-- Need to update components manually when upstream changes (rare)
-- Requires Tailwind CSS (already in project, so not a concern)
-
-**Verdict**: Best fit for project requirements.
-
-#### Option B: Material UI (MUI)
-**Description**: Comprehensive React component library implementing Material Design.
-
-**Pros**:
-- Mature and battle-tested
-- Large component library (100+ components)
-- Strong TypeScript support
-- Good documentation
-
-**Cons**:
-- **Large bundle size** (~300KB min+gzip for core) - problematic for low-end devices
-- Material Design aesthetic may not fit POS use case
-- More opinionated styling (harder to customize for tenant branding)
-- Runtime CSS-in-JS overhead (performance concern)
-- Not optimized for Tailwind CSS
-
-**Verdict**: Rejected due to bundle size and customization overhead.
-
-#### Option C: Chakra UI
-**Description**: Modular component library with accessible components and theming support.
-
-**Pros**:
-- Accessibility built-in
-- Good TypeScript support
-- Easy theming system
-- Smaller than MUI (~150KB)
-
-**Cons**:
-- Uses Emotion (CSS-in-JS) - runtime overhead
-- Not designed for Tailwind CSS (requires separate styling approach)
-- Theming system adds complexity vs. Tailwind
-- Less popular than MUI or shadcn/ui in 2026
-
-**Verdict**: Rejected - CSS-in-JS overhead and Tailwind incompatibility.
-
-#### Option D: Headless UI (Tailwind Labs)
-**Description**: Unstyled, accessible UI components from Tailwind CSS creators.
-
-**Pros**:
-- **Official Tailwind companion**
-- Fully unstyled (complete styling freedom)
-- Excellent accessibility
-- Lightweight (no styling overhead)
-- Great TypeScript support
-
-**Cons**:
-- **Too low-level** - requires building every component from scratch
-- No pre-built form components, tables, cards, etc.
-- Significantly more development time vs. shadcn/ui
-- No copy-paste component library
-
-**Verdict**: Rejected - too much development overhead for MVP timeline.
-
-#### Option E: Ant Design
-**Description**: Enterprise-class UI design language and React UI library.
-
-**Pros**:
-- Comprehensive component set
-- Enterprise-proven
-- Good for data-heavy applications
-
-**Cons**:
-- **Very large bundle** (~500KB+)
-- Opinionated design language (Chinese enterprise aesthetic)
-- Difficult to customize for branding
-- Not optimized for Tailwind CSS
-- Overkill for POS use case
-
-**Verdict**: Rejected - bundle size and customization issues.
-
-### Final Decision: **shadcn/ui + Radix UI**
+**Chosen**: `next-pwa` package (Workbox wrapper for Next.js) for PWA functionality
 
 **Rationale**:
-1. **Accessibility**: Radix UI primitives ensure WCAG 2.1 AA compliance out of the box (keyboard navigation, focus management, ARIA attributes).
-2. **Type Safety**: Full TypeScript support with proper prop types, integrates with Zod for form validation.
-3. **Customization**: Components are copied into `components/ui/`, making customization trivial. Easy to apply tenant branding (colors, fonts) via Tailwind CSS variables.
-4. **Performance**: Minimal bundle impact - only ship components you use, no runtime styling overhead. Suitable for low-end Android devices.
-5. **Developer Experience**: CLI for adding components (`npx shadcn@latest add button`), excellent documentation, large community.
-6. **Tailwind Integration**: Built specifically for Tailwind CSS 4, uses `cn()` utility for conditional classes.
-7. **Next.js Compatible**: Works seamlessly with App Router, Server Components (components are Client Components when needed).
-8. **Form Ecosystem**: Pre-built Form components with React Hook Form + Zod validation (matches project requirements).
+- Simple integration with Next.js
+- Workbox provides production-ready caching strategies
+- Automatic service worker generation
+- Supports offline fallback pages
+- No manual service worker JavaScript required
 
-**Implementation Notes**:
-- Install shadcn/ui CLI: `npx shadcn@latest init`
-- Add components as needed: `npx shadcn@latest add button input form table`
-- Customize via `components.json` and Tailwind CSS variables in `globals.css`
-- Use `cn()` utility for conditional styling: `cn("base-classes", condition && "conditional-classes")`
-- Components live in `components/ui/` directory (version controlled, easy to customize)
+**Alternatives Considered**:
+1. **Custom Service Worker**: Manually write SW logic
+   - ❌ Rejected: High complexity, error-prone
+   - ❌ Workbox provides battle-tested strategies
 
-**Component Strategy**:
-```
-POS Interface Components:
-- Button, Input, Label, Select → Core interactions
-- Card, Table → Product display, sales list
-- Dialog, Sheet → Modals, side panels
-- Form → Sales, product entry with validation
-- Toast → Notifications (sale completed, sync status)
-- Badge → Stock status, order status
-- Skeleton → Loading states (offline sync)
-```
+2. **Vite PWA Plugin**: Alternative for Vite projects
+   - N/A: Using Next.js, not Vite
 
-**Alternatives for Future Consideration**:
-- If shadcn/ui components become too opinionated, can drop down to Headless UI primitives (same accessibility, more control)
-- For highly custom components (e.g., POS calculator, receipt preview), build from scratch with Tailwind
+**Best Practices**:
+- **Caching Strategy**:
+  - Static assets (JS, CSS, fonts): Cache-first with versioning
+  - Product images: Stale-while-revalidate (show cached, update in background)
+  - API responses: Network-first (fresh data), fallback to cache offline
+  - HTML pages: Network-first for dashboard, cache-first for marketing pages
+- Configure manifest.json with app icons (192x192, 512x512)
+- Implement offline fallback page (`/offline.html`) for uncached routes
+- Add "Add to Home Screen" prompt for mobile users
+- Test on real Android devices (Tecno, Infinix brands common in Nigeria)
+- Use `skipWaiting` carefully (prompt user before updating SW to prevent data loss)
 
----
-
-## Summary of Decisions
-
-| Decision Area | Choice | Key Rationale |
-|--------------|--------|---------------|
-| **Offline Sync Engine** | PowerSync | CRDT support, Supabase integration, production-ready |
-| **SQLite for Web** | wa-sqlite (IndexedDB-batch VFS) | Performance, bundle size, persistence |
-| **Multi-Tenant Pattern** | Shared schema + RLS (tenant_id + branch_id) | Supabase native, scalable, supports multi-branch |
-| **OTP Delivery** | Termii (SMS) + Supabase Auth (Email) | Cost-effective, local expertise, dual fallback |
-| **Payment Gateway** | Paystack (primary) + Flutterwave (fallback) | Market leader, reliability, redundancy |
-| **PWA Implementation** | next-pwa with Workbox | Zero-config, proven solution, Next.js compatible |
-| **UI Component Library** | shadcn/ui + Tailwind CSS 4 | Accessible (Radix UI), customizable, copy-paste components, type-safe |
-
-## Implementation Sequence
-
-**Phase 1: Core Infrastructure** (Week 1-2)
-1. Set up Next.js 16 project with TypeScript strict mode
-2. Configure next-pwa with manifest and service worker
-3. Integrate wa-sqlite with IndexedDB-batch VFS
-4. Implement PowerSync sync engine with Supabase connection
-5. Set up Supabase RLS policies for multi-tenant isolation
-
-**Phase 2: Authentication** (Week 3)
-1. Integrate Termii SDK for SMS OTP delivery
-2. Configure Supabase Auth for email OTP
-3. Build authentication flow UI (phone/email input, OTP verification)
-4. Implement session management with tenant/branch context
-
-**Phase 3: Payment Integration** (Week 4)
-1. Integrate Paystack SDK for payments and subscriptions
-2. Set up webhook endpoints with signature verification
-3. Implement payment abstraction layer (primary/fallback pattern)
-4. Build subscription management UI for merchants
-
-**Phase 4: Testing & Optimization** (Week 5)
-1. Test PWA installation on target devices (low-end Android)
-2. Validate offline functionality and sync behavior
-3. Load test multi-tenant RLS policies (1000+ tenants)
-4. Performance audit (Core Web Vitals, bundle size)
-
-## Risks & Mitigations
-
-| Risk | Mitigation |
-|------|-----------|
-| **PowerSync vendor lock-in** | Build abstraction layer; evaluate migration path post-MVP if costs spike |
-| **wa-sqlite Safari issues** | Monitor Safari OPFS support; fallback to sql.js if critical bugs found |
-| **RLS policy performance degradation** | Benchmark with realistic data; add composite indexes; use `EXPLAIN ANALYZE` |
-| **SMS delivery failures (Termii)** | Implement email OTP fallback; monitor delivery rates per network |
-| **Paystack webhook delays** | Implement polling fallback; use idempotent event processing |
-| **Service worker cache bugs** | Comprehensive testing; implement cache versioning; easy cache clear for users |
-
-## Open Questions for Phase 1 Planning
-
-1. **Database Schema**: Should we denormalize for offline performance (e.g., embed product info in sales records) or maintain normalized structure?
-2. **Sync Granularity**: Sync entire tenant database or only active branch data to minimize bandwidth?
-3. **Conflict UI**: How should cashiers be notified when sync conflicts are resolved automatically?
-4. **Image Storage**: Store product images in Supabase Storage or use CDN (Cloudinary)? Offline caching strategy?
-5. **Internationalization**: Build i18n infrastructure now (even if English-only MVP) or defer?
+**Nigeria-Specific Optimizations**:
+- Precache critical POS assets (cart, checkout, product list)
+- Minimal SW file size (target <50KB)
+- Aggressive image compression for cached assets
 
 ---
 
-**Status**: ✅ Phase 0 Research Complete
-**Next Step**: Proceed to Phase 1 (Design & Contracts) - Generate data-model.md and API contracts
+## 13. Live Agent Chat vs. AI Chat Agent
+
+### Decision: Growth = Live Agent, Enterprise = Toggle (Live or AI)
+
+**Chosen**: Implement live agent chat system with real-time messaging, add AI agent as Enterprise feature with dashboard toggle
+
+**Rationale**:
+- Growth tier merchants want personalized service (human touch)
+- Enterprise tier gets flexibility (choose based on volume/preferences)
+- Real-time messaging via Supabase Realtime
+- AI agent uses OpenAI GPT-4 or Anthropic Claude for conversations
+
+**Alternatives Considered**:
+1. **AI-Only**: No live agent option
+   - ❌ Rejected: Some merchants prefer human interaction
+   - ❌ AI can't handle all edge cases (custom requests, complaints)
+
+2. **Live-Agent-Only**: No AI option
+   - ❌ Rejected: High-volume Enterprise customers need automation
+   - ❌ Expensive to staff 24/7 live agents
+
+**Best Practices - Live Agent**:
+- Store chat messages in `chat_conversations` table with real-time sync
+- Use Supabase Realtime for instant message delivery
+- Implement agent online/offline status using Presence
+- Assign conversations to available agents (round-robin or skill-based)
+- Provide agent dashboard showing active chats, pending queue
+- Notify agents via browser push notifications and SMS for new messages
+
+**Best Practices - AI Agent**:
+- Use OpenAI Assistants API or Anthropic Claude with function calling
+- Implement tool functions for:
+  - Query inventory (`check_product_availability`)
+  - Create order (`create_customer_order`)
+  - Modify order (`update_order_items`)
+  - Cancel order (`cancel_order`)
+- Image recognition for customer-uploaded product photos (OpenAI Vision API)
+- Log all AI conversations for merchant review and quality control
+- Implement escalation to human agent when AI confidence is low
+- Use streaming responses for better UX (show AI typing in real-time)
+
+**Enterprise Toggle Implementation**:
+- Branch-level or tenant-level setting: `chat_mode: 'live_agent' | 'ai_agent'`
+- Route customer messages based on mode
+- Display appropriate UI indicator (chatting with agent vs. AI assistant)
+
+---
+
+## 14. Loyalty Points Manual Approval
+
+### Decision: Merchant Dashboard for Points Approval Workflow
+
+**Chosen**: Implement loyalty points approval queue with bulk approval interface
+
+**Rationale**:
+- Per spec clarifications: Merchants must manually approve loyalty points
+- Prevents abuse (fraudulent transactions, returns)
+- Gives merchants control over points allocation
+
+**Alternatives Considered**:
+1. **Automatic Points**: Auto-credit on transaction completion
+   - ❌ Rejected: Per user requirements, manual approval needed
+
+2. **Time-Delayed Auto-Approval**: Auto-approve after 24 hours
+   - ❌ Rejected: Doesn't meet manual approval requirement
+
+**Best Practices**:
+- Store points in `loyalty_points_transactions` table with status: `pending_approval | approved | rejected | revoked`
+- Create merchant dashboard page showing pending points transactions
+- Display customer name, purchase details, points amount, date
+- Provide bulk approval checkbox (select all, approve selected)
+- Send customer notification on approval (WhatsApp/SMS/email)
+- Implement points revocation for returns/refunds
+- Track audit trail: approving staff member, timestamp, reason for rejection
+
+**UX Considerations**:
+- Remind merchants about pending approvals (notification badge on dashboard)
+- Auto-expire pending points after 30 days (prevent indefinite pending state)
+- Allow filtering by customer, date range, points amount
+
+---
+
+## Summary of Key Decisions
+
+| Decision Area | Chosen Solution | Primary Rationale |
+|---------------|----------------|------------------|
+| Offline Sync | PowerSync + SQLite | Production-ready, conflict resolution, Supabase integration |
+| Multi-Tenancy | Supabase RLS Policies | Database-level isolation, defense-in-depth security |
+| Authentication | Passkeys + PIN + OTP | Fast POS login, fallback chain, reduced SMS costs |
+| Payments | Paystack (+ Flutterwave) | Nigerian market leader, local payment methods |
+| Data Retention | Indefinite with cold archival | Business requirement, cost optimization |
+| Real-Time | Supabase Realtime | Native integration, RLS support, scalable |
+| File Storage | Supabase Storage | Integrated auth/RLS, image optimization, CDN |
+| Analytics | PostgreSQL + Chart.js | Sufficient for scale, lightweight client charts |
+| E-Commerce Sync | Webhooks + OAuth | Real-time, standard approach, no polling |
+| Delivery Fees | Merchant-configured + distance | Flexibility, transparency, per spec |
+| Support System | Custom with SLA tracking | Simple requirements, better integration |
+| PWA | next-pwa (Workbox) | Next.js integration, production-ready caching |
+| Chat | Live Agent + AI Toggle | Flexibility, tier-appropriate features |
+| Loyalty Approval | Manual with bulk approval | Per spec, prevents abuse, merchant control |
+
+---
+
+**Phase 0 Status**: ✅ Complete
+
+All technical decisions documented with rationale and alternatives. Ready to proceed to Phase 1: Data Model & Contracts.
