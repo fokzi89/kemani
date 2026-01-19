@@ -1,11 +1,12 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(powershell.exe -Command \"New-Item -ItemType File -Path ''specs/001-multi-tenant-pos/research.md'' -Force\")",
+      "Bash(git add:*)"
+    ]
+  },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "supabase"
-  ],
-  "permissions": {
-    "allow": [
-      "Bash(powershell.exe -Command \"New-Item -ItemType File -Path ''specs/001-multi-tenant-pos/research.md'' -Force\")"
-    ]
-  }
+  ]
 }
