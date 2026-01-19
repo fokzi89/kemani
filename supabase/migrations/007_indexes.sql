@@ -10,7 +10,7 @@ CREATE INDEX idx_tenants_deleted ON tenants(deleted_at) WHERE deleted_at IS NULL
 
 -- Branches
 CREATE INDEX idx_branches_tenant ON branches(tenant_id, deleted_at) WHERE deleted_at IS NULL;
-CREATE INDEX idx_branches_location ON branches USING GIST(ST_MakePoint(longitude, latitude)::geography)
+CREATE INDEX idx_branches_location ON branches USING GIST(geography(ST_MakePoint(longitude, latitude)))
     WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
 
 -- Users

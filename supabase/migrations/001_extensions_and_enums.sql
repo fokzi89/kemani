@@ -28,7 +28,7 @@ CREATE TYPE platform_type AS ENUM ('woocommerce', 'shopify', 'custom');
 CREATE TYPE sync_status AS ENUM ('pending', 'syncing', 'success', 'error');
 CREATE TYPE chat_status AS ENUM ('active', 'completed', 'escalated', 'abandoned');
 CREATE TYPE sender_type AS ENUM ('customer', 'ai_agent', 'staff');
-CREATE TYPE plan_tier AS ENUM ('free', 'basic', 'pro', 'enterprise');
+CREATE TYPE plan_tier AS ENUM ('free', 'basic', 'pro', 'enterprise', 'enterprise_custom');
 CREATE TYPE subscription_status AS ENUM ('active', 'suspended', 'cancelled');
 CREATE TYPE settlement_status AS ENUM ('pending', 'invoiced', 'paid');
 CREATE TYPE message_direction AS ENUM ('outbound', 'inbound');
