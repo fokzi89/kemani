@@ -464,20 +464,19 @@ This document defines the complete data model for the multi-tenant POS platform 
 |-------|------|-------------|-------------|
 | `id` | UUID | PRIMARY KEY | |
 | `tenant_id` | UUID | NOT NULL, FK → Tenant | |
-| `tier` | ENUM | NOT NULL | free, basic, growth, enterprise |
+| `tier` | ENUM | NOT NULL | free, basic, pro, enterprise, enterprise_custom |
+| `monthly_fee` | DECIMAL(12,2) | NOT NULL | Monthly subscription cost (₦) |
+| `commission_rate` | DECIMAL(5,2) | NOT NULL | Marketplace commission percentage |
+| `commission_cap_amount` | DECIMAL(12,2) | DEFAULT 500.00 | Maximum commission per order (₦) |
 | `billing_cycle` | ENUM | NOT NULL | monthly, annual |
-| `status` | ENUM | NOT NULL | active, past_due, canceled |
-| `max_users` | INTEGER | NOT NULL | Tier limit |
+| `status` | ENUM | NOT NULL | active, suspended, cancelled |
 | `max_branches` | INTEGER | NOT NULL | |
+| `max_staff_users` | INTEGER | NOT NULL | Tier limit |
 | `max_products` | INTEGER | NOT NULL | |
-| `max_transactions_per_month` | INTEGER | NOT NULL | |
-| `storage_gb` | INTEGER | NOT NULL | |
-| `marketplace_commission_rate` | DECIMAL(5,2) | NOT NULL | e.g. 3.5, 2.5, 1.5 |
-| `support_sla_hours` | INTEGER | | 48, 24, 12, 4 |
-| `current_period_start` | DATE | NOT NULL | |
-| `current_period_end` | DATE | NOT NULL | |
-| `next_billing_date` | DATE | | |
-| `paystack_subscription_id` | VARCHAR(100) | | External reference |
+| `monthly_transaction_quota` | INTEGER | NOT NULL | |
+| `features` | JSONB | NOT NULL | Feature flags JSON (ai_chat, ecommerce_enabled, etc.) |
+| `billing_cycle_start` | TIMESTAMPTZ | NOT NULL | Current billing period start |
+| `billing_cycle_end` | TIMESTAMPTZ | NOT NULL | Current billing period end |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | |
 

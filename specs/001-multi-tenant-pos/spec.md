@@ -3,11 +3,11 @@
 **Feature Branch**: `001-multi-tenant-pos`
 **Created**: 2026-01-17
 **Status**: Draft
-**Input**: Multi-tenant POS-first super app for independent businesses (pharmacies, supermarkets, grocery shops, mini-marts) in Nigeria with offline-first architecture, cloud sync, e-commerce integrations, AI chat agent, delivery management, and comprehensive analytics
+**Input**: Multi-tenant POS-first super app for independent businesses (pharmacies, supermarkets, grocery shops, Restaurant mini-marts) in Nigeria with offline-first architecture, cloud sync, e-commerce integrations, AI chat agent, delivery management, and comprehensive analytics
 
 ## Product Vision
 
-A **POS-first super app platform** that empowers independent businesses in Nigeria (pharmacies, supermarkets, grocery shops, mini-marts) to:
+A **POS-first super app platform** that empowers independent businesses in Nigeria (pharmacies, supermarkets, Restaurant grocery shops, mini-marts) to:
 - Manage inventory and sales with offline-first reliability
 - Sell to walk-in customers over the counter by sale agent and nearby customers via marketplace, chat order through whatsAPP and platform chat system by AI agent or Sale agent
 - Offer local delivery (bike/bicycle) and platform-provided inter-city delivery
