@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Check, ArrowRight, Zap, TrendingUp, Crown, Sparkles, Phone } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function PricingPage() {
   const pricingPlans = [
@@ -92,7 +93,7 @@ export default function PricingPage() {
       cta: "Start 30-Day Free Trial",
       href: "/auth/signup?plan=pro",
       popular: true,
-      color: "cyan"
+      color: "emerald"
     },
     {
       name: "Enterprise",
@@ -120,7 +121,7 @@ export default function PricingPage() {
       cta: "Start 30-Day Free Trial",
       href: "/auth/signup?plan=enterprise",
       popular: false,
-      color: "teal"
+      color: "green"
     },
     {
       name: "Enterprise Custom",
@@ -146,30 +147,34 @@ export default function PricingPage() {
       cta: "Contact Sales",
       href: "/contact?plan=enterprise_custom",
       popular: false,
-      color: "indigo"
+      color: "teal"
     }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-white">
+    <div className="min-h-screen theme-gradient-page transition-theme">
       {/* Navigation */}
-      <nav className="border-b border-cyan-100 bg-white/80 backdrop-blur-sm fixed top-0 w-full z-50">
+      <nav className="border-b theme-nav backdrop-blur-md fixed top-0 w-full z-50 transition-theme">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center">
-              <span className="text-2xl font-bold text-cyan-600">Kemani</span>
-              <span className="ml-2 text-sm text-gray-500">POS</span>
+              <span className="text-2xl font-bold theme-logo transition-theme">Kemani</span>
+              <span className="ml-2 text-sm theme-logo-subtitle transition-theme">POS</span>
             </Link>
-            <div className="flex items-center space-x-8">
-              <Link href="/#features" className="text-gray-600 hover:text-cyan-600 transition">
+            <div className="flex items-center gap-6">
+              <Link href="/" className="theme-nav-link transition text-sm">
+                Home
+              </Link>
+              <Link href="/#features" className="theme-nav-link transition text-sm">
                 Features
               </Link>
-              <Link href="/pricing" className="text-cyan-600 font-medium">
+              <Link href="/pricing" className="theme-logo font-medium text-sm">
                 Pricing
               </Link>
+              <ThemeToggle />
               <Link
                 href="/auth/signin"
-                className="px-4 py-2 text-cyan-600 border border-cyan-600 rounded-lg hover:bg-cyan-50 transition"
+                className="px-4 py-2 theme-btn-outline border rounded-lg backdrop-blur-sm transition text-sm"
               >
                 Sign In
               </Link>
@@ -179,64 +184,60 @@ export default function PricingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="pt-32 pb-12 px-4 sm:px-6 lg:px-8">
+      <section className="pt-24 pb-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold theme-heading mb-6">
             Simple, Transparent Pricing
           </h1>
-          <p className="text-xl text-gray-600 mb-8">
+          <p className="text-lg sm:text-xl theme-text-muted mb-6">
             Start free, upgrade when you need more. No hidden fees, no surprises.
-            All paid plans include a 30-day free trial.
           </p>
-          <div className="inline-flex items-center px-4 py-2 bg-emerald-100 text-emerald-800 rounded-full text-sm font-medium">
+          <div className="inline-flex items-center px-4 py-2 bg-emerald-500/20 backdrop-blur-sm theme-logo rounded-full text-sm font-medium border border-emerald-500/30">
             <Check className="h-4 w-4 mr-2" />
-            Get 1 month free with annual billing
+            All paid plans include a 30-day free trial
           </div>
         </div>
       </section>
 
       {/* Pricing Cards */}
-      <section className="pb-20 px-4 sm:px-6 lg:px-8">
+      <section className="pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          {/* First Row: Free, Basic, Pro */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
+          {/* Main Plans */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {pricingPlans.slice(0, 3).map((plan, idx) => {
               const Icon = plan.icon;
 
               return (
                 <div
                   key={idx}
-                  className={`relative bg-white rounded-2xl shadow-lg border-2 ${
-                    plan.popular
-                      ? "border-cyan-600 ring-4 ring-cyan-100 scale-105"
-                      : "border-gray-200"
-                  } overflow-hidden transition hover:shadow-xl`}
+                  className={`relative bg-white/5 backdrop-blur-md rounded-xl shadow-lg border ${plan.popular
+                      ? "border-emerald-500/60 ring-2 ring-emerald-500/20 lg:scale-105"
+                      : "border-emerald-800/30"
+                    } overflow-hidden transition hover:shadow-xl hover:shadow-emerald-500/10`}
                 >
                   {plan.popular && (
-                    <div className="absolute top-0 right-0 bg-cyan-600 text-white px-4 py-1 text-sm font-semibold rounded-bl-lg">
+                    <div className="absolute top-0 right-0 bg-gradient-to-r from-emerald-600 to-green-600 text-white px-3 py-1 text-xs font-semibold rounded-bl-lg">
                       Most Popular
                     </div>
                   )}
 
-                  <div className="p-8">
+                  <div className="p-6">
                     {/* Header */}
-                    <div className="flex items-center mb-4">
-                      <div className={`w-12 h-12 bg-${plan.color}-100 rounded-lg flex items-center justify-center mr-3`}>
-                        <Icon className={`h-6 w-6 text-${plan.color}-600`} />
+                    <div className="flex items-center mb-3">
+                      <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center mr-3">
+                        <Icon className="h-5 w-5 theme-logo" />
                       </div>
-                      <div>
-                        <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
-                      </div>
+                      <h3 className="text-xl font-bold theme-heading">{plan.name}</h3>
                     </div>
-                    <p className="text-gray-600 mb-6">{plan.description}</p>
+                    <p className="text-sm theme-text-muted mb-6">{plan.description}</p>
 
                     {/* Pricing */}
-                    <div className="mb-6">
+                    <div className="mb-5">
                       <div className="flex items-baseline">
-                        <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-                        <span className="text-gray-600 ml-2">{plan.period}</span>
+                        <span className="text-3xl sm:text-4xl font-bold theme-heading">{plan.price}</span>
+                        <span className="theme-text-muted ml-2 text-sm">{plan.period}</span>
                       </div>
-                      <p className={`text-sm mt-2 font-medium ${plan.name === "Free" ? "text-emerald-600" : "text-cyan-600"}`}>
+                      <p className={`text-xs mt-1 font-medium theme-logo`}>
                         {plan.annual}
                       </p>
                     </div>
@@ -244,33 +245,32 @@ export default function PricingPage() {
                     {/* CTA */}
                     <Link
                       href={plan.href}
-                      className={`block w-full py-3 px-6 text-center font-semibold rounded-lg transition ${
-                        plan.popular
-                          ? "bg-cyan-600 text-white hover:bg-cyan-700 shadow-md"
+                      className={`block w-full py-2.5 px-6 text-center text-sm font-semibold rounded-lg transition ${plan.popular
+                          ? "bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-500 hover:to-green-500 shadow-md shadow-emerald-500/20"
                           : plan.name === "Free"
-                          ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md"
-                          : "bg-cyan-50 text-cyan-600 hover:bg-cyan-100"
-                      }`}
+                            ? "bg-emerald-600 text-white hover:bg-emerald-500 shadow-md"
+                            : "bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/30"
+                        }`}
                     >
                       {plan.cta}
                     </Link>
 
                     {/* Features */}
-                    <div className="mt-8 space-y-4">
-                      <div className="font-semibold text-gray-900 mb-3">What's included:</div>
-                      <ul className="space-y-3">
+                    <div className="mt-6 space-y-3">
+                      <div className="text-sm font-semibold theme-heading mb-2">What's included:</div>
+                      <ul className="space-y-2">
                         {plan.features.map((feature, featureIdx) => (
                           <li key={featureIdx} className="flex items-start">
-                            <Check className="h-5 w-5 text-emerald-500 mr-3 flex-shrink-0 mt-0.5" />
-                            <span className="text-gray-700 text-sm">{feature}</span>
+                            <Check className="h-4 w-4 theme-logo mr-2 flex-shrink-0 mt-0.5" />
+                            <span className="theme-text-muted text-xs leading-relaxed">{feature}</span>
                           </li>
                         ))}
                       </ul>
 
                       {plan.limitations.length > 0 && (
-                        <div className="mt-6 pt-6 border-t border-gray-200">
-                          <div className="text-sm text-gray-500 space-y-2">
-                            <div className="font-medium text-gray-700 mb-2">Not included:</div>
+                        <div className="mt-4 pt-4 border-t border-emerald-800/30">
+                          <div className="text-xs theme-text-muted opacity-70 space-y-1">
+                            <div className="font-medium mb-1">Not included:</div>
                             {plan.limitations.map((limitation, limIdx) => (
                               <div key={limIdx}>• {limitation}</div>
                             ))}
@@ -284,8 +284,8 @@ export default function PricingPage() {
             })}
           </div>
 
-          {/* Second Row: Enterprise and Enterprise Custom */}
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          {/* Enterprise Plans */}
+          <div className="grid sm:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {pricingPlans.slice(3, 5).map((plan, idx) => {
               const Icon = plan.icon;
               const isCustom = plan.name === "Enterprise Custom";
@@ -293,31 +293,30 @@ export default function PricingPage() {
               return (
                 <div
                   key={idx}
-                  className={`relative bg-white rounded-2xl shadow-lg border-2 ${
-                    isCustom
-                      ? "border-indigo-300"
-                      : "border-gray-200"
-                  } overflow-hidden transition hover:shadow-xl`}
+                  className={`relative bg-white/5 backdrop-blur-md rounded-2xl shadow-lg border-2 ${isCustom
+                      ? "border-teal-500/40"
+                      : "border-emerald-800/30"
+                    } overflow-hidden transition hover:shadow-xl hover:shadow-emerald-500/10`}
                 >
                   <div className="p-8">
                     {/* Header */}
                     <div className="flex items-center mb-4">
-                      <div className={`w-12 h-12 bg-${plan.color}-100 rounded-lg flex items-center justify-center mr-3`}>
-                        <Icon className={`h-6 w-6 text-${plan.color}-600`} />
+                      <div className={`w-12 h-12 bg-emerald-500/20 rounded-lg flex items-center justify-center mr-3`}>
+                        <Icon className={`h-6 w-6 theme-logo`} />
                       </div>
                       <div>
-                        <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
+                        <h3 className="text-2xl font-bold theme-heading">{plan.name}</h3>
                       </div>
                     </div>
-                    <p className="text-gray-600 mb-6">{plan.description}</p>
+                    <p className="theme-text-muted mb-6">{plan.description}</p>
 
                     {/* Pricing */}
                     <div className="mb-6">
                       <div className="flex items-baseline">
-                        <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-                        <span className="text-gray-600 ml-2">{plan.period}</span>
+                        <span className="text-4xl font-bold theme-heading">{plan.price}</span>
+                        <span className="theme-text-muted ml-2">{plan.period}</span>
                       </div>
-                      <p className={`text-sm mt-2 font-medium ${plan.name === "Free" ? "text-emerald-600" : "text-cyan-600"}`}>
+                      <p className={`text-sm mt-2 font-medium theme-logo`}>
                         {plan.annual}
                       </p>
                     </div>
@@ -325,31 +324,30 @@ export default function PricingPage() {
                     {/* CTA */}
                     <Link
                       href={plan.href}
-                      className={`block w-full py-3 px-6 text-center font-semibold rounded-lg transition ${
-                        isCustom
-                          ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
-                          : "bg-teal-600 text-white hover:bg-teal-700 shadow-md"
-                      }`}
+                      className={`block w-full py-3 px-6 text-center font-semibold rounded-lg transition ${isCustom
+                          ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white hover:from-teal-500 hover:to-emerald-500 shadow-md shadow-teal-500/20"
+                          : "bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-500 hover:to-emerald-500 shadow-md shadow-green-500/20"
+                        }`}
                     >
                       {plan.cta}
                     </Link>
 
                     {/* Features */}
-                    <div className="mt-8 space-y-4">
-                      <div className="font-semibold text-gray-900 mb-3">What's included:</div>
-                      <ul className="space-y-3">
+                    <div className="mt-6 space-y-3">
+                      <div className="text-sm font-semibold theme-heading mb-2">What's included:</div>
+                      <ul className="space-y-2">
                         {plan.features.map((feature, featureIdx) => (
                           <li key={featureIdx} className="flex items-start">
-                            <Check className="h-5 w-5 text-emerald-500 mr-3 flex-shrink-0 mt-0.5" />
-                            <span className="text-gray-700 text-sm">{feature}</span>
+                            <Check className="h-4 w-4 theme-logo mr-2 flex-shrink-0 mt-0.5" />
+                            <span className="theme-text-muted text-xs leading-relaxed">{feature}</span>
                           </li>
                         ))}
                       </ul>
 
                       {plan.limitations.length > 0 && (
-                        <div className="mt-6 pt-6 border-t border-gray-200">
-                          <div className="text-sm text-gray-500 space-y-2">
-                            <div className="font-medium text-gray-700 mb-2">Not included:</div>
+                        <div className="mt-4 pt-4 border-t border-emerald-800/30">
+                          <div className="text-xs theme-text-muted opacity-70 space-y-1">
+                            <div className="font-medium mb-1">Not included:</div>
                             {plan.limitations.map((limitation, limIdx) => (
                               <div key={limIdx}>• {limitation}</div>
                             ))}
@@ -366,43 +364,43 @@ export default function PricingPage() {
       </section>
 
       {/* Feature Comparison Table */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-16 theme-gradient-section backdrop-blur-sm transition-theme">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl sm:text-4xl font-bold theme-heading mb-3">
               Compare All Features
             </h2>
-            <p className="text-lg text-gray-600">
+            <p className="text-sm sm:text-base theme-text-muted">
               See exactly what's included in each plan
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          <div className="bg-white/5 backdrop-blur-md rounded-xl shadow-lg overflow-hidden border border-emerald-800/30">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-cyan-50">
+              <table className="w-full min-w-[600px]">
+                <thead className="bg-emerald-500/10 backdrop-blur-sm">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+                    <th className="px-4 py-3 text-left text-xs font-semibold theme-heading">
                       Feature
                     </th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
+                    <th className="px-3 py-3 text-center text-xs font-semibold theme-heading">
                       Free
                     </th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
+                    <th className="px-3 py-3 text-center text-xs font-semibold theme-heading">
                       Basic
                     </th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
+                    <th className="px-3 py-3 text-center text-xs font-semibold theme-heading">
                       Pro
                     </th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
+                    <th className="px-3 py-3 text-center text-xs font-semibold theme-heading">
                       Enterprise
                     </th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
+                    <th className="px-3 py-3 text-center text-xs font-semibold theme-heading">
                       Custom
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-emerald-800/20">
                   {[
                     { feature: "Branch Locations", free: "1", basic: "3", pro: "10", enterprise: "Unlimited", custom: "Unlimited" },
                     { feature: "Staff Users", free: "1", basic: "10", pro: "50", enterprise: "Unlimited", custom: "Unlimited" },
@@ -428,20 +426,20 @@ export default function PricingPage() {
                     { feature: "Commission Cap", free: "N/A", basic: "N/A", pro: "₦500/order", enterprise: "₦500/order", custom: "₦500/order" },
                     { feature: "Support", free: "Email", basic: "Priority Email", pro: "Phone & Email", enterprise: "24/7 Phone", custom: "24/7 Dedicated" },
                   ].map((row, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                    <tr key={idx} className="hover:bg-white/5 transition">
+                      <td className="px-4 py-3 text-xs theme-heading font-medium">
                         {row.feature}
                       </td>
                       {['free', 'basic', 'pro', 'enterprise', 'custom'].map((tier) => (
-                        <td key={tier} className="px-6 py-4 text-center text-sm">
+                        <td key={tier} className="px-3 py-3 text-center text-xs">
                           {typeof row[tier as keyof typeof row] === "boolean" ? (
                             row[tier as keyof typeof row] ? (
-                              <Check className="h-5 w-5 text-emerald-500 mx-auto" />
+                              <Check className="h-4 w-4 theme-logo mx-auto" />
                             ) : (
-                              <span className="text-gray-400">—</span>
+                              <span className="theme-text-muted opacity-30">—</span>
                             )
                           ) : (
-                            <span className="text-gray-700">{row[tier as keyof typeof row]}</span>
+                            <span className="theme-text-muted">{row[tier as keyof typeof row]}</span>
                           )}
                         </td>
                       ))}
@@ -455,15 +453,15 @@ export default function PricingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="py-20">
+      <section className="py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl sm:text-4xl font-bold theme-heading mb-3">
               Frequently Asked Questions
             </h2>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             {[
               {
                 question: "What's the difference between cloud-only (Free) and offline-first (paid plans)?",
@@ -506,11 +504,11 @@ export default function PricingPage() {
                 answer: "Yes! Our Enterprise Custom plan offers white-label branding, custom domains, dedicated infrastructure, custom development, and negotiable pricing. Contact our sales team to discuss your specific requirements."
               }
             ].map((faq, idx) => (
-              <div key={idx} className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              <div key={idx} className="bg-white/5 backdrop-blur-md rounded-lg shadow-sm p-5 border border-emerald-800/30 hover:border-emerald-700/40 transition">
+                <h3 className="text-base font-semibold theme-heading mb-2">
                   {faq.question}
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-sm theme-text-muted leading-relaxed">
                   {faq.answer}
                 </p>
               </div>
@@ -520,43 +518,43 @@ export default function PricingPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 bg-gradient-to-r from-cyan-600 to-teal-600 text-white">
+      <section className="py-16 theme-gradient-cta backdrop-blur-sm text-white transition-theme">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">
+          <h2 className="text-3xl sm:text-4xl font-bold mb-4">
             Ready to Transform Your Business?
           </h2>
-          <p className="text-xl text-cyan-100 mb-8">
-            Start free today, no credit card required. Upgrade when you're ready for more features.
+          <p className="text-base sm:text-lg text-emerald-50/90 mb-6">
+            Start free today, no credit card required. Upgrade when ready.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
             <Link
               href="/auth/signup?plan=free"
-              className="inline-flex items-center px-8 py-4 bg-white text-cyan-600 text-lg font-semibold rounded-lg hover:bg-gray-100 transition shadow-lg hover:shadow-xl"
+              className="inline-flex items-center justify-center w-full sm:w-auto px-8 py-3 bg-white text-emerald-600 font-semibold rounded-lg hover:bg-emerald-50 transition shadow-lg"
             >
               Start Free Forever
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
             <Link
               href="/contact"
-              className="inline-flex items-center px-8 py-4 bg-transparent text-white text-lg font-semibold rounded-lg border-2 border-white hover:bg-white/10 transition"
+              className="inline-flex items-center justify-center w-full sm:w-auto px-8 py-3 bg-transparent text-white font-semibold rounded-lg border-2 border-white hover:bg-white/10 backdrop-blur-sm transition"
             >
               Talk to Sales
             </Link>
           </div>
-          <p className="mt-6 text-sm text-cyan-200">
+          <p className="mt-4 text-sm text-emerald-100/70">
             Questions? <Link href="/contact" className="underline hover:text-white">Contact our team</Link>
           </p>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-gray-300 py-12">
+      <footer className="bg-gray-900 text-gray-300 py-12 border-t border-emerald-800/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <Link href="/" className="flex items-center mb-4">
-                <span className="text-2xl font-bold text-white">Kemani</span>
-                <span className="ml-2 text-sm text-gray-400">POS</span>
+                <span className="text-2xl font-bold text-emerald-400">Kemani</span>
+                <span className="ml-2 text-sm text-emerald-300/70">POS</span>
               </Link>
               <p className="text-sm text-gray-400">
                 Offline-first POS platform built for Nigerian businesses.
@@ -566,26 +564,26 @@ export default function PricingPage() {
             <div>
               <h3 className="text-white font-semibold mb-4">Product</h3>
               <ul className="space-y-2 text-sm">
-                <li><Link href="/#features" className="hover:text-white transition">Features</Link></li>
-                <li><Link href="/pricing" className="hover:text-white transition">Pricing</Link></li>
-                <li><Link href="/#demo" className="hover:text-white transition">Demo</Link></li>
+                <li><Link href="/#features" className="hover:text-emerald-400 transition">Features</Link></li>
+                <li><Link href="/pricing" className="hover:text-emerald-400 transition">Pricing</Link></li>
+                <li><Link href="/#demo" className="hover:text-emerald-400 transition">Demo</Link></li>
               </ul>
             </div>
 
             <div>
               <h3 className="text-white font-semibold mb-4">Support</h3>
               <ul className="space-y-2 text-sm">
-                <li><Link href="/docs" className="hover:text-white transition">Documentation</Link></li>
-                <li><Link href="/support" className="hover:text-white transition">Help Center</Link></li>
-                <li><Link href="/contact" className="hover:text-white transition">Contact Us</Link></li>
+                <li><Link href="/docs" className="hover:text-emerald-400 transition">Documentation</Link></li>
+                <li><Link href="/support" className="hover:text-emerald-400 transition">Help Center</Link></li>
+                <li><Link href="/contact" className="hover:text-emerald-400 transition">Contact Us</Link></li>
               </ul>
             </div>
 
             <div>
               <h3 className="text-white font-semibold mb-4">Legal</h3>
               <ul className="space-y-2 text-sm">
-                <li><Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link></li>
-                <li><Link href="/terms" className="hover:text-white transition">Terms of Service</Link></li>
+                <li><Link href="/privacy" className="hover:text-emerald-400 transition">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-emerald-400 transition">Terms of Service</Link></li>
               </ul>
             </div>
           </div>

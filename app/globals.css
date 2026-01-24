@@ -1,26 +1,381 @@
 @import "tailwindcss";
 
+/* ============================================
+   CSS VARIABLES - LIGHT MODE (DEFAULT)
+   ============================================ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Primary colors - Light Green Theme */
+  --background: 240 253 244; /* #f0fdf4 - very light green */
+  --foreground: 20 83 45; /* #14532d - dark green text */
+
+  --primary: 22 163 74; /* #16a34a - medium green */
+  --primary-foreground: 240 253 244; /* #f0fdf4 - light text on primary */
+
+  --secondary: 220 252 231; /* #dcfce7 - light green */
+  --secondary-foreground: 20 83 45; /* #14532d - dark green text */
+
+  --accent: 34 197 94; /* #22c55e - bright green */
+  --accent-foreground: 240 253 244; /* #f0fdf4 - light text on accent */
+
+  --muted: 220 252 231; /* #dcfce7 - light green background */
+  --muted-foreground: 22 101 52; /* #166534 - muted text */
+
+  /* UI Elements */
+  --card: 255 255 255; /* #ffffff - white cards */
+  --card-foreground: 20 83 45; /* #14532d - dark green text on cards */
+
+  --popover: 255 255 255; /* #ffffff - white popover */
+  --popover-foreground: 20 83 45; /* #14532d - dark green text on popover */
+
+  --border: 134 239 172; /* #86efac - light green border */
+  --input: 134 239 172; /* #86efac - light green input border */
+  --ring: 22 163 74; /* #16a34a - focus ring */
+
+  /* Status colors */
+  --success: 34 197 94; /* #22c55e - success green */
+  --warning: 251 191 36; /* #fbbf24 - warning yellow */
+  --error: 239 68 68; /* #ef4444 - error red */
+  --info: 59 130 246; /* #3b82f6 - info blue */
+
+  /* Chart colors */
+  --chart-1: 22 163 74; /* #16a34a - green */
+  --chart-2: 34 197 94; /* #22c55e - bright green */
+  --chart-3: 134 239 172; /* #86efac - light green */
+  --chart-4: 220 252 231; /* #dcfce7 - very light green */
+  --chart-5: 20 83 45; /* #14532d - dark green */
+
+  /* Shadows */
+  --shadow-color: 0 0 0;
+  --shadow-opacity: 0.1;
+
+  /* Radius */
+  --radius: 0.5rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ============================================
+   CSS VARIABLES - DARK MODE (NEON GREEN)
+   ============================================ */
+[data-theme="dark"] {
+  /* Primary colors - Dark Green + Neon Theme */
+  --background: 5 46 22; /* #052e16 - very dark green */
+  --foreground: 240 253 244; /* #f0fdf4 - light green text */
+
+  --primary: 74 222 128; /* #4ade80 - neon green */
+  --primary-foreground: 5 46 22; /* #052e16 - dark text on primary */
+
+  --secondary: 22 101 52; /* #166534 - dark green */
+  --secondary-foreground: 240 253 244; /* #f0fdf4 - light text */
+
+  --accent: 34 255 122; /* #22ff7a - bright neon */
+  --accent-foreground: 5 46 22; /* #052e16 - dark text on accent */
+
+  --muted: 20 83 45; /* #14532d - muted dark green */
+  --muted-foreground: 187 247 208; /* #bbf7d0 - muted light text */
+
+  /* UI Elements */
+  --card: 20 83 45; /* #14532d - dark green cards */
+  --card-foreground: 240 253 244; /* #f0fdf4 - light text on cards */
+
+  --popover: 20 83 45; /* #14532d - dark green popover */
+  --popover-foreground: 240 253 244; /* #f0fdf4 - light text on popover */
+
+  --border: 22 101 52; /* #166534 - dark green border */
+  --input: 22 101 52; /* #166534 - dark green input border */
+  --ring: 74 222 128; /* #4ade80 - neon green focus ring */
+
+  /* Status colors */
+  --success: 74 222 128; /* #4ade80 - neon green success */
+  --warning: 251 191 36; /* #fbbf24 - warning yellow */
+  --error: 248 113 113; /* #f87171 - error red */
+  --info: 96 165 250; /* #60a5fa - info blue */
+
+  /* Chart colors */
+  --chart-1: 74 222 128; /* #4ade80 - neon green */
+  --chart-2: 34 255 122; /* #22ff7a - bright neon */
+  --chart-3: 134 239 172; /* #86efac - light green */
+  --chart-4: 22 101 52; /* #166534 - dark green */
+  --chart-5: 5 46 22; /* #052e16 - very dark green */
+
+  /* Shadows */
+  --shadow-color: 74 222 128;
+  --shadow-opacity: 0.2;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ============================================
+   BASE STYLES
+   ============================================ */
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  background: rgb(var(--background));
+  color: rgb(var(--foreground));
+  transition: background-color 300ms ease, color 300ms ease;
+}
+
+/* ============================================
+   NEON EFFECTS (DARK MODE ONLY)
+   ============================================ */
+[data-theme="dark"] .neon-text {
+  color: rgb(var(--primary));
+  text-shadow:
+    0 0 10px rgba(var(--primary), 0.8),
+    0 0 20px rgba(var(--primary), 0.5),
+    0 0 30px rgba(var(--primary), 0.3);
+  animation: neon-pulse 2s ease-in-out infinite alternate;
+}
+
+[data-theme="dark"] .neon-border {
+  border: 2px solid rgb(var(--primary));
+  box-shadow:
+    0 0 10px rgba(var(--primary), 0.5),
+    inset 0 0 10px rgba(var(--primary), 0.2);
+}
+
+[data-theme="dark"] .neon-glow {
+  box-shadow:
+    0 0 20px rgba(var(--primary), 0.6),
+    0 0 40px rgba(var(--primary), 0.4),
+    0 0 60px rgba(var(--primary), 0.2);
+}
+
+[data-theme="dark"] .neon-button {
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+  border: 2px solid rgb(var(--primary));
+  box-shadow: 0 0 10px rgba(var(--primary), 0.5);
+  transition: all 300ms ease;
+}
+
+[data-theme="dark"] .neon-button:hover {
+  box-shadow:
+    0 0 20px rgba(var(--primary), 0.8),
+    0 0 40px rgba(var(--primary), 0.6);
+  transform: translateY(-2px);
+}
+
+@keyframes neon-pulse {
+  from {
+    text-shadow:
+      0 0 10px rgba(var(--primary), 0.8),
+      0 0 20px rgba(var(--primary), 0.5),
+      0 0 30px rgba(var(--primary), 0.3);
+  }
+  to {
+    text-shadow:
+      0 0 15px rgba(var(--primary), 1),
+      0 0 30px rgba(var(--primary), 0.7),
+      0 0 45px rgba(var(--primary), 0.5);
+  }
+}
+
+/* ============================================
+   GLASSMORPHISM UTILITIES
+   ============================================ */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .glass-dark {
+  background: rgba(var(--card), 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(var(--border), 0.2);
+}
+
+.glass-green {
+  background: rgba(var(--primary), 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(var(--primary), 0.2);
+}
+
+/* ============================================
+   CUSTOM SCROLLBAR (THEMED)
+   ============================================ */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--muted));
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--primary));
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgb(var(--muted));
+  box-shadow: 0 0 5px rgba(var(--primary), 0.3);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--primary));
+  box-shadow: 0 0 10px rgba(var(--primary), 0.6);
+}
+
+/* ============================================
+   TRANSITION UTILITIES
+   ============================================ */
+.transition-theme {
+  transition:
+    background-color 300ms ease,
+    color 300ms ease,
+    border-color 300ms ease,
+    box-shadow 300ms ease;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+.bg-background { background-color: rgb(var(--background)); }
+.bg-foreground { background-color: rgb(var(--foreground)); }
+.bg-primary { background-color: rgb(var(--primary)); }
+.bg-secondary { background-color: rgb(var(--secondary)); }
+.bg-accent { background-color: rgb(var(--accent)); }
+.bg-muted { background-color: rgb(var(--muted)); }
+.bg-card { background-color: rgb(var(--card)); }
+
+.text-background { color: rgb(var(--background)); }
+.text-foreground { color: rgb(var(--foreground)); }
+.text-primary { color: rgb(var(--primary)); }
+.text-secondary { color: rgb(var(--secondary)); }
+.text-accent { color: rgb(var(--accent)); }
+.text-muted { color: rgb(var(--muted-foreground)); }
+
+.border-border { border-color: rgb(var(--border)); }
+.border-primary { border-color: rgb(var(--primary)); }
+.border-accent { border-color: rgb(var(--accent)); }
+
+/* ============================================
+   THEME-AWARE GRADIENTS
+   ============================================ */
+/* Light mode - Light green gradients */
+.theme-gradient-page {
+  background: linear-gradient(to bottom, #f0fdf4, #dcfce7, #bbf7d0);
+  color: #14532d; /* Dark green text for light mode */
+}
+
+/* Dark mode - Dark green gradients */
+[data-theme="dark"] .theme-gradient-page {
+  background: linear-gradient(to bottom, #052e16, #14532d, #1f2937);
+  color: #f0fdf4; /* Light green text for dark mode */
+}
+
+.theme-gradient-section {
+  background: linear-gradient(to bottom, rgba(220, 252, 231, 0.5), rgba(187, 247, 208, 0.3));
+  color: #14532d;
+}
+
+[data-theme="dark"] .theme-gradient-section {
+  background: linear-gradient(to bottom, rgba(20, 83, 45, 0.5), rgba(5, 46, 22, 0.3));
+  color: #f0fdf4;
+}
+
+.theme-gradient-cta {
+  background: linear-gradient(to right, #16a34a, #22c55e);
+  color: #ffffff;
+}
+
+[data-theme="dark"] .theme-gradient-cta {
+  background: linear-gradient(to right, #166534, #14532d);
+  color: #f0fdf4;
+}
+
+/* Theme-aware navigation */
+.theme-nav {
+  background: rgba(240, 253, 244, 0.5);
+  border-color: rgba(134, 239, 172, 0.3);
+}
+
+[data-theme="dark"] .theme-nav {
+  background: rgba(5, 46, 22, 0.5);
+  border-color: rgba(22, 101, 52, 0.3);
+}
+
+/* Navigation link colors */
+.theme-nav-link {
+  color: #14532d; /* Dark green for light mode */
+}
+
+.theme-nav-link:hover {
+  color: #16a34a; /* Medium green on hover in light mode */
+}
+
+[data-theme="dark"] .theme-nav-link {
+  color: #dcfce7; /* Light green for dark mode */
+}
+
+[data-theme="dark"] .theme-nav-link:hover {
+  color: #4ade80; /* Neon green on hover in dark mode */
+}
+
+/* Logo/Brand colors */
+.theme-logo {
+  color: #16a34a; /* Medium green for light mode */
+}
+
+[data-theme="dark"] .theme-logo {
+  color: #4ade80; /* Neon green for dark mode */
+}
+
+.theme-logo-subtitle {
+  color: #166534; /* Dark green for light mode */
+}
+
+[data-theme="dark"] .theme-logo-subtitle {
+  color: #86efac; /* Light green for dark mode */
+}
+
+/* Theme-aware buttons */
+.theme-btn-outline {
+  color: #16a34a;
+  border-color: #16a34a;
+}
+
+.theme-btn-outline:hover {
+  background-color: rgba(220, 252, 231, 0.5);
+}
+
+[data-theme="dark"] .theme-btn-outline {
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.5);
+}
+
+[data-theme="dark"] .theme-btn-outline:hover {
+  background-color: rgba(74, 222, 128, 0.1);
+}
+
+/* Theme-aware text colors */
+.theme-text {
+  color: #14532d; /* Dark green for light mode */
+}
+
+[data-theme="dark"] .theme-text {
+  color: #f0fdf4; /* Light green for dark mode */
+}
+
+.theme-text-muted {
+  color: #166534; /* Muted dark green for light mode */
+}
+
+[data-theme="dark"] .theme-text-muted {
+  color: #bbf7d0; /* Muted light green for dark mode */
+}
+
+.theme-heading {
+  color: #052e16; /* Very dark green for headings in light mode */
+}
+
+[data-theme="dark"] .theme-heading {
+  color: #f0fdf4; /* Light green for headings in dark mode */
 }

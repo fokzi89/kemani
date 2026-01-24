@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
+import { SubscriptionProvider } from "@/lib/context/SubscriptionContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,7 +27,7 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
-  themeColor: "#4F46E5",
+  themeColor: "#16a34a", // Green theme color
   viewport: {
     width: "device-width",
     initialScale: 1,
@@ -40,12 +42,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        {children}
+        <ThemeProvider defaultTheme="light" storageKey="kemani-theme">
+          <SubscriptionProvider>
+            {children}
+          </SubscriptionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
