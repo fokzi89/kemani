@@ -1,0 +1,2221 @@
+openapi: 3.0.3
+info:
+  title: Kemani Multi-Tenant POS Platform API
+  description: |
+    RESTful API for the multi-tenant POS-first super app platform targeting Nigerian independent businesses.
+
+    ## Features
+    - Offline-first POS operations with cloud sync
+    - Multi-tenant data isolation
+    - Phone + OTP authentication
+    - Marketplace and e-commerce integrations
+    - AI-powered chat agent
+    - Delivery management
+    - WhatsApp communications
+    - Analytics and insights
+
+    ## Authentication
+    All API endpoints (except registration and OTP verification) require JWT Bearer token authentication.
+    The token includes `tenant_id` claim for multi-tenant isolation.
+
+    ## Base URL
+    - Production: `https://api.kemani.ng/v1`
+    - Staging: `https://api-staging.kemani.ng/v1`
+
+  version: 1.0.0
+  contact:
+    name: Kemani API Support
+    email: api@kemani.ng
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.kemani.ng/v1
+    description: Production server
+  - url: https://api-staging.kemani.ng/v1
+    description: Staging server
+  - url: http://localhost:3000/api
+    description: Local development
+
+tags:
+  - name: Auth
+    description: Authentication and authorization
+  - name: POS
+    description: Point of sale operations
+  - name: Inventory
+    description: Product and inventory management
+  - name: Customers
+    description: Customer management and loyalty
+  - name: Staff
+    description: Staff management and time tracking
+  - name: Orders
+    description: Marketplace order management
+  - name: Delivery
+    description: Delivery and logistics
+  - name: Analytics
+    description: Sales analytics and insights
+  - name: Integrations
+    description: E-commerce and third-party integrations
+  - name: Sync
+    description: Offline sync operations
+  - name: Admin
+    description: Administrative operations
+
+paths:
+  # ==================== AUTH ENDPOINTS ====================
+  /auth/register:
+    post:
+      summary: Register new tenant
+      description: Create a new tenant account using phone number and OTP verification
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone_number
+                - business_name
+                - business_type
+              properties:
+                phone_number:
+                  type: string
+                  pattern: '^\+234[0-9]{10}$'
+                  example: "+2348012345678"
+                business_name:
+                  type: string
+                  minLength: 3
+                  maxLength: 255
+                  example: "ABC Pharmacy"
+                business_type:
+                  type: string
+                  enum: [pharmacy, supermarket, grocery, minimart, restaurant]
+                  example: "pharmacy"
+      responses:
+        '201':
+          description: Registration initiated, OTP sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "OTP sent to +2348012345678"
+                  otp_expiry:
+                    type: string
+                    format: date-time
+                  tenant_id:
+                    type: string
+                    format: uuid
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Phone number already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/verify-otp:
+    post:
+      summary: Verify OTP and complete registration
+      description: Verify the OTP code sent to the phone number
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone_number
+                - otp_code
+              properties:
+                phone_number:
+                  type: string
+                  pattern: '^\+234[0-9]{10}$'
+                otp_code:
+                  type: string
+                  pattern: '^[0-9]{6}$'
+                  example: "123456"
+      responses:
+        '200':
+          description: OTP verified successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  refresh_token:
+                    type: string
+                  token_type:
+                    type: string
+                    example: "Bearer"
+                  expires_in:
+                    type: integer
+                    example: 3600
+                  user:
+                    $ref: '#/components/schemas/User'
+                  tenant:
+                    $ref: '#/components/schemas/Tenant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Invalid or expired OTP
+
+  /auth/login:
+    post:
+      summary: Login with phone number
+      description: Initiate login by sending OTP to phone number
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone_number
+              properties:
+                phone_number:
+                  type: string
+                  pattern: '^\+234[0-9]{10}$'
+      responses:
+        '200':
+          description: OTP sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  otp_expiry:
+                    type: string
+                    format: date-time
+        '404':
+          description: Phone number not registered
+
+  /auth/refresh-token:
+    post:
+      summary: Refresh access token
+      description: Get new access token using refresh token
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  token_type:
+                    type: string
+                    example: "Bearer"
+                  expires_in:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      summary: Logout current user
+      description: Invalidate current session and tokens
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Logout successful
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==================== POS ENDPOINTS ====================
+  /pos/sales:
+    post:
+      summary: Create sale transaction
+      description: Process a new sale in the POS system
+      tags: [POS]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSaleRequest'
+      responses:
+        '201':
+          description: Sale created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sale'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    get:
+      summary: Get sales history
+      description: Retrieve list of sales with pagination and filters
+      tags: [POS]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: cashier_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: payment_method
+          in: query
+          schema:
+            type: string
+            enum: [cash, card, bank_transfer, mobile_money]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [completed, voided, refunded]
+      responses:
+        '200':
+          description: Sales retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Sale'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /pos/sales/{sale_id}:
+    get:
+      summary: Get sale details
+      description: Retrieve detailed information about a specific sale
+      tags: [POS]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sale_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Sale details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sale'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /pos/sales/{sale_id}/void:
+    post:
+      summary: Void sale transaction
+      description: Cancel a completed sale with authorization
+      tags: [POS]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sale_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - void_reason
+              properties:
+                void_reason:
+                  type: string
+                  minLength: 10
+                  maxLength: 500
+      responses:
+        '200':
+          description: Sale voided successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sale'
+        '403':
+          description: Not authorized to void sales
+        '409':
+          description: Sale already voided or cannot be voided
+
+  # ==================== INVENTORY ENDPOINTS ====================
+  /inventory/products:
+    post:
+      summary: Create product
+      description: Add a new product to inventory
+      tags: [Inventory]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: SKU already exists
+
+    get:
+      summary: List products
+      description: Get all products with pagination and filters
+      tags: [Inventory]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, discontinued]
+        - name: low_stock
+          in: query
+          schema:
+            type: boolean
+        - name: expiring_soon
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /inventory/products/{product_id}:
+    get:
+      summary: Get product details
+      tags: [Inventory]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Product details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update product
+      tags: [Inventory]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductRequest'
+      responses:
+        '200':
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Version conflict (optimistic locking)
+
+    delete:
+      summary: Delete product
+      description: Soft delete a product
+      tags: [Inventory]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Product deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /inventory/products/import:
+    post:
+      summary: Bulk import products via CSV
+      description: Upload CSV file to import multiple products
+      tags: [Inventory]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV file with columns - name, sku, price, category, stock, expiry_date
+      responses:
+        '202':
+          description: Import job accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                    format: uuid
+                  message:
+                    type: string
+                  total_rows:
+                    type: integer
+        '400':
+          description: Invalid CSV format
+
+  /inventory/products/import/{job_id}:
+    get:
+      summary: Get import job status
+      tags: [Inventory]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Import job status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [pending, processing, completed, failed]
+                  total_rows:
+                    type: integer
+                  processed_rows:
+                    type: integer
+                  successful_rows:
+                    type: integer
+                  failed_rows:
+                    type: integer
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        row:
+                          type: integer
+                        error:
+                          type: string
+
+  /inventory/products/{product_id}/stock:
+    patch:
+      summary: Update product stock
+      description: Adjust inventory quantity with audit trail
+      tags: [Inventory]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - quantity_change
+                - transaction_type
+              properties:
+                quantity_change:
+                  type: integer
+                  description: Positive for additions, negative for reductions
+                transaction_type:
+                  type: string
+                  enum: [restock, adjustment, transfer, expiry, return]
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Stock updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  product:
+                    $ref: '#/components/schemas/Product'
+                  inventory_transaction:
+                    $ref: '#/components/schemas/InventoryTransaction'
+
+  /inventory/expiry-alerts:
+    get:
+      summary: Get expiry alerts
+      description: List products expiring within configured threshold
+      tags: [Inventory]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        '200':
+          description: Expiry alerts retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product:
+                          $ref: '#/components/schemas/Product'
+                        days_until_expiry:
+                          type: integer
+                        alert_level:
+                          type: string
+                          enum: [warning, urgent, critical]
+
+  # ==================== CUSTOMER ENDPOINTS ====================
+  /customers:
+    post:
+      summary: Create customer
+      tags: [Customers]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCustomerRequest'
+      responses:
+        '201':
+          description: Customer created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '409':
+          description: Phone number already exists
+
+    get:
+      summary: List customers
+      tags: [Customers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: loyalty_tier
+          in: query
+          schema:
+            type: string
+            enum: [bronze, silver, gold, platinum]
+      responses:
+        '200':
+          description: Customers retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Customer'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /customers/{customer_id}:
+    get:
+      summary: Get customer details
+      tags: [Customers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: customer_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Customer details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+
+    put:
+      summary: Update customer
+      tags: [Customers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: customer_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCustomerRequest'
+      responses:
+        '200':
+          description: Customer updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+
+  /customers/{customer_id}/purchase-history:
+    get:
+      summary: Get customer purchase history
+      tags: [Customers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: customer_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Purchase history retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Sale'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /customers/{customer_id}/loyalty-points:
+    get:
+      summary: Get customer loyalty points
+      tags: [Customers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: customer_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Loyalty points retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current_points:
+                    type: integer
+                  loyalty_tier:
+                    type: string
+                  total_lifetime_spend:
+                    type: number
+                    format: decimal
+                  points_history:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        transaction_date:
+                          type: string
+                          format: date-time
+                        points_earned:
+                          type: integer
+                        transaction_amount:
+                          type: number
+
+  # ==================== STAFF ENDPOINTS ====================
+  /staff/invites:
+    post:
+      summary: Create staff invite
+      description: Send email invitation to new staff member
+      tags: [Staff]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - assigned_role
+              properties:
+                email:
+                  type: string
+                  format: email
+                assigned_role:
+                  type: string
+                  enum: [branch_manager, cashier, delivery_rider]
+                branch_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Invite sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffInvite'
+        '403':
+          description: Not authorized to create invites
+
+    get:
+      summary: List staff invites
+      description: Get all pending and accepted invites
+      tags: [Staff]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, accepted, expired, revoked]
+      responses:
+        '200':
+          description: Invites retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StaffInvite'
+
+  /staff/invites/{invite_id}/resend:
+    post:
+      summary: Resend staff invite email
+      tags: [Staff]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: invite_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Invite resent successfully
+
+  /staff/invites/{invite_id}/revoke:
+    post:
+      summary: Revoke staff invite
+      tags: [Staff]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: invite_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Invite revoked successfully
+
+  /staff/attendance/clock-in:
+    post:
+      summary: Clock in for shift
+      tags: [Staff]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                latitude:
+                  type: number
+                  format: double
+                longitude:
+                  type: number
+                  format: double
+      responses:
+        '201':
+          description: Clocked in successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffAttendance'
+        '409':
+          description: Already clocked in
+
+  /staff/attendance/clock-out:
+    post:
+      summary: Clock out from shift
+      tags: [Staff]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                latitude:
+                  type: number
+                  format: double
+                longitude:
+                  type: number
+                  format: double
+      responses:
+        '200':
+          description: Clocked out successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffAttendance'
+
+  /staff/attendance:
+    get:
+      summary: Get attendance records
+      tags: [Staff]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: user_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Attendance records retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StaffAttendance'
+
+  # ==================== ORDER ENDPOINTS ====================
+  /orders:
+    post:
+      summary: Create order
+      description: Create new customer order from marketplace or chat
+      tags: [Orders]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+    get:
+      summary: List orders
+      tags: [Orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: order_status
+          in: query
+          schema:
+            type: string
+        - name: fulfillment_type
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Orders retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /orders/{order_id}:
+    get:
+      summary: Get order details
+      tags: [Orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Order details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  /orders/{order_id}/status:
+    patch:
+      summary: Update order status
+      tags: [Orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - order_status
+              properties:
+                order_status:
+                  type: string
+                  enum: [pending, confirmed, preparing, ready, out_for_delivery, delivered, cancelled]
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Order status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  # ==================== DELIVERY ENDPOINTS ====================
+  /deliveries:
+    post:
+      summary: Create delivery
+      tags: [Delivery]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeliveryRequest'
+      responses:
+        '201':
+          description: Delivery created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delivery'
+
+    get:
+      summary: List deliveries
+      tags: [Delivery]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: rider_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deliveries retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Delivery'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /deliveries/{delivery_id}:
+    get:
+      summary: Get delivery details
+      tags: [Delivery]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: delivery_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Delivery details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delivery'
+
+  /deliveries/{delivery_id}/assign:
+    post:
+      summary: Assign delivery to rider
+      tags: [Delivery]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: delivery_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rider_id
+              properties:
+                rider_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Delivery assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delivery'
+
+  /deliveries/{delivery_id}/status:
+    patch:
+      summary: Update delivery status
+      tags: [Delivery]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: delivery_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [assigned, picked_up, in_transit, delivered, failed]
+                proof_of_delivery_url:
+                  type: string
+                  format: uri
+                recipient_name:
+                  type: string
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delivery'
+
+  /deliveries/track/{tracking_number}:
+    get:
+      summary: Track delivery by tracking number
+      description: Public endpoint for customer delivery tracking
+      tags: [Delivery]
+      security: []
+      parameters:
+        - name: tracking_number
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tracking information retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tracking_number:
+                    type: string
+                  status:
+                    type: string
+                  estimated_delivery_time:
+                    type: string
+                    format: date-time
+                  timeline:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        status:
+                          type: string
+                        timestamp:
+                          type: string
+                          format: date-time
+                        description:
+                          type: string
+
+  # ==================== ANALYTICS ENDPOINTS ====================
+  /analytics/dashboard:
+    get:
+      summary: Get dashboard statistics
+      tags: [Analytics]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Dashboard stats retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_revenue:
+                    type: number
+                    format: decimal
+                  transaction_count:
+                    type: integer
+                  average_order_value:
+                    type: number
+                    format: decimal
+                  top_products:
+                    type: array
+                    items:
+                      type: object
+                  revenue_trend:
+                    type: array
+                    items:
+                      type: object
+
+  /analytics/products/{product_id}/sales:
+    get:
+      summary: Get product sales history
+      tags: [Analytics]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [daily, weekly, monthly]
+      responses:
+        '200':
+          description: Product sales data retrieved
+
+  /analytics/sales-patterns:
+    get:
+      summary: Get sales pattern analysis
+      description: Peak hours, day-of-week trends, seasonal patterns
+      tags: [Analytics]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sales patterns retrieved
+
+  # ==================== INTEGRATION ENDPOINTS ====================
+  /integrations/ecommerce/connect:
+    post:
+      summary: Connect e-commerce platform
+      tags: [Integrations]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - platform_type
+                - store_url
+                - api_credentials
+              properties:
+                platform_type:
+                  type: string
+                  enum: [woocommerce, shopify]
+                store_url:
+                  type: string
+                  format: uri
+                api_credentials:
+                  type: object
+                  description: Platform-specific credentials
+      responses:
+        '201':
+          description: Connection established
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ECommerceConnection'
+
+  /integrations/ecommerce/{connection_id}/sync:
+    post:
+      summary: Trigger manual sync
+      tags: [Integrations]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: connection_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Sync initiated
+
+  /integrations/whatsapp/configure:
+    post:
+      summary: Configure WhatsApp integration
+      tags: [Integrations]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone_number
+                - api_key
+              properties:
+                phone_number:
+                  type: string
+                api_key:
+                  type: string
+      responses:
+        '201':
+          description: WhatsApp configured
+
+  # ==================== SYNC ENDPOINTS ====================
+  /sync/upload:
+    post:
+      summary: Upload offline sync queue
+      description: Bulk upload pending offline operations
+      tags: [Sync]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                operations:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      operation_type:
+                        type: string
+                        enum: [insert, update, delete]
+                      table_name:
+                        type: string
+                      record_id:
+                        type: string
+                        format: uuid
+                      operation_data:
+                        type: object
+                      client_timestamp:
+                        type: string
+                        format: date-time
+      responses:
+        '200':
+          description: Sync processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  processed:
+                    type: integer
+                  successful:
+                    type: integer
+                  failed:
+                    type: integer
+                  conflicts:
+                    type: array
+                    items:
+                      type: object
+
+  /sync/download:
+    get:
+      summary: Download server-side changes
+      description: Get updates since last sync
+      tags: [Sync]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: last_sync_timestamp
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Changes retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  changes:
+                    type: array
+                  server_timestamp:
+                    type: string
+                    format: date-time
+
+  /sync/conflicts:
+    get:
+      summary: Get sync conflicts
+      tags: [Sync]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Conflicts retrieved
+
+  /sync/conflicts/{conflict_id}/resolve:
+    post:
+      summary: Resolve sync conflict
+      tags: [Sync]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conflict_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - resolution
+              properties:
+                resolution:
+                  type: string
+                  enum: [keep_local, keep_server, merge]
+                merged_data:
+                  type: object
+      responses:
+        '200':
+          description: Conflict resolved
+
+# ==================== COMPONENTS ====================
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token from /auth/verify-otp or /auth/login
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total_items:
+          type: integer
+        total_pages:
+          type: integer
+        has_next:
+          type: boolean
+        has_previous:
+          type: boolean
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        phone_number:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        business_name:
+          type: string
+        business_type:
+          type: string
+        subdomain:
+          type: string
+        phone_number:
+          type: string
+        logo_url:
+          type: string
+        primary_color:
+          type: string
+        subscription_status:
+          type: string
+        onboarding_completed:
+          type: boolean
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        sku:
+          type: string
+        barcode:
+          type: string
+        category_id:
+          type: string
+          format: uuid
+        selling_price:
+          type: number
+          format: decimal
+        cost_price:
+          type: number
+          format: decimal
+        current_stock:
+          type: integer
+        low_stock_threshold:
+          type: integer
+        has_expiry:
+          type: boolean
+        expiry_date:
+          type: string
+          format: date
+        primary_image_url:
+          type: string
+        status:
+          type: string
+        version:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateProductRequest:
+      type: object
+      required:
+        - name
+        - selling_price
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        sku:
+          type: string
+        barcode:
+          type: string
+        category_id:
+          type: string
+          format: uuid
+        selling_price:
+          type: number
+          format: decimal
+          minimum: 0
+        cost_price:
+          type: number
+          format: decimal
+        current_stock:
+          type: integer
+          default: 0
+        low_stock_threshold:
+          type: integer
+          default: 10
+        has_expiry:
+          type: boolean
+          default: false
+        expiry_date:
+          type: string
+          format: date
+        primary_image_url:
+          type: string
+
+    UpdateProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        selling_price:
+          type: number
+        current_stock:
+          type: integer
+        status:
+          type: string
+        version:
+          type: integer
+          description: For optimistic locking
+
+    Sale:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        sale_number:
+          type: string
+        sale_date:
+          type: string
+          format: date-time
+        customer_id:
+          type: string
+          format: uuid
+        cashier_id:
+          type: string
+          format: uuid
+        subtotal:
+          type: number
+        tax_amount:
+          type: number
+        discount_amount:
+          type: number
+        total_amount:
+          type: number
+        payment_method:
+          type: string
+        payment_status:
+          type: string
+        status:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SaleItem'
+        sync_status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    SaleItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        product_name:
+          type: string
+        quantity:
+          type: integer
+        unit_price:
+          type: number
+        discount_amount:
+          type: number
+        tax_amount:
+          type: number
+        subtotal:
+          type: number
+
+    CreateSaleRequest:
+      type: object
+      required:
+        - items
+        - payment_method
+      properties:
+        customer_id:
+          type: string
+          format: uuid
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required:
+              - product_id
+              - quantity
+              - unit_price
+            properties:
+              product_id:
+                type: string
+                format: uuid
+              variant_id:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+                minimum: 1
+              unit_price:
+                type: number
+              discount_amount:
+                type: number
+                default: 0
+        payment_method:
+          type: string
+          enum: [cash, card, bank_transfer, mobile_money]
+        discount_amount:
+          type: number
+          default: 0
+
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        phone_number:
+          type: string
+        email:
+          type: string
+        whatsapp_number:
+          type: string
+        loyalty_points:
+          type: integer
+        loyalty_tier:
+          type: string
+        total_lifetime_spend:
+          type: number
+        total_sales:
+          type: integer
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CreateCustomerRequest:
+      type: object
+      required:
+        - full_name
+        - phone_number
+      properties:
+        full_name:
+          type: string
+          minLength: 2
+          maxLength: 255
+        phone_number:
+          type: string
+          pattern: '^\+234[0-9]{10}$'
+        email:
+          type: string
+          format: email
+        whatsapp_number:
+          type: string
+
+    UpdateCustomerRequest:
+      type: object
+      properties:
+        full_name:
+          type: string
+        email:
+          type: string
+        whatsapp_number:
+          type: string
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        order_number:
+          type: string
+        order_date:
+          type: string
+          format: date-time
+        customer_id:
+          type: string
+          format: uuid
+        subtotal:
+          type: number
+        total_amount:
+          type: number
+        payment_status:
+          type: string
+        order_status:
+          type: string
+        fulfillment_type:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+
+    CreateOrderRequest:
+      type: object
+      required:
+        - customer_id
+        - items
+        - fulfillment_type
+      properties:
+        customer_id:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            type: object
+        fulfillment_type:
+          type: string
+          enum: [pickup, local_delivery, intercity_delivery]
+        delivery_address_id:
+          type: string
+          format: uuid
+
+    Delivery:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_id:
+          type: string
+          format: uuid
+        tracking_number:
+          type: string
+        delivery_type:
+          type: string
+        rider_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        estimated_delivery_time:
+          type: string
+          format: date-time
+        actual_delivery_time:
+          type: string
+          format: date-time
+
+    CreateDeliveryRequest:
+      type: object
+      required:
+        - order_id
+        - delivery_type
+        - delivery_address
+      properties:
+        order_id:
+          type: string
+          format: uuid
+        delivery_type:
+          type: string
+          enum: [local_bike, local_bicycle, intercity_platform]
+        delivery_address:
+          type: string
+
+    StaffInvite:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        assigned_role:
+          type: string
+        status:
+          type: string
+        invite_url:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    StaffAttendance:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        attendance_date:
+          type: string
+          format: date
+        clock_in_time:
+          type: string
+          format: date-time
+        clock_out_time:
+          type: string
+          format: date-time
+        total_hours_worked:
+          type: number
+        status:
+          type: string
+
+    InventoryTransaction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        transaction_type:
+          type: string
+        quantity_change:
+          type: integer
+        quantity_before:
+          type: integer
+        quantity_after:
+          type: integer
+        user_id:
+          type: string
+          format: uuid
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    ECommerceConnection:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        platform_type:
+          type: string
+        store_url:
+          type: string
+        sync_enabled:
+          type: boolean
+        last_sync_at:
+          type: string
+          format: date-time
+        sync_status:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Authentication required or token invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Resource conflict (duplicate, version mismatch)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+security:
+  - bearerAuth: []

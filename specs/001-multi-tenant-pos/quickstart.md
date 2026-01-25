@@ -1,828 +1,981 @@
-# Kemani POS Platform - Developer Quickstart Guide
+# Developer Quickstart Guide
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-17
-**Target Audience**: Developers setting up local development environment
+**Feature**: Multi-Tenant POS-First Super App Platform
+**Branch**: `001-multi-tenant-pos`
+**Last Updated**: 2026-01-24
 
-## Table of Contents
+## Introduction
 
-1. [Prerequisites](#prerequisites)
-2. [Local Environment Setup](#local-environment-setup)
-3. [Supabase Configuration](#supabase-configuration)
-4. [Database Setup](#database-setup)
-5. [Next.js Application Setup](#nextjs-application-setup)
-6. [PWA Configuration](#pwa-configuration)
-7. [Offline Sync Setup (PowerSync)](#offline-sync-setup-powersync)
-8. [Payment Gateway Integration](#payment-gateway-integration)
-9. [Testing](#testing)
-10. [Troubleshooting](#troubleshooting)
+This guide will help you set up the multi-tenant POS platform development environment and get you productive in under 30 minutes. The platform is built with Next.js 16 (App Router), TypeScript, React 19, Tailwind CSS 4, and Supabase.
+
+**Platform Overview**: An offline-first POS system for Nigerian independent businesses (pharmacies, supermarkets, grocery shops) with cloud sync, marketplace, delivery management, and integrations.
 
 ---
 
 ## Prerequisites
 
+Before you begin, ensure you have the following installed:
+
 ### Required Software
 
-| Tool | Version | Purpose | Installation |
-|------|---------|---------|--------------|
-| **Node.js** | 20.x LTS | Runtime environment | [nodejs.org](https://nodejs.org/) |
-| **npm** | 10.x | Package manager | Included with Node.js |
-| **Git** | Latest | Version control | [git-scm.com](https://git-scm.com/) |
-| **VS Code** | Latest | Code editor (recommended) | [code.visualstudio.com](https://code.visualstudio.com/) |
-| **Supabase CLI** | Latest | Database management | `npm install -g supabase` |
+- **Node.js**: v20.x or higher (v25.2.1 confirmed working)
+  - Check: `node --version`
+  - Download: [nodejs.org](https://nodejs.org/)
 
-### Accounts & Services
+- **npm**: v9.x or higher (comes with Node.js)
+  - Check: `npm --version`
 
-- **Supabase Account**: [supabase.com](https://supabase.com) (free tier sufficient for development)
-- **Paystack Test Account**: [paystack.com](https://paystack.com) (for payment testing)
-- **Termii Account**: [termii.com](https://termii.com) (for SMS OTP - optional for local dev)
+- **Git**: Latest version
+  - Check: `git --version`
+  - Download: [git-scm.com](https://git-scm.com/)
 
-### System Requirements
+- **Supabase CLI**: For local development and migrations
+  ```bash
+  npm install -g supabase
+  ```
+  - Check: `supabase --version`
+  - Docs: [supabase.com/docs/guides/cli](https://supabase.com/docs/guides/cli)
 
-- **OS**: Windows 10+, macOS 12+, or Linux (Ubuntu 20.04+)
-- **RAM**: 8GB minimum (16GB recommended)
-- **Disk Space**: 5GB free space
-- **Internet**: Required for initial setup and package downloads
+### Optional but Recommended
+
+- **Docker Desktop**: For local Supabase instance (alternative: use cloud project)
+  - Download: [docker.com](https://www.docker.com/products/docker-desktop/)
+
+- **VSCode**: Recommended code editor with extensions:
+  - ESLint
+  - Prettier
+  - TypeScript and JavaScript Language Features
+  - Tailwind CSS IntelliSense
+  - Supabase (SQL syntax highlighting)
 
 ---
 
-## Local Environment Setup
+## Quick Start (5 Minutes)
 
-### 1. Clone the Repository
+### 1. Clone Repository
 
 ```bash
-git clone https://github.com/your-org/kemani-pos.git
-cd kemani-pos
+git clone <repository-url>
+cd kemani
 ```
 
-### 2. Install Dependencies
+### 2. Checkout Feature Branch
+
+```bash
+git checkout 001-multi-tenant-pos
+```
+
+### 3. Install Dependencies
 
 ```bash
 npm install
 ```
 
-This installs:
-- Next.js 16 (App Router)
-- React 19
-- TypeScript 5.x
+This installs all dependencies including:
+- Next.js 16.1.3
+- React 19.2.3
+- Supabase client libraries (@supabase/ssr, @supabase/supabase-js)
 - Tailwind CSS 4
-- Supabase Client
-- PowerSync SDK
-- wa-sqlite
-- next-pwa
-- And all other dependencies
+- PowerSync (offline sync)
+- shadcn/ui components
+- And more (see `package.json`)
 
-### 3. Environment Variables
+### 4. Set Up Environment Variables
 
-Create `.env.local` file in project root:
+Copy the example environment file:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Update `.env.local` with your credentials:
+Edit `.env.local` and add your configuration:
 
-```env
-# ============================================================
-# Supabase Configuration
-# ============================================================
+```bash
+# Supabase Configuration (Required)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-# ============================================================
-# PowerSync Configuration
-# ============================================================
-NEXT_PUBLIC_POWERSYNC_URL=https://your-powersync-instance.powersync.com
-NEXT_PUBLIC_POWERSYNC_TOKEN=your-powersync-token
-
-# ============================================================
-# Payment Gateways (Test Mode)
-# ============================================================
-NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=pk_test_xxxxxxxxxxxxx
-PAYSTACK_SECRET_KEY=sk_test_xxxxxxxxxxxxx
-
-FLUTTERWAVE_PUBLIC_KEY=FLWPUBK_TEST-xxxxxxxxxxxxx
-FLUTTERWAVE_SECRET_KEY=FLWSECK_TEST-xxxxxxxxxxxxx
-
-# ============================================================
-# SMS/OTP Provider (Optional for local dev)
-# ============================================================
+# SMS Provider - Termii (Required for phone auth)
 TERMII_API_KEY=your-termii-api-key
 TERMII_SENDER_ID=Kemani
 
-# ============================================================
-# Application Settings
-# ============================================================
+# App Configuration
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NODE_ENV=development
+
+# Security
+JWT_SECRET=your-random-secret-key-change-this
+RATE_LIMIT_MAX_REQUESTS=3
+RATE_LIMIT_WINDOW_MS=3600000
+
+# Optional: PowerSync (for advanced offline sync)
+# POWERSYNC_URL=your-powersync-url
 ```
 
----
+**Getting Supabase Credentials**:
+1. Create account at [supabase.com](https://supabase.com)
+2. Create new project
+3. Go to Settings → API
+4. Copy `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
+5. Copy `anon/public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+6. Copy `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (keep secret!)
 
-## Supabase Configuration
+**Getting Termii API Key**:
+1. Sign up at [termii.com](https://termii.com)
+2. Get API key from dashboard
+3. Add to `.env.local`
 
-### 1. Create Supabase Project
+### 5. Run Database Migrations
 
-1. Go to [supabase.com/dashboard](https://supabase.com/dashboard)
-2. Click "New Project"
-3. Fill in:
-   - **Project Name**: `kemani-pos-dev`
-   - **Database Password**: (generate strong password, save it!)
-   - **Region**: Choose nearest region
-4. Click "Create new project" (takes ~2 minutes)
+**Option A: Using Cloud Supabase Project**
 
-### 2. Get API Credentials
-
-Once project is ready:
-
-1. Go to **Settings** → **API**
-2. Copy:
-   - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
-   - **anon/public key** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - **service_role key** → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ Keep secret!)
-
-### 3. Enable Required Extensions
-
-Go to **Database** → **Extensions** and enable:
-
-```sql
--- In SQL Editor
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pg_trgm";
-CREATE EXTENSION IF NOT EXISTS "postgis";
-```
-
-### 4. Configure Authentication
-
-1. Go to **Authentication** → **Providers**
-2. Enable **Phone** provider:
-   - Enable "Phone"
-   - Choose SMS provider: Twilio or custom (we'll use Supabase's default for testing)
-3. Enable **Email** provider (default, should be enabled)
-
-### 5. Configure Storage
-
-1. Go to **Storage** → **Buckets**
-2. Create buckets:
-   - **Name**: `product-images`, **Public**: true, **File size limit**: 5MB
-   - **Name**: `receipts`, **Public**: false, **File size limit**: 10MB
-   - **Name**: `delivery-proofs`, **Public**: false, **File size limit**: 5MB
-
-3. Set bucket policies (SQL Editor):
-
-```sql
--- Product images: Public read, authenticated write
-CREATE POLICY "Public read product images" ON storage.objects
-    FOR SELECT USING (bucket_id = 'product-images');
-
-CREATE POLICY "Authenticated users can upload product images" ON storage.objects
-    FOR INSERT WITH CHECK (bucket_id = 'product-images' AND auth.role() = 'authenticated');
-
--- Receipts: Owner-only access
-CREATE POLICY "Users can view own tenant receipts" ON storage.objects
-    FOR SELECT USING (
-        bucket_id = 'receipts' AND
-        (storage.foldername(name))[1] = (SELECT tenant_id::TEXT FROM users WHERE id = auth.uid())
-    );
-```
-
----
-
-## Database Setup
-
-### 1. Run Database Migrations
-
-Execute the Supabase schema:
-
-1. Open Supabase SQL Editor: [supabase.com/dashboard/project/_/sql](https://supabase.com/dashboard/project/_/sql)
-2. Copy contents of `specs/001-multi-tenant-pos/contracts/supabase-schema.sql`
-3. Paste into SQL Editor
-4. Click **Run**
-
-This creates:
-- All 19 tables (tenants, branches, products, sales, orders, etc.)
-- RLS policies for multi-tenant isolation
-- Indexes for performance
-- Triggers for auto-generated values
-- Seed data (subscription plans)
-
-### 2. Verify Database Setup
-
-Run verification query:
-
-```sql
--- Check tables created
-SELECT table_name FROM information_schema.tables
-WHERE table_schema = 'public'
-ORDER BY table_name;
-
--- Should return: branches, chat_conversations, chat_messages, commissions,
--- customer_addresses, customers, deliveries, ecommerce_connections,
--- inter_branch_transfers, inventory_transactions, order_items, orders,
--- products, receipts, riders, sale_items, sales, staff_attendance,
--- subscriptions, tenants, transfer_items, users, whatsapp_messages
-```
-
-### 3. Create Test Data (Optional)
-
-```sql
--- Create test tenant with admin user
-INSERT INTO tenants (name, slug, email, phone, subscription_id)
-VALUES (
-    'Test Pharmacy',
-    'test-pharmacy',
-    'admin@testpharmacy.com',
-    '+2348012345678',
-    (SELECT id FROM subscriptions WHERE plan_tier = 'basic' LIMIT 1)
-);
-
--- Create test branch
-INSERT INTO branches (tenant_id, name, business_type, address, tax_rate)
-VALUES (
-    (SELECT id FROM tenants WHERE slug = 'test-pharmacy'),
-    'Main Branch',
-    'pharmacy',
-    '123 Lagos Street, Ikeja, Lagos',
-    7.5
-);
-```
-
----
-
-## Next.js Application Setup
-
-### 1. Project Structure
-
-Verify your project structure matches:
-
-```
-kemani/
-├── app/
-│   ├── (auth)/              # Authentication routes
-│   ├── (dashboard)/         # Protected dashboard routes
-│   │   ├── pos/            # POS interface
-│   │   ├── products/       # Product management
-│   │   ├── orders/         # Order management
-│   │   ├── customers/      # Customer management
-│   │   ├── analytics/      # Analytics dashboard
-│   │   └── settings/       # Tenant settings
-│   ├── api/                # API routes
-│   │   ├── auth/           # Auth endpoints
-│   │   ├── sync/           # PowerSync webhooks
-│   │   └── webhooks/       # Payment webhooks
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
-├── components/
-│   ├── ui/                 # Shadcn UI components
-│   ├── pos/                # POS-specific components
-│   └── shared/             # Shared components
-├── lib/
-│   ├── supabase/           # Supabase client & helpers
-│   ├── powersync/          # PowerSync configuration
-│   ├── db/                 # SQLite schema for offline
-│   ├── payments/           # Payment gateway integrations
-│   └── utils/              # Utility functions
-├── hooks/
-│   ├── use-offline.ts      # Offline detection
-│   ├── use-sync.ts         # Sync status
-│   └── use-auth.ts         # Authentication
-├── types/
-│   └── database.types.ts   # TypeScript types from Supabase
-├── public/
-│   ├── manifest.json       # PWA manifest
-│   └── sw.js               # Service worker
-├── .env.local
-├── .env.example
-├── next.config.ts
-├── package.json
-├── tsconfig.json
-└── tailwind.config.ts
-```
-
-### 2. Generate TypeScript Types from Database
+Link your local project to Supabase:
 
 ```bash
-# Install Supabase CLI if not already installed
-npm install -g supabase
-
-# Login to Supabase
-supabase login
-
-# Link to your project
 supabase link --project-ref your-project-ref
-
-# Generate types
-supabase gen types typescript --linked > types/database.types.ts
 ```
 
-### 3. Configure Supabase Client
-
-Create `lib/supabase/client.ts`:
-
-```typescript
-import { createBrowserClient } from '@supabase/ssr'
-import type { Database } from '@/types/database.types'
-
-export const createClient = () =>
-  createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-```
-
-Create `lib/supabase/server.ts`:
-
-```typescript
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import type { Database } from '@/types/database.types'
-
-export const createClient = () => {
-  const cookieStore = cookies()
-
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options })
-        },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: '', ...options })
-        },
-      },
-    }
-  )
-}
-```
-
-### 4. Install shadcn/ui
-
-Initialize shadcn/ui in your project:
+Push migrations to cloud:
 
 ```bash
-npx shadcn@latest init
+supabase db push
 ```
 
-When prompted, select:
-- **TypeScript**: Yes
-- **Style**: New York (or Default - your preference)
-- **Base color**: Slate (or your preference)
-- **CSS variables**: Yes (recommended for theming)
-- **Tailwind config**: Yes
-- **Import alias**: `@/` (matches existing Next.js config)
+**Option B: Using Local Supabase (Docker)**
+
+Start local Supabase:
+
+```bash
+supabase start
+```
 
 This will:
-- Configure `components.json`
-- Set up Tailwind CSS configuration
-- Add CSS variables to `app/globals.css`
-- Create `lib/utils.ts` with `cn()` helper
+- Start PostgreSQL database
+- Start Supabase services (Auth, Storage, Realtime)
+- Apply all migrations in `supabase/migrations/`
+- Output local credentials
 
-### 5. Install Essential shadcn/ui Components
+### 6. Generate TypeScript Types
 
-Install commonly needed components for POS interface:
+After migrations are applied, generate TypeScript types from database:
 
 ```bash
-# Core UI components
-npx shadcn@latest add button
-npx shadcn@latest add input
-npx shadcn@latest add label
-npx shadcn@latest add card
-npx shadcn@latest add table
-npx shadcn@latest add dialog
-npx shadcn@latest add select
-npx shadcn@latest add form
+# For cloud database
+supabase gen types typescript --project-ref your-project-ref > types/database.types.ts
 
-# Data display
-npx shadcn@latest add badge
-npx shadcn@latest add separator
-npx shadcn@latest add tabs
-npx shadcn@latest add toast
-
-# Navigation
-npx shadcn@latest add dropdown-menu
-npx shadcn@latest add navigation-menu
-
-# Feedback
-npx shadcn@latest add alert
-npx shadcn@latest add skeleton
-npx shadcn@latest add progress
+# For local database
+supabase gen types typescript --local > types/database.types.ts
 ```
 
-These components will be added to `components/ui/` directory.
-
-### 6. Start Development Server
+### 7. Start Development Server
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You should see the default Next.js homepage. All shadcn/ui components are now available for use.
-
----
-
-## PWA Configuration
-
-### 1. Install next-pwa
-
-```bash
-npm install next-pwa
-```
-
-### 2. Configure next.config.ts
-
-```typescript
-import withPWA from 'next-pwa'
-
-const config = {
-  // Your existing Next.js config
-}
-
-export default withPWA({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
-})(config)
-```
-
-### 3. Create PWA Manifest
-
-Create `public/manifest.json`:
-
-```json
-{
-  "name": "Kemani POS",
-  "short_name": "Kemani",
-  "description": "Offline-first point of sale for Nigerian retailers",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#4F46E5",
-  "orientation": "portrait",
-  "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ]
-}
-```
-
-### 4. Add Icons
-
-Generate PWA icons using [realfavicongenerator.net](https://realfavicongenerator.net/) and place in `public/` directory.
+**You're ready to develop! 🚀**
 
 ---
 
-## Offline Sync Setup (PowerSync)
+## Project Structure Overview
 
-### 1. Sign Up for PowerSync
-
-1. Go to [powersync.com](https://powersync.com)
-2. Create account (free tier available)
-3. Create new PowerSync instance
-4. Connect to your Supabase database:
-   - Database Host: From Supabase Settings → Database → Connection String
-   - Port: 5432
-   - Database Name: `postgres`
-   - Username: `postgres`
-   - Password: Your Supabase database password
-
-### 2. Configure Sync Rules
-
-In PowerSync dashboard, create sync rules (`sync-rules.yaml`):
-
-```yaml
-bucket_definitions:
-  # Branch-specific data
-  branch_data:
-    parameters:
-      - SELECT branch_id FROM users WHERE id = auth.uid()
-    data:
-      - SELECT * FROM products WHERE branch_id = BUCKET_PARAM(branch_id)
-      - SELECT * FROM sales WHERE branch_id = BUCKET_PARAM(branch_id)
-      - SELECT * FROM orders WHERE branch_id = BUCKET_PARAM(branch_id)
-      - SELECT * FROM deliveries WHERE branch_id = BUCKET_PARAM(branch_id)
-
-  # Tenant-wide data (customers shared across branches)
-  tenant_data:
-    parameters:
-      - SELECT tenant_id FROM users WHERE id = auth.uid()
-    data:
-      - SELECT * FROM customers WHERE tenant_id = BUCKET_PARAM(tenant_id)
+```
+kemani/
+├── app/                          # Next.js 16 App Router
+│   ├── (auth)/                   # Auth route group (login, register)
+│   ├── (dashboard)/              # Dashboard route group (authenticated)
+│   │   ├── pos/                  # POS interface
+│   │   ├── inventory/            # Inventory management
+│   │   ├── orders/               # Order management
+│   │   ├── customers/            # Customer management
+│   │   ├── staff/                # Staff management
+│   │   ├── delivery/             # Delivery management
+│   │   ├── analytics/            # Analytics dashboards
+│   │   ├── settings/             # Tenant settings
+│   │   └── integrations/         # E-commerce, WhatsApp integrations
+│   ├── (marketplace)/            # Public marketplace route group
+│   │   └── [tenantSlug]/         # Dynamic tenant storefronts
+│   ├── (landing)/                # Landing and marketing pages
+│   ├── api/                      # API routes
+│   │   ├── auth/                 # Auth endpoints (OTP)
+│   │   ├── pos/                  # POS operations
+│   │   ├── sync/                 # Offline sync endpoints
+│   │   ├── webhooks/             # Webhook handlers
+│   │   └── chat/                 # AI chat agent endpoints
+│   ├── components/               # Shared components
+│   │   └── ui/                   # UI primitives (buttons, forms, modals)
+│   ├── layout.tsx                # Root layout
+│   ├── page.tsx                  # Landing page
+│   └── globals.css               # Global styles
+│
+├── lib/                          # Shared business logic
+│   ├── auth/                     # Authentication utilities
+│   │   ├── otp.ts                # OTP generation/verification
+│   │   └── session.ts            # Session management
+│   ├── db/                       # Database utilities (if needed)
+│   ├── integrations/             # Third-party integrations
+│   │   ├── woocommerce.ts        # WooCommerce sync (planned)
+│   │   ├── shopify.ts            # Shopify sync (planned)
+│   │   ├── whatsapp.ts           # WhatsApp Business API (planned)
+│   │   └── payments.ts           # Paystack/Flutterwave (planned)
+│   ├── offline/                  # Offline-first utilities
+│   │   ├── storage.ts            # Local storage abstraction (planned)
+│   │   ├── queue.ts              # Sync queue management (planned)
+│   │   └── conflict.ts           # Conflict resolution (planned)
+│   └── utils/                    # General utilities
+│       ├── validation.ts         # Zod schemas
+│       ├── formatting.ts         # Number, date, currency formatting
+│       ├── errors.ts             # Error handling
+│       ├── logger.ts             # Logging utilities
+│       ├── distance.ts           # Distance calculations
+│       └── index.ts              # Utility exports
+│
+├── types/                        # TypeScript type definitions
+│   ├── database.types.ts         # Supabase generated types
+│   ├── modules.d.ts              # Module declarations
+│   └── api.types.ts              # API request/response types (planned)
+│
+├── components/                   # Additional shared components
+│   └── ui/                       # shadcn/ui components
+│
+├── supabase/                     # Supabase configuration
+│   └── migrations/               # Database migrations (25+ files)
+│       ├── 001_extensions_and_enums.sql
+│       ├── 002_core_tables.sql
+│       ├── 003_product_inventory_tables.sql
+│       └── ... (see directory for full list)
+│
+├── specs/                        # Feature specifications
+│   └── 001-multi-tenant-pos/     # This feature
+│       ├── spec.md               # Feature specification
+│       ├── plan.md               # Implementation plan
+│       ├── data-model.md         # Database schema
+│       ├── quickstart.md         # This file
+│       ├── contracts/            # API contracts (to be created)
+│       └── tasks.md              # Implementation tasks
+│
+├── .specify/                     # SpecKit workflow system
+│   ├── templates/                # Spec, plan, tasks templates
+│   ├── memory/                   # Constitution and memory
+│   │   └── constitution.md       # Code standards and principles
+│   └── scripts/                  # Automation scripts
+│
+├── public/                       # Static assets
+├── tests/                        # Test files (when written)
+├── package.json                  # Dependencies and scripts
+├── tsconfig.json                 # TypeScript configuration
+├── next.config.ts                # Next.js configuration
+├── tailwind.config.ts            # Tailwind CSS configuration
+└── .env.local                    # Environment variables (not committed)
 ```
 
-### 3. Install PowerSync SDK
+### Where to Find What
 
-```bash
-npm install @powersync/web @powersync/react
-```
-
-### 4. Configure PowerSync Client
-
-Create `lib/powersync/client.ts`:
-
-```typescript
-import { WASQLitePowerSyncDatabaseOpenFactory } from '@powersync/web'
-import { PowerSyncDatabase } from '@powersync/web'
-import { schema } from './schema'
-
-export const createPowerSyncClient = async () => {
-  const factory = new WASQLitePowerSyncDatabaseOpenFactory({
-    dbFilename: 'kemani.db',
-    schema,
-  })
-
-  const db = new PowerSyncDatabase({
-    database: factory,
-    options: {
-      baseUrl: process.env.NEXT_PUBLIC_POWERSYNC_URL!,
-      token: process.env.NEXT_PUBLIC_POWERSYNC_TOKEN!,
-    },
-  })
-
-  await db.init()
-  await db.connect()
-
-  return db
-}
-```
-
-### 5. Define SQLite Schema
-
-Create `lib/powersync/schema.ts`:
-
-```typescript
-import { column, Schema, Table } from '@powersync/web'
-
-const products = new Table({
-  id: column.text,
-  name: column.text,
-  unit_price: column.real,
-  stock_quantity: column.integer,
-  // ... other columns
-})
-
-const sales = new Table({
-  id: column.text,
-  total_amount: column.real,
-  created_at: column.text,
-  // ... other columns
-})
-
-export const schema = new Schema([products, sales])
-```
+| What You Need | Where to Look |
+|---------------|---------------|
+| **Components** | `app/components/` (shared), `components/ui/` (primitives) |
+| **API Routes** | `app/api/` |
+| **Business Logic** | `lib/` |
+| **Type Definitions** | `types/` |
+| **Migrations** | `supabase/migrations/` |
+| **Specifications** | `specs/001-multi-tenant-pos/` |
+| **Code Standards** | `.specify/memory/constitution.md` |
+| **Utilities** | `lib/utils/` |
 
 ---
 
-## Payment Gateway Integration
+## Common Development Tasks
 
-### 1. Paystack Setup
-
-Get test API keys:
-
-1. Login to [paystack.com/dashboard](https://paystack.com/dashboard)
-2. Go to **Settings** → **API Keys & Webhooks**
-3. Copy **Test Public Key** and **Test Secret Key**
-
-Create `lib/payments/paystack.ts`:
-
-```typescript
-import axios from 'axios'
-
-const PAYSTACK_BASE_URL = 'https://api.paystack.co'
-
-export class PaystackClient {
-  private secretKey: string
-
-  constructor(secretKey: string) {
-    this.secretKey = secretKey
-  }
-
-  async initializeTransaction(params: {
-    email: string
-    amount: number // in kobo (₦100 = 10000 kobo)
-    reference: string
-  }) {
-    const response = await axios.post(
-      `${PAYSTACK_BASE_URL}/transaction/initialize`,
-      params,
-      {
-        headers: {
-          Authorization: `Bearer ${this.secretKey}`,
-        },
-      }
-    )
-    return response.data
-  }
-
-  async verifyTransaction(reference: string) {
-    const response = await axios.get(
-      `${PAYSTACK_BASE_URL}/transaction/verify/${reference}`,
-      {
-        headers: {
-          Authorization: `Bearer ${this.secretKey}`,
-        },
-      }
-    )
-    return response.data
-  }
-}
-
-export const paystack = new PaystackClient(
-  process.env.PAYSTACK_SECRET_KEY!
-)
-```
-
-### 2. Test Payment Flow
+### Running the App
 
 ```bash
-# Create test sale
-curl -X POST http://localhost:3000/api/sales \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "branch_id": "...",
-    "items": [...],
-    "payment_method": "card",
-    "total_amount": 5000
-  }'
+# Development server (http://localhost:3000)
+npm run dev
 
-# Use Paystack test cards:
-# Success: 4084084084084081
-# Decline: 4084084084084081 (with CVV 999)
+# Production build
+npm run build
+
+# Start production server (after build)
+npm start
 ```
 
----
-
-## Testing
-
-### 1. Run Type Checking
+### Code Quality
 
 ```bash
+# Type checking
 npx tsc --noEmit
-```
 
-Should return no errors.
-
-### 2. Run Linter
-
-```bash
+# Linting
 npm run lint
-```
 
-Fix any errors:
-
-```bash
+# Linting with auto-fix
 npm run lint -- --fix
 ```
 
-### 3. Run Build
+### Testing
+
+Tests are optional but recommended for critical paths. When tests are written:
 
 ```bash
-npm run build
+# Run all tests (if test script exists)
+npm test
+
+# Run E2E tests (if configured)
+npm run test:e2e
+
+# Run specific test file
+npm test path/to/test.test.ts
 ```
 
-Should complete successfully.
+### Database Operations
 
-### 4. Test Offline Functionality
+```bash
+# Create new migration
+supabase migration new migration_name
 
-1. Open app in Chrome DevTools
-2. Go to **Application** → **Service Workers**
-3. Check "Offline" mode
-4. Navigate to POS screen
-5. Create sale (should work offline)
-6. Check **Application** → **IndexedDB** → `kemani.db` (should see local data)
-7. Uncheck "Offline"
-8. Data should sync to Supabase
+# Push migrations to cloud database
+supabase db push
 
-### 5. Test PWA Installation
+# Pull remote schema changes
+supabase db pull
 
-1. Open app in Chrome (desktop or Android)
-2. Click browser menu → **Install Kemani POS**
-3. App should install and open in standalone window
-4. Verify offline functionality works in installed app
+# Reset local database (destructive!)
+supabase db reset
+
+# Generate TypeScript types from database schema
+supabase gen types typescript --local > types/database.types.ts
+
+# For cloud database
+supabase gen types typescript --project-ref your-project-ref > types/database.types.ts
+```
+
+### Local Supabase Development
+
+```bash
+# Start Supabase services (requires Docker)
+supabase start
+
+# Stop Supabase services
+supabase stop
+
+# View Supabase status
+supabase status
+
+# Access local Studio UI
+# Opens at: http://localhost:54323
+```
+
+---
+
+## Key Workflows
+
+### 1. Creating a New API Endpoint
+
+**Example**: Create a new endpoint to fetch products.
+
+**File**: `app/api/products/route.ts`
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database.types';
+
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = createClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .limit(50);
+
+    if (error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ products: data });
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+**Test**:
+```bash
+curl http://localhost:3000/api/products
+```
+
+### 2. Adding a New Database Table
+
+**Step 1**: Create migration
+
+```bash
+supabase migration new add_promotions_table
+```
+
+**Step 2**: Edit migration file in `supabase/migrations/`
+
+```sql
+CREATE TABLE promotions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  discount_percent DECIMAL(5,2),
+  start_date TIMESTAMPTZ,
+  end_date TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS Policy
+ALTER TABLE promotions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "promotions_tenant_isolation" ON promotions
+  FOR ALL USING (tenant_id = (auth.jwt() ->> 'tenant_id')::UUID);
+
+-- Index
+CREATE INDEX idx_promotions_tenant_id ON promotions(tenant_id);
+
+-- Updated at trigger
+CREATE TRIGGER set_promotions_updated_at BEFORE UPDATE ON promotions
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+```
+
+**Step 3**: Apply migration
+
+```bash
+supabase db push
+```
+
+**Step 4**: Regenerate types
+
+```bash
+supabase gen types typescript --local > types/database.types.ts
+```
+
+### 3. Building a New Component
+
+**Example**: Create a product card component.
+
+**File**: `app/components/product-card.tsx`
+
+```typescript
+'use client';
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
+
+interface ProductCardProps {
+  id: string;
+  name: string;
+  price: number;
+  imageUrl?: string;
+  onAddToCart: (id: string) => void;
+}
+
+export default function ProductCard({
+  id,
+  name,
+  price,
+  imageUrl,
+  onAddToCart,
+}: ProductCardProps) {
+  const [isAdding, setIsAdding] = useState(false);
+
+  const handleClick = async () => {
+    setIsAdding(true);
+    await onAddToCart(id);
+    setIsAdding(false);
+  };
+
+  return (
+    <Card className="w-full">
+      {imageUrl && (
+        <img
+          src={imageUrl}
+          alt={name}
+          className="w-full h-48 object-cover rounded-t-lg"
+        />
+      )}
+      <CardContent className="pt-4">
+        <h3 className="font-semibold text-lg">{name}</h3>
+        <p className="text-xl font-bold text-green-600 mt-2">
+          ₦{price.toLocaleString()}
+        </p>
+      </CardContent>
+      <CardFooter>
+        <Button
+          onClick={handleClick}
+          disabled={isAdding}
+          className="w-full"
+        >
+          {isAdding ? 'Adding...' : 'Add to Cart'}
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
+```
+
+**Usage**:
+
+```typescript
+import ProductCard from '@/app/components/product-card';
+
+<ProductCard
+  id="123"
+  name="Paracetamol"
+  price={500}
+  onAddToCart={handleAddToCart}
+/>
+```
+
+### 4. Writing Tests (When Needed)
+
+Tests are optional but recommended for critical paths. Example integration test:
+
+**File**: `tests/integration/auth.test.ts`
+
+```typescript
+import { describe, it, expect } from 'vitest';
+// or import from your chosen testing framework
+
+describe('Authentication', () => {
+  it('should send OTP to valid phone number', async () => {
+    const response = await fetch('http://localhost:3000/api/auth/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phoneNumber: '+2348012345678' }),
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.success).toBe(true);
+  });
+});
+```
+
+### 5. Working Offline (Testing Offline Features)
+
+The platform is offline-first. To test offline functionality:
+
+**In Chrome DevTools**:
+1. Open DevTools (F12)
+2. Network tab → "Offline" checkbox
+3. Or "No throttling" → "Offline"
+
+**Testing Offline POS**:
+1. Start the app online
+2. Go to POS interface
+3. Enable offline mode in DevTools
+4. Process a sale
+5. Check IndexedDB for pending sync queue
+6. Re-enable network
+7. Verify automatic sync to Supabase
+
+**Debugging Offline Storage**:
+
+- **Chrome DevTools** → Application → IndexedDB → `kemani_offline`
+- Inspect tables: `products`, `sales`, `sync_queue`
+
+---
+
+## Environment Variables Reference
+
+### Required Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | `https://abc123.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public key | `eyJhbG...` (long string) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-only) | `eyJhbG...` (long string) |
+| `TERMII_API_KEY` | Termii SMS API key for OTP | `TL...` |
+| `TERMII_SENDER_ID` | SMS sender name | `Kemani` |
+
+### Optional Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_APP_URL` | Base URL of your app | `http://localhost:3000` |
+| `NODE_ENV` | Environment | `development` |
+| `JWT_SECRET` | JWT signing secret | Generate random string |
+| `RATE_LIMIT_MAX_REQUESTS` | Max API requests per window | `3` |
+| `RATE_LIMIT_WINDOW_MS` | Rate limit window (ms) | `3600000` (1 hour) |
+| `POWERSYNC_URL` | PowerSync URL (advanced offline) | - |
+| `PAYSTACK_SECRET_KEY` | Paystack payment gateway | - |
+| `FLUTTERWAVE_SECRET_KEY` | Flutterwave payment gateway | - |
+| `OPENAI_API_KEY` | OpenAI for AI chat agent | - |
+| `WHATSAPP_BUSINESS_API_KEY` | WhatsApp Business API | - |
+
+### Development vs Production
+
+**Development** (`.env.local`):
+- Use local Supabase or cloud dev project
+- Use Termii test mode
+- Enable verbose logging
+
+**Production** (Vercel/hosting platform):
+- Use production Supabase project
+- Use production API keys
+- Disable verbose logging
+- Enable rate limiting
 
 ---
 
 ## Troubleshooting
 
-### Issue: "Supabase connection failed"
+### Common Errors and Solutions
 
-**Solution**:
-1. Verify `.env.local` has correct `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-2. Check Supabase project is not paused (free tier pauses after 7 days inactivity)
-3. Test connection: `curl https://your-project.supabase.co/rest/v1/` (should return 401)
+#### 1. "Module not found" errors
 
-### Issue: "PowerSync not syncing"
-
-**Solution**:
-1. Check PowerSync instance is running: [powersync.com/dashboard](https://powersync.com/dashboard)
-2. Verify sync rules are deployed
-3. Check browser console for sync errors
-4. Test PowerSync connection: `await db.connect()` should not throw
-
-### Issue: "TypeScript errors in database types"
+**Error**: `Cannot find module '@/lib/...'`
 
 **Solution**:
 ```bash
-# Regenerate types from latest schema
-supabase gen types typescript --linked > types/database.types.ts
-
-# Restart TypeScript server in VS Code
-# Press Ctrl+Shift+P → TypeScript: Restart TS Server
+# Clear Next.js cache
+rm -rf .next
+npm run dev
 ```
 
-### Issue: "Module not found: Can't resolve 'wa-sqlite'"
+#### 2. Supabase connection issues
 
-**Solution**:
+**Error**: `Failed to connect to Supabase`
+
+**Solutions**:
+- Check `.env.local` has correct `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Verify keys don't have trailing spaces
+- Check Supabase project is active in dashboard
+- For local Supabase: Ensure Docker is running and `supabase start` succeeded
+
+#### 3. Type generation problems
+
+**Error**: `supabase gen types` fails
+
+**Solutions**:
 ```bash
-# Clear node_modules and reinstall
-rm -rf node_modules package-lock.json
-npm install
+# For local development
+supabase db reset
+supabase gen types typescript --local > types/database.types.ts
+
+# For cloud database
+supabase gen types typescript --project-ref your-project-ref --schema public > types/database.types.ts
 ```
 
-### Issue: "CORS error when calling Paystack API"
+#### 4. Build errors
+
+**Error**: `Type error: ...` or `Build failed`
+
+**Solutions**:
+```bash
+# Check TypeScript errors
+npx tsc --noEmit
+
+# Fix linting errors
+npm run lint -- --fix
+
+# Clear cache and rebuild
+rm -rf .next
+npm run build
+```
+
+#### 5. Database migration conflicts
+
+**Error**: `Migration already applied` or `Migration conflicts`
+
+**Solutions**:
+```bash
+# For local development (destructive!)
+supabase db reset
+
+# For production - manually resolve conflicts
+# Check migration history:
+supabase migration list
+
+# Create new migration to fix conflicts
+supabase migration new fix_migration_conflict
+```
+
+#### 6. Port already in use
+
+**Error**: `Port 3000 is already in use`
+
+**Solutions**:
+```bash
+# Windows: Kill process on port 3000
+netstat -ano | findstr :3000
+taskkill /PID <PID> /F
+
+# Or use different port
+PORT=3001 npm run dev
+```
+
+#### 7. Environment variables not loading
+
+**Error**: `process.env.NEXT_PUBLIC_... is undefined`
+
+**Solutions**:
+- Ensure `.env.local` exists in project root
+- Restart dev server after changing `.env.local`
+- Check variable names start with `NEXT_PUBLIC_` for client-side access
+- For server-only variables, access in API routes or Server Components only
+
+#### 8. Migration order issues
+
+**Error**: Migrations fail due to dependency conflicts
 
 **Solution**:
-- Never call Paystack from client-side (exposes secret key)
-- Use Next.js API routes: `/api/payments/paystack-*`
-- Example: `POST /api/payments/paystack-initialize` → calls Paystack server-side
+The project has 25+ migration files. They should be applied in order:
+1. `001_extensions_and_enums.sql` (extensions, enums)
+2. `002_core_tables.sql` (tenants, users, branches)
+3. `003_product_inventory_tables.sql` (products, categories)
+4. `004_customer_sales_tables.sql` (customers, sales)
+5. And so on...
 
-### Issue: "RLS policy prevents data access"
+If migrations fail:
+```bash
+# Reset and reapply (local only!)
+supabase db reset
 
-**Solution**:
-1. Verify user is authenticated: `const { data: { user } } = await supabase.auth.getUser()`
-2. Check user has `tenant_id`: `SELECT tenant_id FROM users WHERE id = auth.uid()`
-3. Test RLS policy: `SET LOCAL request.jwt.claim.sub = 'user-uuid'; SELECT * FROM products;`
+# For cloud - manually check which migrations applied
+SELECT * FROM supabase_migrations.schema_migrations;
+```
+
+---
+
+## Resources
+
+### Project Documentation
+
+- **[spec.md](./spec.md)**: Feature specification with user stories and requirements
+- **[plan.md](./plan.md)**: Technical implementation plan and architecture
+- **[data-model.md](./data-model.md)**: Complete database schema and relationships
+- **[tasks.md](./tasks.md)**: Implementation tasks and progress tracking
+- **[constitution.md](../../.specify/memory/constitution.md)**: Code standards and principles
+
+### External Documentation
+
+#### Next.js 16
+- [Next.js Docs](https://nextjs.org/docs)
+- [App Router Guide](https://nextjs.org/docs/app)
+- [Server Components](https://nextjs.org/docs/app/building-your-application/rendering/server-components)
+- [Data Fetching](https://nextjs.org/docs/app/building-your-application/data-fetching)
+
+#### React 19
+- [React Docs](https://react.dev/)
+- [Hooks Reference](https://react.dev/reference/react)
+
+#### Supabase
+- [Supabase Docs](https://supabase.com/docs)
+- [Database Guide](https://supabase.com/docs/guides/database)
+- [Auth Guide](https://supabase.com/docs/guides/auth)
+- [Realtime Guide](https://supabase.com/docs/guides/realtime)
+- [CLI Reference](https://supabase.com/docs/reference/cli)
+
+#### TypeScript
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [TypeScript with React](https://react-typescript-cheatsheet.netlify.app/)
+
+#### Tailwind CSS 4
+- [Tailwind Docs](https://tailwindcss.com/docs)
+- [Utility Classes](https://tailwindcss.com/docs/utility-first)
+
+#### Testing (Optional)
+- [Vitest Docs](https://vitest.dev/)
+- [Playwright Docs](https://playwright.dev/)
+- [Testing Library](https://testing-library.com/)
+
+#### Offline-First
+- [PowerSync Docs](https://docs.powersync.com/)
+- [IndexedDB API](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
+
+### Nigerian-Specific Integrations
+
+- **SMS**: [Termii Docs](https://developers.termii.com/)
+- **Payments**:
+  - [Paystack Docs](https://paystack.com/docs)
+  - [Flutterwave Docs](https://developer.flutterwave.com/docs)
+- **WhatsApp**: [WhatsApp Business API](https://developers.facebook.com/docs/whatsapp)
+
+---
+
+## Getting Help
+
+### Internal Resources
+
+1. **Specifications**: Check `specs/001-multi-tenant-pos/` for detailed requirements
+2. **Constitution**: Review `.specify/memory/constitution.md` for code standards
+3. **Data Model**: Reference `specs/001-multi-tenant-pos/data-model.md` for database schema
+
+### Team Communication
+
+- Ask questions in team chat/Slack
+- Create GitHub issues for bugs or feature requests
+- Use pull requests for code review discussions
+
+### External Resources
+
+- **Next.js Discord**: [nextjs.org/discord](https://nextjs.org/discord)
+- **Supabase Discord**: [discord.supabase.com](https://discord.supabase.com)
+- **Stack Overflow**: Tag questions with `nextjs`, `supabase`, `typescript`
 
 ---
 
 ## Next Steps
 
-Once development environment is set up:
+Now that you're set up, here's what to work on:
 
-1. **Read the Constitution**: Review `.specify/memory/constitution.md` for coding standards
-2. **Review Data Model**: Study `specs/001-multi-tenant-pos/data-model.md`
-3. **Check API Contracts**: Reference `specs/001-multi-tenant-pos/contracts/api-schema.yaml`
-4. **Start Implementation**: Follow `specs/001-multi-tenant-pos/tasks.md` (when generated)
+### For New Developers
+
+1. **Explore the codebase**:
+   - Read `specs/001-multi-tenant-pos/spec.md` to understand the feature
+   - Browse `app/` directory to see route structure
+   - Check `lib/` for business logic
+   - Review existing migrations in `supabase/migrations/`
+
+2. **Run the app**:
+   - Start dev server: `npm run dev`
+   - Open [http://localhost:3000](http://localhost:3000)
+   - Explore landing page, auth flows, dashboard
+
+3. **Make a small change**:
+   - Edit `app/page.tsx` to change landing page text
+   - See hot reload in action
+   - Create a pull request
+
+### For Active Development
+
+1. **Check tasks**: Review `specs/001-multi-tenant-pos/tasks.md` for current tasks
+2. **Pick a task**: Start with tasks marked as "pending" in your phase
+3. **Create feature branch**: Follow `[number]-[short-name]` pattern
+4. **Develop**: Follow constitution guidelines in `.specify/memory/constitution.md`
+5. **Test**: Verify changes work offline and online
+6. **Submit PR**: Include spec references and clear description
+
+### Learning Path
+
+**Week 1**: Understand architecture, set up environment, explore codebase
+**Week 2**: Build simple components, understand offline sync
+**Week 3**: Implement features, write tests (optional)
+**Week 4**: Code reviews, refine, contribute to documentation
 
 ---
 
-## Useful Commands
+## Appendix
+
+### Naming Conventions
+
+- **Files**: `kebab-case.ts`, `PascalCase.tsx` (components)
+- **Components**: `PascalCase` (e.g., `ProductCard`)
+- **Functions**: `camelCase` (e.g., `handleAddToCart`)
+- **Types/Interfaces**: `PascalCase` (e.g., `Product`, `CartItem`)
+- **Constants**: `SCREAMING_SNAKE_CASE` (e.g., `MAX_ITEMS`)
+- **Database tables**: `snake_case` (e.g., `product_categories`)
+
+### Keyboard Shortcuts (VSCode)
+
+| Action | Shortcut |
+|--------|----------|
+| Quick Open File | `Ctrl+P` / `Cmd+P` |
+| Go to Definition | `F12` |
+| Find References | `Shift+F12` |
+| Rename Symbol | `F2` |
+| Format Document | `Shift+Alt+F` |
+| Command Palette | `Ctrl+Shift+P` / `Cmd+Shift+P` |
+| Toggle Terminal | `` Ctrl+` `` |
+
+### Git Workflow Tips
 
 ```bash
-# Development
-npm run dev                  # Start dev server
-npm run build                # Production build
-npm run lint                 # Run ESLint
-npx tsc --noEmit            # Type check
+# Create feature branch
+git checkout -b 3-inventory-import
 
-# Database
-supabase db push            # Push migrations to Supabase
-supabase db reset           # Reset database (⚠️ destroys data)
-supabase gen types typescript --linked > types/database.types.ts
+# Stage changes
+git add .
 
-# Supabase Local Development (Optional)
-supabase start              # Start local Supabase (Docker required)
-supabase stop               # Stop local Supabase
+# Commit with clear message
+git commit -m "feat: Add CSV inventory import feature"
+
+# Push to remote
+git push origin 3-inventory-import
+
+# Create pull request on GitHub/GitLab
 ```
 
+### Performance Tips
+
+- Use Server Components by default (faster initial load)
+- Use `'use client'` only when needed (interactivity, hooks)
+- Lazy load heavy components with `dynamic()`
+- Optimize images with `next/image`
+- Enable Turbopack for faster builds: `next dev --turbo`
+
+### Database Schema Reference
+
+The project has comprehensive database schema with 25+ tables:
+
+**Core Tables**:
+- `tenants` - Multi-tenant businesses
+- `users` - User accounts with roles
+- `branches` - Physical locations
+- `staff_invites` - Email invitations for staff
+
+**Product Management**:
+- `products` - Product catalog
+- `product_categories` - Product categorization
+- `product_variants` - Product variations
+- `inventory_transactions` - Inventory audit log
+
+**Sales & Transactions**:
+- `sales` - Completed sales
+- `sale_items` - Line items
+- `customers` - Customer profiles
+- `customer_addresses` - Delivery addresses
+
+**Orders & Delivery**:
+- `orders` - Customer orders
+- `order_items` - Order line items
+- `deliveries` - Delivery tasks
+- `riders` - Delivery personnel
+
+**Integrations**:
+- `ecommerce_connections` - Platform integrations
+- `sync_logs` - Sync operation logs
+- `chat_conversations` - AI chat sessions
+- `chat_messages` - Chat message history
+- `whatsapp_messages` - WhatsApp communication
+
+**Monetization**:
+- `subscriptions` - Subscription plans
+- `commissions` - Platform commission tracking
+- `invoices` - Monthly billing
+
+**Utilities**:
+- `staff_attendance` - Time tracking
+- `receipts` - Transaction receipts
+- `sync_queue` - Offline sync queue
+- `audit_logs` - System audit trail
+
+See `specs/001-multi-tenant-pos/data-model.md` for complete schema documentation.
+
 ---
 
-## Additional Resources
+**Happy coding! 🚀**
 
-- **Next.js Documentation**: [nextjs.org/docs](https://nextjs.org/docs)
-- **Supabase Documentation**: [supabase.com/docs](https://supabase.com/docs)
-- **PowerSync Documentation**: [docs.powersync.com](https://docs.powersync.com)
-- **Paystack API Docs**: [paystack.com/docs/api](https://paystack.com/docs/api)
-- **TypeScript Handbook**: [typescriptlang.org/docs](https://www.typescriptlang.org/docs/)
+If you get stuck, check the [Troubleshooting](#troubleshooting) section or reach out to the team.
 
 ---
 
-**Need Help?**
-
-- Check project README.md
-- Review specification: `specs/001-multi-tenant-pos/spec.md`
-- Contact development team
-
----
-
-**Status**: ✅ Quickstart Guide Complete | **Last Updated**: 2026-01-17
+**Status**: ✅ Quickstart Guide Complete | **Version**: 2.0.0 | **Last Updated**: 2026-01-24

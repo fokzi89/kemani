@@ -1,11 +1,10 @@
-import { createServerClient } from '@supabase/ssr';
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { createServerClient } from "@supabase/ssr";
+import { type NextRequest, NextResponse } from "next/server";
 
-export async function middleware(req: NextRequest) {
+export async function middleware(request: NextRequest) {
     let response = NextResponse.next({
         request: {
-            headers: req.headers,
+            headers: request.headers,
         },
     });
 
@@ -14,89 +13,49 @@ export async function middleware(req: NextRequest) {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             cookies: {
-                get(name: string) {
-                    return req.cookies.get(name)?.value;
+                getAll() {
+                    return request.cookies.getAll();
                 },
-                set(name: string, value: string, options: any) {
-                    req.cookies.set({
-                        name,
-                        value,
-                        ...options,
-                    });
+                setAll(cookiesToSet) {
+                    cookiesToSet.forEach(({ name, value, options }) =>
+                        request.cookies.set(name, value)
+                    );
                     response = NextResponse.next({
                         request: {
-                            headers: req.headers,
+                            headers: request.headers,
                         },
                     });
-                    response.cookies.set({
-                        name,
-                        value,
-                        ...options,
-                    });
-                },
-                remove(name: string, options: any) {
-                    req.cookies.set({
-                        name,
-                        value: '',
-                        ...options,
-                    });
-                    response = NextResponse.next({
-                        request: {
-                            headers: req.headers,
-                        },
-                    });
-                    response.cookies.set({
-                        name,
-                        value: '',
-                        ...options,
-                    });
+                    cookiesToSet.forEach(({ name, value, options }) =>
+                        response.cookies.set(name, value, options)
+                    );
                 },
             },
         }
     );
 
-    // Refresh session if expired
     const {
-        data: { session },
-    } = await supabase.auth.getSession();
+        data: { user },
+    } = await supabase.auth.getUser();
 
-    const { pathname } = req.nextUrl;
-
-    // Public routes that don't require authentication
-    const publicRoutes = ['/', '/login', '/register', '/verify-otp', '/pricing'];
-    const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
-
-    // API routes are handled separately
-    if (pathname.startsWith('/api/')) {
-        return response;
+    // Protected routes
+    if (request.nextUrl.pathname.startsWith("/") &&
+        !request.nextUrl.pathname.startsWith("/login") &&
+        !request.nextUrl.pathname.startsWith("/register") &&
+        !request.nextUrl.pathname.startsWith("/auth") &&
+        !request.nextUrl.pathname.startsWith("/api/webhooks") && // Webhooks are public
+        !user
+    ) {
+        // For now, allowing public access to root / to avoid redirect loop if not implemented
+        // But typically /dashboard should be protected
+        if (request.nextUrl.pathname.startsWith("/dashboard") || request.nextUrl.pathname.startsWith("/pos")) {
+            return NextResponse.redirect(new URL("/login", request.url));
+        }
     }
 
-    // Redirect to login if accessing protected route without session
-    if (!session && !isPublicRoute) {
-        const redirectUrl = req.nextUrl.clone();
-        redirectUrl.pathname = '/login';
-        redirectUrl.searchParams.set('redirect', pathname);
-        return NextResponse.redirect(redirectUrl);
+    // Auth routes (redirect to dashboard if logged in)
+    if ((request.nextUrl.pathname.startsWith("/login") || request.nextUrl.pathname.startsWith("/register")) && user) {
+        return NextResponse.redirect(new URL("/dashboard", request.url));
     }
-
-    // Redirect to dashboard if accessing auth pages with active session
-    if (session && (pathname.startsWith('/login') || pathname.startsWith('/register'))) {
-        const redirectUrl = req.nextUrl.clone();
-        redirectUrl.pathname = '/dashboard';
-        return NextResponse.redirect(redirectUrl);
-    }
-
-    // Add security headers
-    response.headers.set('X-Frame-Options', 'DENY');
-    response.headers.set('X-Content-Type-Options', 'nosniff');
-    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-    response.headers.set('X-XSS-Protection', '1; mode=block');
-
-    // Content Security Policy
-    response.headers.set(
-        'Content-Security-Policy',
-        "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://api.ng.termii.com;"
-    );
 
     return response;
 }
@@ -108,8 +67,9 @@ export const config = {
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
-         * - public folder
+         * - images - .svg, .png, .jpg, .jpeg, .gif, .webp
+         * Feel free to modify this pattern to include more paths.
          */
-        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
     ],
 };

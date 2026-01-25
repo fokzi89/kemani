@@ -42,54 +42,54 @@
 
 ### Database & Supabase Setup
 
-- [ ] T008 Setup Supabase project and configure connection in lib/supabase/client.ts
-- [ ] T009 Create Supabase database schema using contracts/supabase-schema.sql (19 tables, RLS policies, triggers)
-- [ ] T010 Generate TypeScript types from Supabase schema using supabase gen types
-- [ ] T011 [P] Create RLS helper functions: current_tenant_id(), current_user_role(), current_user_branch_id() in Supabase
-- [ ] T012 [P] Enable Row Level Security on all tenant-scoped tables in Supabase
-- [ ] T013 Create database migration system using Supabase migrations
+- [x] T008 Setup Supabase project and configure connection in lib/supabase/client.ts
+- [x] T009 Create Supabase database schema using contracts/supabase-schema.sql (19 tables, RLS policies, triggers)
+- [ ] T010 Generate TypeScript types from Supabase schema using supabase gen types (User needs to run this manually: npx supabase login)
+- [x] T011 [P] Create RLS helper functions: current_tenant_id(), current_user_role(), current_user_branch_id() in Supabase
+- [x] T012 [P] Enable Row Level Security on all tenant-scoped tables in Supabase
+- [x] T013 Create database migration system using Supabase migrations
 
 ### Offline Sync Infrastructure
 
-- [ ] T014 Setup PowerSync account and configure sync rules for tenant/branch filtering
-- [ ] T015 Integrate wa-sqlite with IndexedDB-batch VFS in lib/offline/sqlite-adapter.ts
-- [ ] T016 Configure PowerSync SDK in lib/offline/sync-engine.ts with Supabase connection
-- [ ] T017 Implement sync status tracking in lib/offline/sync-engine.ts (online/offline/syncing states)
-- [ ] T018 Create sync metadata schema (_sync_version, _sync_modified_at, _sync_client_id) in local SQLite
-- [ ] T019 Implement conflict resolution using PowerSync CRDT for inventory operations in lib/offline/conflict-resolver.ts
-- [ ] T020 Create offline transaction queue manager in lib/offline/queue-manager.ts
+- [x] T014 Setup PowerSync account and configure sync rules for tenant/branch filtering
+- [x] T015 Integrate wa-sqlite with IndexedDB-batch VFS in lib/offline/sqlite-adapter.ts
+- [x] T016 Configure PowerSync SDK in lib/offline/sync-engine.ts with Supabase connection
+- [x] T017 Implement sync status tracking in lib/offline/sync-engine.ts (online/offline/syncing states)
+- [x] T018 Create sync metadata schema (_sync_version, _sync_modified_at, _sync_client_id) in local SQLite
+- [x] T019 Implement conflict resolution using PowerSync CRDT for inventory operations in lib/offline/conflict-resolver.ts
+- [x] T020 Create offline transaction queue manager in lib/offline/queue-manager.ts
 
 ### Authentication Framework
 
-- [ ] T021 Integrate Termii SDK for SMS OTP delivery in lib/auth/otp.ts
-- [ ] T022 [P] Configure Supabase Auth for email OTP in lib/supabase/client.ts
-- [ ] T023 Create OTP generation and validation logic in lib/auth/otp.ts (6-digit code, 5-minute expiration)
-- [ ] T024 Implement session management in lib/auth/session.ts with tenant/branch context
-- [ ] T025 Create authentication middleware for Next.js API routes in app/api/middleware.ts
+- [x] T021 Integrate Termii SDK for SMS OTP delivery in lib/auth/otp.ts
+- [x] T022 [P] Configure Supabase Auth for email OTP in lib/supabase/client.ts
+- [x] T023 Create OTP generation and validation logic in lib/auth/otp.ts (6-digit code, 5-minute expiration)
+- [x] T024 Implement session management in lib/auth/session.ts with tenant/branch context
+- [x] T025 Create authentication middleware for Next.js API routes in app/api/middleware.ts
 
 ### UI Foundation
 
-- [ ] T026 Initialize shadcn/ui with `npx shadcn@latest init` and configure components.json
-- [ ] T027 [P] Add core shadcn/ui components: Button, Input, Label, Form, Card, Table, Dialog, Sheet, Toast, Badge
-- [ ] T028 [P] Create global styles in app/globals.css with Tailwind CSS 4 variables for theming
-- [ ] T029 [P] Create reusable layout components in app/components/layout/ (Header, Sidebar, Footer)
-- [ ] T030 Create offline status indicator component in app/components/offline/SyncStatus.tsx
+- [x] T026 Initialize shadcn/ui with `npx shadcn@latest init` and configure components.json
+- [x] T027 [P] Add core shadcn/ui components: Button, Input, Label, Form, Card, Table, Dialog, Sheet, Toast, Badge
+- [x] T028 [P] Create global styles in app/globals.css with Tailwind CSS 4 variables for theming
+- [x] T029 [P] Create reusable layout components in app/components/layout/ (Header, Sidebar, Footer)
+- [x] T030 Create offline status indicator component in app/components/offline/SyncStatus.tsx
 
 ### Payment Integration
 
-- [ ] T031 Integrate Paystack SDK in lib/integrations/paystack.ts with API keys from environment
-- [ ] T032 [P] Integrate Flutterwave SDK in lib/integrations/flutterwave.ts as fallback
-- [ ] T033 Create payment abstraction layer in lib/integrations/payment-provider.ts (primary/fallback pattern)
-- [ ] T034 Implement webhook handler for Paystack at app/api/webhooks/paystack/route.ts with signature verification
-- [ ] T035 [P] Implement webhook handler for Flutterwave at app/api/webhooks/flutterwave/route.ts
+- [x] T031 Integrate Paystack SDK in lib/integrations/paystack.ts with API keys from environment
+- [x] T032 [P] Integrate Flutterwave SDK in lib/integrations/flutterwave.ts as fallback
+- [x] T033 Create payment abstraction layer in lib/integrations/payment-provider.ts (primary/fallback pattern)
+- [x] T034 Implement webhook handler for Paystack at app/api/webhooks/paystack/route.ts with signature verification
+- [x] T035 [P] Implement webhook handler for Flutterwave at app/api/webhooks/flutterwave/route.ts
 
 ### Utilities & Helpers
 
-- [ ] T036 [P] Create Zod validation schemas in lib/utils/validation.ts for all entities
-- [ ] T037 [P] Create currency formatting utilities in lib/utils/formatting.ts (Naira, dates, phone numbers)
-- [ ] T038 [P] Create distance calculation utility in lib/utils/distance.ts for delivery threshold (25km)
-- [ ] T039 Create error handling utilities in lib/utils/errors.ts
-- [ ] T040 Setup logging infrastructure in lib/utils/logger.ts
+- [x] T036 [P] Create Zod validation schemas in lib/utils/validation.ts for all entities
+- [x] T037 [P] Create currency formatting utilities in lib/utils/formatting.ts (Naira, dates, phone numbers)
+- [x] T038 [P] Create distance calculation utility in lib/utils/distance.ts for delivery threshold (25km)
+- [x] T039 Create error handling utilities in lib/utils/errors.ts
+- [x] T040 Setup logging infrastructure in lib/utils/logger.ts
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -103,46 +103,46 @@
 
 ### Models for US1
 
-- [ ] T041 [P] [US1] Create Product model with sync metadata in lib/types/pos.ts
-- [ ] T042 [P] [US1] Create Sale model with SaleItem relationship in lib/types/pos.ts
-- [ ] T043 [P] [US1] Create InventoryTransaction model in lib/types/pos.ts
-- [ ] T044 [P] [US1] Create Receipt model in lib/types/pos.ts
+- [x] T041 [P] [US1] Create Product model with sync metadata in lib/types/pos.ts
+- [x] T042 [P] [US1] Create Sale model with SaleItem relationship in lib/types/pos.ts
+- [x] T043 [P] [US1] Create InventoryTransaction model in lib/types/pos.ts
+- [x] T044 [P] [US1] Create Receipt model in lib/types/pos.ts
 
 ### Services for US1
 
-- [ ] T045 [US1] Implement product management service in lib/pos/product.ts (create, update, search, bulk CSV import)
-- [ ] T046 [US1] Implement inventory service in lib/pos/inventory.ts (stock updates, expiry alerts, low stock alerts)
-- [ ] T047 [US1] Implement sales transaction service in lib/pos/transaction.ts (create sale, calculate totals, process payment)
-- [ ] T048 [US1] Implement tax calculation service in lib/pos/tax-calculator.ts (configurable tax rates per tenant)
-- [ ] T049 [US1] Implement receipt generation service in lib/pos/receipt.ts (digital and printable formats with tenant branding)
+- [x] T045 [US1] Implement product management service in lib/pos/product.ts (create, update, search, bulk CSV import)
+- [x] T046 [US1] Implement inventory service in lib/pos/inventory.ts (stock updates, expiry alerts, low stock alerts)
+- [x] T047 [US1] Implement sales transaction service in lib/pos/transaction.ts (create sale, calculate totals, process payment)
+- [x] T048 [US1] Implement tax calculation service in lib/pos/tax-calculator.ts (configurable tax rates per tenant)
+- [x] T049 [US1] Implement receipt generation service in lib/pos/receipt.ts (digital and printable formats with tenant branding)
 
 ### API Endpoints for US1
 
-- [ ] T050 [P] [US1] Create product endpoints in app/api/products/route.ts (GET, POST, PUT, DELETE)
-- [ ] T051 [P] [US1] Create product bulk import endpoint in app/api/products/import/route.ts (CSV upload)
-- [ ] T052 [P] [US1] Create sales endpoints in app/api/sales/route.ts (GET, POST with offline sync support)
-- [ ] T053 [P] [US1] Create inventory endpoints in app/api/inventory/route.ts (GET stock levels, POST adjustments)
-- [ ] T054 [P] [US1] Create receipt endpoint in app/api/receipts/[saleId]/route.ts (GET receipt by sale ID)
+- [x] T050 [P] [US1] Create product endpoints in app/api/products/route.ts (GET, POST, PUT, DELETE)
+- [x] T051 [P] [US1] Create product bulk import endpoint in app/api/products/import/route.ts (CSV upload)
+- [x] T052 [P] [US1] Create sales endpoints in app/api/sales/route.ts (GET, POST with offline sync support)
+- [x] T053 [P] [US1] Create inventory endpoints in app/api/inventory/route.ts (GET stock levels, POST adjustments)
+- [x] T054 [P] [US1] Create receipt endpoint in app/api/receipts/[saleId]/route.ts (GET receipt by sale ID)
 
 ### UI Components for US1
 
-- [ ] T055 [US1] Create POS cart component in app/components/pos/Cart.tsx with product selection and quantity
-- [ ] T056 [US1] Create product selector component in app/components/pos/ProductSelector.tsx with search and barcode scan
-- [ ] T057 [US1] Create payment method selector in app/components/pos/PaymentMethod.tsx (cash, card, transfer, mobile money)
-- [ ] T058 [US1] Create discount/tax calculator UI in app/components/pos/DiscountTax.tsx
-- [ ] T059 [US1] Create receipt preview component in app/components/pos/ReceiptPreview.tsx
-- [ ] T060 [US1] Create inventory management UI in app/(pos)/inventory/page.tsx with product CRUD
-- [ ] T061 [US1] Create CSV import UI in app/(pos)/inventory/import/page.tsx with drag-drop upload
-- [ ] T062 [US1] Create expiry alerts dashboard in app/(pos)/inventory/expiry/page.tsx (products expiring within 30 days)
-- [ ] T063 [US1] Create POS sales screen in app/(pos)/sales/page.tsx integrating cart, product selector, payment
-- [ ] T064 [US1] Implement offline sync queue UI in app/components/offline/SyncQueue.tsx showing pending transactions
+- [x] T055 [US1] Create POS cart component in app/components/pos/Cart.tsx with product selection and quantity
+- [x] T056 [US1] Create product selector component in app/components/pos/ProductSelector.tsx with search and barcode scan
+- [x] T057 [US1] Create payment method selector in app/components/pos/PaymentMethod.tsx (cash, card, transfer, mobile money)
+- [x] T058 [US1] Create discount/tax calculator UI in app/components/pos/DiscountTax.tsx
+- [x] T059 [US1] Create receipt preview component in app/components/pos/ReceiptPreview.tsx
+- [x] T060 [US1] Create inventory management UI in app/(pos)/inventory/page.tsx with product CRUD
+- [x] T061 [US1] Create CSV import UI in app/(pos)/inventory/import/page.tsx with drag-drop upload
+- [x] T062 [US1] Create expiry alerts dashboard in app/(pos)/inventory/expiry/page.tsx (products expiring within 30 days)
+- [x] T063 [US1] Create POS sales screen in app/(pos)/sales/page.tsx integrating cart, product selector, payment
+- [x] T064 [US1] Implement offline sync queue UI in app/components/offline/SyncQueue.tsx showing pending transactions
 
 ### Integration for US1
 
-- [ ] T065 [US1] Connect POS UI to SQLite for offline product catalog access
-- [ ] T066 [US1] Implement automatic sync trigger when internet connection restored
-- [ ] T067 [US1] Add void/refund functionality to sales transactions in lib/pos/transaction.ts
-- [ ] T068 [US1] Test offline sale creation, inventory deduction, and cloud sync with PowerSync
+- [x] T065 [US1] Connect POS UI to SQLite for offline product catalog access
+- [x] T066 [US1] Implement automatic sync trigger when internet connection restored
+- [x] T067 [US1] Add void/refund functionality to sales transactions in lib/pos/transaction.ts
+- [x] T068 [US1] Test offline sale creation, inventory deduction, and cloud sync with PowerSync
 
 **Checkpoint**: User Story 1 should be fully functional and testable independently (complete MVP!)
 

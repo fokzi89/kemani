@@ -88,11 +88,13 @@ A business owner manages staff accounts, assigns roles and permissions, and trac
 
 **Acceptance Scenarios**:
 
-1. **Given** a tenant administrator creates staff accounts, **When** they assign roles (cashier, manager, driver), **Then** each staff member receives login credentials and role-appropriate permissions
-2. **Given** a staff member starts their shift, **When** they clock in using the POS system, **Then** the system records the timestamp and marks them as on duty
-3. **Given** a staff member ends their shift, **When** they clock out, **Then** the system records the timestamp and calculates total hours worked
-4. **Given** a manager reviews attendance, **When** they access staff reports, **Then** they see clock in/out history, total hours worked, and attendance patterns for payroll processing
-5. **Given** a cashier processes a sale, **When** the transaction is recorded, **Then** the sale is attributed to the logged-in staff member for performance tracking
+1. **Given** a tenant administrator creates staff invites, **When** they provide email address and assign role (Branch Manager, Cashier/Staff, Delivery Rider), **Then** the system sends an email invitation with a secure invite link valid for 7 days
+2. **Given** a staff member receives an invite email, **When** they click the invite link within 7 days, **Then** they can complete registration with phone + OTP verification and access the system with assigned role permissions
+3. **Given** a tenant administrator views pending invites, **When** they access staff management, **Then** they can see all pending invites with status, resend invite emails, and revoke invites that are no longer needed
+4. **Given** a staff member starts their shift, **When** they clock in using the POS system, **Then** the system records the timestamp and marks them as on duty
+5. **Given** a staff member ends their shift, **When** they clock out, **Then** the system records the timestamp and calculates total hours worked
+6. **Given** a manager reviews attendance, **When** they access staff reports, **Then** they see clock in/out history, total hours worked, and attendance patterns for payroll processing
+7. **Given** a cashier processes a sale, **When** the transaction is recorded, **Then** the sale is attributed to the logged-in staff member for performance tracking
 
 ---
 
@@ -261,81 +263,86 @@ The platform monetizes through subscription plans (tiered based on features and 
 
 #### Staff Management Requirements
 
-- **FR-028**: System MUST allow tenant administrators to create, edit, and deactivate staff accounts with assigned roles and permissions
-- **FR-029**: System MUST provide clock in/clock out functionality for staff members to record shift start and end times
-- **FR-030**: System MUST track staff attendance including clock in/out timestamps, total hours worked, and attendance history
-- **FR-031**: System MUST attribute all sales transactions to the logged-in staff member for performance tracking and accountability
-- **FR-032**: System MUST generate staff reports showing individual sales performance, hours worked, and attendance patterns for payroll and management
+- **FR-028**: System MUST allow tenant administrators to create staff invites by providing email address and assigning one of the following roles: Branch Manager, Cashier/Staff, or Delivery Rider
+- **FR-028a**: System MUST send staff invite emails with secure, unique invite links that expire after 7 days from creation
+- **FR-028b**: System MUST allow tenant administrators to view all pending staff invites with status (pending, accepted, expired, revoked), resend invite emails, and revoke pending invites
+- **FR-028c**: System MUST allow invited staff to accept invites by clicking the email link within 7 days and completing registration with phone + OTP verification
+- **FR-029**: System MUST allow tenant administrators to create, edit, and deactivate staff accounts with assigned roles and permissions
+- **FR-030**: System MUST provide clock in/clock out functionality for staff members to record shift start and end times
+- **FR-031**: System MUST track staff attendance including clock in/out timestamps, total hours worked, and attendance history
+- **FR-032**: System MUST attribute all sales transactions to the logged-in staff member for performance tracking and accountability
+- **FR-033**: System MUST generate staff reports showing individual sales performance, hours worked, and attendance patterns for payroll and management
 
 #### Delivery Management Requirements
 
-- **FR-033**: System MUST support dual delivery options: local delivery (bike/bicycle riders) and platform inter-city delivery service
-- **FR-034**: System MUST suggest delivery option based on customer delivery address distance (local vs. inter-city threshold configurable per tenant)
-- **FR-035**: System MUST allow merchants to create delivery orders with customer address, contact information, items, delivery instructions, and selected delivery type
-- **FR-036**: System MUST generate unique tracking numbers for each delivery order accessible via public tracking link
-- **FR-037**: System MUST assign local delivery orders to available bike/bicycle riders and notify them with delivery details via SMS or in-app notification
-- **FR-038**: System MUST hand off inter-city delivery orders to platform delivery service with tracking integration for status updates
-- **FR-039**: System MUST support delivery status workflow: pending, assigned, picked up, in transit, delivered, failed, cancelled
-- **FR-040**: System MUST allow riders/drivers to update delivery status and capture proof of delivery (photo, signature, recipient name)
-- **FR-041**: System MUST update customer tracking page within 60 seconds when delivery status changes
-- **FR-042**: System MUST provide merchants with delivery dashboard showing active deliveries, rider performance, delivery success rate, and average delivery time
+- **FR-034**: System MUST support dual delivery options: local delivery (bike/bicycle riders) and platform inter-city delivery service
+- **FR-035**: System MUST suggest delivery option based on customer delivery address distance (local vs. inter-city threshold configurable per tenant)
+- **FR-036**: System MUST allow merchants to create delivery orders with customer address, contact information, items, delivery instructions, and selected delivery type
+- **FR-037**: System MUST generate unique tracking numbers for each delivery order accessible via public tracking link
+- **FR-038**: System MUST assign local delivery orders to available bike/bicycle riders and notify them with delivery details via SMS or in-app notification
+- **FR-039**: System MUST hand off inter-city delivery orders to platform delivery service with tracking integration for status updates
+- **FR-040**: System MUST support delivery status workflow: pending, assigned, picked up, in transit, delivered, failed, cancelled
+- **FR-041**: System MUST allow riders/drivers to update delivery status and capture proof of delivery (photo, signature, recipient name)
+- **FR-042**: System MUST update customer tracking page within 60 seconds when delivery status changes
+- **FR-043**: System MUST provide merchants with delivery dashboard showing active deliveries, rider performance, delivery success rate, and average delivery time
 
 #### E-Commerce Integration Requirements
 
-- **FR-043**: System MUST authenticate with third-party e-commerce platforms (WooCommerce, Shopify, etc.) using API credentials provided by merchant
-- **FR-044**: System MUST sync products from connected e-commerce platforms to POS including name, description, price, SKU, categories, images, and variants
-- **FR-045**: System MUST sync inventory levels bidirectionally between POS and connected platforms ensuring both systems reflect current stock
-- **FR-046**: System MUST import orders from connected platforms into the POS order management system with customer details, items, and payment status
-- **FR-047**: System MUST handle sync conflicts using configurable rules (POS priority, platform priority, last-write-wins, or manual resolution queue)
-- **FR-048**: System MUST provide sync status dashboard showing last sync time, pending sync items, sync errors, and sync health per connected platform
-- **FR-049**: System MUST support multiple simultaneous platform connections per tenant (e.g., WooCommerce + Shopify)
+- **FR-044**: System MUST authenticate with third-party e-commerce platforms (WooCommerce, Shopify, etc.) using API credentials provided by merchant
+- **FR-045**: System MUST sync products from connected e-commerce platforms to POS including name, description, price, SKU, categories, images, and variants
+- **FR-046**: System MUST sync inventory levels bidirectionally between POS and connected platforms ensuring both systems reflect current stock
+- **FR-047**: System MUST import orders from connected platforms into the POS order management system with customer details, items, and payment status
+- **FR-048**: System MUST handle sync conflicts using configurable rules (POS priority, platform priority, last-write-wins, or manual resolution queue)
+- **FR-049**: System MUST provide sync status dashboard showing last sync time, pending sync items, sync errors, and sync health per connected platform
+- **FR-050**: System MUST support multiple simultaneous platform connections per tenant (e.g., WooCommerce + Shopify)
 
 #### AI Chat Agent Requirements
 
-- **FR-050**: System MUST provide AI-powered chat interface accessible from merchant storefronts for customer interactions
-- **FR-051**: System MUST enable AI agent to query real-time inventory when customers ask about product availability
-- **FR-052**: System MUST allow AI agent to create customer orders based on chat conversation including product selection, quantity, delivery details
-- **FR-053**: System MUST enable AI agent to modify existing orders (add items, remove items, change quantities) based on customer chat requests
-- **FR-054**: System MUST allow AI agent to cancel orders when customers request cancellation via chat with proper inventory restoration
-- **FR-055**: System MUST log all AI chat conversations for merchant review, training, and customer service escalation
-- **FR-056**: System MUST provide fallback to human merchant when AI agent cannot handle complex requests or customer specifically requests human assistance
+- **FR-051**: System MUST provide AI-powered chat interface accessible from merchant storefronts for customer interactions
+- **FR-052**: System MUST enable AI agent to query real-time inventory when customers ask about product availability
+- **FR-053**: System MUST allow AI agent to create customer orders based on chat conversation including product selection, quantity, delivery details
+- **FR-054**: System MUST enable AI agent to modify existing orders (add items, remove items, change quantities) based on customer chat requests
+- **FR-055**: System MUST allow AI agent to cancel orders when customers request cancellation via chat with proper inventory restoration
+- **FR-056**: System MUST log all AI chat conversations for merchant review, training, and customer service escalation
+- **FR-057**: System MUST provide fallback to human merchant when AI agent cannot handle complex requests or customer specifically requests human assistance
 
 #### Analytics and Reporting Requirements
 
-- **FR-057**: System MUST provide analytics dashboard with key metrics: total revenue, transaction count, average order value, top products, and growth trends
-- **FR-058**: System MUST generate product sales history reports showing sales volume, revenue, and trends over selectable time periods (daily, weekly, monthly, custom)
-- **FR-059**: System MUST visualize product sales data with graphs (line charts for trends, bar charts for comparisons, pie charts for category distribution)
-- **FR-060**: System MUST enable category-based product comparison showing side-by-side sales performance for products in the same category
-- **FR-061**: System MUST analyze sales patterns including peak sales hours, day-of-week trends, seasonal patterns, and customer purchase behavior
-- **FR-062**: System MUST provide inventory turnover analysis showing fast-moving vs. slow-moving products to inform purchasing decisions
-- **FR-063**: System MUST generate staff performance reports showing individual sales, average transaction value, and customer ratings per staff member
-- **FR-064**: System MUST support data export (CSV, PDF) for all reports and analytics for external analysis or record-keeping
+- **FR-058**: System MUST provide analytics dashboard with key metrics: total revenue, transaction count, average order value, top products, and growth trends
+- **FR-059**: System MUST generate product sales history reports showing sales volume, revenue, and trends over selectable time periods (daily, weekly, monthly, custom)
+- **FR-060**: System MUST visualize product sales data with graphs (line charts for trends, bar charts for comparisons, pie charts for category distribution)
+- **FR-061**: System MUST enable category-based product comparison showing side-by-side sales performance for products in the same category
+- **FR-062**: System MUST analyze sales patterns including peak sales hours, day-of-week trends, seasonal patterns, and customer purchase behavior
+- **FR-063**: System MUST provide inventory turnover analysis showing fast-moving vs. slow-moving products to inform purchasing decisions
+- **FR-064**: System MUST generate staff performance reports showing individual sales, average transaction value, and customer ratings per staff member
+- **FR-065**: System MUST support data export (CSV, PDF) for all reports and analytics for external analysis or record-keeping
 
 #### WhatsApp Communication Requirements
 
-- **FR-065**: System MUST authenticate with WhatsApp Business API using tenant-provided credentials (phone number, API key)
-- **FR-066**: System MUST send automated order confirmation messages to customers via WhatsApp when orders are placed (if customer provides WhatsApp number)
-- **FR-067**: System MUST send delivery status update notifications to customers via WhatsApp when delivery status changes
-- **FR-068**: System MUST provide unified inbox within POS system to receive and respond to customer WhatsApp messages
-- **FR-069**: System MUST support WhatsApp message templates with dynamic variables (customer name, order number, delivery time, tracking link)
-- **FR-070**: System MUST allow merchants to send promotional messages to customer segments based on criteria (loyalty tier, purchase history, location)
-- **FR-071**: System MUST log all WhatsApp message history for compliance and customer service reference
-- **FR-072**: System MUST implement fallback notification mechanism (SMS or email) when WhatsApp message delivery fails
+- **FR-066**: System MUST authenticate with WhatsApp Business API using tenant-provided credentials (phone number, API key)
+- **FR-067**: System MUST send automated order confirmation messages to customers via WhatsApp when orders are placed (if customer provides WhatsApp number)
+- **FR-068**: System MUST send delivery status update notifications to customers via WhatsApp when delivery status changes
+- **FR-069**: System MUST provide unified inbox within POS system to receive and respond to customer WhatsApp messages
+- **FR-070**: System MUST support WhatsApp message templates with dynamic variables (customer name, order number, delivery time, tracking link)
+- **FR-071**: System MUST allow merchants to send promotional messages to customer segments based on criteria (loyalty tier, purchase history, location)
+- **FR-072**: System MUST log all WhatsApp message history for compliance and customer service reference
+- **FR-073**: System MUST implement fallback notification mechanism (SMS or email) when WhatsApp message delivery fails
 
 #### Payments and Monetization Requirements
 
-- **FR-073**: System MUST support tiered subscription plans with different feature access, user limits, product limits, and transaction quotas
-- **FR-074**: System MUST enforce subscription limits preventing tenants from exceeding their plan's constraints (staff users, products, monthly transactions)
-- **FR-075**: System MUST calculate platform commission on marketplace sales based on tenant's subscription plan (e.g., 2.5% for basic, 1.5% for premium)
-- **FR-076**: System MUST track commission earnings per tenant and provide commission reports for platform revenue management
-- **FR-077**: System MUST generate monthly invoices for tenants including subscription fees and commission charges
-- **FR-078**: System MUST allow tenants to view billing history, current plan details, usage metrics, and upgrade/downgrade subscription options
-- **FR-079**: System MUST integrate with payment gateways for subscription and marketplace transaction processing (Paystack, Flutterwave for Nigeria market)
+- **FR-074**: System MUST support tiered subscription plans with different feature access, user limits, product limits, and transaction quotas
+- **FR-075**: System MUST enforce subscription limits preventing tenants from exceeding their plan's constraints (staff users, products, monthly transactions)
+- **FR-076**: System MUST calculate platform commission on marketplace sales based on tenant's subscription plan (e.g., 2.5% for basic, 1.5% for premium)
+- **FR-077**: System MUST track commission earnings per tenant and provide commission reports for platform revenue management
+- **FR-078**: System MUST generate monthly invoices for tenants including subscription fees and commission charges
+- **FR-079**: System MUST allow tenants to view billing history, current plan details, usage metrics, and upgrade/downgrade subscription options
+- **FR-080**: System MUST integrate with payment gateways for subscription and marketplace transaction processing (Paystack, Flutterwave for Nigeria market)
 
 ### Key Entities
 
 - **Tenant**: Independent business (pharmacy, supermarket, grocery, mini-mart) using the platform with isolated data, branding, subscription plan, and usage limits
-- **User**: Person using the system belonging to a tenant with role (Platform Admin, Tenant Admin, Manager, Cashier, Driver), phone number, and permissions
+- **User**: Person using the system belonging to a tenant with role (Platform Admin, Tenant Admin, Branch Manager, Cashier/Staff, Delivery Rider), phone number, and permissions
+- **StaffInvite**: Invitation sent to prospective staff member with email address, assigned role, unique invite token, expiry timestamp (7 days), status (pending, accepted, expired, revoked), created by administrator, and acceptance timestamp
 - **Product**: Sellable item with name, description, SKU, barcode, price, category, variants, inventory quantity, expiry date, and sync mappings to e-commerce platforms
 - **InventoryTransaction**: Record of inventory change with product reference, quantity delta, transaction type (sale, restock, adjustment, expiry), timestamp, and staff reference
 - **Sale**: Completed transaction with items sold, quantities, prices, taxes, discounts, payment method, total amount, cashier, customer reference, timestamp, and sync status
