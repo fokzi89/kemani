@@ -1,77 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { verifyOTP } from '@/lib/auth/otp';
+import { UserService } from '@/lib/auth/user';
+import { createClient } from '@/lib/supabase/client';
 
 export async function POST(request: NextRequest) {
-    try {
-        const { identifier, otp, type } = await request.json();
+  try {
+    const { identifier, otp, channel } = await request.json();
 
-        if (!identifier || !otp || !type) {
-            return NextResponse.json(
-                { error: 'Missing required fields' },
-                { status: 400 }
-            );
-        }
-
-        const supabase = await createClient();
-
-        // Verify OTP with Supabase
-        const { data, error } = await supabase.auth.verifyOtp({
-            [type]: identifier,
-            token: otp,
-            type: type === 'phone' ? 'sms' : 'email',
-        });
-
-        if (error) {
-            console.error('OTP verification error:', error);
-            return NextResponse.json(
-                { error: 'Invalid or expired OTP' },
-                { status: 400 }
-            );
-        }
-
-        if (!data.user) {
-            return NextResponse.json(
-                { error: 'Verification failed' },
-                { status: 400 }
-            );
-        }
-
-        // Check if user exists in our users table
-        const { data: existingUser } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', data.user.id)
-            .single();
-
-        // If user doesn't exist, they need to complete registration
-        if (!existingUser) {
-            return NextResponse.json({
-                success: true,
-                needsRegistration: true,
-                userId: data.user.id,
-                identifier,
-                type,
-            });
-        }
-
-        // User exists, return success
-        return NextResponse.json({
-            success: true,
-            needsRegistration: false,
-            user: {
-                id: existingUser.id,
-                email: existingUser.email,
-                phone: existingUser.phone,
-                fullName: existingUser.full_name,
-                role: existingUser.role,
-                tenantId: existingUser.tenant_id,
-            },
-        });
-    } catch (error) {
-        console.error('Verify OTP error:', error);
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        );
+    if (!identifier || !otp || !channel) {
+      return NextResponse.json(
+        { error: 'Identifier, OTP, and channel are required' },
+        { status: 400 }
+      );
     }
+
+    // Verify OTP
+    const isValid = await verifyOTP(identifier, otp, channel);
+
+    if (!isValid) {
+      return NextResponse.json(
+        { error: 'Invalid or expired OTP' },
+        { status: 401 }
+      );
+    }
+
+    // OTP is valid - sign in the user
+    const supabase = createClient();
+
+    if (channel === 'email') {
+      const { data, error } = await supabase.auth.signInWithOtp({
+        email: identifier,
+        options: {
+          shouldCreateUser: false, // Only allow existing users to login
+        },
+      });
+
+      if (error) throw error;
+
+      return NextResponse.json({
+        success: true,
+        message: 'OTP verified successfully',
+        session: data.session,
+      });
+    } else if (channel === 'sms') {
+      const { data, error } = await supabase.auth.signInWithOtp({
+        phone: identifier,
+        options: {
+          shouldCreateUser: false,
+        },
+      });
+
+      if (error) throw error;
+
+      return NextResponse.json({
+        success: true,
+        message: 'OTP verified successfully',
+        session: data.session,
+      });
+    }
+
+    return NextResponse.json(
+      { error: 'Invalid channel' },
+      { status: 400 }
+    );
+  } catch (error: any) {
+    console.error('Verify OTP error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to verify OTP' },
+      { status: 500 }
+    );
+  }
 }

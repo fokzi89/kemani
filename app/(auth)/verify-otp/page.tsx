@@ -14,7 +14,7 @@ export default function VerifyOTPPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const identifier = searchParams.get('identifier');
-    const type = searchParams.get('type') as 'phone' | 'email';
+    const channel = searchParams.get('channel') as 'sms' | 'email';
 
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -60,7 +60,7 @@ export default function VerifyOTPPage() {
                 body: JSON.stringify({
                     identifier,
                     otp: otpCode,
-                    type,
+                    channel,
                 }),
             });
 
@@ -101,7 +101,7 @@ export default function VerifyOTPPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     identifier,
-                    type,
+                    channel,
                 }),
             });
 
@@ -117,7 +117,7 @@ export default function VerifyOTPPage() {
         }
     };
 
-    if (!identifier || !type) {
+    if (!identifier || !channel) {
         return (
             <div className="min-h-screen bg-gradient-to-b from-emerald-950 via-green-900 to-gray-900 flex items-center justify-center px-4">
                 <div className="text-center">
@@ -141,7 +141,7 @@ export default function VerifyOTPPage() {
                     </Link>
                     <p className="mt-2 text-emerald-100/70">Enter verification code</p>
                     <p className="mt-1 text-sm text-emerald-300/50">
-                        Sent to {type === 'phone' ? 'your phone' : identifier}
+                        Sent to {channel === 'sms' ? 'your phone' : identifier}
                     </p>
                 </div>
 

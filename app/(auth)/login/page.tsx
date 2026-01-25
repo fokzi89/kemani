@@ -23,7 +23,7 @@ export default function LoginPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     identifier,
-                    type: 'email',
+                    channel: 'email',
                 }),
             });
 
@@ -36,7 +36,7 @@ export default function LoginPage() {
             }
 
             // Navigate to OTP verification page
-            router.push(`/verify-otp?identifier=${encodeURIComponent(data.identifier)}&type=email`);
+            router.push(`/verify-otp?identifier=${encodeURIComponent(identifier)}&channel=email`);
         } catch (err) {
             setError('Something went wrong. Please try again.');
             setLoading(false);
