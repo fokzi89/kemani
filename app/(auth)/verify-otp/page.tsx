@@ -76,12 +76,10 @@ export default function VerifyOTPPage() {
 
             if (data.needsRegistration) {
                 // New user, redirect to registration
-                // We rely on session now, so we don't need to pass userId strictly, 
-                // but passing identifier helps pre-fill or confirm context if needed (though API uses session)
                 router.push(`/register?identifier=${encodeURIComponent(identifier!)}`);
             } else {
-                // Existing user, redirect to dashboard
-                router.push('/dashboard');
+                // Existing user, redirect to POS
+                router.push('/pos/pos');
             }
         } catch (err) {
             setError('Something went wrong. Please try again.');

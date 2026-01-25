@@ -27,41 +27,65 @@ export async function POST(request: NextRequest) {
     // OTP is valid - sign in the user
     const supabase = createClient();
 
+    let authData;
+
     if (channel === 'email') {
       const { data, error } = await supabase.auth.signInWithOtp({
         email: identifier,
         options: {
-          shouldCreateUser: false, // Only allow existing users to login
+          shouldCreateUser: true, // Allow new users
         },
       });
 
       if (error) throw error;
-
-      return NextResponse.json({
-        success: true,
-        message: 'OTP verified successfully',
-        session: data.session,
-      });
+      authData = data;
     } else if (channel === 'sms') {
       const { data, error } = await supabase.auth.signInWithOtp({
         phone: identifier,
         options: {
-          shouldCreateUser: false,
+          shouldCreateUser: true,
         },
       });
 
       if (error) throw error;
+      authData = data;
+    } else {
+      return NextResponse.json(
+        { error: 'Invalid channel' },
+        { status: 400 }
+      );
+    }
 
+    // After successful auth, check if user exists in our users table
+    if (authData.session) {
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id, tenant_id')
+        .eq('id', authData.session.user.id)
+        .maybeSingle();
+
+      if (!existingUser) {
+        // New user - needs to complete registration
+        return NextResponse.json({
+          success: true,
+          needsRegistration: true,
+          message: 'OTP verified. Please complete registration.',
+          session: authData.session,
+        });
+      }
+
+      // Existing user - login successful
       return NextResponse.json({
         success: true,
-        message: 'OTP verified successfully',
-        session: data.session,
+        needsRegistration: false,
+        message: 'Login successful',
+        session: authData.session,
       });
     }
 
     return NextResponse.json(
-      { error: 'Invalid channel' },
-      { status: 400 }
+      { error: 'Failed to create session' },
+      { status: 500 }
     );
   } catch (error: any) {
     console.error('Verify OTP error:', error);
