@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyOTP } from '@/lib/auth/otp';
-import { UserService } from '@/lib/auth/user';
 import { createClient } from '@/lib/supabase/client';
 
 export async function POST(request: NextRequest) {
@@ -14,45 +12,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify OTP
-    const isValid = await verifyOTP(identifier, otp, channel);
-
-    if (!isValid) {
-      return NextResponse.json(
-        { error: 'Invalid or expired OTP' },
-        { status: 401 }
-      );
-    }
-
-    // OTP is valid - sign in the user
+    // For email OTP, Supabase Auth handles verification
+    // When user enters OTP, we verify and create session
     const supabase = createClient();
 
-    let authData;
+    // Verify the OTP token with Supabase
+    const { data: authData, error: verifyError } = await supabase.auth.verifyOtp({
+      email: identifier,
+      token: otp,
+      type: 'email',
+    });
 
-    if (channel === 'email') {
-      const { data, error } = await supabase.auth.signInWithOtp({
-        email: identifier,
-        options: {
-          shouldCreateUser: true, // Allow new users
-        },
-      });
-
-      if (error) throw error;
-      authData = data;
-    } else if (channel === 'sms') {
-      const { data, error } = await supabase.auth.signInWithOtp({
-        phone: identifier,
-        options: {
-          shouldCreateUser: true,
-        },
-      });
-
-      if (error) throw error;
-      authData = data;
-    } else {
+    if (verifyError) {
       return NextResponse.json(
-        { error: 'Invalid channel' },
-        { status: 400 }
+        { error: verifyError.message || 'Invalid or expired OTP' },
+        { status: 401 }
       );
     }
 
