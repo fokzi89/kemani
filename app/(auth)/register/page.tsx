@@ -11,6 +11,8 @@ export default function RegisterPage() {
         businessName: '',
         fullName: '',
         email: '',
+        passcode: '',
+        confirmPasscode: '',
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -46,6 +48,15 @@ export default function RegisterPage() {
         setLoading(true);
 
         try {
+            // Validate passcode
+            if (formData.passcode.length !== 6 || !/^\d{6}$/.test(formData.passcode)) {
+                throw new Error('Passcode must be exactly 6 digits');
+            }
+
+            if (formData.passcode !== formData.confirmPasscode) {
+                throw new Error('Passcodes do not match');
+            }
+
             // Get current user session
             const { data: { user } } = await supabase.auth.getUser();
 
@@ -60,6 +71,7 @@ export default function RegisterPage() {
                     businessName: formData.businessName,
                     fullName: formData.fullName,
                     email: formData.email || user.email,
+                    passcode: formData.passcode,
                 }),
             });
 
@@ -136,7 +148,7 @@ export default function RegisterPage() {
                         </div>
 
                         {/* Email (Read-only if pre-filled) */}
-                        <div className="mb-6">
+                        <div className="mb-4">
                             <label htmlFor="email" className="block text-sm font-medium text-emerald-100 mb-2">
                                 <Mail className="inline h-4 w-4 mr-1" />
                                 Email Address
@@ -151,6 +163,60 @@ export default function RegisterPage() {
                                 required
                                 readOnly={!!identifier}
                             />
+                        </div>
+
+                        {/* Security Section */}
+                        <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                            <h3 className="text-sm font-semibold text-emerald-100 mb-3">
+                                🔒 Security Setup (Required for POS access)
+                            </h3>
+                            <p className="text-xs text-emerald-100/60 mb-4">
+                                Set a 6-digit passcode. After 10 minutes of inactivity, you'll need to enter this passcode or use fingerprint to unlock.
+                            </p>
+
+                            {/* 6-Digit Passcode */}
+                            <div className="mb-3">
+                                <label htmlFor="passcode" className="block text-sm font-medium text-emerald-100 mb-2">
+                                    6-Digit Passcode
+                                </label>
+                                <input
+                                    id="passcode"
+                                    type="password"
+                                    inputMode="numeric"
+                                    pattern="\d{6}"
+                                    maxLength={6}
+                                    value={formData.passcode}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/\D/g, '');
+                                        setFormData({ ...formData, passcode: value });
+                                    }}
+                                    placeholder="000000"
+                                    className="w-full px-4 py-3 bg-white/10 border border-emerald-500/30 rounded-lg text-white placeholder-emerald-300/40 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-center text-2xl tracking-widest"
+                                    required
+                                />
+                            </div>
+
+                            {/* Confirm Passcode */}
+                            <div>
+                                <label htmlFor="confirmPasscode" className="block text-sm font-medium text-emerald-100 mb-2">
+                                    Confirm Passcode
+                                </label>
+                                <input
+                                    id="confirmPasscode"
+                                    type="password"
+                                    inputMode="numeric"
+                                    pattern="\d{6}"
+                                    maxLength={6}
+                                    value={formData.confirmPasscode}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/\D/g, '');
+                                        setFormData({ ...formData, confirmPasscode: value });
+                                    }}
+                                    placeholder="000000"
+                                    className="w-full px-4 py-3 bg-white/10 border border-emerald-500/30 rounded-lg text-white placeholder-emerald-300/40 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-center text-2xl tracking-widest"
+                                    required
+                                />
+                            </div>
                         </div>
 
                         {/* Error Message */}

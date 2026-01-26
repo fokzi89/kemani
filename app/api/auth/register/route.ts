@@ -3,15 +3,30 @@ import { createClient } from '@/lib/supabase/client';
 
 export async function POST(request: NextRequest) {
   try {
-    const { businessName, fullName, email } = await request.json();
+    const { businessName, fullName, email, passcode } = await request.json();
 
     // Validate inputs
-    if (!businessName || !fullName || !email) {
+    if (!businessName || !fullName || !email || !passcode) {
       return NextResponse.json(
-        { error: 'Business name, full name, and email are required' },
+        { error: 'Business name, full name, email, and passcode are required' },
         { status: 400 }
       );
     }
+
+    // Validate passcode format
+    if (!/^\d{6}$/.test(passcode)) {
+      return NextResponse.json(
+        { error: 'Passcode must be exactly 6 digits' },
+        { status: 400 }
+      );
+    }
+
+    // Hash the passcode using Web Crypto API
+    const encoder = new TextEncoder();
+    const data = encoder.encode(passcode);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashedPasscode = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
     const supabase = createClient();
 
@@ -56,7 +71,7 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to create business account');
     }
 
-    // Create user record
+    // Create user record with passcode hash
     const { error: userError } = await supabase
       .from('users')
       .insert({
@@ -66,6 +81,15 @@ export async function POST(request: NextRequest) {
         role: 'tenant_admin',
         tenant_id: tenant.id,
       });
+
+    if (!userError) {
+      // Store passcode hash in user metadata (secure)
+      await supabase.auth.updateUser({
+        data: {
+          passcode_hash: hashedPasscode,
+        },
+      });
+    }
 
     if (userError) {
       console.error('User creation error:', userError);
