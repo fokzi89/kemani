@@ -1,72 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDashboardSummary } from '@/lib/analytics';
 import { createClient } from '@/lib/supabase/server';
+import { AnalyticsService } from '@/lib/pos/analytics';
 
-/**
- * GET /api/analytics/dashboard
- * Get dashboard summary metrics
- *
- * Query params:
- * - start_date: YYYY-MM-DD
- * - end_date: YYYY-MM-DD
- * - branch_id: optional UUID
- */
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient();
-
-    // Get authenticated user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user's tenant_id
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('tenant_id')
-      .eq('id', user.id)
-      .single();
+    const { searchParams } = new URL(req.url);
+    const tenantId = user.user_metadata.tenant_id;
+    const branchId = user.user_metadata.branch_id; // Optional: filter by branch if needed
+    const period = (searchParams.get('period') as 'day' | 'week' | 'month') || 'day';
 
-    if (userError || !userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID missing' }, { status: 400 });
     }
 
-    const tenantId = userData.tenant_id;
+    // For Super Admins or Multi-Branch Managers, they might want to see all branches.
+    // For now, let's default to user's assigned branch or tenant-wide if authorized.
+    // Assuming tenant dashboard for owner sees all.
+    // We'll pass branchId if present (Store Manager), or undefined (Tenant Owner).
+    // Check Role? (Assuming role check logic is in middleware or client, simple here)
 
-    // Parse query parameters
-    const searchParams = request.nextUrl.searchParams;
-    const startDate = searchParams.get('start_date');
-    const endDate = searchParams.get('end_date');
-    const branchId = searchParams.get('branch_id');
+    const metrics = await AnalyticsService.getDashboardMetrics(tenantId, branchId, period);
 
-    if (!startDate || !endDate) {
-      return NextResponse.json(
-        { error: 'start_date and end_date are required' },
-        { status: 400 }
-      );
-    }
+    return NextResponse.json({ metrics });
 
-    // Get dashboard summary
-    const summary = await getDashboardSummary(
-      tenantId,
-      { start: startDate, end: endDate },
-      branchId || undefined
-    );
-
-    return NextResponse.json({
-      success: true,
-      data: summary,
-    });
-  } catch (error) {
-    console.error('Dashboard API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error', details: (error as Error).message },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    console.error('Analytics API Error', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

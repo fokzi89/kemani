@@ -201,45 +201,108 @@ This document consolidates technical research and decisions for implementing the
 
 ---
 
-## 6. OTP Delivery Service Selection
+## 6. Authentication Strategy
 
-### Decision: Termii (primary) with Twilio (fallback)
+### Decision: Email/Password + Google OAuth for Owner Registration, Email Invitations for Staff
 
 **Rationale**:
-- **Termii** (Nigeria-focused):
-  - Local Nigerian SMS provider
-  - Better delivery rates in Nigeria than global providers
-  - Lower costs for Nigerian phone numbers
-  - Supports Nigerian telcos (MTN, Glo, Airtel, 9mobile)
-  - OTP-specific API with rate limiting built-in
-  - Pricing: ₦2-3 per SMS (vs $0.04-0.08 for Twilio)
 
-- **Twilio** (fallback):
-  - Global provider with Nigeria coverage
-  - More reliable API and SLA
-  - Better documentation and libraries
-  - Automatic fallback if Termii fails
-  - Pricing: Higher but acceptable for fallback
+**Owner Registration & Login**:
+- **Email/Password Authentication**:
+  - Familiar, widely-understood authentication method
+  - Built-in to Supabase Auth with secure password hashing
+  - No dependency on third-party SMS providers
+  - Lower cost than OTP-based systems
+  - Supports password reset flows
 
-- **Implementation**:
-  - Primary: Termii API for OTP sending
-  - Fallback: If Termii fails, retry with Twilio
-  - Rate limiting: Max 3 OTP sends per phone number per hour (prevent abuse)
-  - OTP expiry: 5 minutes
-  - OTP format: 6-digit numeric code
+- **Google OAuth**:
+  - One-click registration/login for users with Google accounts
+  - Reduces friction in signup process
+  - No password management burden for users
+  - Built-in to Supabase Auth
+  - Trusted authentication provider
+
+- **Guided Onboarding Flow**:
+  - **Step 1 - Profile Setup**: Capture profile picture, full name, gender (Male/Female), phone number
+  - **Step 2 - Company Setup**: Capture company name, business type, address, country, city, office address, logo
+  - Auto-geocoding to populate latitude/longitude from address
+  - Creates tenant record and default branch after onboarding completion
+  - Redirects to dashboard after successful setup
+
+**Staff Invitation & Onboarding System**:
+- **Email Invitations Only** (no direct staff registration):
+  - Owner invites staff via email with role and branch assignment
+  - Invitation email contains unique token link (7-day expiry)
+  - Staff clicks link → creates password → completes profile → sets up passcode/biometric → dashboard
+  - Prevents unauthorized staff registration
+  - Maintains role-based access control from invitation stage
+
+- **Staff Onboarding Flow** (3 steps):
+  - **Step 1 - Account Creation**: Set password on invitation acceptance page
+  - **Step 2 - Profile Setup**: Full name, profile picture, phone number
+  - **Step 3 - Security Setup**: 6-digit passcode OR biometric authentication (fingerprint/face)
+
+**Passcode/Biometric Security** (Two-Factor for POS):
+- **Primary Purpose**: Second authentication factor for POS security
+  - Email/password: First factor (account access)
+  - Passcode/biometric: Second factor (POS/app access, inactivity re-auth)
+
+- **6-Digit Passcode**:
+  - Numeric PIN for quick POS access
+  - Stored as bcrypt hash in `users.passcode_hash`
+  - Required after email/password login
+  - Required after 10 minutes of inactivity
+  - Quick re-authentication without full logout
+
+- **Biometric Authentication** (WebAuthn):
+  - Fingerprint or face recognition
+  - Uses W3C WebAuthn standard
+  - Platform authenticator (device biometric sensor)
+  - Alternative to passcode for supported devices
+  - More secure and faster than PIN entry
+
+- **Inactivity Lock**:
+  - Triggers after 10 minutes of idle time on POS
+  - Displays lock screen overlay
+  - Requires passcode/biometric to unlock
+  - Prevents unauthorized access on shared devices
+  - No full logout - quick resume after verification
+
+- **Login Flow**:
+  - Step 1: Email/password authentication
+  - Step 2: Passcode/biometric verification
+  - Step 3: Dashboard access
+  - Both factors required for complete authentication
+
+**Implementation**:
+- Supabase Auth handles email/password and Google OAuth
+- Email invitations via Resend (transactional email service)
+- Geocoding via Google Maps Geocoding API or OpenCage Geocoder API
+- Image uploads (profile pics, logos) to Supabase Storage
+- Onboarding state tracking in users table (`onboarding_completed_at` field)
+- Middleware redirects based on auth + onboarding status
 
 **Alternatives Considered**:
-- **Africa's Talking**: Good option but Termii has better Nigerian coverage
-- **SMS Portal**: Expensive for high volume
-- **Twilio only**: Higher costs, less optimized for Nigeria
-- **Email-based OTP**: Not suitable for Nigeria market where phone is primary identifier
+- **Phone + OTP**: More complex, costly (SMS fees), higher friction than email/password
+- **Magic Links Only**: Less familiar to users, email deliverability concerns
+- **No Onboarding Flow**: Would require users to update profile later, reducing data quality
 
 **Implementation Notes**:
-- Install: `npm install termii axios`
-- Environment variables: `TERMII_API_KEY`, `TERMII_SENDER_ID`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`
-- Implement in `lib/auth/otp.ts` with fallback logic
-- Store OTP hash (not plaintext) in database with expiry
-- Rate limiting via Redis or Supabase (store attempt counts)
+- Supabase Auth providers: email (built-in), Google OAuth (configure in Supabase dashboard)
+- Environment variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+- Geocoding API: `GOOGLE_MAPS_API_KEY` or `OPENCAGE_API_KEY`
+- Email service: `RESEND_API_KEY`
+- Passcode hashing: bcrypt library (`npm install bcryptjs @types/bcryptjs`)
+- Biometric auth: WebAuthn API (built-in to modern browsers)
+- Implement auth flow in `lib/auth/` and `app/api/auth/`
+- Onboarding pages in `app/(onboarding)/` route group
+- Auth state management via middleware (`middleware.ts`) with multi-step redirect logic:
+  - Unauthenticated → `/login`
+  - Authenticated without `onboarding_completed_at` → `/onboarding/...` (owner or staff)
+  - Authenticated with onboarding but no `passcode_hash` → `/onboarding/setup-passcode`
+  - Authenticated with onboarding and passcode → `/verify-passcode` → dashboard
+- Inactivity detection: Client-side timer with localStorage persistence
+- Lock screen component: Overlay modal requiring passcode/biometric
 
 ---
 

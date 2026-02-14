@@ -1,0 +1,235 @@
+openapi: 3.0.3
+info:
+  title: Paystack Webhook API
+  description: Webhook endpoints for Paystack payment callbacks
+  version: 1.0.0
+
+servers:
+  - url: https://store.example.com/api/payment
+    description: Production webhook endpoint
+
+paths:
+  /webhook:
+    post:
+      summary: Paystack webhook
+      description: Receives payment status updates from Paystack
+      security:
+        - PaystackSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaystackWebhookEvent'
+      responses:
+        '200':
+          description: Webhook processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+        '400':
+          description: Invalid signature or payload
+        '404':
+          description: Order not found
+
+components:
+  securitySchemes:
+    PaystackSignature:
+      type: apiKey
+      in: header
+      name: x-paystack-signature
+      description: HMAC SHA512 signature for webhook verification
+
+  schemas:
+    PaystackWebhookEvent:
+      type: object
+      required: [event, data]
+      properties:
+        event:
+          type: string
+          enum:
+            - charge.success
+            - charge.failed
+            - charge.pending
+            - charge.abandoned
+          description: Event type from Paystack
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/ChargeSuccessData'
+            - $ref: '#/components/schemas/ChargeFailedData'
+
+    ChargeSuccessData:
+      type: object
+      required: [id, status, reference, amount, customer, metadata]
+      properties:
+        id:
+          type: integer
+          description: Paystack transaction ID
+        domain:
+          type: string
+          enum: [live, test]
+        status:
+          type: string
+          enum: [success]
+        reference:
+          type: string
+          description: Transaction reference (matches order.paystack_reference)
+        amount:
+          type: integer
+          description: Amount in kobo (divide by 100 for Naira)
+        currency:
+          type: string
+          default: NGN
+        paid_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        channel:
+          type: string
+          enum: [card, bank, ussd, qr, mobile_money, bank_transfer]
+        authorization:
+          $ref: '#/components/schemas/PaystackAuthorization'
+        customer:
+          $ref: '#/components/schemas/PaystackCustomer'
+        metadata:
+          $ref: '#/components/schemas/PaystackMetadata'
+        fees:
+          type: integer
+          description: Paystack fees in kobo
+        gateway_response:
+          type: string
+          description: Response from payment gateway
+
+    ChargeFailedData:
+      type: object
+      required: [id, status, reference]
+      properties:
+        id:
+          type: integer
+        domain:
+          type: string
+        status:
+          type: string
+          enum: [failed, abandoned]
+        reference:
+          type: string
+        amount:
+          type: integer
+        currency:
+          type: string
+        customer:
+          $ref: '#/components/schemas/PaystackCustomer'
+        metadata:
+          $ref: '#/components/schemas/PaystackMetadata'
+        gateway_response:
+          type: string
+          description: Error message from gateway
+
+    PaystackAuthorization:
+      type: object
+      properties:
+        authorization_code:
+          type: string
+        bin:
+          type: string
+          description: First 6 digits of card
+        last4:
+          type: string
+          description: Last 4 digits of card
+        exp_month:
+          type: string
+        exp_year:
+          type: string
+        channel:
+          type: string
+        card_type:
+          type: string
+          enum: [visa, mastercard, verve, amex]
+        bank:
+          type: string
+        country_code:
+          type: string
+        brand:
+          type: string
+        reusable:
+          type: boolean
+
+    PaystackCustomer:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        customer_code:
+          type: string
+        phone:
+          type: string
+        metadata:
+          type: object
+        risk_action:
+          type: string
+
+    PaystackMetadata:
+      type: object
+      description: Custom metadata passed during transaction initialization
+      properties:
+        order_id:
+          type: string
+          format: uuid
+        branch_id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        customer_id:
+          type: string
+          format: uuid
+
+    # Webhook Verification
+    WebhookVerificationExample:
+      type: object
+      description: Example of webhook signature verification
+      properties:
+        verification_logic:
+          type: string
+          example: |
+            const crypto = require('crypto');
+            const hash = crypto
+              .createHmac('sha512', process.env.PAYSTACK_SECRET_KEY)
+              .update(JSON.stringify(req.body))
+              .digest('hex');
+
+            if (hash === req.headers['x-paystack-signature']) {
+              // Signature valid, process webhook
+              const { event, data } = req.body;
+
+              if (event === 'charge.success') {
+                // Update order status to paid
+                await updateOrderPaymentStatus(data.reference, 'paid');
+              }
+            } else {
+              // Invalid signature, reject webhook
+              res.status(400).send('Invalid signature');
+            }
+
+# Webhook Event Flow
+#
+# 1. Customer completes payment on Paystack page
+# 2. Paystack sends webhook to /api/payment/webhook
+# 3. Server verifies x-paystack-signature header
+# 4. Server updates order.payment_status based on event
+# 5. Server creates/updates payment_transactions record
+# 6. Server sends order confirmation email/SMS
+# 7. Server responds 200 OK to Paystack
+#
+# Important: Always verify payment status server-side before fulfilling order
+# Never trust client-side payment confirmation alone

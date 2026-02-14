@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(powershell.exe -Command \"New-Item -ItemType File -Path ''specs/001-multi-tenant-pos/research.md'' -Force\")",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Skill(speckit.specify)",
+      "Bash(git fetch:*)",
+      "Bash(ls:*)",
+      "Bash(powershell.exe -Command \"Get-ChildItem -Path ''lib\\\\pos'' -Filter ''*.ts'' | Select-Object Name\")"
     ]
   },
   "enableAllProjectMcpServers": true,

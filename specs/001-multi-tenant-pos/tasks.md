@@ -148,50 +148,95 @@
 
 ---
 
-## Phase 4: User Story 2 - Multi-Tenant Isolation and OTP Authentication (Priority: P2)
+## Phase 4: User Story 2 - Multi-Tenant Authentication and Onboarding (Priority: P2)
 
-**Goal**: Platform administrator onboards new business tenants using OTP-based authentication via phone or email. Each tenant operates with complete data isolation, custom branding, and role-based access.
+**Goal**: Business owners register using email/password or Google Sign-In, complete guided onboarding (profile setup + company setup), and invite staff via email with role assignments. Each tenant operates with complete data isolation and role-based access.
 
-**Independent Test**: Register two tenants using phone numbers or email addresses, send OTP verification, configure each with different branding, create staff accounts with different roles, verify complete data isolation.
+**Independent Test**: Register new owner with email/password, complete profile setup (photo, name, gender, phone), complete company setup (business details, location, logo), verify navigation to dashboard, invite staff with roles, confirm data isolation.
 
 ### Models for US2
 
-- [ ] T069 [P] [US2] Create Tenant model in lib/types/database.ts
-- [ ] T070 [P] [US2] Create User model with role enum in lib/types/database.ts
-- [ ] T071 [P] [US2] Create Branch model in lib/types/database.ts (for future multi-branch support)
+- [x] T069 [P] [US2] Create Tenant model in lib/types/database.ts
+- [x] T070 [P] [US2] Create User model with role enum in lib/types/database.ts
+- [x] T071 [P] [US2] Create Branch model in lib/types/database.ts
+- [x] T071a [P] [US2] Create StaffInvitation model in lib/types/database.ts (id, tenant_id, email, full_name, role, branch_id, invitation_token, status, expires_at)
+- [ ] T071b [P] [US2] Add profile fields to User model (profile_picture_url, gender, onboarding_completed_at)
+- [ ] T071c [P] [US2] Add company fields to Tenant model (business_type enum, address, country, city, office_address, latitude, longitude, logo_url)
+- [x] T071d [P] [US2] Add passcode_hash field to User model for passcode/biometric authentication
 
 ### Services for US2
 
-- [ ] T072 [US2] Implement tenant registration service in lib/auth/tenant.ts (create tenant, assign admin)
-- [ ] T073 [US2] Implement user management service in lib/auth/user.ts (create staff, assign roles, permissions)
-- [ ] T074 [US2] Implement tenant branding service in lib/auth/branding.ts (logo upload, color customization)
+- [x] T072 [US2] Implement tenant registration service in lib/auth/tenant.ts (create tenant, assign admin)
+- [x] T073 [US2] Implement user management service in lib/auth/user.ts (create staff, assign roles, permissions)
+- [x] T074 [US2] Implement tenant branding service in lib/auth/branding.ts (logo upload, color customization)
+- [ ] T074a [US2] Implement onboarding service in lib/auth/onboarding.ts (save profile step, save company step, mark onboarding complete)
+- [ ] T074b [US2] Implement geocoding service in lib/utils/geocoding.ts (get lat/long from address using Google Maps API or alternative)
+- [x] T074c [US2] Implement staff invitation service in lib/auth/invitation.ts (create invitation, send email, verify token, accept invitation)
+- [ ] T074d [US2] Implement passcode service in lib/auth/passcode.ts (hash passcode, verify passcode, check biometric support)
 
 ### API Endpoints for US2
 
-- [ ] T075 [P] [US2] Create authentication endpoints in app/api/auth/send-otp/route.ts (phone and email OTP)
-- [ ] T076 [P] [US2] Create OTP verification endpoint in app/api/auth/verify-otp/route.ts (with 5-minute expiration)
-- [ ] T077 [P] [US2] Create tenant registration endpoint in app/api/tenants/route.ts (POST new tenant)
-- [ ] T078 [P] [US2] Create staff management endpoints in app/api/staff/route.ts (GET, POST, PUT staff accounts)
-- [ ] T079 [P] [US2] Create tenant branding endpoint in app/api/tenants/branding/route.ts (PUT branding settings)
+- [ ] T075 [P] [US2] Create registration endpoint in app/api/auth/register/route.ts (email/password signup)
+- [ ] T075a [P] [US2] Configure Google OAuth provider in Supabase Auth dashboard
+- [ ] T076 [P] [US2] Create login endpoint in app/api/auth/login/route.ts (email/password login)
+- [x] T077 [US2] Create tenant endpoints in app/api/tenants/route.ts (GET tenant, PUT update tenant with company info)
+- [x] T078 [US2] Create staff management endpoints in app/api/staff/route.ts (GET, POST, PUT staff)
+- [x] T079 [US2] Create branding endpoint in app/api/tenants/branding/route.ts (PUT logo, colors)
+- [ ] T079a [P] [US2] Create onboarding endpoints in app/api/onboarding/profile/route.ts (POST profile step)
+- [ ] T079b [P] [US2] Create company setup endpoint in app/api/onboarding/company/route.ts (POST company step, create tenant + branch)
+- [x] T079c [P] [US2] Create staff invitation endpoints in app/api/staff/invite/route.ts (POST create invitation, GET list invitations, PUT resend/revoke)
+- [ ] T079d [P] [US2] Update invitation acceptance endpoint in app/api/staff/invite/accept/route.ts (create account, redirect to staff onboarding)
+- [ ] T079e [P] [US2] Create passcode setup endpoint in app/api/auth/setup-passcode/route.ts (POST hash and save passcode)
+- [ ] T079f [P] [US2] Create passcode verification endpoint in app/api/auth/verify-passcode/route.ts (POST verify passcode during login)
+- [ ] T079g [P] [US2] Create staff profile endpoint in app/api/onboarding/staff/profile/route.ts (POST save staff profile during onboarding)
 
 ### UI Components for US2
 
-- [ ] T080 [US2] Create login page in app/(auth)/login/page.tsx with phone/email input
-- [ ] T081 [US2] Create OTP verification page in app/(auth)/verify-otp/page.tsx (6-digit code input)
-- [ ] T082 [US2] Create tenant registration form in app/(auth)/register/page.tsx
-- [ ] T083 [US2] Create staff management UI in app/(admin)/staff/page.tsx (create, edit, delete staff)
-- [ ] T084 [US2] Create branding configuration UI in app/(admin)/settings/branding/page.tsx (logo upload, colors)
-- [ ] T085 [US2] Create role assignment component in app/components/admin/RoleSelector.tsx
+- [ ] T080 [US2] Create registration page in app/(auth)/register/page.tsx (email, password, confirm password, Google Sign-In button)
+- [ ] T081 [US2] Create login page in app/(auth)/login/page.tsx (email/password fields, Google Sign-In button)
+- [ ] T082 [US2] Create onboarding layout in app/(onboarding)/layout.tsx (progress indicator, step navigation)
+- [ ] T083 [US2] Create profile setup page in app/(onboarding)/profile/page.tsx (profile pic upload, full name, gender dropdown, phone number)
+- [ ] T084 [US2] Create company setup page in app/(onboarding)/company/page.tsx (company name, business type dropdown, address fields, country select, logo upload)
+- [x] T085 [US2] Create staff management UI in app/(admin)/staff/page.tsx (staff list, invite modal with email/role/branch)
+- [x] T086 [US2] Create branding configuration UI in app/(admin)/settings/branding/page.tsx (logo upload, brand colors)
+- [x] T087 [US2] Create role selector component in app/components/admin/RoleSelector.tsx
+- [x] T088 [US2] Create branch selector component in app/components/admin/BranchSelector.tsx
+- [ ] T089 [US2] Update invitation acceptance page in app/accept-invitation/[token]/page.tsx (password setup form, redirect to staff profile)
+- [ ] T089a [P] [US2] Create business type dropdown component in app/components/onboarding/BusinessTypeSelect.tsx
+- [ ] T089b [P] [US2] Create country selector component in app/components/onboarding/CountrySelect.tsx (alphabetical list)
+- [ ] T089c [P] [US2] Create gender selector component in app/components/onboarding/GenderSelect.tsx (Male/Female)
+- [ ] T089d [P] [US2] Create profile picture upload component in app/components/onboarding/ProfilePictureUpload.tsx
+- [ ] T089e [US2] Create staff profile setup page in app/(onboarding)/staff/profile/page.tsx (full name, profile pic, phone number)
+- [x] T089f [US2] Create passcode setup page in app/(onboarding)/setup-passcode/page.tsx (6-digit PIN or biometric)
+- [ ] T089g [US2] Create verify passcode page in app/(auth)/verify-passcode/page.tsx (passcode entry after login)
+- [ ] T089h [P] [US2] Create inactivity lock component in app/components/auth/InactivityLock.tsx (lock screen after 10 min idle)
 
 ### Integration for US2
 
-- [ ] T086 [US2] Integrate Termii SMS OTP delivery for phone authentication
-- [ ] T087 [US2] Integrate Supabase Auth email OTP delivery for email authentication
-- [ ] T088 [US2] Implement RLS policy enforcement at API layer (verify tenant_id matches auth user)
-- [ ] T089 [US2] Test cross-tenant data isolation (tenant A cannot access tenant B data)
-- [ ] T090 [US2] Test role-based permissions (cashier vs manager vs admin)
+- [ ] T090 [US2] Configure Supabase Auth with email/password provider and Google OAuth provider
+- [ ] T091 [US2] Implement auth state management with multi-step redirect logic:
+  - Unauthenticated → login
+  - Authenticated without onboarding_completed_at → onboarding (owner or staff profile)
+  - Authenticated with onboarding but no passcode_hash → passcode setup
+  - Authenticated with onboarding and passcode → verify passcode → dashboard
+- [ ] T092 [US2] Integrate geocoding API to auto-populate latitude/longitude from address in company setup
+- [ ] T093 [US2] Implement image upload to Supabase Storage for profile pictures and company logos
+- [x] T094 [US2] Implement email sending service for staff invitations (using Resend or Supabase built-in)
+- [ ] T095 [US2] Create database migration for new fields (profile_picture_url, gender, business_type, address, latitude, longitude, etc.)
+- [x] T095a [US2] Create database migration for passcode_hash field in users table
+- [ ] T096 [US2] Implement RLS policy enforcement at API layer (verify tenant_id matches auth user)
+- [ ] T097 [US2] Implement inactivity detection (10 minutes idle → lock screen requiring passcode)
+- [ ] T098 [US2] Implement WebAuthn biometric authentication (fingerprint/face recognition) as passcode alternative
+- [ ] T099 [US2] Test complete owner registration flow (signup → profile → company → passcode → dashboard)
+- [ ] T100 [US2] Test complete staff invitation flow (invite → email → accept → password → profile → passcode → dashboard)
+- [ ] T101 [US2] Test staff login flow (email/password → passcode verification → dashboard)
+- [ ] T102 [US2] Test inactivity lock and re-authentication flow
+- [ ] T103 [US2] Test cross-tenant data isolation (tenant A cannot access tenant B data)
+- [ ] T104 [US2] Test role-based permissions (Branch Manager vs Cashier/Staff vs Delivery Rider)
+- [ ] T105 [US2] Test Google OAuth registration and login flow
+- [ ] T106 [US2] Test biometric authentication setup and verification
 
-**Checkpoint**: Multi-tenant authentication and isolation should be fully functional
+**Checkpoint**: Multi-tenant authentication, onboarding, and staff invitation system should be fully functional
 
 ---
 

@@ -1,0 +1,501 @@
+openapi: 3.0.3
+info:
+  title: Chat API
+  description: Live chat API for customer support (REST + Supabase Realtime)
+  version: 1.0.0
+
+servers:
+  - url: https://store.example.com/api/chat
+    description: Production
+  - url: http://localhost:5173/api/chat
+    description: Development
+
+tags:
+  - name: Sessions
+    description: Chat session management
+  - name: Messages
+    description: Sending messages
+  - name: Attachments
+    description: File uploads (images, voice, PDFs)
+  - name: Realtime
+    description: Real-time message delivery via Supabase
+
+paths:
+  # Sessions
+  /sessions:
+    post:
+      tags: [Sessions]
+      summary: Create chat session
+      description: Start a new chat session for customer
+      security:
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [branch_id]
+              properties:
+                branch_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSession'
+        '400':
+          description: Invalid request
+
+    get:
+      tags: [Sessions]
+      summary: List customer chat sessions
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, resolved, abandoned]
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChatSession'
+
+  /sessions/{session_id}:
+    get:
+      tags: [Sessions]
+      summary: Get chat session details
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSessionDetail'
+        '404':
+          description: Session not found
+
+    patch:
+      tags: [Sessions]
+      summary: Update chat session
+      description: Update session status (resolve, abandon)
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [active, resolved, abandoned]
+      responses:
+        '200':
+          description: Session updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSession'
+
+  # Messages
+  /sessions/{session_id}/messages:
+    get:
+      tags: [Messages]
+      summary: Get chat history
+      description: Retrieve message history for a session
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: before
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Get messages before this timestamp (pagination)
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChatMessage'
+                  has_more:
+                    type: boolean
+
+    post:
+      tags: [Messages]
+      summary: Send message
+      description: Send text message or file attachment
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+      responses:
+        '201':
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessage'
+        '400':
+          description: Invalid request
+        '404':
+          description: Session not found
+
+  # Attachments
+  /sessions/{session_id}/upload:
+    post:
+      tags: [Attachments]
+      summary: Upload file attachment
+      description: Upload image, voice note, or PDF to chat
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, file_type]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File to upload
+                file_type:
+                  type: string
+                  enum: [image, voice, pdf]
+      responses:
+        '201':
+          description: File uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUploadResponse'
+        '400':
+          description: Invalid file (wrong type or too large)
+        '413':
+          description: File too large (5MB images, 10MB PDFs, 2min voice)
+
+  # Product Cards
+  /sessions/{session_id}/share-product:
+    post:
+      tags: [Messages]
+      summary: Share product card
+      description: Send product card in chat
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [product_id]
+              properties:
+                product_id:
+                  type: string
+                  format: uuid
+                message:
+                  type: string
+                  description: Optional text message with product
+      responses:
+        '201':
+          description: Product shared
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessage'
+
+components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+
+  schemas:
+    ChatSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        branch_id:
+          type: string
+          format: uuid
+        branch_name:
+          type: string
+        agent_type:
+          type: string
+          enum: [live, ai, owner]
+          description: Type of agent handling session
+        agent_name:
+          type: string
+        status:
+          type: string
+          enum: [active, resolved, abandoned]
+        created_at:
+          type: string
+          format: date-time
+        last_message_at:
+          type: string
+          format: date-time
+
+    ChatSessionDetail:
+      allOf:
+        - $ref: '#/components/schemas/ChatSession'
+        - type: object
+          properties:
+            unread_count:
+              type: integer
+            messages_preview:
+              type: array
+              items:
+                $ref: '#/components/schemas/ChatMessage'
+              maxItems: 5
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        session_id:
+          type: string
+          format: uuid
+        sender_type:
+          type: string
+          enum: [customer, agent, ai]
+        sender_name:
+          type: string
+        message_type:
+          type: string
+          enum: [text, image, voice, pdf, product_card]
+        content:
+          type: string
+          description: Text content or file URL
+        product:
+          $ref: '#/components/schemas/ProductCard'
+        attachment:
+          $ref: '#/components/schemas/Attachment'
+        created_at:
+          type: string
+          format: date-time
+        read_at:
+          type: string
+          format: date-time
+
+    SendMessageRequest:
+      type: object
+      required: [message_type, content]
+      properties:
+        message_type:
+          type: string
+          enum: [text, product_card]
+        content:
+          type: string
+          description: Text message content
+        product_id:
+          type: string
+          format: uuid
+          description: Required if message_type = product_card
+        attachment_id:
+          type: string
+          format: uuid
+          description: ID from upload endpoint for image/voice/pdf
+
+    ProductCard:
+      type: object
+      description: Product information embedded in chat
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        price:
+          type: number
+        image:
+          type: string
+          format: uri
+        product_url:
+          type: string
+          format: uri
+
+    Attachment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        file_type:
+          type: string
+          enum: [image, voice, pdf]
+        file_name:
+          type: string
+        file_size:
+          type: integer
+          description: Size in bytes
+        file_url:
+          type: string
+          format: uri
+          description: Signed URL for download
+
+    FileUploadResponse:
+      type: object
+      properties:
+        attachment_id:
+          type: string
+          format: uuid
+        file_url:
+          type: string
+          format: uri
+        file_type:
+          type: string
+        file_size:
+          type: integer
+
+    # Supabase Realtime Subscription
+    RealtimeSubscription:
+      type: object
+      description: Supabase Realtime subscription for live messages
+      properties:
+        channel_name:
+          type: string
+          example: "chat:550e8400-e29b-41d4-a716-446655440000"
+        event_type:
+          type: string
+          enum: [INSERT, UPDATE, DELETE]
+        table:
+          type: string
+          example: chat_messages
+        payload:
+          $ref: '#/components/schemas/ChatMessage'
+        example_code:
+          type: string
+          example: |
+            // Subscribe to new messages
+            const subscription = supabase
+              .channel(`chat:${sessionId}`)
+              .on('postgres_changes',
+                {
+                  event: 'INSERT',
+                  schema: 'public',
+                  table: 'chat_messages',
+                  filter: `session_id=eq.${sessionId}`
+                },
+                (payload) => {
+                  console.log('New message:', payload.new);
+                  // Update UI with new message
+                  appendMessageToChat(payload.new);
+                }
+              )
+              .subscribe();
+
+            // Send message via REST API
+            await fetch(`/api/chat/sessions/${sessionId}/messages`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                message_type: 'text',
+                content: 'Hello, I need help!'
+              })
+            });
+
+# Chat Architecture Notes
+#
+# Message Delivery:
+# 1. Client sends message via POST /sessions/{id}/messages
+# 2. Server inserts message into chat_messages table
+# 3. PostgreSQL trigger notifies Supabase Realtime
+# 4. All subscribed clients receive message via SSE/WebSocket
+# 5. Client updates UI with new message
+#
+# Agent Assignment (Plan-Based):
+# - Free Plan: agent_type = 'owner', routes to tenant owner/admin
+# - Growth Plan: agent_type = 'live', routes to 1 live agent with queue
+# - Business Plan: agent_type = 'live' or 'ai' (configurable)
+#
+# AI Agent (Business Plan Only):
+# - Activated when agent_type = 'ai' or no live agents available
+# - Processes messages via Supabase Edge Function
+# - Can analyze images with GPT-4 Vision
+# - Automatically shares product cards based on queries
+#
+# File Upload Limits:
+# - Images: 5MB (JPG, PNG)
+# - Voice: 5MB (~2 minutes audio)
+# - PDF: 10MB

@@ -4,16 +4,67 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Next.js 16 application (App Router) with TypeScript, React 19, and Tailwind CSS 4. The project integrates with Supabase via MCP server and includes a SpecKit workflow system for structured feature development.
+This is a **monorepo** with multiple applications:
+
+1. **Flutter Mobile App** (Admin/POS) - **[Separate Repository]**
+   - Purpose: Point of Sale system and Admin portal for business owners
+   - Tech Stack: Flutter, Dart
+   - Platform: iOS & Android mobile apps
+   - Consumes: Next.js API Server
+
+2. **Next.js API Server** (Root) - TypeScript, Node.js
+   - Location: Root directory (`app/api/`, `lib/`)
+   - Purpose: REST API server for Flutter mobile app (40+ routes)
+   - Tech Stack: Next.js 16 App Router (API routes only, no UI)
+   - APIs: Analytics, Inventory, Sales, Staff, Branches, Sync, etc.
+
+3. **SvelteKit Marketing Website** (Customer-Facing)
+   - Location: `apps/marketing_sveltekit/`
+   - Purpose: Landing page, Pricing, Business registration
+   - Tech Stack: SvelteKit 2.x, Svelte 5, Tailwind CSS 4
+   - Deployment: Primary domain (e.g., `kemani.com`)
+   - APIs: 5 routes (auth, tenants)
+
+4. **SvelteKit Storefront** (Customer Ecommerce)
+   - Location: `apps/storefront/`
+   - Purpose: E-commerce storefront for customers to browse and purchase products
+   - Tech Stack: SvelteKit 2.x, Svelte 5, Tailwind CSS 4
+   - Deployment: Subdomain per tenant (e.g., `store.tenant.com`)
+   - APIs: 12 routes (products, orders, customers, chat, payments)
+
+**Architecture**:
+- Flutter mobile app → Next.js API Server (40 routes)
+- SvelteKit apps → Own APIs (17 routes total)
+- All apps → Shared Supabase database with RLS for multi-tenancy
+- Project integrates with Supabase via MCP server
+- Includes SpecKit workflow system for structured feature development
 
 ## Development Commands
 
-### Core Commands
+### Next.js API Server (Root)
 ```bash
-npm run dev          # Start development server at http://localhost:3000
-npm run build        # Build production application
+npm run dev          # Start API server at http://localhost:3000
+npm run build        # Build for production
 npm start            # Start production server
 npm run lint         # Run ESLint
+```
+
+### SvelteKit Marketing Website
+```bash
+cd apps/marketing_sveltekit
+npm run dev          # Start dev server at http://localhost:5173
+npm run build        # Build for production
+npm run preview      # Preview production build
+npm run check        # Type check
+```
+
+### SvelteKit Storefront
+```bash
+cd apps/storefront
+npm run dev          # Start dev server at http://localhost:5174
+npm run build        # Build for production
+npm run preview      # Preview production build
+npm run check        # Type check
 ```
 
 ### ESLint Configuration
@@ -24,18 +75,27 @@ npm run lint         # Run ESLint
 ## Architecture
 
 ### Application Structure
-- **App Router**: Uses Next.js 16 App Router (`app/` directory)
-- **TypeScript**: Strict mode enabled with ES2017 target
-- **Path Aliases**: `@/*` maps to project root
-- **Styling**: Tailwind CSS 4 with PostCSS
-- **Fonts**: Geist Sans and Geist Mono via `next/font/google`
 
-### Key Files
-- `app/layout.tsx`: Root layout with font configuration and metadata
-- `app/page.tsx`: Home page component
-- `app/globals.css`: Global styles and Tailwind directives
-- `next.config.ts`: Next.js configuration (currently empty)
-- `tsconfig.json`: TypeScript configuration with strict mode
+**Next.js API Server** (Root):
+- **API Routes**: `app/api/*` - REST endpoints for Flutter mobile app
+- **Shared Utilities**: `lib/*` - Business logic, database services, integrations
+- **TypeScript**: Strict mode enabled
+- **Path Aliases**: `@/*` maps to project root
+
+**SvelteKit Apps**:
+- **Marketing**: Landing, pricing, business registration pages
+- **Storefront**: Customer ecommerce storefront
+- **Path Aliases**: `$lib/*` for each app
+- **Styling**: Tailwind CSS 4 with PostCSS
+- **Type Safety**: TypeScript with Svelte 5
+
+### Key Directories
+- `app/api/`: Next.js API routes (40+ endpoints for Flutter)
+- `lib/`: Shared business logic and utilities
+- `apps/marketing_sveltekit/`: Marketing website (5 API routes)
+- `apps/storefront/`: Ecommerce storefront (12 API routes)
+- `supabase/`: Database migrations and schema
+- `specs/`: SpecKit feature specifications
 
 ### MCP Integration
 The project has Supabase MCP server enabled (`.claude/settings.local.json`). When working with database operations, use the available Supabase MCP tools for migrations, queries, and schema management.
@@ -92,11 +152,18 @@ This repository uses SpecKit, a structured feature development workflow with nin
 
 ## Working with This Codebase
 
-### File Editing
-- The main application entry point is `app/page.tsx`
-- Layout modifications go in `app/layout.tsx`
-- Global styles in `app/globals.css`
+### API Development (Next.js)
+- API routes in `app/api/` serve Flutter mobile app
+- Shared utilities in `lib/` (auth, database, integrations)
+- Use `@/` path alias for imports
 - All TypeScript files use strict mode
+
+### Frontend Development (SvelteKit)
+- **Marketing**: Edit `apps/marketing_sveltekit/src/routes/`
+- **Storefront**: Edit `apps/storefront/src/routes/`
+- Use `$lib/` path alias for imports
+- Each app has its own API routes (`src/routes/api/`)
+- Shared utilities copied to each app's `src/lib/`
 
 ### Adding New Features
 When adding significant features, consider using the SpecKit workflow:

@@ -1,42 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/client';
+import { createAdminClient } from '@/lib/supabase/server';
+import { EmailService } from '@/lib/integrations/resend';
 
 export async function POST(request: NextRequest) {
   try {
-    const { businessName, fullName, email, passcode } = await request.json();
+    const { businessName, fullName, email } = await request.json();
 
     // Validate inputs
-    if (!businessName || !fullName || !email || !passcode) {
+    if (!businessName || !fullName || !email) {
       return NextResponse.json(
-        { error: 'Business name, full name, email, and passcode are required' },
+        { error: 'Business name, full name, and email are required' },
         { status: 400 }
       );
     }
 
-    // Validate passcode format
-    if (!/^\d{6}$/.test(passcode)) {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
       return NextResponse.json(
-        { error: 'Passcode must be exactly 6 digits' },
+        { error: 'Please provide a valid email address' },
         { status: 400 }
       );
     }
 
-    // Hash the passcode using Web Crypto API
-    const encoder = new TextEncoder();
-    const data = encoder.encode(passcode);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashedPasscode = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const supabase = await createAdminClient();
 
-    const supabase = createClient();
+    // Check if email is already registered
+    const { data: existingUser } = await supabase.auth.admin.listUsers();
+    const emailExists = existingUser?.users.some((user) => user.email === email);
 
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    if (emailExists) {
       return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
+        { error: 'This email is already registered' },
+        { status: 400 }
       );
     }
 
@@ -55,7 +51,33 @@ export async function POST(request: NextRequest) {
 
     const finalSlug = existingTenant ? `${slug}-${Date.now()}` : slug;
 
-    // Create tenant
+    // 1. Create auth user (company owner) with email OTP
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: email,
+      email_confirm: false, // User needs to verify email via OTP
+      user_metadata: {
+        full_name: fullName,
+      },
+    });
+
+    if (authError) {
+      console.error('Auth user creation error:', authError);
+      return NextResponse.json(
+        { error: 'Failed to create user account. Please try again.' },
+        { status: 500 }
+      );
+    }
+
+    if (!authData.user) {
+      return NextResponse.json(
+        { error: 'Failed to create user account' },
+        { status: 500 }
+      );
+    }
+
+    const userId = authData.user.id;
+
+    // 2. Create tenant
     const { data: tenant, error: tenantError } = await supabase
       .from('tenants')
       .insert({
@@ -68,37 +90,37 @@ export async function POST(request: NextRequest) {
 
     if (tenantError) {
       console.error('Tenant creation error:', tenantError);
-      throw new Error('Failed to create business account');
+      // Rollback: Delete auth user
+      await supabase.auth.admin.deleteUser(userId);
+      return NextResponse.json(
+        { error: 'Failed to create business account. Please try again.' },
+        { status: 500 }
+      );
     }
 
-    // Create user record with passcode hash
+    // 3. Create user record (company owner)
     const { error: userError } = await supabase
       .from('users')
       .insert({
-        id: user.id,
+        id: userId,
         full_name: fullName,
         email: email,
         role: 'tenant_admin',
         tenant_id: tenant.id,
       });
 
-    if (!userError) {
-      // Store passcode hash in user metadata (secure)
-      await supabase.auth.updateUser({
-        data: {
-          passcode_hash: hashedPasscode,
-        },
-      });
-    }
-
     if (userError) {
-      console.error('User creation error:', userError);
-      // Rollback tenant creation
+      console.error('User record creation error:', userError);
+      // Rollback: Delete tenant and auth user
       await supabase.from('tenants').delete().eq('id', tenant.id);
-      throw new Error('Failed to create user account');
+      await supabase.auth.admin.deleteUser(userId);
+      return NextResponse.json(
+        { error: 'Failed to create user profile. Please try again.' },
+        { status: 500 }
+      );
     }
 
-    // Create default branch
+    // 4. Create default branch
     const { error: branchError } = await supabase
       .from('branches')
       .insert({
@@ -112,15 +134,48 @@ export async function POST(request: NextRequest) {
       // Continue anyway - branch can be created later
     }
 
+    // 5. Send registration confirmation email
+    try {
+      const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
+
+      await EmailService.sendRegistrationConfirmation(email, {
+        businessName: businessName,
+        ownerName: fullName,
+        dashboardUrl: dashboardUrl,
+      });
+    } catch (emailError) {
+      console.error('Failed to send confirmation email:', emailError);
+      // Don't fail the registration if email fails
+      // User can still log in
+    }
+
+    // 6. Send email OTP for verification
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: email,
+      options: {
+        shouldCreateUser: false, // User already created
+      },
+    });
+
+    if (otpError) {
+      console.error('OTP send error:', otpError);
+      // Don't fail registration - user can request OTP on login page
+    }
+
     return NextResponse.json({
       success: true,
-      tenant,
-      message: 'Registration completed successfully',
+      message: 'Registration successful! Please check your email for verification code.',
+      tenant: {
+        id: tenant.id,
+        name: tenant.name,
+        slug: tenant.slug,
+      },
+      redirectTo: `/verify-otp?email=${encodeURIComponent(email)}`,
     });
   } catch (error: any) {
     console.error('Registration error:', error);
     return NextResponse.json(
-      { error: error.message || 'Registration failed' },
+      { error: error.message || 'Registration failed. Please try again.' },
       { status: 500 }
     );
   }

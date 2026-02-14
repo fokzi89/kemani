@@ -1,55 +1,16 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "Kemani POS - Multi-Tenant Point of Sale",
-  description: "Offline-first point of sale platform for Nigerian retailers. Manage inventory, process sales, and serve customers even without internet.",
-  applicationName: "Kemani POS",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Kemani POS",
-  },
-  formatDetection: {
-    telephone: false,
-  },
-  themeColor: "#16a34a", // Green theme color
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
+export const metadata = {
+  title: 'Kemani API Server',
+  description: 'REST API server for Kemani POS Flutter mobile application',
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        suppressHydrationWarning
-      >
-        <ThemeProvider defaultTheme="light" storageKey="kemani-theme">
-          {children}
-        </ThemeProvider>
-      </body>
+    <html lang="en">
+      <body>{children}</body>
     </html>
   );
 }

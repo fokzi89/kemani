@@ -11,7 +11,9 @@ import 'screens/auth/register_screen.dart';
 import 'screens/onboarding/profile_setup_screen.dart';
 import 'screens/onboarding/company_setup_screen.dart';
 import 'screens/onboarding/passcode_setup_screen.dart';
+import 'screens/onboarding/staff_profile_setup_screen.dart';
 import 'services/onboarding_service.dart';
+import 'screens/auth/accept_invitation_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,7 +44,12 @@ final _router = GoRouter(
           final status = await onboardingService.getOnboardingStatus();
 
           if (!status.isComplete) {
-            return '/onboarding/profile';
+            // Check role to determine onboarding flow
+            if (status.role == 'tenant_admin') {
+              return '/onboarding/profile';
+            } else {
+              return '/onboarding/staff-profile';
+            }
           }
           return '/dashboard';
         } else {
@@ -58,11 +65,40 @@ final _router = GoRouter(
       builder: (context, state) => const RegisterScreen(),
     ),
     GoRoute(
+      path: '/accept-invite',
+      builder: (context, state) => const AcceptInvitationScreen(),
+    ),
+    GoRoute(
       path: '/onboarding/profile',
       builder: (context, state) => const ProfileSetupScreen(),
-      redirect: (context, state) {
+      redirect: (context, state) async {
         final session = Supabase.instance.client.auth.currentSession;
         if (session == null) return '/login';
+
+        // Prevent staff from accessing owner onboarding
+        final onboardingService = OnboardingService();
+        final status = await onboardingService.getOnboardingStatus();
+        if (status.role != null && status.role != 'tenant_admin') {
+          return '/onboarding/staff-profile';
+        }
+
+        return null;
+      },
+    ),
+    GoRoute(
+      path: '/onboarding/staff-profile',
+      builder: (context, state) => const StaffProfileSetupScreen(),
+      redirect: (context, state) async {
+        final session = Supabase.instance.client.auth.currentSession;
+        if (session == null) return '/login';
+
+        // Prevent owners from accessing staff onboarding (optional, but good for consistency)
+        final onboardingService = OnboardingService();
+        final status = await onboardingService.getOnboardingStatus();
+        if (status.role == 'tenant_admin') {
+          return '/onboarding/profile';
+        }
+
         return null;
       },
     ),
@@ -98,7 +134,11 @@ final _router = GoRouter(
         final status = await onboardingService.getOnboardingStatus();
 
         if (!status.isComplete) {
-          return '/onboarding/profile';
+          if (status.role == 'tenant_admin') {
+            return '/onboarding/profile';
+          } else {
+            return '/onboarding/staff-profile';
+          }
         }
 
         return null;

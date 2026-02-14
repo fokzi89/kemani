@@ -15,9 +15,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!registration.email && !registration.phone) {
+    // Verify adminEmail is provided (required for Email OTP)
+    if (!registration.adminEmail) {
       return NextResponse.json(
-        { error: 'Either email or phone must be provided' },
+        { error: 'Admin email is required for authentication' },
         { status: 400 }
       );
     }

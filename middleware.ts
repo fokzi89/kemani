@@ -1,63 +1,8 @@
-import { createServerClient } from "@supabase/ssr";
-import { type NextRequest, NextResponse } from "next/server";
+import { type NextRequest } from "next/server";
+import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
-    let response = NextResponse.next({
-        request: {
-            headers: request.headers,
-        },
-    });
-
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return request.cookies.getAll();
-                },
-                setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) =>
-                        request.cookies.set(name, value)
-                    );
-                    response = NextResponse.next({
-                        request: {
-                            headers: request.headers,
-                        },
-                    });
-                    cookiesToSet.forEach(({ name, value, options }) =>
-                        response.cookies.set(name, value, options)
-                    );
-                },
-            },
-        }
-    );
-
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-
-    // Protected routes
-    if (request.nextUrl.pathname.startsWith("/") &&
-        !request.nextUrl.pathname.startsWith("/login") &&
-        !request.nextUrl.pathname.startsWith("/register") &&
-        !request.nextUrl.pathname.startsWith("/auth") &&
-        !request.nextUrl.pathname.startsWith("/api/webhooks") && // Webhooks are public
-        !user
-    ) {
-        // For now, allowing public access to root / to avoid redirect loop if not implemented
-        // But typically /dashboard should be protected
-        if (request.nextUrl.pathname.startsWith("/dashboard") || request.nextUrl.pathname.startsWith("/pos")) {
-            return NextResponse.redirect(new URL("/login", request.url));
-        }
-    }
-
-    // Auth routes (redirect to dashboard if logged in)
-    if ((request.nextUrl.pathname.startsWith("/login") || request.nextUrl.pathname.startsWith("/register")) && user) {
-        return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
-
-    return response;
+    return await updateSession(request);
 }
 
 export const config = {

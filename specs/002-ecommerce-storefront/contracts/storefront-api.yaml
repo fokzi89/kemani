@@ -1,0 +1,676 @@
+openapi: 3.0.3
+info:
+  title: Storefront API
+  description: API for ecommerce storefront - products, cart, checkout
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: https://store.example.com/api
+    description: Production
+  - url: http://localhost:5173/api
+    description: Development
+
+tags:
+  - name: Products
+    description: Product browsing and search
+  - name: Cart
+    description: Shopping cart management
+  - name: Checkout
+    description: Order creation and checkout flow
+  - name: Orders
+    description: Order history and details
+  - name: Auth
+    description: Customer authentication
+
+paths:
+  # Products
+  /products:
+    get:
+      tags: [Products]
+      summary: List products
+      description: Get paginated list of products for a branch with search and filters
+      parameters:
+        - name: branch_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search term for product name/description
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by category
+        - name: min_price
+          in: query
+          schema:
+            type: number
+        - name: max_price
+          in: query
+          schema:
+            type: number
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /products/{slug}:
+    get:
+      tags: [Products]
+      summary: Get product details
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: branch_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetail'
+        '404':
+          description: Product not found
+
+  # Cart
+  /cart:
+    get:
+      tags: [Cart]
+      summary: Get cart
+      description: Get current shopping cart for customer/session and branch
+      parameters:
+        - name: branch_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+
+  /cart/items:
+    post:
+      tags: [Cart]
+      summary: Add item to cart
+      security:
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [branch_id, product_id, quantity]
+              properties:
+                branch_id:
+                  type: string
+                  format: uuid
+                product_id:
+                  type: string
+                  format: uuid
+                variant_id:
+                  type: string
+                  format: uuid
+                quantity:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Item added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '400':
+          description: Invalid request
+        '404':
+          description: Product not found
+
+  /cart/items/{item_id}:
+    patch:
+      tags: [Cart]
+      summary: Update cart item quantity
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity]
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '404':
+          description: Cart item not found
+
+    delete:
+      tags: [Cart]
+      summary: Remove item from cart
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Item removed
+        '404':
+          description: Cart item not found
+
+  # Checkout
+  /checkout/validate:
+    post:
+      tags: [Checkout]
+      summary: Validate checkout
+      description: Validate cart items availability and calculate delivery fees
+      security:
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [branch_id, delivery_method, delivery_address]
+              properties:
+                branch_id:
+                  type: string
+                  format: uuid
+                delivery_method:
+                  type: string
+                  enum: [self_pickup, bicycle, motorbike, platform]
+                delivery_address:
+                  $ref: '#/components/schemas/DeliveryAddress'
+      responses:
+        '200':
+          description: Validation successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  unavailable_items:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                  subtotal:
+                    type: number
+                  delivery_base_fee:
+                    type: number
+                  delivery_fee_addition:
+                    type: number
+                    default: 100
+                  transaction_fee:
+                    type: number
+                    default: 100
+                  total_amount:
+                    type: number
+        '400':
+          description: Validation failed
+
+  /checkout/create-order:
+    post:
+      tags: [Checkout]
+      summary: Create order
+      description: Create order and initiate Paystack payment
+      security:
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [branch_id, delivery_method, delivery_name, delivery_phone]
+              properties:
+                branch_id:
+                  type: string
+                  format: uuid
+                delivery_method:
+                  type: string
+                  enum: [self_pickup, bicycle, motorbike, platform]
+                delivery_name:
+                  type: string
+                delivery_phone:
+                  type: string
+                delivery_address:
+                  $ref: '#/components/schemas/DeliveryAddress'
+                delivery_instructions:
+                  type: string
+      responses:
+        '200':
+          description: Order created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order_id:
+                    type: string
+                    format: uuid
+                  order_number:
+                    type: string
+                  paystack_authorization_url:
+                    type: string
+                    format: uri
+                  paystack_reference:
+                    type: string
+        '400':
+          description: Invalid request
+        '422':
+          description: Cart empty or items unavailable
+
+  # Orders
+  /orders:
+    get:
+      tags: [Orders]
+      summary: Get customer orders
+      description: Get order history for authenticated customer
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OrderSummary'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /orders/{order_id}:
+    get:
+      tags: [Orders]
+      summary: Get order details
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetail'
+        '404':
+          description: Order not found
+
+  /orders/{order_id}/retry-payment:
+    post:
+      tags: [Orders]
+      summary: Retry payment for pending order
+      security:
+        - SessionCookie: []
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Payment link generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  paystack_authorization_url:
+                    type: string
+                    format: uri
+                  paystack_reference:
+                    type: string
+        '400':
+          description: Order not eligible for retry
+        '404':
+          description: Order not found
+
+  # Auth
+  /auth/google:
+    get:
+      tags: [Auth]
+      summary: Initiate Google OAuth
+      description: Redirect to Google OAuth consent
+      responses:
+        '302':
+          description: Redirect to Google
+
+  /auth/apple:
+    get:
+      tags: [Auth]
+      summary: Initiate Apple Sign In
+      description: Redirect to Apple Sign In
+      responses:
+        '302':
+          description: Redirect to Apple
+
+  /auth/callback:
+    get:
+      tags: [Auth]
+      summary: OAuth callback
+      description: Handle OAuth provider callback
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to storefront with session
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      security:
+        - SessionCookie: []
+      responses:
+        '204':
+          description: Logged out
+
+components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+
+  schemas:
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        category:
+          type: string
+        price:
+          type: number
+        compare_at_price:
+          type: number
+        primary_image:
+          type: string
+          format: uri
+        is_available:
+          type: boolean
+        has_variants:
+          type: boolean
+
+    ProductDetail:
+      allOf:
+        - $ref: '#/components/schemas/Product'
+        - type: object
+          properties:
+            description:
+              type: string
+            images:
+              type: array
+              items:
+                type: string
+                format: uri
+            stock_quantity:
+              type: integer
+            variants:
+              type: array
+              items:
+                $ref: '#/components/schemas/ProductVariant'
+
+    ProductVariant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        variant_name:
+          type: string
+        options:
+          type: object
+        price_adjustment:
+          type: number
+        stock_quantity:
+          type: integer
+        is_available:
+          type: boolean
+        image_url:
+          type: string
+          format: uri
+
+    Cart:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        branch_id:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        subtotal:
+          type: number
+        item_count:
+          type: integer
+
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        variant_id:
+          type: string
+          format: uuid
+        product_name:
+          type: string
+        variant_name:
+          type: string
+        quantity:
+          type: integer
+        unit_price:
+          type: number
+        line_total:
+          type: number
+        product_image:
+          type: string
+          format: uri
+
+    DeliveryAddress:
+      type: object
+      required: [street, city, state]
+      properties:
+        street:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        postal_code:
+          type: string
+        landmark:
+          type: string
+
+    OrderSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_number:
+          type: string
+        branch_name:
+          type: string
+        total_amount:
+          type: number
+        payment_status:
+          type: string
+          enum: [pending, paid, failed, refunded]
+        order_status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    OrderDetail:
+      allOf:
+        - $ref: '#/components/schemas/OrderSummary'
+        - type: object
+          properties:
+            delivery_method:
+              type: string
+            delivery_name:
+              type: string
+            delivery_phone:
+              type: string
+            delivery_address:
+              $ref: '#/components/schemas/DeliveryAddress'
+            subtotal:
+              type: number
+            delivery_base_fee:
+              type: number
+            delivery_fee_addition:
+              type: number
+            transaction_fee:
+              type: number
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/OrderItem'
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        product_name:
+          type: string
+        variant_name:
+          type: string
+        quantity:
+          type: integer
+        unit_price:
+          type: number
+        line_total:
+          type: number
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        pages:
+          type: integer
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object

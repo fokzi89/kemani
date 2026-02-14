@@ -64,13 +64,20 @@ CREATE TABLE tenants (
 
   -- Business Information
   business_name VARCHAR(255) NOT NULL,
-  business_type VARCHAR(50) NOT NULL, -- pharmacy, supermarket, grocery, minimart, restaurant
-  subdomain VARCHAR(100) UNIQUE NOT NULL, -- for marketplace storefront URL
+  business_type VARCHAR(50) NOT NULL, -- pharmacy, supermarket, pharmacy_supermarket, restaurant, retail, kiosk, neighbourhood_store
+  subdomain VARCHAR(100) UNIQUE, -- for marketplace storefront URL (auto-generated from business_name)
 
   -- Contact Information
-  phone_number VARCHAR(20) NOT NULL UNIQUE,
+  phone_number VARCHAR(20),
   email VARCHAR(255),
+
+  -- Address Information (from onboarding)
   address TEXT,
+  country VARCHAR(100), -- Full country name from dropdown
+  city VARCHAR(100),
+  office_address TEXT,
+  latitude DECIMAL(10, 8), -- Auto-populated from geocoding
+  longitude DECIMAL(11, 8), -- Auto-populated from geocoding
 
   -- Branding
   logo_url TEXT,
@@ -133,16 +140,21 @@ CREATE TABLE users (
   -- Primary Key
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
 
-  -- Multi-Tenancy
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  -- Multi-Tenancy (nullable for users during onboarding)
+  tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
 
   -- Personal Information
   full_name VARCHAR(255) NOT NULL,
-  phone_number VARCHAR(20) NOT NULL,
+  phone_number VARCHAR(20),
   email VARCHAR(255),
 
+  -- Profile Information (from onboarding Step 1)
+  profile_picture_url TEXT,
+  gender VARCHAR(10), -- male, female
+  onboarding_completed_at TIMESTAMPTZ, -- tracks when user completed onboarding
+
   -- Role & Permissions
-  role VARCHAR(50) NOT NULL, -- platform_admin, tenant_admin, branch_manager, cashier, delivery_rider
+  role VARCHAR(50) NOT NULL DEFAULT 'tenant_admin', -- platform_admin, tenant_admin, branch_manager, cashier, delivery_rider
   permissions JSONB DEFAULT '[]', -- custom permissions beyond role
 
   -- Employment Details (for staff)

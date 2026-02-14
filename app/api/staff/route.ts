@@ -84,9 +84,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!invite.email && !invite.phone) {
+    // Verify email is provided (required for Email OTP)
+    if (!invite.email) {
       return NextResponse.json(
-        { error: 'Either email or phone must be provided' },
+        { error: 'Email is required for staff invitations' },
         { status: 400 }
       );
     }

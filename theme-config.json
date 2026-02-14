@@ -1,0 +1,53 @@
+{
+    "colors": {
+        "light": {
+            "background": "240 253 244",
+            "foreground": "20 83 45",
+            "primary": "22 163 74",
+            "primaryForeground": "240 253 244",
+            "secondary": "220 252 231",
+            "secondaryForeground": "20 83 45",
+            "accent": "34 197 94",
+            "accentForeground": "240 253 244",
+            "muted": "220 252 231",
+            "mutedForeground": "22 101 52",
+            "card": "255 255 255",
+            "cardForeground": "20 83 45",
+            "border": "134 239 172",
+            "input": "134 239 172",
+            "success": "34 197 94",
+            "warning": "251 191 36",
+            "error": "239 68 68",
+            "info": "59 130 246"
+        },
+        "dark": {
+            "background": "5 46 22",
+            "foreground": "240 253 244",
+            "primary": "74 222 128",
+            "primaryForeground": "5 46 22",
+            "secondary": "22 101 52",
+            "secondaryForeground": "240 253 244",
+            "accent": "34 255 122",
+            "accentForeground": "5 46 22",
+            "muted": "20 83 45",
+            "mutedForeground": "187 247 208",
+            "card": "20 83 45",
+            "cardForeground": "240 253 244",
+            "border": "22 101 52",
+            "input": "22 101 52",
+            "success": "74 222 128",
+            "warning": "251 191 36",
+            "error": "248 113 113",
+            "info": "96 165 250"
+        }
+    },
+    "typography": {
+        "fontFamily": "Inter, system-ui, sans-serif",
+        "headingFontFamily": "Readex Pro, system-ui, sans-serif"
+    },
+    "borderRadius": "0.5rem",
+    "shadows": {
+        "light": "0 0 0 / 0.1",
+        "dark": "74 222 128 / 0.2"
+    }
+}

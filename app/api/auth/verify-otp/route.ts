@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
     const { identifier, otp, channel } = await request.json();
 
-    if (!identifier || !otp || !channel) {
+    if (!identifier || !otp) {
       return NextResponse.json(
-        { error: 'Identifier, OTP, and channel are required' },
+        { error: 'Identifier and OTP are required' },
         { status: 400 }
       );
     }
 
-    // For email OTP, Supabase Auth handles verification
-    // When user enters OTP, we verify and create session
-    const supabase = createClient();
+    if (channel && channel !== 'email') {
+      return NextResponse.json(
+        { error: 'Only email authentication is supported' },
+        { status: 400 }
+      );
+    }
+
+    const supabase = await createClient();
 
     // Verify the OTP token with Supabase
     const { data: authData, error: verifyError } = await supabase.auth.verifyOtp({

@@ -42,21 +42,39 @@ A cashier at a pharmacy with unreliable internet processes sales, manages invent
 
 ---
 
-### User Story 2 - Multi-Tenant Isolation and Phone Authentication (Priority: P2 - Phase 1: Core POS)
+### User Story 2 - Multi-Tenant Authentication and Onboarding (Priority: P2 - Phase 1: Core POS)
 
-A platform administrator onboards new business tenants using phone-based authentication. Each tenant (pharmacy, supermarket, grocery shop) operates with complete data isolation, custom branding, and role-based access for their staff.
+A business owner registers for the platform using email/password or Google Sign-In, then completes a guided onboarding flow to set up their profile and company information. Each tenant operates with complete data isolation, custom branding, and role-based access for their staff via email invitations.
 
-**Why this priority**: Multi-tenancy and secure authentication are foundational. Phone + OTP authentication aligns with Nigeria-first UX where phone numbers are primary identity. Must be established early to support multiple businesses on the platform.
-before 
-**Independent Test**: Can be tested by registering two tenants using phone numbers, sending OTP verification, configuring each with different branding, creating staff accounts with different roles (admin, cashier, manager), and verifying complete data isolation between tenants.
+**Why this priority**: Multi-tenancy and secure authentication are foundational. Email/password and Google OAuth provide familiar, reliable authentication methods. Guided onboarding ensures complete profile and company data collection upfront. Staff invitation system maintains security while enabling team collaboration.
+
+**Independent Test**: Can be tested by registering a new business owner with email/password, completing profile setup (name, gender, phone, photo), completing company setup (business details, location, logo), verifying navigation to dashboard, inviting staff members via email with role assignment, and confirming complete data isolation between tenants.
 
 **Acceptance Scenarios**:
 
-1. **Given** a new business wants to join the platform, **When** they provide their phone number, **Then** the system sends an OTP code for verification
-2. **Given** a user enters the correct OTP, **When** verification succeeds, **Then** the system creates a tenant account with unique identifier and admin access
-3. **Given** multiple tenants exist on the platform, **When** a user logs into tenant A, **Then** they can only access tenant A's data with zero visibility into other tenants
-4. **Given** a tenant administrator, **When** they create staff accounts with roles (admin, cashier, manager, driver), **Then** each role has appropriate permissions enforced by the system
-5. **Given** a tenant configures branding, **When** they upload logo and set colors, **Then** these settings apply to their POS interface and receipts only
+**Owner Registration & Onboarding**:
+1. **Given** a new business owner visits the registration page, **When** they provide email, password, and confirm password OR click "Sign in with Google", **Then** the system creates their account and redirects to onboarding
+2. **Given** a newly registered owner on Step 1 (Profile Setup), **When** they upload profile picture, enter full name, select gender (Male/Female), and provide phone number, **Then** the system validates and saves their profile, enabling progression to Step 2
+3. **Given** an owner on Step 2 (Company Setup), **When** they provide company name, select business type (Pharmacy, Supermarket, Pharmacy/Supermarket, Restaurant, Retail, Kiosk, Neighbourhood Store), enter address, select country from alphabetical list, enter city and office address, optionally upload logo, **Then** the system auto-updates latitude/longitude from address and saves company information
+4. **Given** an owner completes Step 2, **When** they submit the company setup form, **Then** the system creates the tenant record with default branch, assigns owner as tenant_admin, and navigates to dashboard
+
+**Multi-Tenancy & Data Isolation**:
+5. **Given** multiple tenants exist on the platform, **When** a user logs into tenant A, **Then** they can only access tenant A's data with zero visibility into other tenants
+6. **Given** a tenant administrator views their dashboard, **When** they navigate to any section (POS, inventory, orders, analytics), **Then** all data displayed belongs exclusively to their tenant
+
+**Staff Invitation & Onboarding**:
+7. **Given** a tenant administrator wants to add staff, **When** they provide staff email, full name, role (Branch Manager, Cashier/Staff, Delivery Rider), and optional branch assignment, **Then** the system sends an email invitation with a unique link valid for 7 days
+8. **Given** a staff member receives an invitation email, **When** they click the invitation link within 7 days, **Then** the system displays an account creation page where they set their password
+9. **Given** a staff member creates their account, **When** they complete password setup, **Then** they are redirected to staff profile setup to enter full name, upload profile picture, and provide phone number
+10. **Given** a staff member completes profile setup, **When** they submit the form, **Then** they are redirected to security setup to create a 6-digit passcode or enable biometric authentication
+11. **Given** a staff member completes passcode/biometric setup, **When** they submit, **Then** the system navigates them to the dashboard with role-appropriate access
+
+**Staff Login & Security**:
+12. **Given** a staff member wants to access the system, **When** they provide email and password on the login page, **Then** the system validates credentials and requests passcode/biometric verification
+13. **Given** a staff member is prompted for passcode, **When** they enter their 6-digit PIN or use biometric authentication, **Then** the system grants access to the dashboard
+14. **Given** a staff member is inactive for 10 minutes on POS, **When** they attempt any action, **Then** the system displays a lock screen requiring passcode/biometric re-authentication
+15. **Given** a tenant administrator views staff invitations, **When** they access the staff management page, **Then** they can see pending invitations, resend invitation emails, or revoke pending invitations
+16. **Given** staff members with different roles access the system, **When** they navigate the application, **Then** each role sees only authorized features (admin: full access, cashier: POS only, rider: deliveries only)
 
 ---
 
