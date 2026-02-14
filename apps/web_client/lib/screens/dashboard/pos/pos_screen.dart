@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../widgets/pos/product_grid.dart';
-import '../../../widgets/pos/pos_search_bar.dart';
-import '../../../widgets/pos/category_selector.dart';
-import '../../../widgets/pos/ticket_item.dart';
 import '../../../widgets/pos/product_data.dart';
+import '../../../services/product_service.dart';
+import '../../../models/product.dart';
 import '../../../theme.dart';
 
 class POSScreen extends StatefulWidget {
@@ -15,35 +14,50 @@ class POSScreen extends StatefulWidget {
 
 class _POSScreenState extends State<POSScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ProductService _productService = ProductService();
+
   String _selectedCategory = 'All';
-
-  // Mock categories with counts
-  final List<Map<String, dynamic>> _categoryData = [
-    {'name': 'All', 'count': 43},
-    {'name': 'Pain Relief', 'count': 16},
-    {'name': 'Antibiotics', 'count': 11},
-    {'name': 'Vitamins', 'count': 8},
-    {'name': 'First Aid', 'count': 6},
-    {'name': 'Skincare', 'count': 2},
+  List<ProductData> _products = [];
+  List<Map<String, dynamic>> _categoryData = [
+    {'name': 'All', 'count': 0},
   ];
-
-  final List<ProductData> _products = [
-    ProductData(id: '1', name: 'Paracetamol 500mg', price: 500, stock: 120),
-    ProductData(id: '2', name: 'Amoxicillin 500mg', price: 1500, stock: 45),
-    ProductData(id: '3', name: 'Vitamin C 1000mg', price: 2000, stock: 8),
-    ProductData(id: '4', name: 'Bandage Roll', price: 300, stock: 50),
-    ProductData(id: '5', name: 'Ibuprofen 400mg', price: 800, stock: 200),
-    ProductData(id: '6', name: 'Antiseptic Liquid', price: 1200, stock: 15),
-    ProductData(id: '7', name: 'Cough Syrup', price: 1800, stock: 25),
-    ProductData(id: '8', name: 'Face Mask (Pack)', price: 2500, stock: 0),
-    ProductData(id: '9', name: 'Hand Sanitizer', price: 1000, stock: 60),
-    ProductData(id: '10', name: 'Thermometer', price: 5000, stock: 12),
-    ProductData(id: '11', name: 'Diclofenac Gel', price: 900, stock: 30),
-    ProductData(id: '12', name: 'Multivitamins', price: 3500, stock: 0),
-  ];
+  bool _isLoading = true;
+  String? _error;
 
   // Cart State
   final Map<String, int> _cart = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final products = await _productService.getProductsForCurrentUser();
+
+      if (mounted) {
+        setState(() {
+          _products = products.map((p) => ProductData.fromProduct(p)).toList();
+          _categoryData = ProductService.getCategoryData(products);
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = e.toString();
+        });
+      }
+    }
+  }
 
   void _addToCart(ProductData product) {
     setState(() {
@@ -88,12 +102,14 @@ class _POSScreenState extends State<POSScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // Filter products
+    // Filter products by search and category
     final filteredProducts = _products.where((p) {
       final matchesSearch = p.name.toLowerCase().contains(
         _searchController.text.toLowerCase(),
       );
-      final matchesCategory = _selectedCategory == 'All';
+      final matchesCategory =
+          _selectedCategory == 'All' ||
+          (p.category ?? 'Uncategorized') == _selectedCategory;
       return matchesSearch && matchesCategory;
     }).toList();
 
@@ -149,9 +165,9 @@ class _POSScreenState extends State<POSScreen> {
                     const SizedBox(width: 12),
                     // Refresh button
                     IconButton(
-                      onPressed: () {},
+                      onPressed: _loadProducts,
                       icon: const Icon(Icons.refresh),
-                      tooltip: 'Refresh',
+                      tooltip: 'Refresh Products',
                     ),
                     // Search
                     SizedBox(
@@ -162,7 +178,7 @@ class _POSScreenState extends State<POSScreen> {
                         onChanged: (_) => setState(() {}),
                         style: const TextStyle(fontSize: 13),
                         decoration: InputDecoration(
-                          hintText: 'Search Menu',
+                          hintText: 'Search Products',
                           prefixIcon: const Icon(Icons.search, size: 18),
                           contentPadding: EdgeInsets.zero,
                           filled: true,
@@ -205,12 +221,77 @@ class _POSScreenState extends State<POSScreen> {
 
               const SizedBox(height: 8),
 
-              // Product Grid
+              // Product Grid / Loading / Error / Empty
               Expanded(
-                child: ProductGrid(
-                  products: filteredProducts,
-                  onProductSelected: _addToCart,
-                ),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 48,
+                              color: theme.colorScheme.error,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Failed to load products',
+                              style: theme.textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _error!,
+                              style: theme.textTheme.bodySmall,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: _loadProducts,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : filteredProducts.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.inventory_2_outlined,
+                              size: 64,
+                              color: isDark
+                                  ? AppColors.darkMutedForeground
+                                  : AppColors.lightMutedForeground,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _products.isEmpty
+                                  ? 'No products yet'
+                                  : 'No products match your search',
+                              style: theme.textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _products.isEmpty
+                                  ? 'Add products to your inventory to start selling'
+                                  : 'Try a different search term or category',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: isDark
+                                    ? AppColors.darkMutedForeground
+                                    : AppColors.lightMutedForeground,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ProductGrid(
+                        products: filteredProducts,
+                        onProductSelected: _addToCart,
+                      ),
               ),
             ],
           ),

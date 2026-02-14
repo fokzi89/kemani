@@ -120,6 +120,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                     DropdownMenuItem(value: 'staff', child: Text('Staff')),
                     DropdownMenuItem(value: 'cashier', child: Text('Cashier')),
                     DropdownMenuItem(value: 'manager', child: Text('Manager')),
+                    DropdownMenuItem(value: 'rider', child: Text('Rider')),
                   ],
                   onChanged: (val) {
                     if (val != null) {
