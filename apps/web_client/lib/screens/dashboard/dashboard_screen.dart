@@ -6,6 +6,7 @@ import '../auth/login_screen.dart';
 import '../../widgets/navigation/responsive_shell.dart';
 import 'pos/pos_screen.dart';
 import 'staff/staff_management_screen.dart';
+import 'products/product_inventory_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -21,7 +22,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Center(child: Text('Dashboard Overview')),
     POSScreen(),
     Center(child: Text('Orders Management')),
-    Center(child: Text('Product Inventory')),
+    ProductInventoryScreen(),
     Center(child: Text('Customer Management')),
     StaffManagementScreen(),
     Center(child: Text('Settings')),

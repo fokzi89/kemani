@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../widgets/pos/product_grid.dart';
 import '../../../widgets/pos/product_data.dart';
 import '../../../services/product_service.dart';
-import '../../../models/product.dart';
 import '../../../theme.dart';
 
 class POSScreen extends StatefulWidget {
