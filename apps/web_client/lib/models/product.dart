@@ -1,71 +1,28 @@
-class Product {
-  final String id;
-  final String tenantId;
-  final String branchId;
-  final String name;
-  final String? description;
-  final String? sku;
-  final String? barcode;
-  final String? category;
-  final double unitPrice;
-  final double? costPrice;
-  final int stockQuantity;
-  final int? lowStockThreshold;
-  final String? imageUrl;
-  final bool isActive;
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-  Product({
-    required this.id,
-    required this.tenantId,
-    required this.branchId,
-    required this.name,
-    this.description,
-    this.sku,
-    this.barcode,
-    this.category,
-    required this.unitPrice,
-    this.costPrice,
-    required this.stockQuantity,
-    this.lowStockThreshold,
-    this.imageUrl,
-    required this.isActive,
-  });
+part 'product.freezed.dart';
+part 'product.g.dart';
 
-  factory Product.fromJson(Map<String, dynamic> json) {
-    return Product(
-      id: json['id'],
-      tenantId: json['tenant_id'],
-      branchId: json['branch_id'],
-      name: json['name'],
-      description: json['description'],
-      sku: json['sku'],
-      barcode: json['barcode'],
-      category: json['category'],
-      unitPrice: (json['unit_price'] as num).toDouble(),
-      costPrice: json['cost_price'] != null ? (json['cost_price'] as num).toDouble() : null,
-      stockQuantity: json['stock_quantity'],
-      lowStockThreshold: json['low_stock_threshold'],
-      imageUrl: json['image_url'],
-      isActive: json['is_active'] ?? true,
-    );
-  }
+@freezed
+class Product with _$Product {
+  const factory Product({
+    required String id,
+    @JsonKey(name: 'tenant_id') required String tenantId,
+    required String name,
+    String? description,
+    String? sku,
+    String? barcode,
+    @JsonKey(name: 'category_id') String? categoryId,
+    @JsonKey(name: 'cost_price') @Default(0.0) double costPrice,
+    @JsonKey(name: 'selling_price') required double sellingPrice,
+    @JsonKey(name: 'current_stock') @Default(0) int currentStock,
+    @JsonKey(name: 'track_inventory') @Default(true) bool trackInventory,
+    @JsonKey(name: 'expiry_date') DateTime? expiryDate,
+    @JsonKey(name: 'image_url') String? imageUrl,
+    @JsonKey(name: 'created_at') DateTime? createdAt,
+    @JsonKey(name: 'updated_at') DateTime? updatedAt,
+  }) = _Product;
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'tenant_id': tenantId,
-      'branch_id': branchId,
-      'name': name,
-      'description': description,
-      'sku': sku,
-      'barcode': barcode,
-      'category': category,
-      'unit_price': unitPrice,
-      'cost_price': costPrice,
-      'stock_quantity': stockQuantity,
-      'low_stock_threshold': lowStockThreshold,
-      'image_url': imageUrl,
-      'is_active': isActive,
-    };
-  }
+  factory Product.fromJson(Map<String, dynamic> json) =>
+      _$ProductFromJson(json);
 }

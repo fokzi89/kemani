@@ -65,12 +65,16 @@ class OnboardingStatus {
   final DateTime? completedAt;
   final String? tenantId;
   final String? role;
+  final bool hasProfile;
+  final bool hasPasscode;
 
   OnboardingStatus({
     required this.isComplete,
     this.completedAt,
     this.tenantId,
     this.role,
+    this.hasProfile = false,
+    this.hasPasscode = false,
   });
 
   factory OnboardingStatus.fromJson(Map<String, dynamic> json) {
@@ -81,6 +85,8 @@ class OnboardingStatus {
           : null,
       tenantId: json['tenantId'],
       role: json['role'],
+      hasProfile: json['hasProfile'] ?? false,
+      hasPasscode: json['hasPasscode'] ?? false,
     );
   }
 }

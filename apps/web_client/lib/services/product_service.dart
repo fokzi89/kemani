@@ -1,110 +1,104 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/product.dart';
+import '../database/powersync.dart';
+import 'package:uuid/uuid.dart';
 
 class ProductService {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final _db = PowerSyncService.db;
+  final _uuid = const Uuid();
 
-  Future<List<Product>> getProducts(String branchId) async {
-    final response = await _supabase
-        .from('products')
-        .select()
-        .eq('branch_id', branchId)
-        .eq('is_active', true); // Only fetch active products by default
-
-    final data = response as List<dynamic>;
-    return data.map((json) => Product.fromJson(json)).toList();
+  /// Watch all products for a specific tenant
+  Stream<List<Product>> watchProducts(String tenantId) {
+    return _db
+        .watch(
+          'SELECT * FROM products WHERE tenant_id = ? ORDER BY name ASC',
+          parameters: [tenantId],
+        )
+        .map((rows) => rows.map((row) => Product.fromJson(row)).toList());
   }
 
-  /// Fetch all active products for the current user's tenant
-  Future<List<Product>> getProductsForCurrentUser() async {
-    final user = _supabase.auth.currentUser;
-    if (user == null) return [];
-
-    // Get the user's tenant_id
-    final profile = await _supabase
-        .from('users')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .maybeSingle();
-
-    final tenantId = profile?['tenant_id'];
-    if (tenantId == null) return [];
-
-    final response = await _supabase
-        .from('products')
-        .select()
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .order('name', ascending: true);
-
-    final data = response as List<dynamic>;
-    return data.map((json) => Product.fromJson(json)).toList();
+  /// Get all products for a specific tenant
+  Future<List<Product>> getProducts(String tenantId) async {
+    final rows = await _db.getAll(
+      'SELECT * FROM products WHERE tenant_id = ? ORDER BY name ASC',
+      [tenantId],
+    );
+    return rows.map((row) => Product.fromJson(row)).toList();
   }
 
-  /// Extract distinct categories from a list of products
-  static List<Map<String, dynamic>> getCategoryData(List<Product> products) {
-    final Map<String, int> categoryCount = {};
-    for (final product in products) {
-      final cat = product.category ?? 'Uncategorized';
-      categoryCount[cat] = (categoryCount[cat] ?? 0) + 1;
-    }
-
-    final List<Map<String, dynamic>> categories = [
-      {'name': 'All', 'count': products.length},
-    ];
-
-    // Sort by count (descending)
-    final sorted = categoryCount.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    for (final entry in sorted) {
-      categories.add({'name': entry.key, 'count': entry.value});
-    }
-
-    return categories;
+  /// Get a single product by ID
+  Future<Product?> getProductById(String id) async {
+    final row = await _db.getOptional('SELECT * FROM products WHERE id = ?', [
+      id,
+    ]);
+    return row != null ? Product.fromJson(row) : null;
   }
 
-  Future<Product?> getProductByBarcode(String barcode, String branchId) async {
-    final response = await _supabase
-        .from('products')
-        .select()
-        .eq('branch_id', branchId)
-        .eq('barcode', barcode)
-        .maybeSingle();
-
-    if (response == null) return null;
-    return Product.fromJson(response);
+  /// Get a single product by Barcode
+  Future<Product?> getProductByBarcode(String barcode, String tenantId) async {
+    final row = await _db.getOptional(
+      'SELECT * FROM products WHERE barcode = ? AND tenant_id = ?',
+      [barcode, tenantId],
+    );
+    return row != null ? Product.fromJson(row) : null;
   }
 
-  Future<Product> createProduct(Map<String, dynamic> productData) async {
-    final response = await _supabase
-        .from('products')
-        .insert(productData)
-        .select()
-        .single();
+  /// Create a new product
+  Future<void> createProduct(Product product) async {
+    final id = product.id.isEmpty ? _uuid.v4() : product.id;
+    final now = DateTime.now().toIso8601String();
 
-    return Product.fromJson(response);
+    await _db.execute(
+      '''INSERT INTO products(id, tenant_id, name, description, sku, barcode, category_id, 
+         cost_price, selling_price, current_stock, track_inventory, image_url, created_at, updated_at)
+         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+      [
+        id,
+        product.tenantId,
+        product.name,
+        product.description,
+        product.sku,
+        product.barcode,
+        product.categoryId,
+        product.costPrice,
+        product.sellingPrice,
+        product.currentStock,
+        product.trackInventory ? 1 : 0,
+        product.imageUrl,
+        product.createdAt?.toIso8601String() ?? now,
+        now,
+      ],
+    );
   }
 
-  Future<Product> updateProduct(
-    String productId,
-    Map<String, dynamic> updates,
-  ) async {
-    final response = await _supabase
-        .from('products')
-        .update(updates)
-        .eq('id', productId)
-        .select()
-        .single();
+  /// Update an existing product
+  Future<void> updateProduct(Product product) async {
+    final now = DateTime.now().toIso8601String();
 
-    return Product.fromJson(response);
+    await _db.execute(
+      '''UPDATE products SET 
+         name = ?, description = ?, sku = ?, barcode = ?, category_id = ?, 
+         cost_price = ?, selling_price = ?, current_stock = ?, track_inventory = ?, 
+         image_url = ?, updated_at = ?
+         WHERE id = ?''',
+      [
+        product.name,
+        product.description,
+        product.sku,
+        product.barcode,
+        product.categoryId,
+        product.costPrice,
+        product.sellingPrice,
+        product.currentStock,
+        product.trackInventory ? 1 : 0,
+        product.imageUrl,
+        now,
+        product.id,
+      ],
+    );
   }
 
-  Future<void> deleteProduct(String productId) async {
-    // Soft delete usually, but here setting is_active = false
-    await _supabase
-        .from('products')
-        .update({'is_active': false})
-        .eq('id', productId);
+  /// Delete a product (soft delete or hard delete depending on sync rules)
+  Future<void> deleteProduct(String id) async {
+    await _db.execute('DELETE FROM products WHERE id = ?', [id]);
   }
 }

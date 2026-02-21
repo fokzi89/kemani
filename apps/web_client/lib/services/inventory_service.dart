@@ -1,6 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/product.dart';
-import '../models/inventory_transaction.dart';
+import '../models/inventory.dart';
 
 class InventoryService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -10,22 +10,9 @@ class InventoryService {
         .from('products')
         .select()
         .eq('branch_id', branchId)
-        .filter('stock_quantity', 'lte', _supabase.rpc('get_low_stock_threshold', params: {}).toString()); 
-        // Note: simplified logic. Actually checking col <= col is tricky in REST.
-        // Better to just fetch all and filter in app or use a view.
-        // Assuming we fetch all 'active' products and filter in memory for now or use a dedicated RPC/View.
-    
-    // Correct approach using client-side filter for MVP flexibility or raw SQL/RPC if performant
-    // Let's use a simple query for products where stock <= low_stock_threshold
-    // Supabase Postgrest doesn't easily support "where col1 <= col2" without RPC.
-    
-    final response2 = await _supabase
-        .from('products')
-        .select()
-        .eq('branch_id', branchId)
-        .lte('stock_quantity', 10); // Hardcoded fallback or use explicit RPC in future
+        .lte('current_stock', 10); // Hardcoded fallback or use explicit RPC in future
 
-    final data = response2 as List<dynamic>;
+    final data = response as List<dynamic>;
     return data.map((json) => Product.fromJson(json)).toList();
   }
 
@@ -44,11 +31,11 @@ class InventoryService {
     // 1. Get current product to find previous quantity
     final productRes = await _supabase
         .from('products')
-        .select('stock_quantity, tenant_id')
+        .select('current_stock, tenant_id') // Corrected column name
         .eq('id', productId)
         .single();
     
-    final int previousQty = productRes['stock_quantity'];
+    final int previousQty = productRes['current_stock']; // Corrected column name
     final String tenantId = productRes['tenant_id'];
     final int newQty = previousQty + quantityDelta;
     
@@ -57,7 +44,7 @@ class InventoryService {
       'tenant_id': tenantId,
       'branch_id': branchId,
       'product_id': productId,
-      'transaction_type': type.name,
+      'transaction_type': type.name, // Enum to string
       'quantity_delta': quantityDelta,
       'previous_quantity': previousQty,
       'new_quantity': newQty,
@@ -65,12 +52,13 @@ class InventoryService {
       'reference_id': referenceId,
       'reference_type': referenceType,
       'notes': notes,
+      'created_at': DateTime.now().toIso8601String(),
     });
 
     // 3. Update Product
     await _supabase
         .from('products')
-        .update({'stock_quantity': newQty})
+        .update({'current_stock': newQty}) // Corrected column name
         .eq('id', productId);
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../widgets/pos/product_grid.dart';
 import '../../../widgets/pos/product_data.dart';
 import '../../../services/product_service.dart';
+import '../../../services/sale_service.dart';
 import '../../../theme.dart';
 
 class POSScreen extends StatefulWidget {
@@ -14,6 +15,8 @@ class POSScreen extends StatefulWidget {
 class _POSScreenState extends State<POSScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ProductService _productService = ProductService();
+  final SaleService _saleService = SaleService();
+  bool _processingPayment = false;
 
   String _selectedCategory = 'All';
   List<ProductData> _products = [];
@@ -303,13 +306,20 @@ class _POSScreenState extends State<POSScreen> {
   }
 
   Widget _buildOrderSummary(ThemeData theme, bool isDark) {
+    final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final textColor = isDark
+        ? AppColors.darkForeground
+        : AppColors.lightForeground;
+    final mutedColor = isDark
+        ? AppColors.darkMutedForeground
+        : AppColors.lightMutedForeground;
+
     return Container(
       width: 320,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A2E) : const Color(0xFF1E293B),
-        border: Border(
-          left: BorderSide(color: isDark ? Colors.white10 : Colors.black12),
-        ),
+        color: cardColor,
+        border: Border(left: BorderSide(color: borderColor)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -320,10 +330,10 @@ class _POSScreenState extends State<POSScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Order Summary',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: textColor,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -331,15 +341,12 @@ class _POSScreenState extends State<POSScreen> {
                 if (_cart.isNotEmpty)
                   Text(
                     '#B${DateTime.now().millisecondsSinceEpoch % 100000}',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: mutedColor, fontSize: 12),
                   ),
               ],
             ),
           ),
-          const Divider(color: Colors.white12, height: 1),
+          Divider(color: borderColor, height: 1),
 
           // Cart Items
           Expanded(
@@ -351,14 +358,12 @@ class _POSScreenState extends State<POSScreen> {
                         Icon(
                           Icons.receipt_long_outlined,
                           size: 48,
-                          color: Colors.white.withOpacity(0.2),
+                          color: mutedColor.withOpacity(0.4),
                         ),
                         const SizedBox(height: 12),
                         Text(
                           'No items yet',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.4),
-                          ),
+                          style: TextStyle(color: mutedColor),
                         ),
                       ],
                     ),
@@ -379,6 +384,9 @@ class _POSScreenState extends State<POSScreen> {
                         price: product.price,
                         onIncrement: () => _addToCart(product),
                         onDecrement: () => _removeFromCart(productId),
+                        textColor: textColor,
+                        mutedColor: mutedColor,
+                        borderColor: borderColor,
                       );
                     },
                   ),
@@ -388,32 +396,53 @@ class _POSScreenState extends State<POSScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.15),
-              border: const Border(top: BorderSide(color: Colors.white12)),
+              color: isDark
+                  ? Colors.black.withOpacity(0.15)
+                  : Colors.grey.withOpacity(0.05),
+              border: Border(top: BorderSide(color: borderColor)),
             ),
             child: Column(
               children: [
-                _totalRow('Subtotal', '₦${_subtotal.toStringAsFixed(0)}'),
+                _totalRow(
+                  'Subtotal',
+                  '₦${_subtotal.toStringAsFixed(0)}',
+                  labelColor: mutedColor,
+                  valueColor: textColor,
+                ),
                 const SizedBox(height: 6),
-                _totalRow('Taxes (7.5%)', '₦${_tax.toStringAsFixed(0)}'),
+                _totalRow(
+                  'Taxes (7.5%)',
+                  '₦${_tax.toStringAsFixed(0)}',
+                  labelColor: mutedColor,
+                  valueColor: textColor,
+                ),
                 const SizedBox(height: 6),
-                _totalRow('Discount', '-₦0', color: AppColors.lightAccent),
-                const Divider(color: Colors.white24, height: 20),
+                _totalRow(
+                  'Discount',
+                  '-₦0',
+                  labelColor: mutedColor,
+                  valueColor: AppColors.lightAccent,
+                ),
+                Divider(color: borderColor, height: 20),
                 _totalRow(
                   'Total Payment',
                   '₦${_totalAmount.toStringAsFixed(0)}',
                   isBold: true,
                   fontSize: 18,
+                  labelColor: textColor,
+                  valueColor: textColor,
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: _cart.isEmpty ? null : () {},
+                    onPressed: _cart.isEmpty || _processingPayment
+                        ? null
+                        : () => _showPaymentDialog(context),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.lightPrimary,
-                      foregroundColor: Colors.white,
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: theme.colorScheme.onPrimary,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -440,7 +469,8 @@ class _POSScreenState extends State<POSScreen> {
     String value, {
     bool isBold = false,
     double fontSize = 13,
-    Color? color,
+    required Color labelColor,
+    required Color valueColor,
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -448,7 +478,7 @@ class _POSScreenState extends State<POSScreen> {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.6),
+            color: labelColor,
             fontSize: fontSize,
             fontWeight: isBold ? FontWeight.bold : null,
           ),
@@ -456,7 +486,7 @@ class _POSScreenState extends State<POSScreen> {
         Text(
           value,
           style: TextStyle(
-            color: color ?? Colors.white,
+            color: valueColor,
             fontSize: fontSize,
             fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
           ),
@@ -480,15 +510,150 @@ class _POSScreenState extends State<POSScreen> {
       },
     );
   }
+
+  void _showPaymentDialog(BuildContext context) {
+    String selectedMethod = 'cash';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Complete Payment'),
+          content: SizedBox(
+            width: 380,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total: ₦${_totalAmount.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${_cartItemCount} item${_cartItemCount == 1 ? '' : 's'} · '
+                  'Tax: ₦${_tax.toStringAsFixed(0)}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Payment Method',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                ...['cash', 'card', 'bank_transfer', 'mobile_money'].map((
+                  method,
+                ) {
+                  final labels = {
+                    'cash': 'Cash',
+                    'card': 'Card',
+                    'bank_transfer': 'Bank Transfer',
+                    'mobile_money': 'Mobile Money',
+                  };
+                  final icons = {
+                    'cash': Icons.money,
+                    'card': Icons.credit_card,
+                    'bank_transfer': Icons.account_balance,
+                    'mobile_money': Icons.phone_android,
+                  };
+                  return RadioListTile<String>(
+                    value: method,
+                    groupValue: selectedMethod,
+                    title: Text(labels[method]!),
+                    secondary: Icon(icons[method]),
+                    dense: true,
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() => selectedMethod = val);
+                      }
+                    },
+                  );
+                }),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await _processPayment(selectedMethod);
+              },
+              icon: const Icon(Icons.check),
+              label: const Text('Confirm'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _processPayment(String paymentMethod) async {
+    setState(() => _processingPayment = true);
+
+    try {
+      // Build line items from cart
+      final items = _cart.entries.map((entry) {
+        final product = _products.firstWhere((p) => p.id == entry.key);
+        return {
+          'product_id': product.id,
+          'product_name': product.name,
+          'quantity': entry.value,
+          'unit_price': product.price,
+        };
+      }).toList();
+
+      final result = await _saleService.createSale(
+        items: items,
+        paymentMethod: paymentMethod,
+      );
+
+      if (mounted) {
+        setState(() {
+          _cart.clear();
+          _processingPayment = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✓ Sale ${result['sale_number']} completed successfully!',
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _processingPayment = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Payment failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 }
 
-// Order item for the dark sidebar
+// Order item for the sidebar
 class _OrderItem extends StatelessWidget {
   final String name;
   final int quantity;
   final double price;
   final VoidCallback onIncrement;
   final VoidCallback onDecrement;
+  final Color textColor;
+  final Color mutedColor;
+  final Color borderColor;
 
   const _OrderItem({
     required this.name,
@@ -496,14 +661,17 @@ class _OrderItem extends StatelessWidget {
     required this.price,
     required this.onIncrement,
     required this.onDecrement,
+    required this.textColor,
+    required this.mutedColor,
+    required this.borderColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.white10)),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: borderColor.withOpacity(0.4))),
       ),
       child: Row(
         children: [
@@ -514,8 +682,8 @@ class _OrderItem extends StatelessWidget {
               children: [
                 Text(
                   '$name ($quantity)',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: textColor,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -523,10 +691,7 @@ class _OrderItem extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '₦${price.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: mutedColor, fontSize: 12),
                 ),
               ],
             ),
@@ -534,8 +699,8 @@ class _OrderItem extends StatelessWidget {
           // Total
           Text(
             '₦${(price * quantity).toStringAsFixed(0)}',
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: textColor,
               fontWeight: FontWeight.bold,
               fontSize: 14,
             ),
@@ -547,16 +712,16 @@ class _OrderItem extends StatelessWidget {
             child: Icon(
               Icons.remove_circle_outline,
               size: 18,
-              color: Colors.white.withOpacity(0.5),
+              color: mutedColor,
             ),
           ),
           const SizedBox(width: 4),
           InkWell(
             onTap: onIncrement,
-            child: const Icon(
+            child: Icon(
               Icons.add_circle_outline,
               size: 18,
-              color: Colors.white70,
+              color: textColor.withOpacity(0.7),
             ),
           ),
         ],

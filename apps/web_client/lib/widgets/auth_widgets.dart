@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/theme_provider.dart';
-import '../theme.dart';
+import '../theme/app_theme.dart';
 
 /// Theme toggle button for switching between light and dark modes
 class ThemeToggleButton extends StatelessWidget {
@@ -9,15 +7,17 @@ class ThemeToggleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDark = themeProvider.isDarkMode;
+    // TODO: Connect to explicit ThemeProvider when verified
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return IconButton(
       icon: Icon(
         isDark ? Icons.light_mode : Icons.dark_mode,
-        color: isDark ? AppColors.darkPrimary : AppColors.lightPrimary,
+        color: Theme.of(context).colorScheme.primary,
       ),
-      onPressed: () => themeProvider.toggleTheme(),
+      onPressed: () {
+        // themeProvider.toggleTheme();
+      },
       tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
     );
   }
@@ -34,27 +34,22 @@ class BackToHomeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return TextButton.icon(
       icon: Icon(
         Icons.arrow_back,
-        color: isDark ? AppColors.darkPrimary : AppColors.lightPrimary,
+        color: Theme.of(context).colorScheme.primary,
       ),
       label: Text(
         'Back to Home',
         style: TextStyle(
-          color: isDark ? AppColors.darkPrimary : AppColors.lightPrimary,
+          color: Theme.of(context).colorScheme.primary,
           fontWeight: FontWeight.w600,
         ),
       ),
       onPressed: () {
-        // For web, we can use url_launcher or just window.location
-        // For now, we'll use Navigator.pop or show a message
         if (Navigator.of(context).canPop()) {
           Navigator.of(context).pop();
         }
-        // TODO: Implement web navigation to landing page
       },
     );
   }
@@ -90,7 +85,7 @@ class AuthTextField extends StatelessWidget {
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
+        prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 20) : null,
         suffixIcon: suffixIcon,
       ),
     );
@@ -102,19 +97,19 @@ class AuthButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
   final bool isLoading;
-  final bool isOutlined;
+  final bool isSecondary;
 
   const AuthButton({
     super.key,
     required this.text,
     this.onPressed,
     this.isLoading = false,
-    this.isOutlined = false,
+    this.isSecondary = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (isOutlined) {
+    if (isSecondary) {
       return OutlinedButton(
         onPressed: isLoading ? null : onPressed,
         child: isLoading
@@ -123,13 +118,7 @@ class AuthButton extends StatelessWidget {
                 width: 20,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : Text(
-                text,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+            : Text(text),
       );
     }
 
@@ -146,10 +135,7 @@ class AuthButton extends StatelessWidget {
                 ),
               ),
             )
-          : Text(
-              text,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+          : Text(text),
     );
   }
 }
@@ -163,8 +149,6 @@ class GoogleSignInButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return OutlinedButton.icon(
       onPressed: isLoading ? null : onPressed,
       icon: isLoading
@@ -180,19 +164,11 @@ class GoogleSignInButton extends StatelessWidget {
               errorBuilder: (context, error, stackTrace) =>
                   const Icon(Icons.g_mobiledata),
             ),
-      label: const Text(
-        'Continue with Google',
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-      ),
+      label: const Text('Continue with Google'),
       style: OutlinedButton.styleFrom(
-        backgroundColor: isDark ? AppColors.darkCard : Colors.white,
-        foregroundColor: isDark
-            ? AppColors.darkForeground
-            : AppColors.lightForeground,
-        side: BorderSide(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-          width: 2,
-        ),
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        side: BorderSide(color: Theme.of(context).dividerColor),
+        backgroundColor: Colors.transparent, // Transparent for outlined
       ),
     );
   }
@@ -204,6 +180,8 @@ class TestimonialCard extends StatelessWidget {
   final String authorName;
   final String authorTitle;
   final String? imageUrl;
+  final Color? backgroundColor;
+  final Color? textColor;
 
   const TestimonialCard({
     super.key,
@@ -211,83 +189,70 @@ class TestimonialCard extends StatelessWidget {
     required this.authorName,
     required this.authorTitle,
     this.imageUrl,
+    this.backgroundColor,
+    this.textColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Default to primary color if not specified
+    final bg = backgroundColor ?? AppTheme.primaryColor;
+    final txt = textColor ?? Colors.white;
 
     return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [AppColors.darkSecondary, AppColors.darkBackground]
-              : [AppColors.lightPrimary, AppColors.lightAccent],
-        ),
-      ),
+      padding: const EdgeInsets.all(48),
+      color: bg,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Logo
+          // Logo text
           Text(
             'Fokzify',
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.bold,
-              color: isDark ? AppColors.darkPrimary : Colors.white,
+              color: txt,
+              letterSpacing: -0.5,
             ),
           ),
-          const SizedBox(height: 48),
+          const Spacer(),
 
           // Quote icon
           Icon(
-            Icons.format_quote,
+            Icons.format_quote_rounded,
             size: 48,
-            color: isDark
-                ? AppColors.darkPrimary.withOpacity(0.5)
-                : Colors.white.withOpacity(0.5),
+            color: txt.withOpacity(0.3),
           ),
           const SizedBox(height: 24),
 
-          // Quote text
+          // Quote
           Text(
             quote,
             style: TextStyle(
-              fontSize: 18,
-              height: 1.6,
-              color: isDark ? AppColors.darkForeground : Colors.white,
+              fontSize: 24,
+              height: 1.4,
+              fontWeight: FontWeight.w500,
+              color: txt,
             ),
           ),
           const SizedBox(height: 32),
 
-          // Author info
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                authorName,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? AppColors.darkPrimary : Colors.white,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                authorTitle,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark
-                      ? AppColors.darkMutedForeground
-                      : Colors.white.withOpacity(0.8),
-                ),
-              ),
-            ],
+          // Author
+          Text(
+            authorName,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: txt,
+            ),
           ),
+          const SizedBox(height: 4),
+          Text(
+            authorTitle,
+            style: TextStyle(fontSize: 14, color: txt.withOpacity(0.8)),
+          ),
+          const Spacer(),
         ],
       ),
     );

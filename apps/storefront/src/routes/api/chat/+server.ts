@@ -1,63 +1,79 @@
-import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import { createClient } from '$lib/services/supabase';
-import { nanoid } from 'nanoid';
+import type { RequestHandler } from './$types';
 
-// POST - Send chat message
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
     try {
-        const { session_id, message, sender_type, customer_id, branch_id } = await request.json();
+        const { branchId, tenantId, customerId, sessionToken } = await request.json();
 
-        if (!message || !sender_type) {
-            return json({ error: 'Message and sender type are required' }, { status: 400 });
+        if (!branchId || !tenantId) {
+            return json({ error: 'Missing branch or tenant ID' }, { status: 400 });
         }
 
-        const supabase = createClient();
+        // Check for existing active session
+        let query = supabase
+            .from('chat_sessions')
+            .select('*')
+            .eq('branch_id', branchId)
+            .eq('status', 'active')
+            .order('last_message_at', { ascending: false, nullsFirst: false }) // Prioritize recent activity
+            .limit(1);
 
-        let sessionId = session_id;
+        if (customerId) {
+            query = query.eq('customer_id', customerId);
+        } else if (sessionToken) {
+            query = query.eq('session_token', sessionToken);
+        } else {
+            return json({ error: 'Missing customer context' }, { status: 400 });
+        }
 
-        // If no session, create one
-        if (!sessionId) {
-            if (!branch_id) {
-                return json({ error: 'Branch ID required for new session' }, { status: 400 });
-            }
+        const { data: existingSession, error: fetchError } = await query.maybeSingle();
 
-            const { data: newSession, error: sessionError } = await supabase
+        if (fetchError) {
+            throw fetchError;
+        }
+
+        let session = existingSession;
+
+        // If no active session, create one
+        if (!session) {
+            const { data: newSession, error: createError } = await supabase
                 .from('chat_sessions')
                 .insert({
-                    branch_id,
-                    customer_id,
-                    status: 'active'
+                    branch_id: branchId,
+                    tenant_id: tenantId,
+                    customer_id: customerId || null,
+                    session_token: sessionToken || 'guest',
+                    status: 'active',
+                    agent_type: 'live' // Default to live, can be updated by logic later
                 })
                 .select()
                 .single();
 
-            if (sessionError) {
-                console.error('Session creation error:', sessionError);
-                return json({ error: 'Failed to create chat session' }, { status: 500 });
+            if (createError) {
+                throw createError;
             }
-
-            sessionId = newSession.id;
+            session = newSession;
         }
 
-        // Insert message
-        const { data, error } = await supabase
+        // Fetch recent messages
+        const { data: messages, error: messagesError } = await supabase
             .from('chat_messages')
-            .insert({
-                session_id: sessionId,
-                message,
-                sender_type,
-                sender_id: customer_id
-            })
-            .select()
-            .single();
+            .select('*')
+            .eq('session_id', session.id)
+            .order('created_at', { ascending: true }) // Send in chronological order
+            .limit(50); // Initial load limit
 
-        if (error) {
-            console.error('Message insert error:', error);
-            return json({ error: error.message }, { status: 500 });
+        if (messagesError) {
+            throw messagesError;
         }
 
-        return json({ message: data, session_id: sessionId }, { status: 201 });
+        return json({
+            session,
+            messages: messages || [],
+            agentStatus: 'online', // Placeholder, implement real status later using presence
+            queuePosition: null
+        });
+
     } catch (error: any) {
         console.error('Chat API Error:', error);
         return json({ error: error.message || 'Internal Server Error' }, { status: 500 });

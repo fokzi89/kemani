@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme.dart';
+import '../../providers/theme_provider.dart';
 import 'collapsible_nav_rail.dart';
 import 'mobile_nav_bar.dart';
 import 'navigation_items.dart';
@@ -135,6 +137,22 @@ class _MobileDrawer extends StatelessWidget {
             );
           }),
           const Divider(),
+          Builder(
+            builder: (context) {
+              final themeProvider = Provider.of<ThemeProvider>(context);
+              return ListTile(
+                leading: Icon(
+                  themeProvider.isDarkMode
+                      ? Icons.light_mode_outlined
+                      : Icons.dark_mode_outlined,
+                ),
+                title: Text(
+                  themeProvider.isDarkMode ? 'Light Mode' : 'Dark Mode',
+                ),
+                onTap: () => themeProvider.toggleTheme(),
+              );
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.logout),
             title: const Text('Logout'),

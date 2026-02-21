@@ -29,6 +29,20 @@ class AuthService {
     );
   }
 
+  // Sign in with phone OTP
+  Future<void> signInWithOtp(String phone) async {
+    await _supabase.auth.signInWithOtp(phone: phone);
+  }
+
+  // Verify phone OTP
+  Future<AuthResponse> verifyOtp(String phone, String token) async {
+    return await _supabase.auth.verifyOTP(
+      token: token,
+      type: OtpType.sms,
+      phone: phone,
+    );
+  }
+
   // Sign out
   Future<void> signOut() async {
     await _supabase.auth.signOut();

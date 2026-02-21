@@ -1,0 +1,89 @@
+name: Flutter Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./apps/web_client
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.10.x'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Web
+        run: flutter build web --release --dart-define=FLUTTER_WEB_USE_SKIA=true --target lib/main_prod.dart
+
+      - name: Archive Web Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: web-build
+          path: apps/web_client/build/web
+
+  build-android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./apps/web_client
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.10.x'
+          channel: 'stable'
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release --target lib/main_prod.dart
+
+      - name: Archive APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-release
+          path: apps/web_client/build/app/outputs/flutter-apk/app-release.apk
+
+  release:
+    needs: [build-web, build-android]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Download web build
+        uses: actions/download-artifact@v3
+        with:
+          name: web-build
+          path: web-build
+
+      - name: Download APK
+        uses: actions/download-artifact@v3
+        with:
+          name: app-release
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "app-release.apk,web-build/*"
+          token: ${{ secrets.GITHUB_TOKEN }}

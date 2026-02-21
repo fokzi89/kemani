@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme.dart';
+import '../../providers/theme_provider.dart';
 
 import 'navigation_items.dart';
 
@@ -84,7 +86,7 @@ class _CollapsibleNavRailState extends State<CollapsibleNavRail> {
 
           const Divider(height: 1),
 
-          // Collapse Toggle & Logout
+          // Collapse Toggle, Theme Toggle & Logout
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Column(
@@ -97,6 +99,23 @@ class _CollapsibleNavRailState extends State<CollapsibleNavRail> {
                   isSelected: false,
                   isCollapsed: widget.isCollapsed,
                   onTap: widget.onToggleCollapse,
+                ),
+                const SizedBox(height: 4),
+                Builder(
+                  builder: (context) {
+                    final themeProvider = Provider.of<ThemeProvider>(context);
+                    return _NavTile(
+                      icon: themeProvider.isDarkMode
+                          ? Icons.light_mode_outlined
+                          : Icons.dark_mode_outlined,
+                      label: themeProvider.isDarkMode
+                          ? 'Light Mode'
+                          : 'Dark Mode',
+                      isSelected: false,
+                      isCollapsed: widget.isCollapsed,
+                      onTap: () => themeProvider.toggleTheme(),
+                    );
+                  },
                 ),
                 const SizedBox(height: 4),
                 _NavTile(

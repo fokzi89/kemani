@@ -37,10 +37,10 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       final tenantId = userProfile?['tenant_id'];
       if (tenantId == null) return;
 
-      // Fetch staff members
+      // Fetch staff members (include phone and avatar_url)
       final staffResponse = await _supabase
           .from('users')
-          .select('id, full_name, email, role, created_at')
+          .select('id, full_name, email, phone, role, avatar_url, created_at')
           .eq('tenant_id', tenantId)
           .order('created_at', ascending: false);
 
@@ -67,6 +67,33 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
         ).showSnackBar(SnackBar(content: Text('Error loading staff: $e')));
       }
     }
+  }
+
+  /// Returns display-friendly role label.
+  /// Maps 'tenant_admin' to 'Owner'.
+  String _roleLabel(String role) {
+    switch (role) {
+      case 'tenant_admin':
+        return 'Owner';
+      case 'manager':
+        return 'Manager';
+      case 'cashier':
+        return 'Cashier';
+      case 'rider':
+        return 'Rider';
+      case 'staff':
+        return 'Staff';
+      default:
+        return role[0].toUpperCase() + role.substring(1);
+    }
+  }
+
+  String _getInitials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
   }
 
   void _showInviteDialog() {
@@ -193,6 +220,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final isDesktop = MediaQuery.of(context).size.width >= 800;
 
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -293,9 +321,16 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                               ),
                             ),
                           )
+                        else if (isDesktop)
+                          _buildStaffTable(theme, isDark)
                         else
                           ..._staffList.map(
-                            (staff) => _StaffCard(staff: staff, isDark: isDark),
+                            (staff) => _StaffCard(
+                              staff: staff,
+                              isDark: isDark,
+                              roleLabel: _roleLabel,
+                              getInitials: _getInitials,
+                            ),
                           ),
                       ],
                     ),
@@ -305,18 +340,148 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       ),
     );
   }
+
+  /// Desktop DataTable view
+  Widget _buildStaffTable(ThemeData theme, bool isDark) {
+    return SizedBox(
+      width: double.infinity,
+      child: Card(
+        elevation: 0,
+        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+            width: 0.5,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: DataTable(
+          headingRowColor: WidgetStateProperty.resolveWith(
+            (_) => isDark
+                ? Colors.white.withOpacity(0.04)
+                : Colors.grey.withOpacity(0.06),
+          ),
+          columnSpacing: 24,
+          horizontalMargin: 20,
+          columns: const [
+            DataColumn(label: Text('Staff')),
+            DataColumn(label: Text('Email')),
+            DataColumn(label: Text('Phone')),
+            DataColumn(label: Text('Role')),
+          ],
+          rows: _staffList.map((staff) {
+            final role = (staff['role'] as String?) ?? 'staff';
+            final name = staff['full_name'] ?? 'Unknown';
+            final email = staff['email'] ?? '';
+            final phone = staff['phone'] ?? '-';
+            final avatarUrl = staff['avatar_url'] as String?;
+
+            return DataRow(
+              cells: [
+                // Staff name + avatar
+                DataCell(
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: theme.colorScheme.primary.withOpacity(
+                          0.15,
+                        ),
+                        backgroundImage:
+                            avatarUrl != null && avatarUrl.isNotEmpty
+                            ? NetworkImage(avatarUrl)
+                            : null,
+                        child: avatarUrl == null || avatarUrl.isEmpty
+                            ? Text(
+                                _getInitials(name),
+                                style: TextStyle(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                ),
+                              )
+                            : null,
+                      ),
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(
+                          name,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                DataCell(Text(email)),
+                DataCell(Text(phone)),
+                DataCell(
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _roleColor(role).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _roleLabel(role),
+                      style: TextStyle(
+                        color: _roleColor(role),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Color _roleColor(String role) {
+    switch (role) {
+      case 'tenant_admin':
+        return Colors.amber[700]!;
+      case 'manager':
+        return Colors.blue;
+      case 'cashier':
+        return Colors.teal;
+      case 'rider':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
 }
 
+/// Mobile staff card with avatar, name, email, phone, and role
 class _StaffCard extends StatelessWidget {
   final Map<String, dynamic> staff;
   final bool isDark;
+  final String Function(String) roleLabel;
+  final String Function(String) getInitials;
 
-  const _StaffCard({required this.staff, required this.isDark});
+  const _StaffCard({
+    required this.staff,
+    required this.isDark,
+    required this.roleLabel,
+    required this.getInitials,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final role = (staff['role'] as String?) ?? 'staff';
+    final name = staff['full_name'] ?? 'Unknown';
+    final email = staff['email'] ?? '';
+    final phone = staff['phone'] ?? '-';
+    final avatarUrl = staff['avatar_url'] as String?;
 
     return Card(
       elevation: 0,
@@ -329,47 +494,77 @@ class _StaffCard extends StatelessWidget {
         ),
       ),
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: theme.colorScheme.primary.withOpacity(0.15),
-          child: Text(
-            _getInitials(staff['full_name'] ?? 'U'),
-            style: TextStyle(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.bold,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: theme.colorScheme.primary.withOpacity(0.15),
+              backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                  ? NetworkImage(avatarUrl)
+                  : null,
+              child: avatarUrl == null || avatarUrl.isEmpty
+                  ? Text(
+                      getInitials(name),
+                      style: TextStyle(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : null,
             ),
-          ),
-        ),
-        title: Text(
-          staff['full_name'] ?? 'Unknown',
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(staff['email'] ?? ''),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            role[0].toUpperCase() + role.substring(1),
-            style: TextStyle(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    email,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: isDark
+                          ? AppColors.darkMutedForeground
+                          : AppColors.lightMutedForeground,
+                    ),
+                  ),
+                  if (phone != '-') ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      phone,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isDark
+                            ? AppColors.darkMutedForeground
+                            : AppColors.lightMutedForeground,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                roleLabel(role),
+                style: TextStyle(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
-  }
-
-  String _getInitials(String name) {
-    final parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return name.isNotEmpty ? name[0].toUpperCase() : '?';
   }
 }
 
@@ -381,8 +576,6 @@ class _InviteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Card(
       elevation: 0,
       color: isDark ? AppColors.darkCard : AppColors.lightCard,

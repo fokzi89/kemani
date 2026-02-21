@@ -1,100 +1,53 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
-import '../../widgets/onboarding_widgets.dart';
-import '../../widgets/auth_widgets.dart';
-import '../../theme.dart';
-import '../../models/onboarding_models.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../services/onboarding_service.dart';
-import '../../services/storage_service.dart';
-import '../../services/geocoding_service.dart';
-import 'passcode_setup_screen.dart';
+import '../../models/onboarding_models.dart';
+import '../../widgets/auth_widgets.dart';
 
-class CompanySetupScreen extends StatefulWidget {
+class CompanySetupScreen extends ConsumerStatefulWidget {
   const CompanySetupScreen({super.key});
 
   @override
-  State<CompanySetupScreen> createState() => _CompanySetupScreenState();
+  ConsumerState<CompanySetupScreen> createState() => _CompanySetupScreenState();
 }
 
-class _CompanySetupScreenState extends State<CompanySetupScreen> {
-  final _formKey = GlobalKey<FormState>();
+class _CompanySetupScreenState extends ConsumerState<CompanySetupScreen> {
   final _businessNameController = TextEditingController();
+  final _businessTypeController = TextEditingController();
   final _addressController = TextEditingController();
   final _cityController = TextEditingController();
-  final _officeAddressController = TextEditingController();
-
-  BusinessType? _selectedBusinessType;
-  String? _selectedCountry;
-  File? _logoImage;
+  final _countryController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
-  final _onboardingService = OnboardingService();
-  final _storageService = StorageService();
-  final _geocodingService = GeocodingService();
-
-  @override
-  void dispose() {
-    _businessNameController.dispose();
-    _addressController.dispose();
-    _cityController.dispose();
-    _officeAddressController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handleNext() async {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // Upload logo if selected
-      String? logoUrl;
-      if (_logoImage != null) {
-        logoUrl = await _storageService.uploadLogo(_logoImage!);
-      }
-
-      // Get coordinates from address
-      Map<String, double>? coordinates;
-      try {
-        coordinates = await _geocodingService.getMockCoordinates(
+      final service = OnboardingService();
+      await service.saveCompany(
+        CompanyData(
+          businessName: _businessNameController.text.trim(),
+          businessType: _businessTypeController.text.trim().isEmpty
+              ? 'retail'
+              : _businessTypeController.text.trim(),
+          address: _addressController.text.trim(),
+          country: _countryController.text.trim(),
           city: _cityController.text.trim(),
-          country: _selectedCountry!,
-        );
-      } catch (e) {
-        print('Geocoding failed: $e');
-      }
-
-      // Save company data
-      final companyData = CompanyData(
-        businessName: _businessNameController.text.trim(),
-        businessType: _selectedBusinessType!.value,
-        address: _addressController.text.trim(),
-        country: _selectedCountry!,
-        city: _cityController.text.trim(),
-        officeAddress: _officeAddressController.text.trim().isNotEmpty
-            ? _officeAddressController.text.trim()
-            : null,
-        logoUrl: logoUrl,
-        latitude: coordinates?['latitude'],
-        longitude: coordinates?['longitude'],
+        ),
       );
 
-      await _onboardingService.saveCompany(companyData);
-
       if (mounted) {
-        // Navigate to passcode setup
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const PasscodeSetupScreen()));
+        context.go('/dashboard'); // Router will redirect to Passcode if needed
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error saving company: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save company: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -103,140 +56,112 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final size = MediaQuery.of(context).size;
+    final isDesktop = size.width > 900;
 
     return Scaffold(
-      backgroundColor: isDark
-          ? AppColors.darkBackground
-          : AppColors.lightBackground,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Progress indicator
-                    const OnboardingProgressBar(currentStep: 2),
-                    const SizedBox(height: 32),
-
-                    // Title
-                    Text(
-                      'Set up your business',
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Tell us about your business',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 48),
-
-                    // Business name
-                    AuthTextField(
-                      controller: _businessNameController,
-                      label: 'Business Name',
-                      prefixIcon: Icons.store_outlined,
-                      validator: (value) => value?.isEmpty ?? true
-                          ? 'Business name is required'
-                          : null,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Business type
-                    BusinessTypeDropdown(
-                      selectedType: _selectedBusinessType,
-                      onChanged: (value) {
-                        setState(() => _selectedBusinessType = value);
-                      },
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Address
-                    AuthTextField(
-                      controller: _addressController,
-                      label: 'Address',
-                      prefixIcon: Icons.location_on_outlined,
-                      validator: (value) =>
-                          value?.isEmpty ?? true ? 'Address is required' : null,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Country
-                    CountryDropdown(
-                      selectedCountry: _selectedCountry,
-                      onChanged: (value) {
-                        setState(() => _selectedCountry = value);
-                      },
-                    ),
-                    const SizedBox(height: 20),
-
-                    // City
-                    AuthTextField(
-                      controller: _cityController,
-                      label: 'City',
-                      prefixIcon: Icons.location_city_outlined,
-                      validator: (value) =>
-                          value?.isEmpty ?? true ? 'City is required' : null,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Office address (optional)
-                    AuthTextField(
-                      controller: _officeAddressController,
-                      label: 'Office Address (Optional)',
-                      prefixIcon: Icons.business_outlined,
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Logo upload
-                    LogoUpload(
-                      onImageSelected: (file) {
-                        setState(() => _logoImage = file);
-                      },
-                    ),
-                    const SizedBox(height: 48),
-
-                    // Buttons
-                    Row(
+      body: Row(
+        children: [
+          Expanded(
+            flex: isDesktop ? 5 : 1,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(32),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text('Back'),
+                        const Text(
+                          "Set up your business",
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 2,
-                          child: AuthButton(
-                            text: 'Next',
-                            onPressed: _handleNext,
-                            isLoading: _isLoading,
-                          ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          "Tell us about your company to get started.",
+                        ),
+                        const SizedBox(height: 32),
+
+                        AuthTextField(
+                          controller: _businessNameController,
+                          label: "Business Name",
+                          prefixIcon: Icons.store_mall_directory_outlined,
+                          validator: (v) =>
+                              v?.isEmpty ?? true ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        AuthTextField(
+                          controller: _businessTypeController,
+                          label: "Business Type",
+                          prefixIcon: Icons.category_outlined,
+                          // Could be dropdown later
+                        ),
+                        const SizedBox(height: 16),
+                        AuthTextField(
+                          controller: _addressController,
+                          label: "Address",
+                          prefixIcon: Icons.location_on_outlined,
+                          validator: (v) =>
+                              v?.isEmpty ?? true ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: AuthTextField(
+                                controller: _cityController,
+                                label: "City",
+                                prefixIcon: Icons.location_city_outlined,
+                                validator: (v) =>
+                                    v?.isEmpty ?? true ? 'Required' : null,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: AuthTextField(
+                                controller: _countryController,
+                                label: "Country",
+                                prefixIcon: Icons.public_outlined,
+                                validator: (v) =>
+                                    v?.isEmpty ?? true ? 'Required' : null,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 32),
+                        AuthButton(
+                          text: "Continue",
+                          onPressed: _submit,
+                          isLoading: _isLoading,
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+          if (isDesktop)
+            Expanded(
+              flex: 7,
+              child: Container(
+                color: Theme.of(context).primaryColor,
+                child: const TestimonialCard(
+                  quote: "Manage your business like a pro.",
+                  authorName: "Kemani Team",
+                  authorTitle: "Setup",
+                  textColor: Colors.white,
+                  backgroundColor: Colors.transparent,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

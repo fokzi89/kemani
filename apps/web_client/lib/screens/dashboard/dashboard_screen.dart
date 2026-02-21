@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
-import '../../providers/theme_provider.dart';
 import '../auth/login_screen.dart';
 import '../../widgets/navigation/responsive_shell.dart';
 import 'pos/pos_screen.dart';
+import 'orders/orders_screen.dart';
 import 'staff/staff_management_screen.dart';
 import 'products/product_inventory_screen.dart';
+import 'overview/dashboard_overview_screen.dart';
+import 'customers/customer_management_screen.dart';
+import 'settings/settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -19,13 +21,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = const [
-    Center(child: Text('Dashboard Overview')),
+    DashboardOverviewScreen(),
     POSScreen(),
-    Center(child: Text('Orders Management')),
+    OrdersScreen(),
     ProductInventoryScreen(),
-    Center(child: Text('Customer Management')),
+    CustomerManagementScreen(),
     StaffManagementScreen(),
-    Center(child: Text('Settings')),
+    SettingsScreen(),
   ];
 
   void _onDestinationSelected(int index) {
@@ -43,37 +45,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-
     return ResponsiveShell(
       selectedIndex: _selectedIndex,
       onDestinationSelected: _onDestinationSelected,
       onLogout: _handleLogout,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Kemani POS'),
-          actions: [
-            // Theme toggle
-            IconButton(
-              icon: Icon(
-                themeProvider.isDarkMode
-                    ? Icons.light_mode_outlined
-                    : Icons.dark_mode_outlined,
-              ),
-              tooltip: themeProvider.isDarkMode
-                  ? 'Switch to Light Mode'
-                  : 'Switch to Dark Mode',
-              onPressed: () => themeProvider.toggleTheme(),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: _handleLogout,
-            ),
-          ],
-        ),
-        body: _screens[_selectedIndex],
-      ),
+      child: _screens[_selectedIndex],
     );
   }
 }

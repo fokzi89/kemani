@@ -50,6 +50,24 @@ class OnboardingService {
     }
   }
 
+  /// Verify passcode
+  Future<bool> verifyPasscode(String passcode) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return false;
+
+    try {
+      final response = await _supabase.functions.invoke(
+        'verify-passcode',
+        body: {'passcode': passcode},
+      );
+
+      return response.status == 200;
+    } catch (e) {
+      print('Passcode verification failed: $e');
+      return false;
+    }
+  }
+
   /// Mark onboarding as complete
   Future<void> completeOnboarding() async {
     final userId = _supabase.auth.currentUser?.id;
@@ -72,7 +90,9 @@ class OnboardingService {
     try {
       final response = await _supabase
           .from('users')
-          .select('onboarding_completed_at, tenant_id, role')
+          .select(
+            'onboarding_completed_at, tenant_id, role, full_name, passcode_hash',
+          )
           .eq('id', userId)
           .single();
 
@@ -83,6 +103,10 @@ class OnboardingService {
             : null,
         tenantId: response['tenant_id'],
         role: response['role'],
+        hasProfile: response['full_name'] != null,
+        hasPasscode:
+            response['passcode_hash'] != null &&
+            (response['passcode_hash'] as String).isNotEmpty,
       );
     } catch (e) {
       print('Error getting onboarding status: $e');

@@ -1,0 +1,64 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'delivery.dart';
+
+// **************************************************************************
+// JsonSerializableGenerator
+// **************************************************************************
+
+_$DeliveryImpl _$$DeliveryImplFromJson(Map<String, dynamic> json) =>
+    _$DeliveryImpl(
+      id: json['id'] as String,
+      tenantId: json['tenant_id'] as String,
+      orderId: json['order_id'] as String,
+      driverName: json['driver_name'] as String?,
+      driverPhone: json['driver_phone'] as String?,
+      status:
+          $enumDecodeNullable(
+            _$DeliveryStatusEnumMap,
+            json['delivery_status'],
+          ) ??
+          DeliveryStatus.pending,
+      address: json['delivery_address'] as String,
+      fee: (json['delivery_fee'] as num?)?.toDouble() ?? 0.0,
+      notes: json['notes'] as String?,
+      estimatedDeliveryTime: json['estimated_delivery_time'] == null
+          ? null
+          : DateTime.parse(json['estimated_delivery_time'] as String),
+      actualDeliveryTime: json['actual_delivery_time'] == null
+          ? null
+          : DateTime.parse(json['actual_delivery_time'] as String),
+      createdAt: json['created_at'] == null
+          ? null
+          : DateTime.parse(json['created_at'] as String),
+      updatedAt: json['updated_at'] == null
+          ? null
+          : DateTime.parse(json['updated_at'] as String),
+    );
+
+Map<String, dynamic> _$$DeliveryImplToJson(
+  _$DeliveryImpl instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'tenant_id': instance.tenantId,
+  'order_id': instance.orderId,
+  'driver_name': instance.driverName,
+  'driver_phone': instance.driverPhone,
+  'delivery_status': _$DeliveryStatusEnumMap[instance.status]!,
+  'delivery_address': instance.address,
+  'delivery_fee': instance.fee,
+  'notes': instance.notes,
+  'estimated_delivery_time': instance.estimatedDeliveryTime?.toIso8601String(),
+  'actual_delivery_time': instance.actualDeliveryTime?.toIso8601String(),
+  'created_at': instance.createdAt?.toIso8601String(),
+  'updated_at': instance.updatedAt?.toIso8601String(),
+};
+
+const _$DeliveryStatusEnumMap = {
+  DeliveryStatus.pending: 'pending',
+  DeliveryStatus.picked_up: 'picked_up',
+  DeliveryStatus.in_transit: 'in_transit',
+  DeliveryStatus.delivered: 'delivered',
+  DeliveryStatus.failed: 'failed',
+  DeliveryStatus.cancelled: 'cancelled',
+};

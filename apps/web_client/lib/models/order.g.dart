@@ -1,0 +1,83 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'order.dart';
+
+// **************************************************************************
+// JsonSerializableGenerator
+// **************************************************************************
+
+_$OrderImpl _$$OrderImplFromJson(Map<String, dynamic> json) => _$OrderImpl(
+  id: json['id'] as String,
+  tenantId: json['tenant_id'] as String,
+  branchId: json['branch_id'] as String,
+  orderNumber: json['order_number'] as String,
+  customerId: json['customer_id'] as String,
+  status:
+      $enumDecodeNullable(_$OrderStatusEnumMap, json['order_status']) ??
+      OrderStatus.pending,
+  paymentStatus:
+      $enumDecodeNullable(_$PaymentStatusEnumMap, json['payment_status']) ??
+      PaymentStatus.unpaid,
+  subtotal: (json['subtotal'] as num).toDouble(),
+  totalAmount: (json['total_amount'] as num).toDouble(),
+  createdAt: DateTime.parse(json['created_at'] as String),
+  updatedAt: json['updated_at'] == null
+      ? null
+      : DateTime.parse(json['updated_at'] as String),
+  items: (json['order_items'] as List<dynamic>?)
+      ?.map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
+      .toList(),
+);
+
+Map<String, dynamic> _$$OrderImplToJson(_$OrderImpl instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'tenant_id': instance.tenantId,
+      'branch_id': instance.branchId,
+      'order_number': instance.orderNumber,
+      'customer_id': instance.customerId,
+      'order_status': _$OrderStatusEnumMap[instance.status]!,
+      'payment_status': _$PaymentStatusEnumMap[instance.paymentStatus]!,
+      'subtotal': instance.subtotal,
+      'total_amount': instance.totalAmount,
+      'created_at': instance.createdAt.toIso8601String(),
+      'updated_at': instance.updatedAt?.toIso8601String(),
+      'order_items': instance.items,
+    };
+
+const _$OrderStatusEnumMap = {
+  OrderStatus.pending: 'pending',
+  OrderStatus.confirmed: 'confirmed',
+  OrderStatus.preparing: 'preparing',
+  OrderStatus.ready: 'ready',
+  OrderStatus.completed: 'completed',
+  OrderStatus.cancelled: 'cancelled',
+};
+
+const _$PaymentStatusEnumMap = {
+  PaymentStatus.unpaid: 'unpaid',
+  PaymentStatus.paid: 'paid',
+  PaymentStatus.refunded: 'refunded',
+};
+
+_$OrderItemImpl _$$OrderItemImplFromJson(Map<String, dynamic> json) =>
+    _$OrderItemImpl(
+      id: json['id'] as String?,
+      orderId: json['order_id'] as String?,
+      productId: json['product_id'] as String,
+      productName: json['product_name'] as String,
+      quantity: (json['quantity'] as num).toInt(),
+      unitPrice: (json['unit_price'] as num).toDouble(),
+      subtotal: (json['subtotal'] as num).toDouble(),
+    );
+
+Map<String, dynamic> _$$OrderItemImplToJson(_$OrderItemImpl instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'order_id': instance.orderId,
+      'product_id': instance.productId,
+      'product_name': instance.productName,
+      'quantity': instance.quantity,
+      'unit_price': instance.unitPrice,
+      'subtotal': instance.subtotal,
+    };
