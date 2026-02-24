@@ -1,0 +1,47 @@
+// **************************************************************************
+// JsonSerializableGenerator
+// **************************************************************************
+
+_$ProductImpl _$$ProductImplFromJson(Map<String, dynamic> json) =>
+    _$ProductImpl(
+      id: json['id'] as String,
+      tenantId: json['tenant_id'] as String,
+      name: json['name'] as String,
+      description: json['description'] as String?,
+      sku: json['sku'] as String?,
+      barcode: json['barcode'] as String?,
+      categoryId: json['category_id'] as String?,
+      costPrice: (json['cost_price'] as num?)?.toDouble() ?? 0.0,
+      sellingPrice: (json['selling_price'] as num).toDouble(),
+      currentStock: (json['current_stock'] as num?)?.toInt() ?? 0,
+      trackInventory: json['track_inventory'] as bool? ?? true,
+      expiryDate: json['expiry_date'] == null
+          ? null
+          : DateTime.parse(json['expiry_date'] as String),
+      imageUrl: json['image_url'] as String?,
+      createdAt: json['created_at'] == null
+          ? null
+          : DateTime.parse(json['created_at'] as String),
+      updatedAt: json['updated_at'] == null
+          ? null
+          : DateTime.parse(json['updated_at'] as String),
+    );
+
+Map<String, dynamic> _$$ProductImplToJson(_$ProductImpl instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'tenant_id': instance.tenantId,
+      'name': instance.name,
+      'description': instance.description,
+      'sku': instance.sku,
+      'barcode': instance.barcode,
+      'category_id': instance.categoryId,
+      'cost_price': instance.costPrice,
+      'selling_price': instance.sellingPrice,
+      'current_stock': instance.currentStock,
+      'track_inventory': instance.trackInventory,
+      'expiry_date': instance.expiryDate?.toIso8601String(),
+      'image_url': instance.imageUrl,
+      'created_at': instance.createdAt?.toIso8601String(),
+      'updated_at': instance.updatedAt?.toIso8601String(),
+    };

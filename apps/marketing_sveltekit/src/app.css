@@ -1,0 +1,268 @@
+@import "tailwindcss";
+
+/* ============================================
+   CENTRALIZED THEME SYSTEM
+   CSS Variables that change based on light/dark mode
+   ============================================ */
+
+/* Light Mode Variables (Default) */
+:root,
+:root.light {
+	/* Background Colors */
+	--color-bg-primary: #ffffff;
+	--color-bg-secondary: #f9fafb;
+	--color-bg-tertiary: #f3f4f6;
+	--color-bg-nav: rgba(255, 255, 255, 0.8);
+	--color-bg-card: #ffffff;
+	--color-bg-hover: #f3f4f6;
+
+	/* Text Colors */
+	--color-text-primary: #111827;
+	--color-text-secondary: #374151;
+	--color-text-muted: #6b7280;
+	--color-text-inverse: #ffffff;
+
+	/* Border Colors */
+	--color-border-primary: #e5e7eb;
+	--color-border-secondary: #d1d5db;
+
+	/* Accent Colors */
+	--color-accent-primary: #059669;
+	--color-accent-secondary: #10b981;
+	--color-accent-hover: #047857;
+
+	/* Gradient Backgrounds */
+	--gradient-cta-start: #f0fdf4;
+	--gradient-cta-end: #dcfce7;
+	--gradient-section: #f9fafb;
+}
+
+/* Dark Mode Variables */
+:root.dark {
+	/* Background Colors */
+	--color-bg-primary: #111827;
+	--color-bg-secondary: #1f2937;
+	--color-bg-tertiary: #374151;
+	--color-bg-nav: rgba(17, 24, 39, 0.8);
+	--color-bg-card: #1f2937;
+	--color-bg-hover: #374151;
+
+	/* Text Colors */
+	--color-text-primary: #f9fafb;
+	--color-text-secondary: #e5e7eb;
+	--color-text-muted: #9ca3af;
+	--color-text-inverse: #111827;
+
+	/* Border Colors */
+	--color-border-primary: #374151;
+	--color-border-secondary: #4b5563;
+
+	/* Accent Colors - Neon in dark mode */
+	--color-accent-primary: #34d399;
+	--color-accent-secondary: #6ee7b7;
+	--color-accent-hover: #10b981;
+
+	/* Gradient Backgrounds */
+	--gradient-cta-start: #064e3b;
+	--gradient-cta-end: #065f46;
+	--gradient-section: #1f2937;
+}
+
+/* Base Styles Using Variables */
+body {
+	font-size: 14px;
+	line-height: 1.625;
+	background-color: var(--color-bg-primary);
+	color: var(--color-text-primary);
+	transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom Theme Classes Using CSS Variables */
+.theme-bg {
+	background-color: var(--color-bg-primary);
+}
+
+.theme-text {
+	color: var(--color-text-primary);
+}
+
+.theme-heading {
+	color: var(--color-text-primary);
+}
+
+.theme-muted,
+.theme-text-muted {
+	color: var(--color-text-muted);
+}
+
+.theme-border {
+	border-color: var(--color-border-primary);
+}
+
+.theme-card {
+	background-color: var(--color-bg-card);
+	border-color: var(--color-border-primary);
+}
+
+.theme-logo {
+	color: var(--color-accent-primary);
+}
+
+.theme-logo-subtitle {
+	color: var(--color-text-muted);
+}
+
+/* Navigation */
+.theme-nav {
+	background-color: var(--color-bg-nav);
+	border-color: var(--color-border-primary);
+}
+
+.theme-nav-link {
+	color: var(--color-text-secondary);
+	transition: color 0.2s ease;
+}
+
+.theme-nav-link:hover {
+	color: var(--color-accent-primary);
+}
+
+.theme-btn-outline {
+	color: var(--color-text-primary);
+	border-color: var(--color-border-secondary);
+	transition: background-color 0.2s ease;
+}
+
+.theme-btn-outline:hover {
+	background-color: var(--color-bg-hover);
+}
+
+/* Gradients */
+.theme-gradient-page {
+	background-color: var(--color-bg-primary);
+}
+
+.theme-gradient-section {
+	background-color: var(--gradient-section);
+}
+
+.theme-gradient-cta {
+	background: linear-gradient(to right, var(--gradient-cta-start), var(--gradient-cta-end));
+}
+
+/* Force dark text on light CTA sections for better readability */
+:root.light .theme-gradient-cta,
+:root.light .theme-gradient-cta.text-white,
+:root.light .theme-gradient-cta *,
+:root.light .theme-gradient-cta.text-white * {
+	color: #111827 !important;
+}
+
+:root.light .theme-gradient-cta h1,
+:root.light .theme-gradient-cta h2,
+:root.light .theme-gradient-cta h3,
+:root.light .theme-gradient-cta h4,
+:root.light .theme-gradient-cta p,
+:root.light .theme-gradient-cta div,
+:root.light .theme-gradient-cta span {
+	color: #111827 !important;
+}
+
+/* Keep white button backgrounds with emerald text */
+:root.light .theme-gradient-cta a.bg-white,
+:root.light .theme-gradient-cta button.bg-white {
+	color: #059669 !important;
+	background-color: #ffffff !important;
+}
+
+/* Outline buttons get dark text and border */
+:root.light .theme-gradient-cta a.bg-transparent,
+:root.light .theme-gradient-cta a.border-white,
+:root.light .theme-gradient-cta button.border-white {
+	color: #111827 !important;
+	border-color: #111827 !important;
+}
+
+/* Green checkmark circles should stay green */
+:root.light .theme-gradient-cta .bg-green-400 {
+	background-color: #4ade80 !important;
+}
+
+:root.light .theme-gradient-cta .text-green-900 {
+	color: #14532d !important;
+}
+
+/* Smooth transitions */
+.transition-theme {
+	transition: all 0.3s ease;
+}
+
+/* Global text defaults */
+p, li, span, div {
+	color: var(--color-text-primary);
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+	color: var(--color-text-primary);
+}
+
+/* Links */
+a {
+	transition: color 0.2s ease;
+}
+
+/* Cards and Sections */
+section {
+	transition: background-color 0.3s ease;
+}
+
+/* Footer Styles */
+footer {
+	background-color: #1f2937 !important;
+	color: #d1d5db !important;
+}
+
+footer * {
+	color: #d1d5db !important;
+}
+
+footer h3 {
+	color: #ffffff !important;
+}
+
+footer a {
+	color: #d1d5db !important;
+}
+
+footer a:hover {
+	color: #34d399 !important;
+}
+
+/* Button Fixes */
+.bg-transparent {
+	color: #ffffff !important;
+}
+
+/* Fix for border buttons in dark sections */
+.border-white {
+	color: #ffffff !important;
+	border-color: #ffffff !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+	width: 10px;
+}
+
+::-webkit-scrollbar-track {
+	@apply bg-gray-100 dark:bg-gray-900;
+}
+
+::-webkit-scrollbar-thumb {
+	@apply bg-gray-300 dark:bg-gray-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	@apply bg-gray-400 dark:bg-gray-600;
+}
