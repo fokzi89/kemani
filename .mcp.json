@@ -2,10 +2,7 @@
   "mcpServers": {
     "supabase": {
       "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=ykbpznoqebhopyqpoqaf&features=functions%2Cbranching%2Cstorage",
-      "headers": {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrYnB6bm9xZWJob3B5cXBvcWFmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODc2MTE0NywiZXhwIjoyMDg0MzM3MTQ3fQ.cVblxwWFAppPBqFiXhpIwTWKtGDITr4moL7t8SU5iUo"
-      }
+      "url": "https://mcp.supabase.com/mcp?project_ref=ykbpznoqebhopyqpoqaf&features=functions%2Cbranching%2Cstorage"
     }
   }
 }

@@ -148,50 +148,54 @@
 
 ---
 
-## Phase 4: User Story 2 - Multi-Tenant Isolation and OTP Authentication (Priority: P2)
+## Phase 4: User Story 2 - Multi-Tenant Isolation and Email/Google Authentication (Priority: P2)
 
-**Goal**: Platform administrator onboards new business tenants using OTP-based authentication via phone or email. Each tenant operates with complete data isolation, custom branding, and role-based access.
+**Goal**: Platform administrator onboards new business tenants using **email/password or Google Sign-In** authentication. During onboarding, owner selects **country**, which auto-populates **phone dial code** and **currency**. Each tenant operates with complete data isolation, custom branding, and role-based access.
 
-**Independent Test**: Register two tenants using phone numbers or email addresses, send OTP verification, configure each with different branding, create staff accounts with different roles, verify complete data isolation.
+**Independent Test**: Register two tenants using email/password and Google Sign-In, select country/currency for each, configure each with different branding, create staff accounts with different roles, verify complete data isolation.
 
 ### Models for US2
 
-- [ ] T069 [P] [US2] Create Tenant model in lib/types/database.ts
+- [ ] T069 [P] [US2] Create Tenant model with `country_code`, `dial_code`, `currency_code` fields in lib/types/database.ts
 - [ ] T070 [P] [US2] Create User model with role enum in lib/types/database.ts
 - [ ] T071 [P] [US2] Create Branch model in lib/types/database.ts (for future multi-branch support)
 
 ### Services for US2
 
-- [ ] T072 [US2] Implement tenant registration service in lib/auth/tenant.ts (create tenant, assign admin)
+- [ ] T072 [US2] Implement tenant registration service in lib/auth/tenant.ts (create tenant, assign admin, store country/currency)
 - [ ] T073 [US2] Implement user management service in lib/auth/user.ts (create staff, assign roles, permissions)
 - [ ] T074 [US2] Implement tenant branding service in lib/auth/branding.ts (logo upload, color customization)
 
 ### API Endpoints for US2
 
-- [ ] T075 [P] [US2] Create authentication endpoints in app/api/auth/send-otp/route.ts (phone and email OTP)
-- [ ] T076 [P] [US2] Create OTP verification endpoint in app/api/auth/verify-otp/route.ts (with 5-minute expiration)
-- [ ] T077 [P] [US2] Create tenant registration endpoint in app/api/tenants/route.ts (POST new tenant)
+- [ ] T075 [P] [US2] Create Google OAuth callback handler in app/api/auth/callback/route.ts (Supabase OAuth redirect handler)
+- [ ] T076 [P] [US2] Create email confirmation handler in app/api/auth/confirm/route.ts (email verification link handler)
+- [ ] T077 [P] [US2] Create tenant registration endpoint in app/api/tenants/route.ts (POST new tenant with country_code, dial_code, currency_code)
 - [ ] T078 [P] [US2] Create staff management endpoints in app/api/staff/route.ts (GET, POST, PUT staff accounts)
 - [ ] T079 [P] [US2] Create tenant branding endpoint in app/api/tenants/branding/route.ts (PUT branding settings)
 
 ### UI Components for US2
 
-- [ ] T080 [US2] Create login page in app/(auth)/login/page.tsx with phone/email input
-- [ ] T081 [US2] Create OTP verification page in app/(auth)/verify-otp/page.tsx (6-digit code input)
-- [ ] T082 [US2] Create tenant registration form in app/(auth)/register/page.tsx
+- [ ] T080 [US2] Create login page in app/(auth)/login/page.tsx with email/password form AND Google Sign-In button
+- [ ] T081 [US2] Create email confirmation pending page in app/(auth)/confirm-email/page.tsx (prompt user to check inbox after signup)
+- [ ] T082 [US2] Create tenant registration form in app/(auth)/register/page.tsx with email/password fields and Google Sign-In option
+- [ ] T082a [US2] Add country selection step to onboarding flow (searchable list with flag, name, dial code, currency; displays confirmation card on selection)
+- [ ] T082b [US2] Persist selected country_code, dial_code, and currency_code to tenant profile on continue
 - [ ] T083 [US2] Create staff management UI in app/(admin)/staff/page.tsx (create, edit, delete staff)
 - [ ] T084 [US2] Create branding configuration UI in app/(admin)/settings/branding/page.tsx (logo upload, colors)
 - [ ] T085 [US2] Create role assignment component in app/components/admin/RoleSelector.tsx
 
 ### Integration for US2
 
-- [ ] T086 [US2] Integrate Termii SMS OTP delivery for phone authentication
-- [ ] T087 [US2] Integrate Supabase Auth email OTP delivery for email authentication
+- [ ] T086 [US2] Configure Supabase Auth with Google OAuth provider (client ID, secret, redirect URL in Supabase dashboard)
+- [ ] T087 [US2] Configure Supabase Auth email confirmation settings (SMTP, confirmation email template)
 - [ ] T088 [US2] Implement RLS policy enforcement at API layer (verify tenant_id matches auth user)
 - [ ] T089 [US2] Test cross-tenant data isolation (tenant A cannot access tenant B data)
 - [ ] T090 [US2] Test role-based permissions (cashier vs manager vs admin)
+- [ ] T090a [US2] Test Google Sign-In creates/links Supabase user and sets tenant context correctly
+- [ ] T090b [US2] Test country selection saves correct dial_code and currency_code to tenant and is reflected in POS formatting
 
-**Checkpoint**: Multi-tenant authentication and isolation should be fully functional
+**Checkpoint**: Multi-tenant authentication with email/Google Sign-In, country/currency selection, and isolation should be fully functional
 
 ---
 

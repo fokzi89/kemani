@@ -27,15 +27,18 @@
 					<a href="/pricing" class="theme-nav-link transition text-sm">
 						Pricing
 					</a>
+					<a href="/medic" class="theme-nav-link transition text-sm">
+						For Medic
+					</a>
 					<ThemeToggle />
 					<a
-						href="/auth/signin"
+						href="/pos-admin"
 						class="px-4 py-2 theme-btn-outline border rounded-lg transition text-sm"
 					>
 						Sign In
 					</a>
 					<a
-						href="/auth/signup"
+						href="/pos-admin"
 						class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg hover:from-emerald-500 hover:to-green-500 transition text-sm font-medium"
 					>
 						Start Free
@@ -61,7 +64,7 @@
 				</p>
 				<div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
 					<a
-						href="/auth/signup?plan=free"
+						href="/pos-admin"
 						class="inline-flex items-center justify-center w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white font-semibold rounded-lg hover:from-emerald-500 hover:to-green-500 transition shadow-lg"
 					>
 						Start Free Forever
@@ -284,7 +287,7 @@
 			</p>
 			<div class="flex flex-col sm:flex-row gap-4 justify-center">
 				<a
-					href="/auth/signup?plan=free"
+					href="/pos-admin"
 					class="inline-flex items-center px-8 py-4 bg-white text-emerald-600 text-lg font-semibold rounded-lg hover:bg-emerald-50 transition shadow-lg hover:shadow-xl"
 				>
 					Start Free Forever

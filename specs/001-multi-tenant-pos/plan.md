@@ -27,8 +27,9 @@ A comprehensive multi-tenant POS-first platform for independent Nigerian busines
 **Constraints**:
 - Offline-first architecture (all core POS features work without internet)
 - Multi-tenant data isolation (zero cross-tenant data leaks)
-- Phone + OTP authentication (Nigeria-first)
-- Support low-end devices (2GB RAM, 3G)
+- Email/password or Google Sign-In authentication (no phone OTP)
+  - Country selection, phone code (dial code), and currency selection during onboarding
+  - Support low-end devices (2GB RAM, 3G)
 - Initial JavaScript bundle <200KB gzipped per route (constitutional requirement)
 - Core Web Vitals: LCP <2.5s, FID <100ms, CLS <0.1
 
@@ -152,7 +153,7 @@ All constitutional principles align with this feature. No violations requiring j
 
 ✅ **Security & Data Privacy**
 - data-model.md implements RLS policies for all tenant-scoped tables
-- Authentication flows use phone + OTP (secure)
+- Authentication flows use email/password or Google OAuth via Supabase Auth (secure, no OTP)
 - Webhook signature verification documented
 - No sensitive data in client-side schemas
 - All API endpoints require authentication (except public marketplace)
@@ -194,9 +195,9 @@ specs/001-multi-tenant-pos/
 
 app/
 ├── (auth)/              # Auth route group
-│   ├── login/
-│   ├── register/
-│   └── verify-otp/
+│   ├── login/           # Email/password + Google Sign-In
+│   ├── register/        # Email/password + Google Sign-In
+│   └── auth-callback/   # Google OAuth callback handler
 ├── (dashboard)/         # Dashboard route group (authenticated)
 │   ├── layout.tsx       # Dashboard layout with navigation
 │   ├── page.tsx         # Dashboard home
@@ -212,7 +213,7 @@ app/
 ├── (marketplace)/       # Public marketplace route group
 │   └── [tenantSlug]/    # Dynamic tenant storefronts
 ├── api/                 # API routes
-│   ├── auth/            # Auth endpoints (OTP)
+│   ├── auth/            # Auth endpoints (email/Google OAuth callback)
 │   ├── pos/             # POS operations
 │   ├── sync/            # Offline sync endpoints
 │   ├── webhooks/        # Webhook handlers (payments, platforms)
@@ -228,8 +229,8 @@ app/
 
 lib/
 ├── auth/                # Authentication utilities
-│   ├── otp.ts           # OTP generation/verification
-│   └── session.ts       # Session management
+│   ├── google.ts        # Google OAuth helpers
+│   └── session.ts       # Session management with tenant/country/currency context
 ├── db/                  # Database utilities
 │   ├── supabase.ts      # Supabase client
 │   ├── offline.ts       # SQLite/IndexedDB client

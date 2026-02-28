@@ -42,21 +42,22 @@ A cashier at a pharmacy with unreliable internet processes sales, manages invent
 
 ---
 
-### User Story 2 - Multi-Tenant Isolation and Phone Authentication (Priority: P2 - Phase 1: Core POS)
+### User Story 2 - Multi-Tenant Isolation and Email/Google Authentication (Priority: P2 - Phase 1: Core POS)
 
-A platform administrator onboards new business tenants using phone-based authentication. Each tenant (pharmacy, supermarket, grocery shop) operates with complete data isolation, custom branding, and role-based access for their staff.
+A platform administrator onboards new business tenants using **email/password or Google Sign-In** authentication. During registration, the tenant selects their **country, phone dial code, and currency** to configure regional settings. Each tenant (pharmacy, supermarket, grocery shop) operates with complete data isolation, custom branding, and role-based access for their staff.
 
-**Why this priority**: Multi-tenancy and secure authentication are foundational. Phone + OTP authentication aligns with Nigeria-first UX where phone numbers are primary identity. Must be established early to support multiple businesses on the platform.
-before 
-**Independent Test**: Can be tested by registering two tenants using phone numbers, sending OTP verification, configuring each with different branding, creating staff accounts with different roles (admin, cashier, manager), and verifying complete data isolation between tenants.
+**Why this priority**: Multi-tenancy and secure authentication are foundational. Email/password and Google OAuth provide universal access across devices and regions, while country/currency selection auto-configures regional settings for each business. Must be established early to support multiple businesses on the platform.
+
+**Independent Test**: Can be tested by registering two tenants using email/password (or Google Sign-In), selecting country + currency for each, configuring each with different branding, creating staff accounts with different roles (admin, cashier, manager), and verifying complete data isolation between tenants.
 
 **Acceptance Scenarios**:
 
-1. **Given** a new business wants to join the platform, **When** they provide their phone number, **Then** the system sends an OTP code for verification
-2. **Given** a user enters the correct OTP, **When** verification succeeds, **Then** the system creates a tenant account with unique identifier and admin access
-3. **Given** multiple tenants exist on the platform, **When** a user logs into tenant A, **Then** they can only access tenant A's data with zero visibility into other tenants
-4. **Given** a tenant administrator, **When** they create staff accounts with roles (admin, cashier, manager, driver), **Then** each role has appropriate permissions enforced by the system
-5. **Given** a tenant configures branding, **When** they upload logo and set colors, **Then** these settings apply to their POS interface and receipts only
+1. **Given** a new business wants to join the platform, **When** they provide their email and password (or use Google Sign-In), **Then** the system creates a secure account and sends an email confirmation link
+2. **Given** a user completes registration, **When** they proceed through onboarding, **Then** they are prompted to select their country, which automatically sets the phone dial code and currency for their tenant
+3. **Given** a user selects a country during onboarding, **When** they confirm the selection, **Then** the system saves the country code, dial code (e.g. +234), and currency code (e.g. NGN) to the tenant profile
+4. **Given** multiple tenants exist on the platform, **When** a user logs into tenant A, **Then** they can only access tenant A's data with zero visibility into other tenants
+5. **Given** a tenant administrator, **When** they create staff accounts with roles (admin, cashier, manager, driver), **Then** each role has appropriate permissions enforced by the system
+6. **Given** a tenant configures branding, **When** they upload logo and set colors, **Then** these settings apply to their POS interface and receipts only
 
 ---
 
@@ -154,19 +155,27 @@ A customer interacts with an AI-powered chat agent to browse products, check sto
 
 ### User Story 8 - Analytics and Sales Insights (Priority: P8 - Phase 5: Analytics & Payments)
 
-A business owner accesses comprehensive analytics dashboards showing product sales history, sales graphs, category comparisons, sales patterns, top-selling products, revenue trends, and inventory turnover. The system provides actionable insights for business decisions.
+A business owner accesses comprehensive analytics dashboards showing product sales history, sales graphs, category comparisons, sales patterns, top-selling products, revenue trends, and inventory turnover. The system provides actionable insights for business decisions with time-based analysis (weekly, monthly, quarterly, annually) and visual representations including charts and graphs.
 
 **Why this priority**: Analytics transform the platform from operational tool to business intelligence system. While valuable, merchants can operate without analytics initially. This priority delivers data-driven insights once sufficient transaction history exists.
 
-**Independent Test**: Can be tested by processing diverse sales transactions over time, accessing the analytics dashboard, viewing product sales graphs, comparing products in the same category, and verifying sales pattern analysis shows accurate trends.
+**Independent Test**: Can be tested by processing diverse sales transactions over time, accessing the analytics dashboard, viewing product sales graphs with different time periods (weekly, monthly, quarterly, annually), comparing products in the same category, viewing top-selling products by volume and value, and verifying sales pattern analysis shows accurate trends.
 
 **Acceptance Scenarios**:
 
-1. **Given** a merchant has sales history, **When** they access the analytics dashboard, **Then** they see key metrics (total revenue, transactions count, average order value, top products) for selected time period
-2. **Given** a merchant wants product insights, **When** they view product sales history, **Then** they see sales volume, revenue, and trends over time with graphical visualization
-3. **Given** a merchant wants category analysis, **When** they compare products in the same category, **Then** the system displays side-by-side sales performance, helping identify winners and underperformers
-4. **Given** a merchant reviews sales patterns, **When** they access pattern analysis, **Then** the system shows peak sales hours, day-of-week trends, and seasonal patterns to optimize staffing and inventory
-5. **Given** a merchant needs inventory insights, **When** they view inventory turnover reports, **Then** they see which products move fast vs. slow, helping with purchasing decisions
+1. **Given** a merchant has sales history, **When** they access the analytics dashboard, **Then** they see key metrics (total revenue, transactions count, average order value, top products by volume and value) for selected time period
+2. **Given** a merchant wants product insights, **When** they view product sales history, **Then** they see sales volume, revenue, and trends over time with graphical visualization (line charts, bar charts) for weekly, monthly, quarterly, and annual periods
+3. **Given** a merchant selects weekly view, **When** they view product sales analytics, **Then** the system displays sales data grouped by weeks with line chart showing sales trends and bar chart showing volume comparison across weeks
+4. **Given** a merchant selects monthly view, **When** they view product sales analytics, **Then** the system displays sales data grouped by months with graphical representation showing month-over-month growth or decline
+5. **Given** a merchant selects quarterly view, **When** they view product sales analytics, **Then** the system displays sales data grouped by quarters (Q1, Q2, Q3, Q4) with comparative analysis across quarters
+6. **Given** a merchant selects annual view, **When** they view product sales analytics, **Then** the system displays sales data grouped by years with year-over-year comparison and growth trends
+7. **Given** a merchant wants category analysis, **When** they compare products in the same category, **Then** the system displays side-by-side sales performance with bar charts showing volume sold and revenue generated, helping identify winners and underperformers
+8. **Given** a merchant wants to compare products, **When** they select multiple products in the same category or different brands of same product type, **Then** the system displays comparison chart showing sales volume, revenue, profit margins, and growth trends side-by-side
+9. **Given** a merchant wants to see top performers, **When** they access top selling products, **Then** the system displays two separate rankings: top products by volume sold (quantity) and top products by value sold (revenue), with filtering options for time period
+10. **Given** a merchant reviews sales patterns, **When** they access pattern analysis, **Then** the system shows peak sales hours (hourly heatmap), day-of-week trends (bar chart), and seasonal patterns (monthly line chart) to optimize staffing and inventory
+11. **Given** a merchant needs inventory insights, **When** they view inventory turnover reports, **Then** they see which products move fast vs. slow with turnover rate calculation and graphical representation of stock movement over time
+12. **Given** a merchant views product performance, **When** they select a specific product, **Then** the system displays detailed analytics including sales trend graph, total units sold, total revenue, average selling price, peak sales periods, and profit margin
+13. **Given** a merchant wants to export analytics, **When** they select export option, **Then** the system generates downloadable reports in CSV or PDF format with all charts and data tables included
 
 ---
 
@@ -243,10 +252,15 @@ The platform monetizes through subscription plans (tiered based on features and 
 #### Multi-Tenancy and Authentication Requirements
 
 - **FR-013**: System MUST provide complete data isolation between tenants at database and application layers ensuring no cross-tenant data access
-- **FR-014**: System MUST implement phone-based authentication using OTP (One-Time Password) sent via SMS for user registration and login
+- **FR-014**: System MUST implement **email/password authentication** and **Google Sign-In (OAuth)** via Supabase Auth for user registration and login — no phone OTP
+- **FR-014a**: System MUST send email confirmation to new registrants upon sign-up and allow login after confirmation
+- **FR-014b**: System MUST support Google OAuth Sign-In that creates or links a Supabase Auth account automatically
 - **FR-015**: System MUST assign each tenant a unique identifier and subdomain or access path for their storefront
+- **FR-015a**: System MUST present a **country selection screen** during onboarding where the owner selects their country from a searchable list
+- **FR-015b**: System MUST auto-populate the **phone dial code** (e.g. +234 for Nigeria) and **currency code** (e.g. NGN) based on the selected country and store these on the tenant profile
+- **FR-015c**: System MUST display the selected country flag, country name, dial code, and currency in a confirmation card before the owner proceeds
 - **FR-016**: System MUST allow each tenant to configure custom branding including logo, colors, business name, and receipt templates
-- **FR-017**: System MUST support tenant-specific configurations including tax rates, currency (Naira), business hours, payment methods, and delivery zones
+- **FR-017**: System MUST support tenant-specific configurations including tax rates, currency (auto-set from country selection), business hours, payment methods, and delivery zones
 - **FR-018**: System MUST provide role-based access control with predefined roles (Platform Admin, Tenant Admin, Manager, Cashier, Driver) and customizable permissions
 - **FR-019**: System MUST enforce subscription-based limits per tenant including number of staff users, products, monthly transactions, and storage capacity
 
@@ -308,14 +322,29 @@ The platform monetizes through subscription plans (tiered based on features and 
 
 #### Analytics and Reporting Requirements
 
-- **FR-058**: System MUST provide analytics dashboard with key metrics: total revenue, transaction count, average order value, top products, and growth trends
-- **FR-059**: System MUST generate product sales history reports showing sales volume, revenue, and trends over selectable time periods (daily, weekly, monthly, custom)
-- **FR-060**: System MUST visualize product sales data with graphs (line charts for trends, bar charts for comparisons, pie charts for category distribution)
-- **FR-061**: System MUST enable category-based product comparison showing side-by-side sales performance for products in the same category
-- **FR-062**: System MUST analyze sales patterns including peak sales hours, day-of-week trends, seasonal patterns, and customer purchase behavior
-- **FR-063**: System MUST provide inventory turnover analysis showing fast-moving vs. slow-moving products to inform purchasing decisions
+- **FR-058**: System MUST provide analytics dashboard with key metrics: total revenue, transaction count, average order value, top products by volume and value, and growth trends
+- **FR-059**: System MUST generate product sales history reports showing sales volume, revenue, and trends over selectable time periods (daily, weekly, monthly, quarterly, annually, custom date range)
+- **FR-059a**: System MUST support weekly analytics view showing sales data grouped by week number with week-over-week comparison
+- **FR-059b**: System MUST support monthly analytics view showing sales data grouped by calendar month with month-over-month growth analysis
+- **FR-059c**: System MUST support quarterly analytics view showing sales data grouped by fiscal quarters (Q1: Jan-Mar, Q2: Apr-Jun, Q3: Jul-Sep, Q4: Oct-Dec) with quarter-over-quarter comparison
+- **FR-059d**: System MUST support annual analytics view showing sales data grouped by year with year-over-year comparison and cumulative growth trends
+- **FR-060**: System MUST visualize product sales data with multiple chart types including line charts for trend analysis, bar charts for period comparisons, pie charts for category distribution, and area charts for cumulative sales
+- **FR-060a**: System MUST render line charts for product sales trends over time showing revenue and volume on dual Y-axis with interactive tooltips displaying exact values
+- **FR-060b**: System MUST render bar charts for comparing sales performance across time periods (weeks, months, quarters, years) with color-coded bars for revenue vs volume
+- **FR-060c**: System MUST render horizontal bar charts for top selling products ranking with separate charts for volume-based and value-based rankings
+- **FR-060d**: System MUST render comparison charts showing multiple products side-by-side with grouped bars for volume, revenue, and profit margin
+- **FR-061**: System MUST enable category-based product comparison showing side-by-side sales performance for products in the same category with visual charts comparing volume sold, revenue generated, profit margins, and growth rates
+- **FR-061a**: System MUST allow merchants to select multiple products within the same category for comparison with support for up to 10 products simultaneously
+- **FR-061b**: System MUST support brand-based product comparison allowing merchants to compare different brands of the same product type (e.g., Paracetamol Brand A vs Brand B vs Brand C) with detailed performance metrics
+- **FR-061c**: System MUST display comparison metrics including total units sold, total revenue, average selling price, profit margin percentage, growth rate, and market share within category
+- **FR-062**: System MUST analyze sales patterns including peak sales hours (hourly heatmap), day-of-week trends (bar chart), seasonal patterns (monthly line chart), and customer purchase behavior
+- **FR-063**: System MUST provide inventory turnover analysis showing fast-moving vs. slow-moving products with turnover rate calculation, days to sell calculation, and graphical representation of stock movement over time
 - **FR-064**: System MUST generate staff performance reports showing individual sales, average transaction value, and customer ratings per staff member
-- **FR-065**: System MUST support data export (CSV, PDF) for all reports and analytics for external analysis or record-keeping
+- **FR-065**: System MUST support data export (CSV, PDF) for all reports and analytics with embedded charts and data tables for external analysis or record-keeping
+- **FR-065a**: System MUST display top selling products by volume (quantity sold) with ranking, total units sold, percentage of total sales volume, and trend indicator (up/down/stable)
+- **FR-065b**: System MUST display top selling products by value (revenue generated) with ranking, total revenue, percentage of total revenue, average selling price, and profit contribution
+- **FR-065c**: System MUST allow filtering of top products by time period (this week, this month, this quarter, this year, custom range) with automatic re-ranking based on selected period
+- **FR-065d**: System MUST provide product performance details for each top selling product including sales velocity (units per day), peak sales day/time, customer segments purchasing the product, and inventory turnover rate
 
 #### WhatsApp Communication Requirements
 
@@ -386,7 +415,8 @@ The platform monetizes through subscription plans (tiered based on features and 
   - Offline-first POS system with SQLite local storage and Supabase cloud sync
   - Multi-tenant architecture with complete data isolation
   - Progressive Web App (PWA) optimized for mobile devices and low-end Android
-  - Phone + OTP authentication (Nigeria-first UX)
+  - Email/password and Google Sign-In authentication (no phone OTP)
+  - Country selection, phone dial code, and currency auto-configuration during onboarding
 
 - **POS Features**:
   - Inventory management with expiry tracking and alerts
@@ -465,7 +495,8 @@ The platform monetizes through subscription plans (tiered based on features and 
 - Merchants using e-commerce integrations have active stores on supported platforms (WooCommerce, Shopify) with API access enabled
 - WhatsApp Business API access requires approval from WhatsApp and may not be immediately available to all tenants
 - Customers have smartphones with web browsers to access marketplace storefronts and order tracking
-- Phone numbers are primary identifier in Nigeria and SMS delivery for OTP is reliable
+- Email addresses are the primary identifier; Google accounts are supported for SSO
+- Country selection during onboarding auto-configures phone dial code and currency; users can update these in settings
 - Payment processing via Paystack/Flutterwave is available and compliant with Nigerian financial regulations
 - Delivery riders (bike/bicycle) have smartphones capable of receiving notifications and updating delivery status
 - Initial release supports single currency (Nigerian Naira); multi-currency support is future consideration
@@ -516,7 +547,7 @@ The platform monetizes through subscription plans (tiered based on features and 
 
 - **Data Encryption**: All data transmission encrypted using TLS 1.2 or higher; local data encrypted at rest on device
 - **Multi-Tenant Isolation**: Complete data isolation between tenants at database level using Row Level Security (RLS) in Supabase
-- **Authentication**: Phone + OTP authentication with rate limiting to prevent brute force attacks
+- **Authentication**: Email/password with bcrypt hashing and Google OAuth via Supabase Auth; rate limiting prevents brute force; email confirmation required for new accounts
 - **Authorization**: Role-based access control (RBAC) enforced at API and UI levels
 - **API Security**: API credentials (e-commerce platforms, WhatsApp, payment gateways) stored encrypted in Supabase vault
 - **Audit Logging**: All critical operations (sales, refunds, inventory adjustments, user changes, sync events) logged with timestamps and user attribution
@@ -738,7 +769,8 @@ The platform monetizes through subscription plans (tiered based on features and 
 **Key Features**:
 - Offline-first POS with SQLite local storage and Supabase cloud sync
 - Multi-tenant architecture with complete data isolation
-- Phone + OTP authentication
+- Email/password and Google Sign-In authentication
+- Country selection, phone dial code, and currency selection during onboarding
 - Inventory management with expiry alerts
 - CSV bulk product import
 - Sales transactions (cart, discounts, tax, multiple payment methods)
@@ -762,7 +794,7 @@ The platform monetizes through subscription plans (tiered based on features and 
 
 **Key Features**:
 - Public marketplace storefronts for tenants
-- Customer accounts and profiles (phone-based authentication)
+- Customer accounts and profiles (email or Google Sign-In authentication)
 - Order placement (pickup and delivery options)
 - Customer loyalty program with points tracking
 - Purchase history and customer insights
