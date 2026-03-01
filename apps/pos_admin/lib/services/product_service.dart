@@ -370,4 +370,18 @@ class ProductService {
       limit: 100,
     );
   }
+
+  /// Get all branch inventory for a specific branch (used for cache refresh)
+  Future<List<BranchInventory>> getBranchInventory(String branchId) async {
+    final response = await _client
+        .from('branch_inventory')
+        .select()
+        .eq('branch_id', branchId)
+        .eq('is_active', true)
+        .order('created_at', ascending: false);
+
+    return List<BranchInventory>.from(
+      response.map((x) => BranchInventory.fromJson(x)),
+    );
+  }
 }

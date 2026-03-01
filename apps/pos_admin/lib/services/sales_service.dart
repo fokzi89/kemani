@@ -10,7 +10,7 @@ class SalesService {
   factory SalesService() => _instance;
   SalesService._internal();
 
-  /// Create a new sale transaction
+  /// Create a new sale transaction with auto-generated ID
   Future<Sale> createSale({
     required List<Map<String, dynamic>> items, // [{productId, productName, quantity, unitPrice}]
     String? customerId,
@@ -19,6 +19,35 @@ class SalesService {
     double discountAmount = 0,
     double taxRate = 0, // e.g., 0.075 for 7.5% VAT
   }) async {
+    return createSaleWithId(
+      saleId: null, // Auto-generate
+      items: items,
+      customerId: customerId,
+      paymentMethod: paymentMethod,
+      paymentReference: paymentReference,
+      discountAmount: discountAmount,
+      taxRate: taxRate,
+    );
+  }
+
+  /// Create a new sale transaction with specific ID (for offline sync idempotency)
+  Future<Sale> createSaleWithId({
+    String? saleId, // Provide ID for idempotent creation, null to auto-generate
+    required List<Map<String, dynamic>> items, // [{productId, productName, quantity, unitPrice}]
+    String? customerId,
+    required String paymentMethod,
+    String? paymentReference,
+    double discountAmount = 0,
+    double taxRate = 0, // e.g., 0.075 for 7.5% VAT
+  }) async {
+    // Idempotency check: if saleId provided, check if already exists
+    if (saleId != null) {
+      final existingSale = await getSale(saleId);
+      if (existingSale != null) {
+        print('⚠️  Sale $saleId already exists, returning existing sale');
+        return existingSale;
+      }
+    }
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('User not authenticated');
 
@@ -48,6 +77,7 @@ class SalesService {
 
     // Create sale
     final saleData = {
+      if (saleId != null) 'id': saleId, // Use provided ID for idempotency
       'tenant_id': tenantId,
       'branch_id': branchId,
       'sale_number': saleNumber,
@@ -69,7 +99,7 @@ class SalesService {
         .select()
         .single();
 
-    final saleId = saleResponse['id'] as String;
+    final createdSaleId = saleResponse['id'] as String;
 
     // Create sale items
     final saleItems = items.map((item) {
@@ -80,7 +110,7 @@ class SalesService {
       final itemDiscountAmount = itemSubtotal * (itemDiscountPercent / 100);
 
       return {
-        'sale_id': saleId,
+        'sale_id': createdSaleId,
         'product_id': item['productId'],
         'product_name': item['productName'],
         'quantity': quantity,

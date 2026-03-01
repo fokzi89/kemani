@@ -13,6 +13,12 @@ import 'screens/staff/staff_profile_settings_screen.dart';
 import 'screens/staff/staff_passcode_setup_screen.dart';
 import 'screens/staff/staff_dashboard_screen.dart';
 import 'providers/theme_provider.dart';
+import 'providers/sales_provider.dart';
+import 'services/local_database_service.dart';
+import 'services/connectivity_service.dart';
+import 'services/sync_service.dart';
+import 'services/sales_service.dart';
+import 'services/product_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -24,9 +30,45 @@ void main() async {
     anonKey: const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrYnB6bm9xZWJob3B5cXBvcWFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NjExNDcsImV4cCI6MjA4NDMzNzE0N30.eN1BiyRWOgblp-LFaQvMXM13SttjHnmJb8-s5Y3eu38'),
   );
 
+  // Initialize services
+  final localDb = LocalDatabaseService();
+  await localDb.initialize();
+
+  final connectivityService = ConnectivityService();
+  await connectivityService.initialize();
+
+  final salesService = SalesService();
+  final productService = ProductService();
+
+  final syncService = SyncService(
+    localDb,
+    salesService,
+    productService,
+    connectivityService,
+  );
+
+  // Start periodic sync
+  syncService.startPeriodicSync();
+
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        Provider.value(value: localDb),
+        Provider.value(value: connectivityService),
+        Provider.value(value: syncService),
+        Provider.value(value: salesService),
+        Provider.value(value: productService),
+        ChangeNotifierProvider(
+          create: (_) => SalesProvider(
+            localDb,
+            salesService,
+            productService,
+            connectivityService,
+            syncService,
+          ),
+        ),
+      ],
       child: const POSAdminApp(),
     ),
   );
