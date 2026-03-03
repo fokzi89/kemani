@@ -11,6 +11,7 @@ import 'analytics/product_analytics_screen.dart';
 import 'analytics/top_products_screen.dart';
 import 'analytics/product_comparison_screen.dart';
 import 'pos/pos_screen.dart';
+import 'chat/chat_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -44,6 +45,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       label: 'Orders',
     ),
     NavigationDestination(
+      icon: Icon(Icons.chat_bubble_outline),
+      selectedIcon: Icon(Icons.chat_bubble),
+      label: 'Chat',
+    ),
+    NavigationDestination(
       icon: Icon(Icons.analytics_outlined),
       selectedIcon: Icon(Icons.analytics),
       label: 'Analytics',
@@ -61,6 +67,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 3:
         return const OrderListScreen();
       case 4:
+        return const ChatScreen();
+      case 5:
         return const AnalyticsScreen();
       default:
         return const DashboardOverview();

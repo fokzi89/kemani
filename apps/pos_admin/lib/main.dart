@@ -19,6 +19,7 @@ import 'services/connectivity_service.dart';
 import 'services/sync_service.dart';
 import 'services/sales_service.dart';
 import 'services/product_service.dart';
+import 'services/supabase_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -141,7 +142,33 @@ class _AuthGateState extends State<AuthGate> {
       stream: supabase.auth.onAuthStateChange,
       builder: (context, snapshot) {
         if (snapshot.hasData && snapshot.data?.session != null) {
-          return const DashboardScreen();
+          // User is authenticated, check if onboarding is complete
+          return FutureBuilder<Map<String, dynamic>?>(
+            future: SupabaseService().getUser(snapshot.data!.session!.user.id),
+            builder: (context, userSnapshot) {
+              if (userSnapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              if (userSnapshot.hasError || userSnapshot.data == null) {
+                // Error fetching user or user not found, go to profile setup
+                return const ProfileSettingsScreen();
+              }
+
+              final userData = userSnapshot.data!;
+              final onboardingCompleted = userData['onboarding_completed_at'] != null;
+
+              if (onboardingCompleted) {
+                // Onboarding complete, go to dashboard
+                return const DashboardScreen();
+              } else {
+                // Onboarding not complete, go to profile settings
+                return const ProfileSettingsScreen();
+              }
+            },
+          );
         }
         return const SignUpScreen();
       },

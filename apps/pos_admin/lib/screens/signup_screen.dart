@@ -70,7 +70,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
         throw Exception('Failed to create account');
       }
 
-      // Step 2: Create user entry in public.users table
+      // Check if we have an active session (email confirmation not required)
+      final hasSession = response.session != null;
+
+      if (!hasSession) {
+        // Email confirmation required - navigate to email confirmation screen
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed(
+            '/email-confirmation-pending',
+            arguments: {'email': email},
+          );
+        }
+        return;
+      }
+
+      // Step 2: Create user entry in public.users table (only if we have a session)
       await supabaseService.createUser(
         userId: response.user!.id,
         email: email,
@@ -79,11 +93,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
 
       if (mounted) {
-        // Navigate to Email Confirmation Pending screen
-        Navigator.of(context).pushReplacementNamed(
-          '/email-confirmation-pending',
-          arguments: {'email': email},
-        );
+        // Navigate to Profile Settings (Step 2 of onboarding)
+        Navigator.of(context).pushReplacementNamed('/profile-settings');
       }
     } on AuthException catch (error) {
       setState(() {
