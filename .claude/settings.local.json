@@ -6,11 +6,23 @@
       "Bash(git ls-tree:*)",
       "Bash(rm:*)",
       "Bash(test:*)",
-      "mcp__supabase__deploy_edge_function"
+      "mcp__supabase__deploy_edge_function",
+      "Bash(npm init -y)",
+      "Bash(npm install:*)",
+      "Bash(for port in 57881 57880 8080 3000 5000)",
+      "Bash(do echo \"Trying port $port...\")",
+      "Bash(curl:*)",
+      "Bash(done)",
+      "Bash(npx playwright test:*)",
+      "Bash(supabase --version:*)",
+      "Bash(cat:*)",
+      "Bash(node test-signup-fix.js:*)",
+      "Bash(flutter run:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
-    "supabase"
+    "supabase",
+    "stitch"
   ]
 }

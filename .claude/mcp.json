@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "stitch": {
+      "command": "npx",
+      "args": ["-y", "@stitch-ai/mcp-server"],
+      "env": {
+        "STITCH_API_KEY": "AQ.Ab8RN6L2SNa9b5PGOZi7cy9i4JjI8WooTNmhbkFiXEpHw4hbdA"
+      }
+    },
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase"]
+    }
+  }
+}
