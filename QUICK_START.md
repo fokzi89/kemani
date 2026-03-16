@@ -1,6 +1,6 @@
-# Quick Start Guide
+# 🚀 Healthcare Customer App - Quick Start Guide
 
-This guide will help you get started with the newly created apps in your multi-platform monorepo.
+Get the healthcare app running with video consultations in **5 minutes**!
 
 ## ✅ What's Been Created
 

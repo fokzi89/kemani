@@ -1,0 +1,337 @@
+@import "tailwindcss";
+
+/* ============================================
+   STOREFRONT THEME SYSTEM
+   CSS Variables that change based on light/dark mode
+   ============================================ */
+
+/* Light Mode Variables (Default) */
+:root,
+:root.light {
+	/* Background Colors */
+	--color-bg-primary: #ffffff;
+	--color-bg-secondary: #f9fafb;
+	--color-bg-tertiary: #f3f4f6;
+	--color-bg-nav: rgba(255, 255, 255, 0.95);
+	--color-bg-card: #ffffff;
+	--color-bg-hover: #f3f4f6;
+
+	/* Text Colors */
+	--color-text-primary: #111827;
+	--color-text-secondary: #374151;
+	--color-text-muted: #6b7280;
+	--color-text-inverse: #ffffff;
+
+	/* Border Colors */
+	--color-border-primary: #e5e7eb;
+	--color-border-secondary: #d1d5db;
+
+	/* Accent Colors - Primary Blue */
+	--color-accent-primary: #0ea5e9;
+	--color-accent-secondary: #38bdf8;
+	--color-accent-hover: #0284c7;
+
+	/* Gradient Backgrounds */
+	--gradient-hero-start: #f0f9ff;
+	--gradient-hero-end: #e0f2fe;
+}
+
+/* Dark Mode Variables */
+:root.dark {
+	/* Background Colors */
+	--color-bg-primary: #0f172a;
+	--color-bg-secondary: #1e293b;
+	--color-bg-tertiary: #334155;
+	--color-bg-nav: rgba(15, 23, 42, 0.95);
+	--color-bg-card: #1e293b;
+	--color-bg-hover: #334155;
+
+	/* Text Colors */
+	--color-text-primary: #f1f5f9;
+	--color-text-secondary: #e2e8f0;
+	--color-text-muted: #94a3b8;
+	--color-text-inverse: #0f172a;
+
+	/* Border Colors */
+	--color-border-primary: #334155;
+	--color-border-secondary: #475569;
+
+	/* Accent Colors - Bright Blue in dark mode */
+	--color-accent-primary: #38bdf8;
+	--color-accent-secondary: #7dd3fc;
+	--color-accent-hover: #0ea5e9;
+
+	/* Gradient Backgrounds */
+	--gradient-hero-start: #0c4a6e;
+	--gradient-hero-end: #075985;
+}
+
+/* Base Styles Using Variables */
+body {
+	font-size: 14px;
+	line-height: 1.625;
+	background-color: var(--color-bg-primary);
+	color: var(--color-text-primary);
+	transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom Theme Classes Using CSS Variables */
+.theme-bg {
+	background-color: var(--color-bg-primary);
+}
+
+.theme-bg-secondary {
+	background-color: var(--color-bg-secondary);
+}
+
+.theme-text {
+	color: var(--color-text-primary);
+}
+
+.theme-text-secondary {
+	color: var(--color-text-secondary);
+}
+
+.theme-text-muted {
+	color: var(--color-text-muted);
+}
+
+.theme-border {
+	border-color: var(--color-border-primary);
+}
+
+.theme-card {
+	background-color: var(--color-bg-card);
+	border-color: var(--color-border-primary);
+}
+
+/* Navigation */
+.theme-nav {
+	background-color: var(--color-bg-nav);
+	border-color: var(--color-border-primary);
+	backdrop-filter: blur(10px);
+}
+
+.theme-nav-link {
+	color: var(--color-text-secondary);
+	transition: color 0.2s ease;
+}
+
+.theme-nav-link:hover {
+	color: var(--color-accent-primary);
+}
+
+/* Buttons */
+.theme-btn-primary {
+	background-color: var(--color-accent-primary);
+	color: var(--color-text-inverse);
+	transition: background-color 0.2s ease;
+}
+
+.theme-btn-primary:hover {
+	background-color: var(--color-accent-hover);
+}
+
+.theme-btn-outline {
+	color: var(--color-text-primary);
+	border-color: var(--color-border-secondary);
+	transition: background-color 0.2s ease;
+}
+
+.theme-btn-outline:hover {
+	background-color: var(--color-bg-hover);
+}
+
+/* Gradients */
+.theme-gradient-hero {
+	background: linear-gradient(to bottom right, var(--gradient-hero-start), var(--gradient-hero-end));
+}
+
+/* Smooth transitions */
+.transition-theme {
+	transition: all 0.3s ease;
+}
+
+/* Global text defaults */
+p, li, span, div {
+	color: var(--color-text-primary);
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+	color: var(--color-text-primary);
+}
+
+/* Links */
+a {
+	transition: color 0.2s ease;
+}
+
+/* Cards */
+.card-product {
+	background-color: var(--color-bg-card);
+	border: 1px solid var(--color-border-primary);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-product:hover {
+	transform: translateY(-4px);
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Badge */
+.badge {
+	background-color: var(--color-accent-primary);
+	color: var(--color-text-inverse);
+	padding: 0.25rem 0.75rem;
+	border-radius: 9999px;
+	font-size: 0.75rem;
+	font-weight: 600;
+}
+
+/* Price Display */
+.price-primary {
+	color: var(--color-accent-primary);
+	font-weight: 700;
+	font-size: 1.5rem;
+}
+
+/* Cart Badge */
+.cart-badge {
+	background-color: #ef4444;
+	color: white;
+	border-radius: 9999px;
+	min-width: 1.25rem;
+	height: 1.25rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.75rem;
+	font-weight: 700;
+}
+
+/* Loading Spinner */
+.spinner {
+	border: 3px solid var(--color-border-primary);
+	border-top-color: var(--color-accent-primary);
+	border-radius: 50%;
+	width: 2rem;
+	height: 2rem;
+	animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+	width: 10px;
+}
+
+::-webkit-scrollbar-track {
+	background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--color-border-secondary);
+	border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(--color-text-muted);
+}
+
+/* Empty State */
+.empty-state {
+	color: var(--color-text-muted);
+	text-align: center;
+	padding: 3rem 1rem;
+}
+
+/* Input Fields */
+input, select, textarea {
+	background-color: var(--color-bg-primary);
+	color: var(--color-text-primary);
+	border-color: var(--color-border-primary);
+}
+
+input:focus, select:focus, textarea:focus {
+	border-color: var(--color-accent-primary);
+	outline: none;
+	ring: 2px;
+	ring-color: var(--color-accent-primary);
+}
+
+/* Toast/Alert Notifications */
+.toast {
+	background-color: var(--color-bg-card);
+	border: 1px solid var(--color-border-primary);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	border-radius: 0.5rem;
+}
+
+.toast-success {
+	border-left: 4px solid #10b981;
+}
+
+.toast-error {
+	border-left: 4px solid #ef4444;
+}
+
+.toast-warning {
+	border-left: 4px solid #f59e0b;
+}
+
+/* Order Status Badges */
+.status-pending {
+	background-color: #fef3c7;
+	color: #92400e;
+}
+
+.status-processing {
+	background-color: #dbeafe;
+	color: #1e40af;
+}
+
+.status-shipped {
+	background-color: #e0e7ff;
+	color: #3730a3;
+}
+
+.status-delivered {
+	background-color: #d1fae5;
+	color: #065f46;
+}
+
+.status-cancelled {
+	background-color: #fee2e2;
+	color: #991b1b;
+}
+
+:root.dark .status-pending {
+	background-color: #78350f;
+	color: #fef3c7;
+}
+
+:root.dark .status-processing {
+	background-color: #1e3a8a;
+	color: #dbeafe;
+}
+
+:root.dark .status-shipped {
+	background-color: #312e81;
+	color: #e0e7ff;
+}
+
+:root.dark .status-delivered {
+	background-color: #064e3b;
+	color: #d1fae5;
+}
+
+:root.dark .status-cancelled {
+	background-color: #7f1d1d;
+	color: #fee2e2;
+}

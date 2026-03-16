@@ -2,22 +2,24 @@
 
 **Complete SQL Functions for Supabase Backend**
 **Integration Guide for FlutterFlow**
+**Last Updated:** March 10, 2026
 
 ---
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Setup Instructions](#setup-instructions)
-3. [Dashboard Functions](#dashboard-functions)
-4. [POS Sale Functions](#pos-sale-functions)
-5. [Product & Inventory Functions](#product--inventory-functions)
-6. [Sales History Functions](#sales-history-functions)
-7. [Customer Functions](#customer-functions)
-8. [Reports Functions](#reports-functions)
-9. [Staff & Branch Functions](#staff--branch-functions)
-10. [Utility Functions](#utility-functions)
-11. [FlutterFlow Integration Examples](#flutterflow-integration-examples)
+2. [⚡ NEW: Automatic Database Triggers](#-new-automatic-database-triggers)
+3. [Setup Instructions](#setup-instructions)
+4. [Dashboard Functions](#dashboard-functions)
+5. [POS Sale Functions](#pos-sale-functions)
+6. [Product & Inventory Functions](#product--inventory-functions)
+7. [Sales History Functions](#sales-history-functions)
+8. [Customer Functions](#customer-functions)
+9. [Reports Functions](#reports-functions)
+10. [Staff & Branch Functions](#staff--branch-functions)
+11. [Utility Functions](#utility-functions)
+12. [FlutterFlow Integration Examples](#flutterflow-integration-examples)
 
 ---
 
@@ -31,6 +33,123 @@ This document contains all RPC (Remote Procedure Call) functions and helper func
 - **Returns**: Return type and structure
 - **Usage**: How to call from FlutterFlow
 - **Example**: Sample implementation
+
+---
+
+## ⚡ NEW: Automatic Database Triggers
+
+### Important Change (March 10, 2026)
+
+The database now has **automatic triggers** for real-time inventory synchronization. This significantly simplifies your FlutterFlow code!
+
+### What's Changed:
+
+**BEFORE (Old Way - Don't Do This):**
+```dart
+// ❌ OLD: Manual inventory updates after sale
+await Supabase.instance.client.from('sales').insert(sale Data);
+await Supabase.instance.client.from('sale_items').insert(items);
+
+// Manual update (NO LONGER NEEDED!)
+await Supabase.instance.client
+  .from('branch_inventory')
+  .update({'stock_quantity': newQuantity});
+
+await Supabase.instance.client
+  .from('products')
+  .update({'stock_quantity': totalStock});
+```
+
+**NOW (New Way - Automatic):**
+```dart
+// ✅ NEW: Just insert the sale - triggers handle the rest!
+await Supabase.instance.client.from('sales').insert({
+  'status': 'completed',  // This triggers automatic inventory update
+  'total_amount': totalAmount,
+  'branch_id': branchId,
+  // ... other fields
+});
+
+await Supabase.instance.client.from('sale_items').insert(saleItems);
+
+// That's it! Triggers automatically:
+// 1. Deduct from branch_inventory
+// 2. Update products.stock_quantity
+// 3. Sync to marketplace
+```
+
+### Active Triggers:
+
+| Trigger Name | Table | Event | Purpose |
+|--------------|-------|-------|---------|
+| `auto_sync_inventory_on_sale` | `sales` | INSERT/UPDATE (status='completed') | Deducts inventory when sale completes |
+| `auto_sync_product_stock` | `branch_inventory` | INSERT/UPDATE/DELETE | Recalculates total product stock |
+| `auto_reserve_inventory_on_order` | `orders` | INSERT | Reserves inventory for marketplace orders |
+| `auto_order_inventory_sync` | `orders` | UPDATE (status) | Manages inventory on order status changes |
+
+### New Database Views:
+
+Use these views instead of direct table queries for real-time data:
+
+```dart
+// Get products with real-time stock (total across all branches)
+final products = await Supabase.instance.client
+  .from('marketplace_products_with_stock')
+  .select()
+  .eq('tenant_id', tenantId);
+
+// Get detailed stock status per branch (includes reserved quantities)
+final stockStatus = await Supabase.instance.client
+  .from('product_stock_status')
+  .select()
+  .eq('branch_id', branchId);
+```
+
+### New Helper Functions (Optional):
+
+These are available but usually **not needed** (triggers handle most cases):
+
+```dart
+// Check product availability (useful before large orders)
+final check = await Supabase.instance.client.rpc(
+  'check_product_availability',
+  {
+    'p_product_id': productId,
+    'p_quantity': 10,
+    'p_tenant_id': tenantId
+  }
+);
+// Returns: {is_available: true, available_stock: 85, message: "..."}
+
+// Get real-time stock for a product
+final stock = await Supabase.instance.client.rpc(
+  'get_marketplace_stock',
+  {
+    'p_product_id': productId,
+    'p_tenant_id': tenantId
+  }
+);
+// Returns: {total_stock: 100, reserved_stock: 15, available_stock: 85}
+```
+
+### Impact on Your Code:
+
+**Pages Affected:**
+- ✅ **POS Sale Screen (Page 8)** - Remove manual inventory updates
+- ✅ **Adjust Stock (Page 13)** - Just update `branch_inventory`, triggers sync to `products`
+- ✅ **All Product Queries** - Use `marketplace_products_with_stock` view
+
+**What to Remove:**
+- ❌ Manual updates to `products.stock_quantity`
+- ❌ Custom sync code between `branch_inventory` and `products`
+- ❌ Manual marketplace stock calculations
+
+**What to Add:**
+- ✅ Query `marketplace_products_with_stock` view for display
+- ✅ Query `product_stock_status` view for detailed branch stock
+- ✅ Trust the triggers to handle inventory sync
+
+**📖 Complete Documentation**: See [AUTOMATIC_DATABASE_TRIGGERS.md](./AUTOMATIC_DATABASE_TRIGGERS.md)
 
 ---
 

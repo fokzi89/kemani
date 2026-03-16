@@ -2,6 +2,31 @@
 
 **Complete mapping of which RPC functions each page uses**
 
+**Last Updated:** March 10, 2026
+
+---
+
+## ⚡ NEW: Automatic Database Triggers
+
+**Important:** The database now has automatic triggers for inventory sync. You don't need manual inventory update code!
+
+### What This Means:
+
+✅ **POS Sale Screen (Page 8)** - No need to update `products.stock_quantity` manually
+✅ **Adjust Stock (Page 13)** - Stock automatically synced to marketplace
+✅ **All Inventory Pages** - Use `marketplace_products_with_stock` view for real-time data
+
+### Automatic Triggers:
+
+| Trigger | Fires When | Automatic Action |
+|---------|-----------|------------------|
+| `auto_sync_inventory_on_sale` | Sale status = 'completed' | Deducts inventory from `branch_inventory` |
+| `auto_sync_product_stock` | `branch_inventory` changes | Updates `products.stock_quantity` (total across branches) |
+| `auto_reserve_inventory_on_order` | Marketplace order created | Reserves inventory in `branch_inventory.reserved_quantity` |
+| `auto_order_inventory_sync` | Order status changes | Confirms/restores inventory based on status |
+
+**📖 Full Details**: See [AUTOMATIC_DATABASE_TRIGGERS.md](./AUTOMATIC_DATABASE_TRIGGERS.md)
+
 ---
 
 ## Dashboard & Home
@@ -230,6 +255,13 @@
 
 ## Testing Checklist
 
+### ⚡ Automatic Triggers (Test First!)
+- [ ] Complete a sale → verify `branch_inventory.stock_quantity` decreased
+- [ ] Complete a sale → verify `products.stock_quantity` updated (total across branches)
+- [ ] Adjust stock manually → verify `products.stock_quantity` auto-updated
+- [ ] Query `marketplace_products_with_stock` view → verify shows correct available stock
+- [ ] Check that reserved quantities affect available stock calculation
+
 ### Dashboard (Page 7)
 - [ ] Today's sales display correctly
 - [ ] Recent sales list populates
@@ -241,7 +273,7 @@
 - [ ] Stock levels show correctly
 - [ ] Customer search works
 - [ ] Sale completion succeeds
-- [ ] Inventory auto-updates
+- [ ] ✅ Inventory auto-updates (via trigger - don't code manual update!)
 - [ ] Receipt generates
 
 ### Inventory (Pages 12-13)

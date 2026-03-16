@@ -4,7 +4,7 @@
 **Platform:** FlutterFlow
 **Database:** Supabase
 **Architecture:** Multi-tenant with Branch Isolation
-**Last Updated:** March 5, 2026
+**Last Updated:** March 10, 2026
 
 ---
 
@@ -12,14 +12,15 @@
 
 1. [Overview](#overview)
 2. [App Architecture](#app-architecture)
-3. [RPC Functions & Helper Functions](#rpc-functions--helper-functions)
-4. [Authentication Flow](#authentication-flow)
-5. [Page Directory](#page-directory)
-6. [Detailed Page Specifications](#detailed-page-specifications)
-7. [Navigation Map](#navigation-map)
-8. [State Management](#state-management)
-9. [Offline Capabilities](#offline-capabilities)
-10. [FlutterFlow Configuration](#flutterflow-configuration)
+3. [⚡ Automatic Database Triggers (NEW)](#-automatic-database-triggers-new)
+4. [RPC Functions & Helper Functions](#rpc-functions--helper-functions)
+5. [Authentication Flow](#authentication-flow)
+6. [Page Directory](#page-directory)
+7. [Detailed Page Specifications](#detailed-page-specifications)
+8. [Navigation Map](#navigation-map)
+9. [State Management](#state-management)
+10. [Offline Capabilities](#offline-capabilities)
+11. [FlutterFlow Configuration](#flutterflow-configuration)
 
 ---
 
@@ -27,8 +28,25 @@
 
 This guide provides complete specifications for building a multi-tenant POS system in FlutterFlow. The app supports:
 
-**📋 Important**: For all RPC functions, SQL definitions, and FlutterFlow integration examples, see the companion document:
-**[pos-rpc-functions.md](./pos-rpc-functions.md)**
+**📋 Important Documents:**
+- **RPC Functions**: [pos-rpc-functions.md](./pos-rpc-functions.md) - All SQL functions and FlutterFlow integration
+- **🆕 Automatic Triggers**: [AUTOMATIC_DATABASE_TRIGGERS.md](./AUTOMATIC_DATABASE_TRIGGERS.md) - Real-time inventory sync (NEW!)
+
+### ⚡ Important: Automatic Inventory Sync (New Feature)
+
+The database now has **automatic triggers** that handle inventory synchronization:
+
+- ✅ **No manual inventory updates needed** - When you complete a sale, inventory is automatically deducted
+- ✅ **Real-time marketplace sync** - E-commerce storefront sees POS sales instantly
+- ✅ **Automatic reservation** - Marketplace orders reserve inventory automatically
+- ✅ **Works offline** - Triggers fire when POS syncs back online
+
+**What this means for you:**
+- Just insert sales as normal - triggers handle inventory updates
+- Don't manually update `products.stock_quantity` - triggers do it automatically
+- Query `marketplace_products_with_stock` view for real-time stock data
+
+See **[AUTOMATIC_DATABASE_TRIGGERS.md](./AUTOMATIC_DATABASE_TRIGGERS.md)** for complete details.
 
 ### What's in This Guide
 
@@ -59,6 +77,91 @@ tenant (Business)
 | **tenant_admin** | All branches, all data, user management |
 | **branch_manager** | Assigned branch only, staff management, reports |
 | **cashier** | Assigned branch only, POS sales, customer lookup |
+
+---
+
+## ⚡ Automatic Database Triggers (NEW)
+
+### Overview
+
+The database now has **4 automatic triggers** that handle real-time inventory synchronization. This means you don't need to write manual sync code - the database handles it automatically.
+
+**📖 Full Documentation**: See [AUTOMATIC_DATABASE_TRIGGERS.md](./AUTOMATIC_DATABASE_TRIGGERS.md)
+
+### Active Triggers
+
+| Trigger | Table | When It Fires | What It Does |
+|---------|-------|---------------|--------------|
+| `auto_sync_product_stock` | `branch_inventory` | INSERT, UPDATE, DELETE | Recalculates total product stock across all branches |
+| `auto_reserve_inventory_on_order` | `orders` | INSERT | Reserves inventory for marketplace orders |
+| `auto_order_inventory_sync` | `orders` | UPDATE (status) | Deducts/restores inventory based on order status |
+| `auto_sync_inventory_on_sale` | `sales` | INSERT, UPDATE (status='completed') | Deducts inventory when POS sale completes |
+
+### How This Affects Your FlutterFlow Code
+
+#### ✅ DO This (Simple & Automatic):
+
+```dart
+// Complete a sale - inventory automatically deducted
+await Supabase.instance.client.from('sales').insert({
+  'status': 'completed',  // Trigger fires automatically!
+  'total_amount': totalAmount,
+  'branch_id': branchId,
+  // ... other fields
+});
+
+await Supabase.instance.client.from('sale_items').insert(saleItems);
+
+// That's it! No manual inventory updates needed
+```
+
+#### ❌ DON'T Do This (Unnecessary):
+
+```dart
+// ❌ DON'T manually update products.stock_quantity
+// The trigger does this automatically!
+
+// ❌ DON'T manually sync inventory
+// The trigger handles it!
+
+// ❌ DON'T write custom sync logic
+// Trust the triggers!
+```
+
+### Real-Time Data Views
+
+Use these views to get real-time stock data:
+
+```dart
+// Get products with real-time stock (across all branches)
+final products = await Supabase.instance.client
+  .from('marketplace_products_with_stock')
+  .select()
+  .eq('tenant_id', tenantId)
+  .eq('is_available', true);
+
+// Get detailed stock status per branch
+final stockStatus = await Supabase.instance.client
+  .from('product_stock_status')
+  .select()
+  .eq('tenant_id', tenantId)
+  .eq('branch_id', branchId);
+```
+
+### Key Benefits
+
+- ✅ **No manual sync code** - Database handles it
+- ✅ **Real-time updates** - Marketplace sees POS sales instantly
+- ✅ **Multi-platform** - Works with Flutter, SvelteKit, any client
+- ✅ **Offline-friendly** - Triggers fire when data syncs
+- ✅ **Reliable** - Database-level consistency
+
+### Important Notes
+
+1. **Just use standard Supabase operations** - Triggers run automatically
+2. **Never manually update `products.stock_quantity`** - Triggers calculate it
+3. **Query the views for display** - They show real-time data
+4. **Trust the system** - Triggers ensure data consistency
 
 ---
 
@@ -168,6 +271,18 @@ Each page section below indicates which RPC functions it uses. Refer to the comp
 30. [Settings](#30-settings)
 31. [Profile](#31-profile)
 32. [Subscription & Billing](#32-subscription--billing)
+
+### 💰 Commission Dashboard (Referral System)
+33. [Commission Dashboard](#33-commission-dashboard)
+34. [Commission History](#34-commission-history)
+35. [Commission Details](#35-commission-details)
+36. [Referral Stats](#36-referral-stats)
+
+### 🏥 Diagnostic Center Management
+37. [Diagnostic Services Management](#37-diagnostic-services-management)
+38. [Test Orders/Requests](#38-test-ordersrequests)
+39. [Test Results Upload](#39-test-results-upload)
+40. [Diagnostic Dashboard](#40-diagnostic-dashboard)
 
 ---
 
@@ -2366,6 +2481,905 @@ Create a subscription screen with:
 
 ---
 
+## 33. Commission Dashboard
+
+### Purpose
+Overview of referral commission earnings for tenants participating in the referral program.
+
+### User Access
+All tenant roles (tenant_admin, branch_manager, cashier can view their tenant's commissions)
+
+### Business Context
+Part of the multi-tenant referral commission system where tenants earn commissions by referring customers to other services (doctors, pharmacies, diagnostic centers).
+
+### UI Components
+- Summary Cards
+  - Total Earned (all time)
+  - Pending Commissions
+  - This Month's Earnings
+  - Commission Rate Info
+- Recent Commissions List (last 10)
+  - Transaction type (consultation, product, diagnostic)
+  - Referral date
+  - Amount earned
+  - Status (pending, processed, paid_out)
+- Earnings Chart (last 30 days)
+- Quick Actions
+  - View All Commissions
+  - View Referral Stats
+  - Export Report
+
+### Data Fetching
+
+```dart
+// Fetch commission summary from App State or Supabase
+final commissionSummary = await Supabase.instance.client
+  .from('commissions')
+  .select('referrer_amount, status')
+  .eq('referrer_tenant_id', FFAppState().tenantId);
+
+// Calculate totals
+double totalEarned = 0;
+double pending = 0;
+double thisMonth = 0;
+
+for (var commission in commissionSummary) {
+  totalEarned += commission['referrer_amount'];
+  if (commission['status'] == 'pending') {
+    pending += commission['referrer_amount'];
+  }
+  // Calculate this month (filter by created_at)
+}
+
+// Fetch recent commissions
+final recentCommissions = await Supabase.instance.client
+  .from('commissions')
+  .select('''
+    *,
+    transaction:transactions(type, created_at),
+    customer:customers(full_name)
+  ''')
+  .eq('referrer_tenant_id', FFAppState().tenantId)
+  .order('created_at', ascending: false)
+  .limit(10);
+
+// Fetch daily earnings for chart
+final dailyEarnings = await Supabase.instance.client
+  .from('commission_daily_summary')
+  .select('date, total_earned')
+  .eq('referrer_tenant_id', FFAppState().tenantId)
+  .gte('date', DateTime.now().subtract(Duration(days: 30)).toIso8601String())
+  .order('date', ascending: true);
+```
+
+### FlutterFlow Implementation
+
+**App State Variables:**
+```dart
+// In FFAppState:
+List<CommissionRecord> cachedCommissions
+double totalCommissionsEarned
+double pendingCommissions
+DateTime lastCommissionSync
+```
+
+**Custom Data Type: CommissionRecord**
+```
+Fields:
+- id (String)
+- transactionType (String)
+- amount (Double)
+- status (String)
+- createdAt (DateTime)
+- customerName (String)
+- paidAt (DateTime, nullable)
+```
+
+**Custom Action: syncCommissions**
+```dart
+// Query Supabase commissions table
+// Filter by referrer_tenant_id = current tenant
+// Store in cachedCommissions App State
+// Update summary totals
+```
+
+### Navigation
+- View All → Commission History
+- Commission Item → Commission Details
+- Referral Stats → Referral Stats Page
+- Export → Generate CSV/PDF report
+
+### FlutterFlow AI Prompt
+```
+Create a commission dashboard page with:
+- App bar with "Commission Earnings" title and refresh icon
+- Summary section (3 cards in row):
+  * Total Earned card:
+    - "Total Earned" label (grey)
+    - Large amount: ₦X (bold, primary color)
+    - "All time" subtitle
+  * Pending card:
+    - "Pending" label
+    - Amount: ₦X (orange color)
+    - "Being processed" subtitle
+  * This Month card:
+    - "This Month" label
+    - Amount: ₦X (green color)
+    - "+X% from last month" subtitle
+
+- Earnings chart section:
+  * "Earnings Trend (Last 30 Days)" header
+  * Line chart showing daily earnings
+  * Use fl_chart package
+  * Y-axis: Amount, X-axis: Date
+
+- Recent commissions section:
+  * "Recent Commissions" header with "View All" link
+  * List of commission cards (last 10):
+    - Transaction type badge (Consultation/Product/Diagnostic)
+    - Customer name (if available)
+    - Date (relative: "2 days ago")
+    - Amount earned (₦X, right-aligned)
+    - Status chip (Pending/Processed/Paid)
+  * Tap to view details
+
+- Floating action button: "Referral Stats"
+- Pull-to-refresh
+- Empty state: "No commissions yet. Start referring customers!"
+- Offline indicator with cached data message
+```
+
+---
+
+## 34. Commission History
+
+### Purpose
+Complete list of all commission transactions with filtering and search.
+
+### User Access
+All tenant roles
+
+### UI Components
+- Date range filter
+- Transaction type filter chips (All, Consultation, Product, Diagnostic)
+- Status filter chips (All, Pending, Processed, Paid Out)
+- Search bar (customer name, transaction ID)
+- Commission list
+  - Transaction type icon
+  - Customer name
+  - Date and time
+  - Commission amount
+  - Status badge
+  - Tap for details
+- Summary at top
+  - Total commissions in filter
+  - Count of transactions
+- Export button
+
+### Data Fetching
+
+```dart
+// Fetch commissions with filters
+final commissions = await Supabase.instance.client
+  .from('commissions')
+  .select('''
+    *,
+    transaction:transactions(
+      type,
+      provider:tenants!provider_tenant_id(name)
+    ),
+    customer:customers(full_name, phone)
+  ''')
+  .eq('referrer_tenant_id', FFAppState().tenantId)
+  .gte('created_at', startDate.toIso8601String())
+  .lte('created_at', endDate.toIso8601String())
+  .order('created_at', ascending: false)
+  .limit(50);
+
+// Filter by transaction type
+if (selectedType != 'all') {
+  commissions = commissions.where(
+    (c) => c['transaction']['type'] == selectedType
+  );
+}
+
+// Filter by status
+if (selectedStatus != 'all') {
+  commissions = commissions.where(
+    (c) => c['status'] == selectedStatus
+  );
+}
+
+// Calculate summary
+final summary = commissions.fold({
+  'total': 0.0,
+  'count': 0,
+}, (acc, c) {
+  acc['total'] += c['referrer_amount'];
+  acc['count'] += 1;
+  return acc;
+});
+```
+
+### Navigation
+- Commission Item → Commission Details
+- Date Filter → Reload with filtered data
+- Export → Generate report
+
+### FlutterFlow AI Prompt
+```
+Create a commission history screen with:
+- App bar with "Commission History" title and filter/export icons
+- Summary card at top:
+  * Total Commissions: ₦X (large)
+  * Transactions: X count
+  * Date range label
+
+- Filter section:
+  * Date range picker (This Week, This Month, Last 3 Months, Custom)
+  * Transaction type chips (All, Consultation, Product, Diagnostic)
+  * Status chips (All, Pending, Processed, Paid Out)
+  * Search bar
+
+- Commission list:
+  * Each commission card shows:
+    - Transaction type icon (consultation/product/diagnostic)
+    - Provider name (who provided the service)
+    - Customer name (small, grey)
+    - Date and time (small)
+    - Commission amount (₦X, large, right-aligned)
+    - Status badge (Pending/Processed/Paid)
+  * Tap to view full details
+  * Color-code by status (grey/orange/green)
+
+- Empty state: "No commissions match your filters"
+- Load more button or infinite scroll
+- Pull-to-refresh
+- Export dialog (CSV, PDF)
+- Offline mode: Display cached data with indicator
+```
+
+---
+
+## 35. Commission Details
+
+### Purpose
+Detailed view of a single commission transaction.
+
+### User Access
+All tenant roles
+
+### UI Components
+- Commission header
+  - Commission ID
+  - Date and time
+  - Status badge (large)
+- Transaction Information
+  - Transaction type
+  - Provider name (who provided service)
+  - Customer name (who was referred)
+  - Transaction amount (base price)
+- Commission Breakdown
+  - Customer Paid: ₦X
+  - Provider Received: ₦X
+  - Your Commission: ₦X (highlighted)
+  - Platform Fee: ₦X
+- Timeline
+  - Transaction created
+  - Commission calculated
+  - Commission processed (if applicable)
+  - Payment issued (if applicable)
+- Actions
+  - View Transaction (if accessible)
+  - Report Issue (if pending too long)
+
+### Data Fetching
+
+```dart
+// Fetch commission details
+final commission = await Supabase.instance.client
+  .from('commissions')
+  .select('''
+    *,
+    transaction:transactions(*),
+    provider:tenants!provider_tenant_id(name, business_type),
+    customer:customers(full_name, phone)
+  ''')
+  .eq('id', commissionId)
+  .single();
+
+// Fetch commission formula info
+final transactionType = commission['transaction_type'];
+final commissionRate = transactionType == 'consultation' || transactionType == 'diagnostic_test'
+  ? 0.10  // 10% for services
+  : 0.045; // 4.5% for products
+```
+
+### FlutterFlow AI Prompt
+```
+Create a commission details screen with:
+- App bar with "Commission Details" and back button
+- Commission header card:
+  * Commission ID (small, grey)
+  * Date and time (formatted)
+  * Large status badge (Pending/Processed/Paid Out)
+
+- Transaction info section:
+  * "Transaction Information" header
+  * Transaction type (with icon: Consultation/Product/Diagnostic)
+  * Provider name (e.g., "Dr. Kome - Consultation")
+  * Customer name (if available)
+  * Referral source: "Your referral link"
+
+- Breakdown section:
+  * "Commission Breakdown" header
+  * Rows:
+    - Customer Paid: ₦X,XXX
+    - Provider Received: ₦X,XXX (XX%)
+    - Divider
+    - Your Commission: ₦XXX (highlighted, large, green)
+    - Platform Fee: ₦XX
+  * Formula explanation text (small):
+    "Service-based transactions: 10% commission"
+
+- Timeline section:
+  * "Status Timeline" header
+  * Vertical stepper/timeline:
+    - Transaction Created (✓, date/time)
+    - Commission Calculated (✓, date/time)
+    - Commission Processed (✓ or ⏱, date/time or "Pending")
+    - Payment Issued (✓ or ⏱, date/time or "Pending")
+
+- Action buttons (if needed):
+  * "Report Issue" (outlined, only if pending > 30 days)
+
+- Informational card:
+  * "Commissions are processed monthly"
+  * "Next payout: [Date]"
+```
+
+---
+
+## 36. Referral Stats
+
+### Purpose
+Analytics and statistics about referral performance.
+
+### User Access
+All tenant roles (tenant_admin, branch_manager)
+
+### UI Components
+- Summary Cards
+  - Total Customers Referred
+  - Conversion Rate %
+  - Top Performing Service Type
+  - Average Commission per Referral
+- Charts
+  - Commissions by Service Type (pie chart)
+  - Referrals Over Time (line chart)
+  - Top Providers You Referred To (bar chart)
+- Referral Insights
+  - Best performing day of week
+  - Most referred service category
+  - Customer retention rate
+
+### Data Fetching
+
+```dart
+// Fetch referral statistics
+final stats = await Supabase.instance.client
+  .from('commissions')
+  .select('transaction_type, referrer_amount, created_at')
+  .eq('referrer_tenant_id', FFAppState().tenantId);
+
+// Calculate metrics
+final totalCustomersReferred = stats.length;
+final totalEarned = stats.fold(0.0, (sum, c) => sum + c['referrer_amount']);
+final avgCommission = totalEarned / totalCustomersReferred;
+
+// Group by transaction type
+final byType = groupBy(stats, (c) => c['transaction_type']);
+final consultationCount = byType['consultation']?.length ?? 0;
+final productCount = byType['product_sale']?.length ?? 0;
+final diagnosticCount = byType['diagnostic_test']?.length ?? 0;
+
+// Group by date for trend
+final byDate = groupBy(stats, (c) =>
+  DateTime.parse(c['created_at']).toIso8601String().split('T')[0]
+);
+```
+
+### FlutterFlow AI Prompt
+```
+Create a referral stats screen with:
+- App bar with "Referral Statistics" title
+- Summary cards (2x2 grid):
+  * Customers Referred: X (with person icon)
+  * Total Earned: ₦X (with money icon)
+  * Avg per Referral: ₦X (with chart icon)
+  * Conversion Rate: X% (with percentage icon)
+
+- Charts section:
+  * "Commissions by Service Type" header
+  * Pie/donut chart showing:
+    - Consultations (blue)
+    - Products (green)
+    - Diagnostic Tests (orange)
+  * Legend with percentages
+
+  * "Referrals Over Time" header
+  * Line chart showing daily/weekly referrals
+  * Last 30 days
+
+  * "Top Providers" header
+  * Horizontal bar chart
+  * Top 5 providers you referred customers to
+  * Provider name | bar | commission earned
+
+- Insights section:
+  * "Insights" header
+  * Insight cards:
+    - "Best Day: Thursdays" (most referrals)
+    - "Top Category: Consultations" (most commissions)
+    - "Growth: +15% this month"
+
+- Export button
+- Date range selector
+- Pull-to-refresh
+```
+
+---
+
+## 37. Diagnostic Services Management
+
+### Purpose
+Manage diagnostic tests and services offered by diagnostic center.
+
+### User Access
+tenant_admin, branch_manager (for diagnostic center tenants)
+
+### UI Components
+- Search bar
+- Filter chips (category: Lab Tests, Imaging, Screening)
+- Sort dropdown (name, price, popularity)
+- Services list/grid
+  - Service name
+  - Category badge
+  - Price
+  - Turnaround time (e.g., "24 hours")
+  - Active/Inactive toggle
+  - Edit button
+- Add Service FAB
+
+### Data Fetching
+
+```dart
+// Fetch diagnostic services
+final services = await Supabase.instance.client
+  .from('diagnostic_services')
+  .select('*')
+  .eq('tenant_id', FFAppState().tenantId)
+  .eq('_sync_is_deleted', false)
+  .order('name', ascending: true);
+
+// Filter by category
+if (selectedCategory != 'all') {
+  services = services.where((s) => s['category'] == selectedCategory);
+}
+
+// Create/Update service
+await Supabase.instance.client
+  .from('diagnostic_services')
+  .insert({
+    'tenant_id': FFAppState().tenantId,
+    'name': nameController.text,
+    'description': descriptionController.text,
+    'category': selectedCategory,
+    'price': priceController.text,
+    'turnaround_time_hours': turnaroundController.text,
+    'is_active': true,
+  });
+```
+
+### FlutterFlow AI Prompt
+```
+Create a diagnostic services management screen with:
+- App bar with "Diagnostic Services" title and search icon
+- Search bar
+- Filter chips:
+  * All Services
+  * Lab Tests
+  * Imaging (X-Ray, CT, MRI, Ultrasound)
+  * Screening
+- Sort dropdown (Name, Price, Popularity)
+
+- Service list/cards:
+  * Service card shows:
+    - Service name (bold)
+    - Category badge (color-coded)
+    - Price (₦X, prominent)
+    - Turnaround time (e.g., "Results in 24 hours")
+    - Active/Inactive toggle switch
+    - Edit icon button
+  * Grid view on tablet/desktop
+  * List view on mobile
+
+- Empty state: "No services found. Add your first diagnostic service!"
+- Floating Action Button "Add Service" (primary color)
+- Pull-to-refresh
+- Multi-select for bulk actions (activate/deactivate)
+```
+
+---
+
+## 38. Test Orders/Requests
+
+### Purpose
+View and manage incoming test requests from doctors or customers.
+
+### User Access
+tenant_admin, branch_manager, lab_technician (custom role for diagnostic centers)
+
+### UI Components
+- Status filter tabs (Pending, In Progress, Completed, All)
+- Search bar (patient name, order ID)
+- Date range filter
+- Test orders list
+  - Order ID
+  - Patient name
+  - Requesting doctor (if referred)
+  - Test name
+  - Priority badge (Urgent/Standard)
+  - Status (Pending, In Progress, Completed)
+  - Ordered date
+  - Actions (Start Test, Upload Results, View Details)
+- Summary card
+  - Pending orders count
+  - In progress count
+  - Completed today count
+
+### Data Fetching
+
+```dart
+// Fetch test orders
+final testOrders = await Supabase.instance.client
+  .from('test_requests')
+  .select('''
+    *,
+    customer:customers(full_name, phone),
+    requesting_doctor:users(full_name),
+    diagnostic_service:diagnostic_services(name, category),
+    consultation:consultations(notes)
+  ''')
+  .eq('fulfilling_diagnostic_center_id', FFAppState().tenantId)
+  .order('created_at', ascending: false)
+  .limit(50);
+
+// Filter by status
+if (selectedStatus != 'all') {
+  testOrders = testOrders.where((t) => t['status'] == selectedStatus);
+}
+
+// Update order status
+await Supabase.instance.client
+  .from('test_requests')
+  .update({
+    'status': 'in_progress',
+    'started_at': DateTime.now().toIso8601String(),
+    'lab_technician_id': FFAppState().userId,
+  })
+  .eq('id', testRequestId);
+```
+
+### FlutterFlow AI Prompt
+```
+Create a test orders screen with:
+- App bar with "Test Orders" title and filter icon
+- Summary card at top:
+  * Pending: X (orange badge)
+  * In Progress: X (blue badge)
+  * Completed Today: X (green badge)
+
+- Status tabs:
+  * Pending (default)
+  * In Progress
+  * Completed
+  * All
+
+- Filter section:
+  * Date range picker
+  * Priority filter (All, Urgent, Standard)
+  * Search bar (patient name or order ID)
+
+- Test orders list:
+  * Each order card shows:
+    - Order ID (e.g., "TR-2024-0123")
+    - Priority badge (if urgent: red "URGENT")
+    - Patient name with avatar
+    - Test name (e.g., "Complete Blood Count")
+    - Referring doctor (if applicable): "Referred by Dr. Kome"
+    - Ordered date/time
+    - Status chip (Pending/In Progress/Completed)
+    - Action buttons:
+      * If pending: "Start Test" button
+      * If in progress: "Upload Results" button
+      * "View Details" icon
+  * Color-code by priority (urgent: red border)
+
+- Empty state per tab:
+  * Pending: "No pending test orders"
+  * In Progress: "No tests in progress"
+  * Completed: "No completed tests for this period"
+
+- Floating action button: "Manual Order Entry"
+- Pull-to-refresh
+- Swipe actions: Start Test, Mark Complete
+```
+
+---
+
+## 39. Test Results Upload
+
+### Purpose
+Upload test results for completed diagnostic tests.
+
+### User Access
+tenant_admin, branch_manager, lab_technician
+
+### UI Components
+- Test request information (read-only)
+  - Patient name, age, gender
+  - Test name
+  - Requesting doctor
+  - Notes from doctor
+- Results upload section
+  - File upload (PDF, images)
+  - Multiple file support
+  - Rich text editor for observations
+  - Normal range reference fields
+- Test values input
+  - Dynamic form based on test type
+  - Parameter name, value, unit, normal range
+  - Flag abnormal values automatically
+- Lab technician notes
+- Review and verify checkbox
+- Submit Results button
+
+### Data Fetching
+
+```dart
+// Fetch test request details
+final testRequest = await Supabase.instance.client
+  .from('test_requests')
+  .select('''
+    *,
+    customer:customers(full_name, date_of_birth, gender, phone),
+    diagnostic_service:diagnostic_services(name, category, parameters_template),
+    requesting_doctor:users(full_name, phone)
+  ''')
+  .eq('id', testRequestId)
+  .single();
+
+// Upload results files
+final uploadedFiles = [];
+for (var file in selectedFiles) {
+  final filePath = '${FFAppState().tenantId}/test_results/${testRequestId}/${file.name}';
+  final uploadResult = await Supabase.instance.client.storage
+    .from('test-results')
+    .upload(filePath, file);
+  uploadedFiles.add(uploadResult);
+}
+
+// Create test result record
+await Supabase.instance.client
+  .from('test_results')
+  .insert({
+    'test_request_id': testRequestId,
+    'tenant_id': FFAppState().tenantId,
+    'lab_technician_id': FFAppState().userId,
+    'result_files': uploadedFiles,
+    'observations': observationsController.text,
+    'test_values': testValuesJson,
+    'status': 'completed',
+    'completed_at': DateTime.now().toIso8601String(),
+  });
+
+// Update test request status
+await Supabase.instance.client
+  .from('test_requests')
+  .update({
+    'status': 'completed',
+    'completed_at': DateTime.now().toIso8601String(),
+  })
+  .eq('id', testRequestId);
+
+// Send notification to doctor and patient
+```
+
+### FlutterFlow AI Prompt
+```
+Create a test results upload screen with:
+- App bar with "Upload Test Results" and back button
+- Test request info card (read-only):
+  * Order ID
+  * Patient name, age, gender
+  * Test name (large, bold)
+  * Requesting doctor (if applicable)
+  * Doctor's notes (if any)
+
+- Results upload section:
+  * "Upload Result Files" header
+  * File picker button (PDF, JPEG, PNG)
+  * List of uploaded files:
+    - File name
+    - File size
+    - Preview icon
+    - Remove button
+  * "Add Another File" button
+  * Max 5 files notice
+
+- Test values section:
+  * "Test Parameters" header
+  * Dynamic form based on test type:
+    - Parameter name (label)
+    - Value input (number or text)
+    - Unit (e.g., "mg/dL", "cells/μL")
+    - Normal range display (e.g., "80-100")
+    - Flag icon if abnormal (red warning)
+  * Example for CBC:
+    - WBC Count: [____] cells/μL (Normal: 4000-11000)
+    - RBC Count: [____] million cells/μL (Normal: 4.5-5.5)
+    - Hemoglobin: [____] g/dL (Normal: 13-17)
+    - etc.
+
+- Observations section:
+  * "Lab Technician Observations" header
+  * Rich text editor (multiline)
+  * Templates dropdown (common observations)
+
+- Verification section:
+  * Checkbox: "I have reviewed and verified all results"
+  * Lab technician name (read-only, from app state)
+  * Date/time stamp
+
+- Action buttons (bottom, sticky):
+  * "Cancel" (secondary)
+  * "Submit Results" (primary, full width, disabled until verified)
+
+- Confirmation dialog before submit
+- Success message with option to notify patient
+- Loading state during upload
+```
+
+---
+
+## 40. Diagnostic Dashboard
+
+### Purpose
+Overview dashboard specifically for diagnostic center tenants.
+
+### User Access
+All roles (tenant_admin, branch_manager, lab_technician)
+
+### UI Components
+- Welcome header with diagnostic center name
+- Today's metrics cards
+  - Pending tests count
+  - In progress tests count
+  - Completed tests today
+  - Revenue today
+- Quick actions
+  - View Test Orders
+  - Upload Results
+  - Manage Services
+  - View Reports
+- Recent test orders (last 5)
+- Urgent tests alert banner (if any)
+- Performance chart (tests completed per day, last 7 days)
+- Low stock alerts for test kits/consumables (if inventory tracked)
+
+### Data Fetching
+
+```dart
+// Fetch today's test metrics
+final today = DateTime.now().toIso8601String().split('T')[0];
+
+final pendingTests = await Supabase.instance.client
+  .from('test_requests')
+  .select('id', const FetchOptions(count: CountOption.exact, head: true))
+  .eq('fulfilling_diagnostic_center_id', FFAppState().tenantId)
+  .eq('status', 'pending');
+
+final inProgressTests = await Supabase.instance.client
+  .from('test_requests')
+  .select('id', const FetchOptions(count: CountOption.exact, head: true))
+  .eq('fulfilling_diagnostic_center_id', FFAppState().tenantId)
+  .eq('status', 'in_progress');
+
+final completedToday = await Supabase.instance.client
+  .from('test_requests')
+  .select('id, price', const FetchOptions(count: CountOption.exact))
+  .eq('fulfilling_diagnostic_center_id', FFAppState().tenantId)
+  .eq('status', 'completed')
+  .gte('completed_at', '${today}T00:00:00')
+  .lte('completed_at', '${today}T23:59:59');
+
+final todayRevenue = completedToday.data?.fold(0.0, (sum, t) => sum + t['price']) ?? 0;
+
+// Fetch recent test orders
+final recentOrders = await Supabase.instance.client
+  .from('test_requests')
+  .select('''
+    id,
+    customer:customers(full_name),
+    diagnostic_service:diagnostic_services(name),
+    status,
+    created_at,
+    priority
+  ''')
+  .eq('fulfilling_diagnostic_center_id', FFAppState().tenantId)
+  .order('created_at', ascending: false)
+  .limit(5);
+
+// Fetch urgent tests
+final urgentTests = await Supabase.instance.client
+  .from('test_requests')
+  .select('id', const FetchOptions(count: CountOption.exact, head: true))
+  .eq('fulfilling_diagnostic_center_id', FFAppState().tenantId)
+  .eq('priority', 'urgent')
+  .in_('status', ['pending', 'in_progress']);
+```
+
+### FlutterFlow AI Prompt
+```
+Create a diagnostic center dashboard with:
+- App bar with:
+  * Hamburger menu icon (left)
+  * Diagnostic center name (center)
+  * Notification bell (right)
+- Welcome section: "Hello, [User Name]" with role subtitle
+
+- Today's metrics cards (2x2 grid):
+  * Pending Tests: X (orange, with beaker icon)
+  * In Progress: X (blue, with lab icon)
+  * Completed Today: X (green, with checkmark icon)
+  * Revenue Today: ₦X (green, with money icon)
+
+- Urgent tests alert banner (if count > 0):
+  * Red background
+  * "⚠️ X urgent tests require attention"
+  * "View Now" button
+
+- Quick actions grid (2x2):
+  * "View Test Orders" (primary color)
+  * "Upload Results" (larger)
+  * "Manage Services"
+  * "Reports" (if admin/manager)
+
+- "Recent Test Orders" section:
+  * Section header with "View All" link
+  * List of 5 recent order cards:
+    - Order ID
+    - Patient name
+    - Test name
+    - Priority badge (if urgent)
+    - Status chip
+    - Time ago
+  * Tap to view details
+
+- Performance chart section:
+  * "Tests Completed (Last 7 Days)" header
+  * Bar chart showing daily completions
+  * Y-axis: Count, X-axis: Day
+
+- Floating action button: "New Test Order"
+- Pull-to-refresh
+- Offline indicator
+- Smooth animations
+```
+
+---
+
 ## Navigation Map
 
 ```
@@ -2385,7 +3399,7 @@ Dashboard
   ├─→ Settings
   └─→ Profile
 
-Menu Drawer
+Menu Drawer (Standard POS)
   ├─→ Dashboard
   ├─→ New Sale
   ├─→ Products
@@ -2393,9 +3407,23 @@ Menu Drawer
   ├─→ Sales History
   ├─→ Customers
   ├─→ Reports
+  ├─→ Commission Dashboard
   ├─→ Branches (admin)
   ├─→ Staff (admin/manager)
   ├─→ Transfers (manager+)
+  ├─→ Settings
+  ├─→ Subscription (admin)
+  └─→ Logout
+
+Menu Drawer (Diagnostic Center)
+  ├─→ Diagnostic Dashboard
+  ├─→ Test Orders
+  ├─→ Upload Results
+  ├─→ Diagnostic Services
+  ├─→ Customers
+  ├─→ Reports
+  ├─→ Commission Dashboard
+  ├─→ Staff (admin/manager)
   ├─→ Settings
   ├─→ Subscription (admin)
   └─→ Logout
@@ -2552,6 +3580,7 @@ xl: 32px
 
 ## Development Checklist
 
+### Core POS Features
 - [ ] Set up Supabase integration
 - [ ] Configure authentication flow
 - [ ] Create app state variables
@@ -2564,17 +3593,112 @@ xl: 32px
 - [ ] Build admin pages (23-27)
 - [ ] Build transfer management (28-29)
 - [ ] Build settings (30-32)
+
+### Commission System Features
+- [ ] Create commission data types in FlutterFlow
+- [ ] Build commission dashboard (33)
+- [ ] Build commission history (34)
+- [ ] Build commission details (35)
+- [ ] Build referral stats (36)
+- [ ] Implement offline commission caching
+- [ ] Create custom action: syncCommissions
+- [ ] Add commission menu items to navigation
+
+### Diagnostic Center Features
+- [ ] Build diagnostic services management (37)
+- [ ] Build test orders/requests (38)
+- [ ] Build test results upload (39)
+- [ ] Build diagnostic dashboard (40)
+- [ ] Create diagnostic_services table integration
+- [ ] Create test_requests table integration
+- [ ] Create test_results table integration
+- [ ] Implement file upload for test results
+- [ ] Add diagnostic menu items to navigation
+- [ ] Add tenant type detection (diagnostic vs retail)
+
+### General Features
 - [ ] Implement offline capabilities
 - [ ] Add barcode scanning
 - [ ] Add receipt printing
 - [ ] Test all user roles
 - [ ] Test multi-branch scenarios
 - [ ] Test offline sync
+- [ ] Test commission calculations
+- [ ] Test diagnostic workflow
 - [ ] Performance optimization
 - [ ] Deploy to production
 
 ---
 
+## Additional Database Tables for New Features
+
+### Commission System Tables
+
+**Note:** These tables are created via the referral commission migration: `supabase/migrations/20260313_referral_commissions.sql`
+
+```sql
+-- referral_sessions: Track customer browsing sessions
+-- commissions: Commission transaction records
+-- transactions: Unified transaction tracking
+-- commission_daily_summary: Materialized view for analytics
+```
+
+**FlutterFlow Data Types Needed:**
+- CommissionRecord (for commission dashboard)
+- ReferralStats (for referral statistics)
+
+### Diagnostic Center Tables
+
+**Note:** These tables should be created in a new migration file
+
+```sql
+-- diagnostic_services: Tests/services offered by diagnostic centers
+CREATE TABLE diagnostic_services (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES tenants(id),
+  name TEXT NOT NULL,
+  description TEXT,
+  category TEXT, -- 'lab_test', 'imaging', 'screening'
+  price DECIMAL(12,2) NOT NULL,
+  turnaround_time_hours INT,
+  parameters_template JSONB, -- Test parameters structure
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  _sync_is_deleted BOOLEAN DEFAULT false
+);
+
+-- test_requests: Incoming test orders
+-- (This table already exists from healthcare consultation schema)
+-- Ensure it has: fulfilling_diagnostic_center_id
+
+-- test_results: Uploaded test results
+CREATE TABLE test_results (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  test_request_id UUID NOT NULL REFERENCES test_requests(id),
+  tenant_id UUID NOT NULL REFERENCES tenants(id),
+  lab_technician_id UUID REFERENCES users(id),
+  result_files JSONB, -- Array of file URLs
+  observations TEXT,
+  test_values JSONB, -- Structured test parameter values
+  status TEXT DEFAULT 'completed',
+  completed_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**FlutterFlow Data Types Needed:**
+- DiagnosticService
+- TestRequest (extend existing)
+- TestResult
+
+---
+
 **End of POS Guide**
 
-This guide provides complete specifications for all 32 pages of the multi-tenant POS system, including data fetching strategies, navigation flows, UI components, and FlutterFlow AI prompts for rapid development.
+This guide now provides complete specifications for **40 pages** of the multi-tenant POS system, including:
+- Standard POS features (pages 1-32)
+- Commission dashboard and referral system (pages 33-36)
+- Diagnostic center management (pages 37-40)
+
+The guide includes data fetching strategies, navigation flows, UI components, and FlutterFlow AI prompts for rapid development across all tenant types: retail, pharmacy, and diagnostic centers.

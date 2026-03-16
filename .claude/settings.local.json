@@ -17,7 +17,11 @@
       "Bash(supabase --version:*)",
       "Bash(cat:*)",
       "Bash(node test-signup-fix.js:*)",
-      "Bash(flutter run:*)"
+      "Bash(flutter run:*)",
+      "Bash(git fetch:*)",
+      "Bash(powershell.exe -File .specify/scripts/powershell/setup-plan.ps1 -Json)",
+      "Bash(npm run quick-test:*)",
+      "Bash(npm run check:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

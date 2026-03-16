@@ -132,7 +132,7 @@
 					<span class="text-2xl font-bold theme-logo transition-theme">Kemani</span>
 					<span class="ml-2 text-sm theme-logo-subtitle transition-theme">Medic</span>
 				</a>
-				<div class="flex items-center gap-6">
+				<div class="hidden md:flex items-center gap-6">
 					<a href="/" class="theme-nav-link transition text-sm">
 						POS Platform
 					</a>
@@ -142,12 +142,27 @@
 					<a href="/medic/pricing" class="theme-logo font-medium text-sm">
 						Pricing
 					</a>
+					<a href="/about" class="theme-nav-link transition text-sm">
+						About
+					</a>
+					<a href="/blog" class="theme-nav-link transition text-sm">
+						Blog
+					</a>
+					<a href="/help" class="theme-nav-link transition text-sm">
+						Help
+					</a>
 					<ThemeToggle />
 					<a
-						href="/auth/signin"
-						class="px-4 py-2 theme-btn-outline border rounded-lg backdrop-blur-sm transition text-sm"
+						href="/pos-admin"
+						class="px-4 py-2 theme-btn-outline border rounded-lg transition text-sm"
 					>
 						Sign In
+					</a>
+					<a
+						href="/pos-admin"
+						class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg hover:from-emerald-500 hover:to-green-500 transition text-sm font-medium"
+					>
+						Start Free
 					</a>
 				</div>
 			</div>
@@ -497,40 +512,47 @@
 	<!-- Footer -->
 	<footer class="bg-gray-900 text-gray-300 py-12 border-t border-emerald-800/30">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-			<div class="grid md:grid-cols-4 gap-8">
-				<div>
+			<div class="grid md:grid-cols-5 gap-8">
+				<div class="md:col-span-2">
 					<a href="/" class="flex items-center mb-4">
 						<span class="text-2xl font-bold text-emerald-400">Kemani</span>
 						<span class="ml-2 text-sm text-emerald-300/70">Medic</span>
 					</a>
-					<p class="text-sm text-gray-400">
+					<p class="text-sm text-gray-400 mb-4">
 						Telemedicine platform built for Nigerian healthcare providers.
 					</p>
+					<p class="text-sm text-gray-400">
+						4 Adeyemo Alakija Street<br />
+						Victoria Island, Lagos, Nigeria
+					</p>
+				</div>
+
+				<div>
+					<h3 class="text-white font-semibold mb-4">Company</h3>
+					<ul class="space-y-2 text-sm">
+						<li><a href="/about" class="hover:text-emerald-400 transition">About Us</a></li>
+						<li><a href="/blog" class="hover:text-emerald-400 transition">Blog</a></li>
+						<li><a href="/contact" class="hover:text-emerald-400 transition">Contact</a></li>
+					</ul>
 				</div>
 
 				<div>
 					<h3 class="text-white font-semibold mb-4">Product</h3>
 					<ul class="space-y-2 text-sm">
-						<li><a href="/medic#features" class="hover:text-emerald-400 transition">Features</a></li>
-						<li><a href="/medic/pricing" class="hover:text-emerald-400 transition">Pricing</a></li>
-						<li><a href="/medic#consultation-types" class="hover:text-emerald-400 transition">Consultation Types</a></li>
-					</ul>
-				</div>
-
-				<div>
-					<h3 class="text-white font-semibold mb-4">Platform</h3>
-					<ul class="space-y-2 text-sm">
 						<li><a href="/" class="hover:text-emerald-400 transition">POS System</a></li>
-						<li><a href="/pricing" class="hover:text-emerald-400 transition">POS Pricing</a></li>
+						<li><a href="/medic" class="hover:text-emerald-400 transition">For Healthcare</a></li>
+						<li><a href="/use-cases" class="hover:text-emerald-400 transition">Use Cases</a></li>
+						<li><a href="/pricing" class="hover:text-emerald-400 transition">Pricing</a></li>
 					</ul>
 				</div>
 
 				<div>
-					<h3 class="text-white font-semibold mb-4">Support</h3>
+					<h3 class="text-white font-semibold mb-4">Resources</h3>
 					<ul class="space-y-2 text-sm">
-						<li><a href="/docs" class="hover:text-emerald-400 transition">Documentation</a></li>
-						<li><a href="/support" class="hover:text-emerald-400 transition">Help Center</a></li>
-						<li><a href="/contact" class="hover:text-emerald-400 transition">Contact Us</a></li>
+						<li><a href="/help" class="hover:text-emerald-400 transition">Help Center</a></li>
+						<li><a href="/terms" class="hover:text-emerald-400 transition">Terms of Service</a></li>
+						<li><a href="/privacy" class="hover:text-emerald-400 transition">Privacy Policy</a></li>
+						<li><a href="/cookies" class="hover:text-emerald-400 transition">Cookie Policy</a></li>
 					</ul>
 				</div>
 			</div>

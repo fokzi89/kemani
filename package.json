@@ -1,0 +1,40 @@
+{
+  "name": "kemani",
+  "version": "1.0.0",
+  "description": "A multi-platform application suite supporting **Multi-Tenant POS System** and **Healthcare Consultation System**.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:unit": "cd apps/storefront && npm test",
+    "test:e2e": "playwright test tests/",
+    "test:session": "playwright test tests/referral-session.spec.ts",
+    "test:commission": "playwright test tests/multi-service-commission.spec.ts",
+    "test:routing": "playwright test tests/automatic-routing-self-provider.spec.ts",
+    "verify": "node verify-deployment.mjs",
+    "quick-test": "node quick-test.mjs",
+    "check": "npm run verify && npm run quick-test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fokzi89/kemani.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/fokzi89/kemani/issues"
+  },
+  "homepage": "https://github.com/fokzi89/kemani#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "dotenv": "^17.3.1",
+    "playwright": "^1.58.2"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.98.0"
+  }
+}

@@ -1,8 +1,22 @@
 # Comprehensive Supabase Database Schema Documentation
 
 **Project:** Kemani Multi-Tenant POS & Healthcare System
-**Last Updated:** March 5, 2026
+**Last Updated:** March 10, 2026
 **Database:** PostgreSQL via Supabase
+
+---
+
+## ⚡ Important Update (March 10, 2026)
+
+**NEW: Automatic Inventory Sync Triggers**
+
+The database now has automatic triggers for real-time inventory synchronization between POS and marketplace. When building your FlutterFlow app:
+
+- ✅ **Just insert sales normally** - Inventory updates automatically
+- ✅ **No manual stock updates needed** - Triggers handle everything
+- ✅ **Use new views** - `marketplace_products_with_stock` and `product_stock_status`
+
+See **[Section 8: Triggers](#triggers)** for complete details.
 
 ---
 
@@ -15,7 +29,7 @@
 5. [Configuration Tables](#configuration-tables)
 6. [Views](#views)
 7. [Helper Functions](#helper-functions)
-8. [Triggers](#triggers)
+8. [⚡ Triggers (Updated - Real-Time Sync)](#-triggers-updated---real-time-sync)
 9. [Row Level Security (RLS) Policies](#row-level-security-rls-policies)
 10. [Indexes](#indexes)
 
@@ -1885,7 +1899,315 @@ $$ LANGUAGE plpgsql;
 
 ---
 
-## Triggers
+## ⚡ Triggers (Updated - Real-Time Sync)
+
+**Last Updated:** March 10, 2026
+
+### Overview
+
+The database has both **legacy triggers** (for timestamps, sync versions, etc.) and **NEW automatic inventory sync triggers** added on March 10, 2026.
+
+---
+
+### 🆕 NEW: Real-Time Inventory Sync Triggers (March 10, 2026)
+
+These triggers automatically handle inventory synchronization between POS and marketplace:
+
+#### 1. `auto_sync_inventory_on_sale`
+**Table:** `sales`
+**Event:** AFTER INSERT OR UPDATE OF status
+**When:** `NEW.status = 'completed'`
+
+```sql
+CREATE FUNCTION trigger_sync_inventory_on_sale() RETURNS TRIGGER AS $$
+DECLARE
+    v_item RECORD;
+BEGIN
+    IF NEW.status = 'completed' THEN
+        FOR v_item IN
+            SELECT product_id, quantity FROM sale_items WHERE sale_id = NEW.id
+        LOOP
+            UPDATE branch_inventory
+            SET stock_quantity = stock_quantity - v_item.quantity,
+                updated_at = NOW()
+            WHERE branch_id = NEW.branch_id
+              AND product_id = v_item.product_id
+              AND stock_quantity >= v_item.quantity;
+        END LOOP;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Purpose:** When a POS sale is completed, automatically deducts inventory from `branch_inventory`.
+
+---
+
+#### 2. `auto_sync_product_stock`
+**Table:** `branch_inventory`
+**Event:** AFTER INSERT OR UPDATE OR DELETE
+
+```sql
+CREATE FUNCTION trigger_sync_product_stock() RETURNS TRIGGER AS $$
+BEGIN
+    PERFORM sync_product_total_stock(COALESCE(NEW.product_id, OLD.product_id));
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Purpose:** When `branch_inventory` changes, recalculates `products.stock_quantity` (total across all branches).
+
+---
+
+#### 3. `auto_reserve_inventory_on_order`
+**Table:** `orders`
+**Event:** AFTER INSERT
+
+```sql
+CREATE FUNCTION reserve_inventory_on_order_create() RETURNS TRIGGER AS $$
+DECLARE
+    v_item RECORD;
+    v_success BOOLEAN;
+BEGIN
+    IF NEW.status = 'pending' THEN
+        FOR v_item IN
+            SELECT product_id, quantity FROM order_items WHERE order_id = NEW.id
+        LOOP
+            v_success := reserve_inventory(NEW.branch_id, v_item.product_id, v_item.quantity);
+            IF NOT v_success THEN
+                RAISE EXCEPTION 'Failed to reserve inventory for product % in order %',
+                    v_item.product_id, NEW.id;
+            END IF;
+        END LOOP;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Purpose:** When a marketplace order is created, reserves inventory in `branch_inventory.reserved_quantity`.
+
+---
+
+#### 4. `auto_order_inventory_sync`
+**Table:** `orders`
+**Event:** AFTER UPDATE OF status
+**When:** `OLD.status IS DISTINCT FROM NEW.status`
+
+```sql
+CREATE FUNCTION trigger_order_inventory_sync() RETURNS TRIGGER AS $$
+BEGIN
+    -- When order confirmed, deduct inventory
+    IF OLD.status IN ('pending') AND NEW.status IN ('confirmed', 'processing') THEN
+        PERFORM deduct_inventory_on_order_confirm(NEW.id);
+    END IF;
+
+    -- When order cancelled, restore inventory
+    IF NEW.status = 'cancelled' AND OLD.status != 'cancelled' THEN
+        PERFORM restore_inventory_on_order_cancel(NEW.id);
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Purpose:** Manages inventory when order status changes (confirms or cancels).
+
+---
+
+### New Database Views for Real-Time Stock
+
+#### `marketplace_products_with_stock`
+Shows all products with aggregated available stock across branches:
+
+```sql
+CREATE VIEW marketplace_products_with_stock AS
+SELECT
+    p.id, p.tenant_id, p.name, p.description, p.sku, p.category,
+    p.unit_price AS price, p.image_url,
+    COALESCE(SUM(bi.stock_quantity - bi.reserved_quantity), 0)::INTEGER AS stock_quantity,
+    COALESCE(SUM(bi.stock_quantity - bi.reserved_quantity), 0) > 0 AS is_available,
+    p.created_at, p.updated_at
+FROM products p
+LEFT JOIN branch_inventory bi ON p.id = bi.product_id
+WHERE p.is_active = TRUE AND p.deleted_at IS NULL
+GROUP BY p.id, p.tenant_id, p.name, p.description, p.sku,
+         p.category, p.unit_price, p.image_url, p.created_at, p.updated_at;
+```
+
+**FlutterFlow Usage:**
+```dart
+// Query this view instead of products table for real-time stock
+final products = await Supabase.instance.client
+  .from('marketplace_products_with_stock')
+  .select()
+  .eq('tenant_id', tenantId);
+```
+
+---
+
+#### `product_stock_status`
+Detailed stock status per branch with reserved quantities:
+
+```sql
+CREATE VIEW product_stock_status AS
+SELECT
+    p.id AS product_id, p.tenant_id, bi.branch_id, p.name AS product_name,
+    bi.stock_quantity, bi.reserved_quantity,
+    (bi.stock_quantity - bi.reserved_quantity) AS available_quantity,
+    bi.low_stock_threshold,
+    CASE
+        WHEN (bi.stock_quantity - bi.reserved_quantity) <= 0 THEN 'out_of_stock'
+        WHEN (bi.stock_quantity - bi.reserved_quantity) <= bi.low_stock_threshold THEN 'low_stock'
+        ELSE 'in_stock'
+    END AS stock_status,
+    bi.created_at, bi.updated_at
+FROM products p
+INNER JOIN branch_inventory bi ON p.id = bi.product_id
+WHERE p.is_active = TRUE;
+```
+
+**FlutterFlow Usage:**
+```dart
+// Get detailed stock status per branch
+final stockStatus = await Supabase.instance.client
+  .from('product_stock_status')
+  .select()
+  .eq('branch_id', branchId);
+```
+
+---
+
+### Helper Functions for Inventory Sync
+
+#### `sync_product_total_stock(product_id)`
+Recalculates total product stock from all branches:
+
+```sql
+CREATE FUNCTION sync_product_total_stock(p_product_id UUID) RETURNS VOID AS $$
+DECLARE
+    v_total_stock INTEGER;
+BEGIN
+    SELECT COALESCE(SUM(stock_quantity - reserved_quantity), 0)
+    INTO v_total_stock
+    FROM branch_inventory
+    WHERE product_id = p_product_id;
+
+    UPDATE products
+    SET stock_quantity = v_total_stock, updated_at = NOW()
+    WHERE id = p_product_id;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+---
+
+#### `get_marketplace_stock(product_id, tenant_id)`
+Returns real-time stock information:
+
+```sql
+CREATE FUNCTION get_marketplace_stock(p_product_id UUID, p_tenant_id UUID)
+RETURNS TABLE (
+    product_id UUID,
+    total_stock INTEGER,
+    reserved_stock INTEGER,
+    available_stock INTEGER,
+    is_available BOOLEAN
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        p.id AS product_id,
+        COALESCE(SUM(bi.stock_quantity), 0)::INTEGER AS total_stock,
+        COALESCE(SUM(bi.reserved_quantity), 0)::INTEGER AS reserved_stock,
+        COALESCE(SUM(bi.stock_quantity - bi.reserved_quantity), 0)::INTEGER AS available_stock,
+        COALESCE(SUM(bi.stock_quantity - bi.reserved_quantity), 0) > 0 AS is_available
+    FROM products p
+    LEFT JOIN branch_inventory bi ON p.id = bi.product_id
+    WHERE p.id = p_product_id AND p.tenant_id = p_tenant_id
+    GROUP BY p.id;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**FlutterFlow Usage:**
+```dart
+final result = await Supabase.instance.client.rpc('get_marketplace_stock', {
+  'p_product_id': productId,
+  'p_tenant_id': tenantId
+});
+```
+
+---
+
+#### `check_product_availability(product_id, quantity, tenant_id)`
+Validates if product has sufficient stock:
+
+```sql
+CREATE FUNCTION check_product_availability(
+    p_product_id UUID,
+    p_quantity INTEGER,
+    p_tenant_id UUID DEFAULT NULL
+) RETURNS JSON AS $$
+DECLARE
+    v_available INTEGER;
+    v_result JSON;
+BEGIN
+    SELECT available_stock INTO v_available
+    FROM get_marketplace_stock(p_product_id, p_tenant_id);
+
+    v_result := json_build_object(
+        'product_id', p_product_id,
+        'available_stock', COALESCE(v_available, 0),
+        'requested_quantity', p_quantity,
+        'is_available', COALESCE(v_available, 0) >= p_quantity,
+        'message', CASE
+            WHEN COALESCE(v_available, 0) >= p_quantity THEN 'Product available'
+            WHEN COALESCE(v_available, 0) > 0 THEN format('Only %s units available', v_available)
+            ELSE 'Product out of stock'
+        END
+    );
+
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+---
+
+### Impact on FlutterFlow Development
+
+**What Changed:**
+- ✅ Sales automatically update inventory (no manual code needed)
+- ✅ Marketplace shows real-time stock (via views)
+- ✅ Orders automatically reserve/deduct inventory
+- ✅ Multi-platform sync (Flutter POS ↔ SvelteKit Marketplace)
+
+**What to Do:**
+```dart
+// ✅ DO THIS - Simple sale completion
+await Supabase.instance.client.from('sales').insert({
+  'status': 'completed',  // Triggers fire automatically!
+  // ... other fields
+});
+
+// ✅ DO THIS - Query real-time stock
+final products = await Supabase.instance.client
+  .from('marketplace_products_with_stock')
+  .select();
+
+// ❌ DON'T DO THIS - Manual stock updates (unnecessary!)
+// The triggers handle this automatically
+```
+
+**📖 Complete Guide:** [AUTOMATIC_DATABASE_TRIGGERS.md](./AUTOMATIC_DATABASE_TRIGGERS.md)
+
+---
+
+### Legacy Triggers (Existing)
 
 ### Update Timestamp Triggers
 

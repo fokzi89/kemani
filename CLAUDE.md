@@ -5,8 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 This is a **multi-platform monorepo** with the following architecture:
-- **SvelteKit**: Storefront, marketing pages, landing page, pricing page, and healthcare customer interface
-- **Flutter**: POS admin interface and healthcare medic interface
+- **SvelteKit**: Storefront, marketing pages, landing page, pricing page, healthcare customer interface, and healthcare medic provider interface
+- **FlutterFlow**: POS admin interface (pharmacy, retail, diagnostic center dashboards)
 - **Supabase**: Backend database and authentication (via MCP server)
 - **SpecKit**: Structured feature development workflow system
 
@@ -21,21 +21,26 @@ The project is organized into separate applications in the `apps/` directory:
    - Tech stack: SvelteKit 2.0, Svelte 5, Tailwind CSS 4, TypeScript
    - Entry command: `npm run dev` (runs on http://localhost:5173)
 
-2. **`apps/storefront/`** - E-commerce storefront (if applicable)
+2. **`apps/storefront/`** - E-commerce storefront with referral commission system
    - Tech stack: SvelteKit with Supabase integration
+   - Handles customer purchases and referral tracking
 
-3. **`apps/healthcare_customer/`** *(To be created)* - Healthcare customer interface
+3. **`apps/healthcare_customer/`** - Healthcare customer interface
    - Tech stack: SvelteKit, Tailwind CSS, Supabase
+   - Customer-facing telemedicine booking and consultations
 
-#### Flutter Applications
-1. **`apps/pos_admin/`** *(To be created)* - POS admin interface
-   - Tech stack: Flutter, Supabase Flutter SDK
-   - Entry command: `flutter run -d chrome` (web) or platform-specific commands
+4. **`apps/healthcare_medic/`** - Healthcare provider (medic) interface
+   - Tech stack: SvelteKit, Tailwind CSS, Supabase
+   - Doctor/pharmacist consultation and prescription management
 
-2. **`apps/healthcare_medic/`** *(To be created)* - Healthcare medic interface
-   - Tech stack: Flutter, Supabase Flutter SDK
+#### FlutterFlow Applications
+1. **`apps/pos_admin/`** - POS admin interface (FlutterFlow project)
+   - Built with FlutterFlow (visual builder)
+   - Tech stack: FlutterFlow, Supabase Flutter SDK
+   - Offline-capable POS for pharmacy, retail, diagnostic center tenants
+   - Commission dashboard for viewing referral earnings
 
-3. **`apps/web_client/`** - Existing Flutter web client (legacy)
+2. **`apps/web_client/`** - Existing Flutter web client (legacy)
    - Built output available in `apps/web_client/build/web/`
 
 ### Shared Resources
@@ -65,10 +70,12 @@ npm run preview      # Preview production build
 npm run check        # Type check and validate
 ```
 
-### Flutter Apps
+### FlutterFlow Apps
+
+**Note**: POS Admin app is built in FlutterFlow (visual builder). Development happens in FlutterFlow's web IDE.
 
 ```bash
-# POS Admin (or any Flutter app)
+# Export FlutterFlow project and run locally (if needed)
 cd apps/pos_admin
 flutter pub get      # Install dependencies
 flutter run -d chrome              # Run on Chrome (web)
@@ -77,6 +84,12 @@ flutter build web                  # Build for web
 flutter build apk                  # Build for Android
 flutter build ios                  # Build for iOS
 ```
+
+Primary development workflow:
+1. Open FlutterFlow project at flutterflow.io
+2. Make changes in visual builder
+3. Test in FlutterFlow's built-in preview
+4. Download/export code when needed for deployment
 
 ### Supabase (via MCP)
 
@@ -140,13 +153,14 @@ This repository uses SpecKit, a structured feature development workflow with nin
 - Marketing and landing pages
 - Storefront and e-commerce
 - Healthcare customer-facing interfaces
+- Healthcare medic provider interfaces (doctor/pharmacist dashboards)
 - Any public-facing web content
 
-**Use Flutter for:**
-- POS admin dashboards
-- Healthcare medic interfaces
-- Internal tools requiring cross-platform support (web, mobile, desktop)
-- Applications requiring native performance
+**Use FlutterFlow for:**
+- POS admin dashboards (pharmacy, retail, diagnostic center)
+- Internal tools requiring offline-first capability
+- Cross-platform mobile/web apps for tenant management
+- Applications requiring visual development and rapid iteration
 
 ### Adding New Features
 
@@ -179,19 +193,21 @@ Key migrations:
 ```
 kemani/
 ├── apps/
-│   ├── marketing_sveltekit/     # Marketing site (SvelteKit)
-│   ├── storefront/               # Storefront (SvelteKit)
-│   ├── healthcare_customer/      # Healthcare customer UI (SvelteKit) [TBD]
-│   ├── pos_admin/                # POS admin (Flutter) [TBD]
-│   ├── healthcare_medic/         # Healthcare medic UI (Flutter) [TBD]
+│   ├── marketing_sveltekit/     # Marketing site (SvelteKit) ✓
+│   ├── storefront/               # Storefront with referral system (SvelteKit) ✓
+│   ├── healthcare_customer/      # Healthcare customer UI (SvelteKit) ✓
+│   ├── healthcare_medic/         # Healthcare medic provider UI (SvelteKit) ✓
+│   ├── pos_admin/                # POS admin (FlutterFlow) - in development
 │   └── web_client/               # Legacy Flutter web client
 ├── supabase/
 │   └── migrations/               # Database migrations
 ├── specs/                        # SpecKit feature specifications
+│   ├── 001-multi-tenant-pos/     # POS system specification
+│   └── 004-tenant-referral-commissions/ # Referral commission system
 ├── .specify/                     # SpecKit workflow system
 └── .claude/                      # Claude Code configuration
 
-[TBD] = To be developed
+✓ = Active development
 ```
 
 ## Environment Setup
