@@ -109,12 +109,13 @@
 	}
 </script>
 
-<div class="space-y-6">
-	<!-- Header -->
-	<div class="bg-white rounded-lg shadow p-6">
-		<h2 class="text-2xl font-bold text-gray-900">Consultations</h2>
-		<p class="text-gray-600 mt-1">Manage your patient consultations</p>
-	</div>
+<div class="min-h-screen p-6 lg:p-8">
+	<div class="max-w-7xl mx-auto space-y-6">
+		<!-- Header -->
+		<div class="bg-white rounded-lg shadow p-6">
+			<h2 class="text-2xl font-bold text-gray-900">Consultations</h2>
+			<p class="text-gray-600 mt-1">Manage your patient consultations</p>
+		</div>
 
 	<!-- Filters -->
 	<div class="bg-white rounded-lg shadow p-4">
@@ -167,6 +168,7 @@
 	{:else}
 		<div class="space-y-4">
 			{#each consultations as consultation}
+				{@const badge = getReferralBadge(consultation.referral_source || 'direct')}
 				<div class="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
 					<div class="p-6">
 						<div class="flex items-start justify-between">
@@ -185,7 +187,6 @@
 										<span class="px-2 py-1 text-xs font-semibold rounded-full {getStatusColor(consultation.status)}">
 											{consultation.status}
 										</span>
-										{@const badge = getReferralBadge(consultation.referral_source || 'direct')}
 										<span class="px-2 py-1 text-xs font-semibold rounded-full {badge.color}">
 											{badge.icon} {badge.text}
 										</span>
@@ -263,4 +264,5 @@
 			{/each}
 		</div>
 	{/if}
+	</div>
 </div>

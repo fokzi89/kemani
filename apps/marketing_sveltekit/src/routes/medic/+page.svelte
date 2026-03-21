@@ -123,13 +123,13 @@
 					</a>
 					<ThemeToggle />
 					<a
-						href="/pos-admin"
+						href="http://localhost:5179/auth/login"
 						class="px-4 py-2 theme-btn-outline border rounded-lg transition text-sm"
 					>
 						Sign In
 					</a>
 					<a
-						href="/pos-admin"
+						href="http://localhost:5179/auth/signup"
 						class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg hover:from-emerald-500 hover:to-green-500 transition text-sm font-medium"
 					>
 						Start Free

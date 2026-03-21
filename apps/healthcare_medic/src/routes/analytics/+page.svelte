@@ -127,12 +127,13 @@
 	}
 </script>
 
-<div class="space-y-6">
-	<!-- Header -->
-	<div class="bg-white rounded-lg shadow p-6">
-		<h2 class="text-2xl font-bold text-gray-900">Analytics Dashboard</h2>
-		<p class="text-gray-600 mt-1">Track your performance and earnings</p>
-	</div>
+<div class="min-h-screen p-6 lg:p-8">
+	<div class="max-w-7xl mx-auto space-y-6">
+		<!-- Header -->
+		<div class="bg-white rounded-lg shadow p-6">
+			<h2 class="text-2xl font-bold text-gray-900">Analytics Dashboard</h2>
+			<p class="text-gray-600 mt-1">Track your performance and earnings</p>
+		</div>
 
 	{#if loading}
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -264,4 +265,5 @@
 			</div>
 		</div>
 	{/if}
+	</div>
 </div>

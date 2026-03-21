@@ -188,9 +188,10 @@
 	}
 </script>
 
-<div class="space-y-6">
-	<!-- Header -->
-	<div class="bg-white rounded-lg shadow p-6">
+<div class="min-h-screen p-6 lg:p-8">
+	<div class="max-w-7xl mx-auto space-y-6">
+		<!-- Header -->
+		<div class="bg-white rounded-lg shadow p-6">
 		<div class="flex justify-between items-center">
 			<div>
 				<h2 class="text-2xl font-bold text-gray-900">Commission History & Earnings</h2>
@@ -456,5 +457,6 @@
 				</ul>
 			</div>
 		</div>
+	</div>
 	</div>
 </div>

@@ -15,23 +15,37 @@
 		User,
 		LogOut,
 		Menu,
-		X
+		X,
+		Settings,
+		FlaskConical,
+		Home
 	} from 'lucide-svelte';
 
 	let user = $state(null);
 	let provider = $state(null);
 	let loading = $state(true);
-	let mobileMenuOpen = $state(false);
+	let mobileDrawerOpen = $state(false);
 
-	const navigation = [
+	// Full navigation for desktop sidebar and mobile drawer
+	const fullNavigation = [
 		{ name: 'Dashboard', href: '/', icon: LayoutDashboard },
-		{ name: 'Patients', href: '/patients', icon: Users },
+		{ name: 'My Patients', href: '/patients', icon: Users },
 		{ name: 'Consultations', href: '/consultations', icon: Calendar },
 		{ name: 'Prescriptions', href: '/prescriptions', icon: FileText },
+		{ name: 'Lab Requests', href: '/lab-requests', icon: FlaskConical },
 		{ name: 'Messages', href: '/chats', icon: MessageSquare },
 		{ name: 'Commissions', href: '/commissions', icon: DollarSign },
 		{ name: 'Analytics', href: '/analytics', icon: BarChart3 },
-		{ name: 'Availability', href: '/availability', icon: Calendar }
+		{ name: 'Settings', href: '/settings', icon: Settings }
+	];
+
+	// Mobile bottom navigation (only key items)
+	const mobileBottomNav = [
+		{ name: 'Home', href: '/', icon: Home },
+		{ name: 'Patients', href: '/patients', icon: Users },
+		{ name: 'Consultations', href: '/consultations', icon: Calendar },
+		{ name: 'Prescriptions', href: '/prescriptions', icon: FileText },
+		{ name: 'Settings', href: '/settings', icon: Settings }
 	];
 
 	onMount(async () => {
@@ -71,7 +85,22 @@
 					.single();
 
 				provider = providerData;
-				goto('/');
+
+				// Check if onboarding is complete before redirecting
+				if (providerData) {
+					const isOnboardingComplete = providerData.phone &&
+						providerData.specialization &&
+						providerData.bio &&
+						providerData.clinic_address;
+
+					if (!isOnboardingComplete) {
+						goto('/onboarding');
+					} else {
+						goto('/');
+					}
+				} else {
+					goto('/onboarding');
+				}
 			} else if (event === 'SIGNED_OUT') {
 				user = null;
 				provider = null;
@@ -84,8 +113,8 @@
 		await supabase.auth.signOut();
 	}
 
-	function toggleMobileMenu() {
-		mobileMenuOpen = !mobileMenuOpen;
+	function toggleMobileDrawer() {
+		mobileDrawerOpen = !mobileDrawerOpen;
 	}
 </script>
 
@@ -96,100 +125,160 @@
 			<p class="mt-4 text-gray-600">Loading...</p>
 		</div>
 	</div>
-{:else if user && provider}
+{:else if user && provider && !$page.url.pathname.startsWith('/onboarding')}
 	<!-- Provider Dashboard Layout -->
-	<div class="min-h-screen bg-gray-50">
-		<!-- Header -->
-		<header class="bg-white shadow-sm sticky top-0 z-50">
-			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-				<div class="flex justify-between items-center h-16">
-					<!-- Logo & Title -->
-					<div class="flex items-center">
-						<button
-							onclick={toggleMobileMenu}
-							class="lg:hidden p-2 rounded-md text-gray-600 hover:bg-gray-100"
-						>
-							{#if mobileMenuOpen}
-								<X class="h-6 w-6" />
-							{:else}
-								<Menu class="h-6 w-6" />
-							{/if}
-						</button>
-						<h1 class="text-xl font-bold text-primary-600 ml-2 lg:ml-0">
-							Healthcare Provider Portal
-						</h1>
-					</div>
+	<div class="min-h-screen bg-gray-50 flex transition-colors duration-200">
+		<!-- Mobile Header (Hamburger only) -->
+		<div class="lg:hidden fixed top-0 left-0 right-0 bg-white shadow-sm z-50 h-16 flex items-center px-4 transition-colors duration-200">
+			<button
+				onclick={toggleMobileDrawer}
+				class="p-2 rounded-md text-gray-600 hover:bg-gray-100 transition-colors"
+			>
+				{#if mobileDrawerOpen}
+					<X class="h-6 w-6" />
+				{:else}
+					<Menu class="h-6 w-6" />
+				{/if}
+			</button>
+			<h1 class="text-lg font-bold text-primary-600 ml-3 transition-colors">
+				Healthcare Provider Portal
+			</h1>
+		</div>
 
-					<!-- User Menu -->
-					<div class="flex items-center gap-4">
-						<div class="hidden sm:block text-right">
-							<p class="text-sm font-medium text-gray-900">{provider.full_name}</p>
-							<p class="text-xs text-gray-500">{provider.specialization}</p>
+		<!-- Mobile Drawer Overlay -->
+		{#if mobileDrawerOpen}
+			<div
+				class="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-200"
+				onclick={toggleMobileDrawer}
+			></div>
+		{/if}
+
+		<!-- Mobile Drawer -->
+		<div
+			class="lg:hidden fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-50 transform transition-all duration-300 {mobileDrawerOpen ? 'translate-x-0' : '-translate-x-full'}"
+		>
+			<!-- Drawer Header with Profile -->
+			<div class="p-4 border-b transition-colors">
+				<div class="flex items-center gap-3 mb-4">
+					{#if provider?.profile_photo_url}
+						<img
+							src={provider.profile_photo_url}
+							alt={provider.full_name}
+							class="h-12 w-12 rounded-full object-cover"
+						/>
+					{:else}
+						<div class="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center transition-colors">
+							<User class="h-7 w-7 text-primary-600" />
 						</div>
-						{#if provider.profile_photo_url}
-							<img
-								src={provider.profile_photo_url}
-								alt={provider.full_name}
-								class="h-10 w-10 rounded-full object-cover"
-							/>
-						{:else}
-							<div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-								<User class="h-6 w-6 text-primary-600" />
-							</div>
-						{/if}
-						<button
-							onclick={handleLogout}
-							class="p-2 text-gray-600 hover:bg-gray-100 rounded-md"
-							title="Logout"
-						>
-							<LogOut class="h-5 w-5" />
-						</button>
+					{/if}
+					<div class="flex-1 min-w-0">
+						<p class="text-sm font-semibold text-gray-900 truncate transition-colors">{provider?.full_name}</p>
+						<p class="text-xs text-gray-500 truncate transition-colors">{provider?.specialization}</p>
 					</div>
 				</div>
 			</div>
-		</header>
 
-		<!-- Mobile Navigation -->
-		{#if mobileMenuOpen}
-			<div class="lg:hidden bg-white border-b">
-				<nav class="px-4 py-2 space-y-1">
-					{#each navigation as item}
-						<a
-							href={item.href}
-							onclick={toggleMobileMenu}
-							class="flex items-center gap-3 px-3 py-2 rounded-md {$page.url.pathname === item.href ? 'bg-primary-50 text-primary-700' : 'text-gray-700 hover:bg-gray-100'}"
-						>
-							<svelte:component this={item.icon} class="h-5 w-5" />
-							{item.name}
-						</a>
-					{/each}
-				</nav>
-			</div>
-		{/if}
+			<!-- Drawer Navigation -->
+			<nav class="p-4 space-y-1 flex-1 overflow-y-auto" style="max-height: calc(100vh - 200px);">
+				{#each fullNavigation as item}
+					{@const Icon = item.icon}
+					<a
+						href={item.href}
+						onclick={(e) => { toggleMobileDrawer(); }}
+						data-sveltekit-preload-data="hover"
+						class="flex items-center gap-3 px-3 py-2 rounded-md transition-colors {$page.url.pathname === item.href ? 'bg-primary-50 text-primary-700 font-medium' : 'text-gray-700 hover:bg-gray-100'}"
+					>
+						<Icon class="h-5 w-5" />
+						{item.name}
+					</a>
+				{/each}
+			</nav>
 
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-			<div class="flex gap-8">
-				<!-- Desktop Sidebar -->
-				<aside class="hidden lg:block w-64 flex-shrink-0">
-					<nav class="space-y-1 bg-white rounded-lg shadow p-4">
-						{#each navigation as item}
-							<a
-								href={item.href}
-								class="flex items-center gap-3 px-3 py-2 rounded-md transition-colors {$page.url.pathname === item.href ? 'bg-primary-50 text-primary-700 font-medium' : 'text-gray-700 hover:bg-gray-100'}"
-							>
-								<svelte:component this={item.icon} class="h-5 w-5" />
-								{item.name}
-							</a>
-						{/each}
-					</nav>
-				</aside>
-
-				<!-- Main Content -->
-				<main class="flex-1 min-w-0">
-					<slot />
-				</main>
+			<!-- Drawer Logout -->
+			<div class="p-4 border-t">
+				<!-- Logout Button -->
+				<button
+					onclick={handleLogout}
+					class="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+				>
+					<LogOut class="h-4 w-4" />
+					Logout
+				</button>
 			</div>
 		</div>
+
+		<!-- Desktop Sidebar -->
+		<aside class="hidden lg:flex lg:flex-col w-64 flex-shrink-0 bg-white border-r border-gray-200 h-screen sticky top-0 transition-colors duration-200">
+			<!-- Profile Section -->
+			<div class="p-4 border-b transition-colors">
+				<div class="flex items-center gap-3">
+					{#if provider?.profile_photo_url}
+						<img
+							src={provider.profile_photo_url}
+							alt={provider.full_name}
+							class="h-12 w-12 rounded-full object-cover"
+						/>
+					{:else}
+						<div class="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center transition-colors">
+							<User class="h-7 w-7 text-primary-600" />
+						</div>
+					{/if}
+					<div class="flex-1 min-w-0">
+						<p class="text-sm font-semibold text-gray-900 truncate transition-colors">{provider?.full_name}</p>
+						<p class="text-xs text-gray-500 truncate transition-colors">{provider?.specialization}</p>
+					</div>
+				</div>
+			</div>
+
+			<!-- Navigation -->
+			<nav class="p-4 space-y-1 flex-1 overflow-y-auto">
+				{#each fullNavigation as item}
+					{@const Icon = item.icon}
+					<a
+						href={item.href}
+						data-sveltekit-preload-data="hover"
+						class="flex items-center gap-3 px-3 py-2 rounded-md transition-colors {$page.url.pathname === item.href ? 'bg-primary-50 text-primary-700 font-medium' : 'text-gray-700 hover:bg-gray-100'}"
+					>
+						<Icon class="h-5 w-5" />
+						{item.name}
+					</a>
+				{/each}
+			</nav>
+
+			<!-- Logout -->
+			<div class="p-4 border-t">
+				<!-- Logout Button -->
+				<button
+					onclick={handleLogout}
+					class="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+				>
+					<LogOut class="h-4 w-4" />
+					Logout
+				</button>
+			</div>
+		</aside>
+
+		<!-- Main Content -->
+		<main class="flex-1 overflow-y-auto lg:pt-0 pt-16 pb-20 lg:pb-0">
+			<slot />
+		</main>
+
+		<!-- Mobile Bottom Navigation -->
+		<nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 transition-colors duration-200">
+			<div class="flex justify-around items-center h-16">
+				{#each mobileBottomNav as item}
+					{@const Icon = item.icon}
+					<a
+						href={item.href}
+						data-sveltekit-preload-data="hover"
+						class="flex flex-col items-center justify-center gap-1 px-3 py-2 flex-1 transition-colors {$page.url.pathname === item.href ? 'text-primary-600' : 'text-gray-600 hover:text-primary-600'}"
+					>
+						<Icon class="h-6 w-6" />
+						<span class="text-xs font-medium">{item.name}</span>
+					</a>
+				{/each}
+			</div>
+		</nav>
 	</div>
 {:else}
 	<!-- Auth Pages -->

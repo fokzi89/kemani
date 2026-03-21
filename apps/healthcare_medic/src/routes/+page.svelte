@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { supabase } from '$lib/supabase';
-	import { Calendar, Users, FileText, DollarSign, Clock, CheckCircle } from 'lucide-svelte';
+	import { goto } from '$app/navigation';
+	import { Calendar, Users, FileText, DollarSign, Clock, CheckCircle, Zap, ArrowUpCircle } from 'lucide-svelte';
 
 	let provider = $state(null);
+	let subscription = $state(null);
 	let stats = $state({
 		todayConsultations: 0,
 		upcomingConsultations: 0,
@@ -18,19 +20,48 @@
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
 
-		if (session) {
-			// Get provider
-			const { data: providerData } = await supabase
-				.from('healthcare_providers')
-				.select('*')
-				.eq('user_id', session.user.id)
-				.single();
+		if (!session) {
+			goto('/auth/login');
+			return;
+		}
 
-			provider = providerData;
+		// Get provider
+		const { data: providerData } = await supabase
+			.from('healthcare_providers')
+			.select('*')
+			.eq('user_id', session.user.id)
+			.single();
 
-			if (provider) {
-				await loadDashboardData(provider.id);
+		provider = providerData;
+
+		if (provider) {
+			// Check if onboarding is complete
+			const isOnboardingComplete = provider.phone &&
+				provider.specialization &&
+				provider.bio &&
+				provider.clinic_address;
+
+			if (!isOnboardingComplete) {
+				goto('/onboarding');
+				return;
 			}
+
+			await loadDashboardData(provider.id);
+
+			// Get subscription
+			if (provider.medic_subscription_id) {
+				const { data: subData } = await supabase
+					.from('medic_subscriptions')
+					.select('*')
+					.eq('id', provider.medic_subscription_id)
+					.single();
+
+				subscription = subData;
+			}
+		} else {
+			// No provider profile exists, redirect to onboarding
+			goto('/onboarding');
+			return;
 		}
 
 		loading = false;
@@ -118,16 +149,54 @@
 			default: return 'bg-gray-100 text-gray-800';
 		}
 	}
+
+	function getTimeOfDayGreeting() {
+		const hour = new Date().getHours();
+		if (hour < 12) return 'Good morning';
+		if (hour < 17) return 'Good afternoon';
+		return 'Good evening';
+	}
 </script>
 
-<div class="space-y-6">
-	<!-- Welcome Section -->
-	<div class="bg-white rounded-lg shadow p-6">
-		<h2 class="text-2xl font-bold text-gray-900">
-			Welcome back, {provider?.full_name || 'Doctor'}!
-		</h2>
-		<p class="text-gray-600 mt-1">Here's what's happening with your practice today.</p>
-	</div>
+<div class="min-h-screen p-6 lg:p-8">
+	<div class="max-w-7xl mx-auto space-y-6">
+		<!-- Welcome Section -->
+		<div class="bg-white rounded-lg shadow p-6">
+			<h2 class="text-3xl font-bold text-gray-900">
+				{getTimeOfDayGreeting()}, Dr. {provider?.full_name?.split(' ')[provider?.full_name?.split(' ').length - 1] || 'Doctor'}!
+			</h2>
+			<p class="text-gray-600 mt-2">Here's what's happening with your practice today.</p>
+		</div>
+
+		<!-- Subscription Upgrade Card -->
+		{#if subscription && subscription.tier !== 'enterprise'}
+			<div class="bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg shadow-lg p-6 text-white">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-4">
+						<div class="bg-white/20 p-3 rounded-lg">
+							<Zap class="h-8 w-8" />
+						</div>
+						<div>
+							<h3 class="text-xl font-bold">Current Plan: {subscription.tier === 'free' ? 'Free' : 'Growth'}</h3>
+							<p class="text-primary-50 mt-1">
+								{#if subscription.tier === 'free'}
+									Upgrade to Growth to earn commissions on drug and diagnostic referrals
+								{:else}
+									Upgrade to Enterprise for office consultations and dedicated support
+								{/if}
+							</p>
+						</div>
+					</div>
+					<a
+						href="/subscription"
+						class="flex items-center gap-2 px-6 py-3 bg-white text-primary-600 font-semibold rounded-lg hover:bg-primary-50 transition-colors"
+					>
+						<ArrowUpCircle class="h-5 w-5" />
+						Upgrade Plan
+					</a>
+				</div>
+			</div>
+		{/if}
 
 	<!-- Stats Grid -->
 	{#if loading}
@@ -285,5 +354,6 @@
 				</tbody>
 			</table>
 		</div>
+	</div>
 	</div>
 </div>

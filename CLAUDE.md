@@ -5,8 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 This is a **multi-platform monorepo** with the following architecture:
-- **SvelteKit**: Storefront, marketing pages, landing page, pricing page, healthcare customer interface, and healthcare medic provider interface
-- **FlutterFlow**: POS admin interface (pharmacy, retail, diagnostic center dashboards)
+- **SvelteKit**: All web applications including marketing pages, storefront, healthcare interfaces, and POS admin
 - **Supabase**: Backend database and authentication (via MCP server)
 - **SpecKit**: Structured feature development workflow system
 
@@ -32,16 +31,19 @@ The project is organized into separate applications in the `apps/` directory:
 4. **`apps/healthcare_medic/`** - Healthcare provider (medic) interface
    - Tech stack: SvelteKit, Tailwind CSS, Supabase
    - Doctor/pharmacist consultation and prescription management
+   - Entry command: `npm run dev` (runs on http://localhost:5174)
 
-#### FlutterFlow Applications
-1. **`apps/pos_admin/`** - POS admin interface (FlutterFlow project)
-   - Built with FlutterFlow (visual builder)
-   - Tech stack: FlutterFlow, Supabase Flutter SDK
-   - Offline-capable POS for pharmacy, retail, diagnostic center tenants
-   - Commission dashboard for viewing referral earnings
+5. **`apps/pos_sveltekit/`** - POS admin interface (MVP Phase)
+   - Tech stack: SvelteKit 2.0, Svelte 5, Tailwind CSS 4, TypeScript
+   - Point-of-sale system for pharmacy, retail, diagnostic center tenants
+   - Product management, sales processing, customer management
+   - Entry command: `npm run dev` (runs on http://localhost:5175)
+   - Migration from Flutter to SvelteKit for faster development
 
-2. **`apps/web_client/`** - Existing Flutter web client (legacy)
+#### Legacy Applications
+1. **`apps/web_client/`** - Legacy Flutter web client
    - Built output available in `apps/web_client/build/web/`
+   - Being replaced by SvelteKit applications
 
 ### Shared Resources
 
@@ -60,36 +62,32 @@ The project is organized into separate applications in the `apps/` directory:
 
 ### SvelteKit Apps
 
+All applications follow the same development workflow:
+
 ```bash
-# Marketing SvelteKit
-cd apps/marketing_sveltekit
+# Install dependencies (first time only)
 npm install
-npm run dev          # Start dev server at http://localhost:5173
-npm run build        # Build production application
-npm run preview      # Preview production build
-npm run check        # Type check and validate
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+
+# Type check and validate
+npm run check
 ```
 
-### FlutterFlow Apps
+#### Application Ports
 
-**Note**: POS Admin app is built in FlutterFlow (visual builder). Development happens in FlutterFlow's web IDE.
-
-```bash
-# Export FlutterFlow project and run locally (if needed)
-cd apps/pos_admin
-flutter pub get      # Install dependencies
-flutter run -d chrome              # Run on Chrome (web)
-flutter run -d windows             # Run on Windows (desktop)
-flutter build web                  # Build for web
-flutter build apk                  # Build for Android
-flutter build ios                  # Build for iOS
-```
-
-Primary development workflow:
-1. Open FlutterFlow project at flutterflow.io
-2. Make changes in visual builder
-3. Test in FlutterFlow's built-in preview
-4. Download/export code when needed for deployment
+- **Marketing** (`apps/marketing_sveltekit`): http://localhost:5173
+- **Healthcare Medic** (`apps/healthcare_medic`): http://localhost:5174
+- **POS Admin** (`apps/pos_sveltekit`): http://localhost:5175
+- **Storefront** (`apps/storefront`): http://localhost:5176 (if configured)
+- **Healthcare Customer** (`apps/healthcare_customer`): http://localhost:5177 (if configured)
 
 ### Supabase (via MCP)
 
@@ -154,13 +152,16 @@ This repository uses SpecKit, a structured feature development workflow with nin
 - Storefront and e-commerce
 - Healthcare customer-facing interfaces
 - Healthcare medic provider interfaces (doctor/pharmacist dashboards)
-- Any public-facing web content
+- **POS admin dashboards** (pharmacy, retail, diagnostic center)
+- Any web-based application (public or internal)
 
-**Use FlutterFlow for:**
-- POS admin dashboards (pharmacy, retail, diagnostic center)
-- Internal tools requiring offline-first capability
-- Cross-platform mobile/web apps for tenant management
-- Applications requiring visual development and rapid iteration
+**Why SvelteKit:**
+- Faster development with less boilerplate
+- Better web performance and smaller bundle sizes
+- Shared components across applications
+- TypeScript support and strong typing
+- Server-side rendering (SSR) and static site generation (SSG)
+- Easier maintenance and testing
 
 ### Adding New Features
 
@@ -197,7 +198,7 @@ kemani/
 │   ├── storefront/               # Storefront with referral system (SvelteKit) ✓
 │   ├── healthcare_customer/      # Healthcare customer UI (SvelteKit) ✓
 │   ├── healthcare_medic/         # Healthcare medic provider UI (SvelteKit) ✓
-│   ├── pos_admin/                # POS admin (FlutterFlow) - in development
+│   ├── pos_sveltekit/            # POS admin (SvelteKit) ✓ MVP Phase
 │   └── web_client/               # Legacy Flutter web client
 ├── supabase/
 │   └── migrations/               # Database migrations
@@ -212,7 +213,7 @@ kemani/
 
 ## Environment Setup
 
-Each app has its own environment configuration:
+All SvelteKit apps share the same environment configuration pattern.
 
 ### SvelteKit Apps
 Create `.env` in each SvelteKit app directory:
@@ -221,12 +222,30 @@ PUBLIC_SUPABASE_URL=your_supabase_url
 PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-### Flutter Apps
-Configure environment in `lib/config/` or use `--dart-define` flags:
-```bash
-flutter run --dart-define=SUPABASE_URL=your_url --dart-define=SUPABASE_ANON_KEY=your_key
-```
+Or configure directly in `src/lib/supabase.ts` for development.
 
-## Migration from Next.js
+## Migration History
 
-This project was previously built with Next.js but has been fully migrated to the SvelteKit/Flutter architecture. All Next.js code, configuration, and dependencies have been removed.
+### From Next.js to SvelteKit (Completed)
+This project was previously built with Next.js but has been fully migrated to SvelteKit. All Next.js code, configuration, and dependencies have been removed.
+
+### From Flutter to SvelteKit for POS Admin (March 2026)
+The POS admin application has been migrated from Flutter/FlutterFlow to SvelteKit for the MVP phase:
+
+**Reasons for migration:**
+- Faster web development cycle
+- Better performance for web-based POS
+- Shared component library with other apps
+- Easier maintenance and updates
+- No dependency on FlutterFlow visual builder
+
+**Migration status:**
+- ✅ Basic structure and layout created
+- ✅ Dashboard with stats
+- ✅ Authentication pages (login)
+- ⏳ POS interface (TODO)
+- ⏳ Product management (TODO)
+- ⏳ Customer management (TODO)
+- ⏳ Order management (TODO)
+
+See `apps/pos_sveltekit/MIGRATION_PLAN.md` for detailed roadmap.
