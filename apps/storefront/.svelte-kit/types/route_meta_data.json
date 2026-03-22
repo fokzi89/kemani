@@ -1,3 +1,84 @@
 {
-	"/": []
+	"/": [
+		"src/routes/+layout.server.ts"
+	],
+	"/api/customers": [
+		"src/routes/api/customers/+server.ts"
+	],
+	"/api/customers/auth": [
+		"src/routes/api/customers/auth/+server.ts"
+	],
+	"/api/customers/[id]": [
+		"src/routes/api/customers/[id]/+server.ts"
+	],
+	"/api/customers/[id]/addresses": [
+		"src/routes/api/customers/[id]/addresses/+server.ts"
+	],
+	"/api/marketplace/[tenantId]/products": [
+		"src/routes/api/marketplace/[tenantId]/products/+server.ts"
+	],
+	"/api/marketplace/[tenantId]/products/[productId]": [
+		"src/routes/api/marketplace/[tenantId]/products/[productId]/+server.ts"
+	],
+	"/api/orders": [
+		"src/routes/api/orders/+server.ts"
+	],
+	"/api/orders/[id]": [
+		"src/routes/api/orders/[id]/+server.ts"
+	],
+	"/api/orders/[id]/status": [
+		"src/routes/api/orders/[id]/status/+server.ts"
+	],
+	"/api/payment/initialize": [
+		"src/routes/api/payment/initialize/+server.ts"
+	],
+	"/api/payment/verify": [
+		"src/routes/api/payment/verify/+server.ts"
+	],
+	"/api/track/[id]": [
+		"src/routes/api/track/[id]/+server.ts"
+	],
+	"/auth/callback": [
+		"src/routes/+layout.server.ts"
+	],
+	"/auth/login": [
+		"src/routes/+layout.server.ts"
+	],
+	"/checkout": [
+		"src/routes/checkout/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/consultations": [
+		"src/routes/+layout.server.ts"
+	],
+	"/customers": [
+		"src/routes/+layout.server.ts"
+	],
+	"/diagnostics": [
+		"src/routes/+layout.server.ts"
+	],
+	"/orders": [
+		"src/routes/+layout.server.ts"
+	],
+	"/payment/callback": [
+		"src/routes/+layout.server.ts"
+	],
+	"/products": [
+		"src/routes/+layout.server.ts"
+	],
+	"/track/[orderId]": [
+		"src/routes/+layout.server.ts"
+	],
+	"/(marketplace)/[tenantId]": [
+		"src/routes/+layout.server.ts"
+	],
+	"/(marketplace)/[tenantId]/cart": [
+		"src/routes/+layout.server.ts"
+	],
+	"/(marketplace)/[tenantId]/products/[productId]": [
+		"src/routes/+layout.server.ts"
+	],
+	"/(marketplace)/[tenantId]/profile": [
+		"src/routes/+layout.server.ts"
+	]
 }

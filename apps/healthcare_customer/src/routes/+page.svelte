@@ -78,7 +78,7 @@
 						<p class="text-sm text-gray-500">Update info</p>
 					</div>
 				</div>
-			</div>
+			</a>
 		</div>
 
 		<div class="grid lg:grid-cols-3 gap-8">

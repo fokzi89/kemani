@@ -21,7 +21,6 @@
 		full_name: '',
 		email: '',
 		phone: '',
-		whatsapp_number: '',
 		date_of_birth: '',
 		gender: ''
 	});
@@ -113,7 +112,6 @@
 			full_name: '',
 			email: '',
 			phone: '',
-			whatsapp_number: '',
 			date_of_birth: '',
 			gender: ''
 		};
@@ -128,7 +126,6 @@
 			full_name: patient.full_name || '',
 			email: patient.email || '',
 			phone: patient.phone || '',
-			whatsapp_number: patient.whatsapp_number || '',
 			date_of_birth: patient.date_of_birth || '',
 			gender: patient.gender || ''
 		};
@@ -191,7 +188,6 @@
 					full_name: patientForm.full_name,
 					email: patientForm.email || null,
 					phone: patientForm.phone,
-					whatsapp_number: patientForm.whatsapp_number || null,
 					date_of_birth: patientForm.date_of_birth || null,
 					gender: patientForm.gender || null,
 					profile_photo_url: profilePhotoUrl || null,
@@ -207,8 +203,8 @@
 			profilePicFile = null;
 			alert('Patient added successfully!');
 		} catch (err) {
-			console.error('Error saving patient:', err);
-			alert('Failed to add patient: ' + err.message);
+			console.error('Detailed error saving patient:', err);
+			alert(`Failed to add patient: ${err.message} (Check console for details)`);
 		} finally {
 			savingPatient = false;
 		}
@@ -238,7 +234,6 @@
 					full_name: patientForm.full_name,
 					email: patientForm.email || null,
 					phone: patientForm.phone,
-					whatsapp_number: patientForm.whatsapp_number || null,
 					date_of_birth: patientForm.date_of_birth || null,
 					gender: patientForm.gender || null,
 					profile_photo_url: profilePhotoUrl || null,
@@ -540,19 +535,6 @@ WhatsApp: ${patient.whatsapp_number || 'N/A'}`;
 				/>
 			</div>
 
-			<!-- WhatsApp -->
-			<div>
-				<label for="whatsapp" class="block text-sm font-medium text-gray-700 mb-2">
-					WhatsApp Number (Optional)
-				</label>
-				<input
-					id="whatsapp"
-					type="tel"
-					bind:value={patientForm.whatsapp_number}
-					placeholder="+234 XXX XXX XXXX"
-					class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-				/>
-			</div>
 
 			<!-- Date of Birth -->
 			<div>
@@ -580,7 +562,6 @@ WhatsApp: ${patient.whatsapp_number || 'N/A'}`;
 					<option value="">Select gender</option>
 					<option value="male">Male</option>
 					<option value="female">Female</option>
-					<option value="other">Other</option>
 				</select>
 			</div>
 
@@ -660,18 +641,6 @@ WhatsApp: ${patient.whatsapp_number || 'N/A'}`;
 				/>
 			</div>
 
-			<!-- WhatsApp -->
-			<div>
-				<label for="edit_whatsapp" class="block text-sm font-medium text-gray-700 mb-2">
-					WhatsApp Number (Optional)
-				</label>
-				<input
-					id="edit_whatsapp"
-					type="tel"
-					bind:value={patientForm.whatsapp_number}
-					class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-				/>
-			</div>
 
 			<!-- Date of Birth -->
 			<div>
@@ -699,7 +668,6 @@ WhatsApp: ${patient.whatsapp_number || 'N/A'}`;
 					<option value="">Select gender</option>
 					<option value="male">Male</option>
 					<option value="female">Female</option>
-					<option value="other">Other</option>
 				</select>
 			</div>
 

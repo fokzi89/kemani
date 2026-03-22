@@ -142,7 +142,7 @@
 
 				<div>
 					<label for="date_of_birth" class="block text-sm font-medium text-gray-700 mb-2">
-						Date of Birth
+						Date of Birth (Optional)
 					</label>
 					<input
 						id="date_of_birth"
@@ -163,7 +163,6 @@
 					>
 						<option value="male">Male</option>
 						<option value="female">Female</option>
-						<option value="other">Other</option>
 					</select>
 				</div>
 

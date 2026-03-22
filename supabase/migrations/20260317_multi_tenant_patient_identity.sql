@@ -209,7 +209,7 @@ BEGIN
 
     RETURN v_unified_patient_id;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================
 -- Function 2: Link Customer Account to Unified Patient
@@ -278,7 +278,7 @@ BEGIN
 
     RETURN v_unified_patient_id;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================
 -- Function 3: Get All Customer IDs for Unified Patient
@@ -437,7 +437,7 @@ BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS update_unified_patient_profiles_timestamp ON unified_patient_profiles;
 CREATE TRIGGER update_unified_patient_profiles_timestamp
