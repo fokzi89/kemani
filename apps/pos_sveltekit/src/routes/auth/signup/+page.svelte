@@ -58,11 +58,23 @@
 		</div>
 
 		{#if success}
-			<div class="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
-				<CheckCircle class="h-12 w-12 text-green-500 mx-auto mb-3" />
-				<h2 class="text-lg font-semibold text-green-900">Check your email!</h2>
-				<p class="text-sm text-green-700 mt-1">We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.</p>
-				<a href="/auth/login" class="mt-4 inline-block text-sm font-medium text-green-700 underline">Back to Login</a>
+			<div class="text-center animate-in fade-in zoom-in duration-500">
+				<div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+					<CheckCircle class="h-10 w-10 text-green-600" />
+				</div>
+				<h2 class="text-2xl font-bold text-gray-900 mb-2">Check your email!</h2>
+				<p class="text-gray-600 mb-8 leading-relaxed">
+					We've sent a confirmation link to <span class="font-semibold text-gray-900">{email}</span>. Click it to activate your account and start your business setup.
+				</p>
+				<a 
+					href="/auth/login" 
+					class="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all shadow-lg shadow-blue-100"
+				>
+					Back to Login
+				</a>
+				<p class="mt-6 text-sm text-gray-500">
+					Didn't receive the email? <button onclick={() => success = false} class="text-blue-600 hover:underline font-medium">Try signing up again</button>
+				</p>
 			</div>
 		{:else}
 			{#if error}
@@ -129,7 +141,7 @@
 				</div>
 
 				<button type="submit" disabled={loading}
-					class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2">
+					class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-blue-100 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-2">
 					{loading ? 'Creating account...' : 'Create Account'}
 				</button>
 			</form>

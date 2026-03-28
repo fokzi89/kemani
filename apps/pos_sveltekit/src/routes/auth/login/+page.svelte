@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { supabase } from '$lib/supabase';
 	import { goto } from '$app/navigation';
-	import { Mail, Lock, AlertCircle } from 'lucide-svelte';
+	import { Mail, Lock, AlertCircle, Store } from 'lucide-svelte';
 
 	let email = $state('');
 	let password = $state('');
@@ -21,62 +21,85 @@
 
 			if (authError) throw authError;
 
-			// Redirect to dashboard on success
-			goto('/');
+			if (!data.user) throw new Error('Failed to retrieve user data');
+
+			// Fetch user row to check onboarding status
+			const { data: userData } = await supabase
+				.from('users')
+				.select('onboarding_done')
+				.eq('id', data.user.id)
+				.maybeSingle();
+
+			// Route appropriately based on onboarding status
+			if (userData?.onboarding_done) {
+				goto('/');
+			} else {
+				goto('/onboarding');
+			}
+			
+			// Note: We deliberately do not set loading = false here. 
+			// We want the button to stay in the loading state until the navigation completes.
 		} catch (err: any) {
 			error = err.message || 'Failed to login';
-		} finally {
 			loading = false;
 		}
 	}
 </script>
 
-<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 p-4">
-	<div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 p-4">
+	<div class="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 sm:p-10 border border-gray-100/50">
 		<!-- Logo/Header -->
 		<div class="text-center mb-8">
-			<h1 class="text-3xl font-bold text-gray-900">Kemani POS</h1>
-			<p class="text-gray-600 mt-2">Sign in to your account</p>
+			<div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg shadow-blue-100">
+				<Store class="h-8 w-8 text-white" />
+			</div>
+			<h1 class="text-3xl font-extrabold text-gray-900">Kemani POS</h1>
+			<p class="text-gray-500 mt-2 font-medium">Welcome back! Sign in to continue</p>
 		</div>
 
 		<!-- Error Alert -->
 		{#if error}
-			<div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-6 flex items-center gap-2">
+			<div class="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-2xl mb-6 flex items-center gap-3 animate-in shake-in">
 				<AlertCircle class="h-5 w-5 flex-shrink-0" />
-				<p class="text-sm">{error}</p>
+				<p class="text-sm font-medium">{error}</p>
 			</div>
 		{/if}
 
 		<!-- Login Form -->
-		<form onsubmit={handleLogin} class="space-y-6">
+		<form onsubmit={handleLogin} class="space-y-5">
 			<!-- Email -->
 			<div>
-				<label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+				<label for="email" class="block text-sm font-bold text-gray-700 mb-2">
 					Email Address
 				</label>
-				<div class="relative">
-					<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-						<Mail class="h-5 w-5 text-gray-400" />
+				<div class="relative group">
+					<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+						<Mail class="h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
 					</div>
 					<input
 						id="email"
 						type="email"
 						bind:value={email}
 						required
-						placeholder="you@example.com"
-						class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+						placeholder="name@company.com"
+						class="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all outline-none font-medium"
 					/>
 				</div>
 			</div>
 
 			<!-- Password -->
 			<div>
-				<label for="password" class="block text-sm font-medium text-gray-700 mb-2">
-					Password
-				</label>
-				<div class="relative">
-					<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-						<Lock class="h-5 w-5 text-gray-400" />
+				<div class="flex items-center justify-between mb-2">
+					<label for="password" class="block text-sm font-bold text-gray-700">
+						Password
+					</label>
+					<a href="/auth/forgot-password" class="text-xs font-bold text-blue-600 hover:text-blue-700">
+						Forgot password?
+					</a>
+				</div>
+				<div class="relative group">
+					<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+						<Lock class="h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
 					</div>
 					<input
 						id="password"
@@ -84,46 +107,51 @@
 						bind:value={password}
 						required
 						placeholder="••••••••"
-						class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+						class="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all outline-none font-medium"
 					/>
 				</div>
 			</div>
 
-			<!-- Forgot Password Link -->
-			<div class="flex items-center justify-between">
-				<div class="flex items-center">
-					<input
-						id="remember"
-						type="checkbox"
-						class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-					/>
-					<label for="remember" class="ml-2 block text-sm text-gray-700">
-						Remember me
-					</label>
-				</div>
-				<a href="/auth/forgot-password" class="text-sm font-medium text-primary-600 hover:text-primary-700">
-					Forgot password?
-				</a>
+			<div class="flex items-center">
+				<input
+					id="remember"
+					type="checkbox"
+					class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded-md"
+				/>
+				<label for="remember" class="ml-2 block text-sm font-medium text-gray-600">
+					Keep me signed in
+				</label>
 			</div>
 
 			<!-- Submit Button -->
 			<button
 				type="submit"
 				disabled={loading}
-				class="w-full bg-gray-900 hover:bg-black text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+				class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-xl shadow-xl shadow-blue-100 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-4"
 			>
-				{loading ? 'Signing in...' : 'Sign in'}
+				{loading ? 'Signing in...' : 'Sign In'}
 			</button>
 		</form>
 
 		<!-- Sign Up Link -->
-		<div class="mt-6 text-center">
+		<div class="mt-8 text-center pt-6 border-t border-gray-100">
 			<p class="text-sm text-gray-600">
-				Don't have an account?
-				<a href="/auth/signup" class="font-medium text-primary-600 hover:text-primary-700">
-					Sign up
+				New to Kemani?
+				<a href="/auth/signup" class="font-bold text-blue-600 hover:text-blue-700 ml-1">
+					Create an account
 				</a>
 			</p>
 		</div>
 	</div>
 </div>
+
+<style>
+	@keyframes shake {
+		0%, 100% { transform: translateX(0); }
+		25% { transform: translateX(-4px); }
+		75% { transform: translateX(4px); }
+	}
+	.animate-in.shake-in {
+		animation: shake 0.5s ease-in-out;
+	}
+</style>

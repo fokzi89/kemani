@@ -42,7 +42,8 @@
 	);
 
 	onMount(async () => {
-		const { data: { session } } = await supabase.auth.getSession();
+		const { data } = await supabase.auth.getSession();
+		const session = data?.session;
 
 		if (!session) {
 			goto('/auth/login');
@@ -168,8 +169,12 @@
 	}
 
 	async function savePatient() {
-		if (!provider) return;
+		if (!provider) {
+			alert('Error: Health provider profile not loaded. Please refresh the page or contact support.');
+			return;
+		}
 
+		console.log('Saving patient...', patientForm);
 		savingPatient = true;
 
 		try {

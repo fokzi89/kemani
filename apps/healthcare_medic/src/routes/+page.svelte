@@ -170,15 +170,15 @@
 
 		<!-- Subscription Upgrade Card -->
 		{#if subscription && subscription.tier !== 'enterprise'}
-			<div class="bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg shadow-lg p-6 text-white">
+			<div class="bg-gray-900 rounded-lg shadow-lg p-6 text-white">
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-4">
-						<div class="bg-white/20 p-3 rounded-lg">
-							<Zap class="h-8 w-8" />
+						<div class="bg-white/10 p-3 rounded-lg">
+							<Zap class="h-8 w-8 text-yellow-400" />
 						</div>
 						<div>
 							<h3 class="text-xl font-bold">Current Plan: {subscription.tier === 'free' ? 'Free' : 'Growth'}</h3>
-							<p class="text-primary-50 mt-1">
+							<p class="text-gray-300 mt-1">
 								{#if subscription.tier === 'free'}
 									Upgrade to Growth to earn commissions on drug and diagnostic referrals
 								{:else}
@@ -189,7 +189,7 @@
 					</div>
 					<a
 						href="/subscription"
-						class="flex items-center gap-2 px-6 py-3 bg-white text-primary-600 font-semibold rounded-lg hover:bg-primary-50 transition-colors"
+						class="flex items-center gap-2 px-6 py-3 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
 					>
 						<ArrowUpCircle class="h-5 w-5" />
 						Upgrade Plan

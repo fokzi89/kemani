@@ -8,6 +8,7 @@
 	let loading = $state(false);
 	let pageLoading = $state(true);
 	let error = $state('');
+	let currentUser = $state<any>(null);
 	let userId = $state('');
 	let providerId = $state('');
 	let medicSubscriptionId = $state('');
@@ -71,6 +72,7 @@
 			return;
 		}
 
+		currentUser = session.user; // Store user globally
 		userId = session.user.id;
 
 		// Add a small delay to ensure provider profile is created
@@ -113,8 +115,8 @@
 		}
 
 		if (!existingProvider) {
-			console.error('No provider profile found after 5 attempts');
-			error = 'Provider profile not found. Please try signing up again or contact support if this persists.';
+			console.log('No provider profile found. User will create one during onboarding.');
+			// We will create the provider record during handleSubmit
 			pageLoading = false;
 			return;
 		}
@@ -201,10 +203,40 @@
 		error = '';
 
 		try {
+			// If providerId is missing, it means we need to INSERT the record
 			if (!providerId) {
-				error = 'Provider profile not found. Please try signing up again.';
-				loading = false;
-				return;
+				const nameForSlug = currentUser.email.split('@')[0];
+				const slug = nameForSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substr(2, 6);
+
+				const { data: newProvider, error: insertError } = await supabase
+					.from('healthcare_providers')
+					.insert({
+						user_id: userId,
+						full_name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
+						slug,
+						email: currentUser.email,
+						type: 'doctor', // Default
+						specialization: specialization || 'General Practice',
+						country: country || 'Nigeria',
+						phone: phone,
+						fees: {
+							chat: 5000,
+							video: 10000,
+							audio: 8000
+						},
+						is_verified: false,
+						is_active: true
+					})
+					.select()
+					.single();
+
+				if (insertError) {
+					console.error('Provider creation error:', insertError);
+					error = 'Failed to create provider profile: ' + insertError.message;
+					loading = false;
+					return;
+				}
+				providerId = newProvider.id;
 			}
 
 			// Upload profile pic if exists

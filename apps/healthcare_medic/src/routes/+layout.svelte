@@ -21,8 +21,8 @@
 		Home
 	} from 'lucide-svelte';
 
-	let user = $state(null);
-	let provider = $state(null);
+	let user = $state<any>(null);
+	let provider = $state<any>(null);
 	let loading = $state(true);
 	let mobileDrawerOpen = $state(false);
 
@@ -50,7 +50,8 @@
 
 	onMount(async () => {
 		// Check authentication
-		const { data: { session } } = await supabase.auth.getSession();
+		const { data } = await supabase.auth.getSession();
+		const session = data?.session;
 
 		if (session) {
 			user = session.user;
@@ -65,12 +66,30 @@
 			provider = providerData;
 		}
 
-		loading = false;
-
 		// Redirect to login if not authenticated and not on auth page
-		if (!session && !$page.url.pathname.startsWith('/auth')) {
-			goto('/auth/login');
+		if (!session) {
+			if (!$page.url.pathname.startsWith('/auth')) {
+				goto('/auth/login');
+			}
+		} else {
+			// If authenticated but no provider profile, redirect to onboarding
+			// but only if not already on an auth or onboarding page
+			if (!provider && !$page.url.pathname.startsWith('/auth') && !$page.url.pathname.startsWith('/onboarding')) {
+				goto('/onboarding');
+			} else if (provider && !$page.url.pathname.startsWith('/onboarding') && !$page.url.pathname.startsWith('/auth')) {
+				// Check if current provider has completed onboarding
+				const isOnboardingComplete = provider.phone && 
+					provider.specialization && 
+					provider.bio && 
+					provider.clinic_address;
+					
+				if (!isOnboardingComplete && !$page.url.pathname.startsWith('/onboarding')) {
+					goto('/onboarding');
+				}
+			}
 		}
+
+		loading = false;
 
 		// Listen for auth changes
 		supabase.auth.onAuthStateChange(async (event, session) => {
@@ -86,20 +105,22 @@
 
 				provider = providerData;
 
-				// Check if onboarding is complete before redirecting
-				if (providerData) {
-					const isOnboardingComplete = providerData.phone &&
-						providerData.specialization &&
-						providerData.bio &&
-						providerData.clinic_address;
+				// Only redirect if specifically on an auth page during sign-in
+				if ($page.url.pathname.startsWith('/auth')) {
+					if (providerData) {
+						const isOnboardingComplete = providerData.phone &&
+							providerData.specialization &&
+							providerData.bio &&
+							providerData.clinic_address;
 
-					if (!isOnboardingComplete) {
-						goto('/onboarding');
+						if (!isOnboardingComplete) {
+							goto('/onboarding');
+						} else {
+							goto('/');
+						}
 					} else {
-						goto('/');
+						goto('/onboarding');
 					}
-				} else {
-					goto('/onboarding');
 				}
 			} else if (event === 'SIGNED_OUT') {
 				user = null;
@@ -125,7 +146,7 @@
 			<p class="mt-4 text-gray-600">Loading...</p>
 		</div>
 	</div>
-{:else if user && provider && !$page.url.pathname.startsWith('/onboarding')}
+{:else if user && provider && !$page.url.pathname.startsWith('/onboarding') && !$page.url.pathname.startsWith('/prescriptions/add') && !$page.url.pathname.startsWith('/prescriptions/edit') && !$page.url.pathname.startsWith('/lab-requests/add') && !$page.url.pathname.startsWith('/lab-requests/edit')}
 	<!-- Provider Dashboard Layout -->
 	<div class="min-h-screen bg-gray-50 flex transition-colors duration-200">
 		<!-- Mobile Header (Hamburger only) -->
