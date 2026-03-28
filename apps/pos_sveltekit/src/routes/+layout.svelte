@@ -4,18 +4,8 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { supabase } from '$lib/supabase';
-	import {
-		LayoutDashboard,
-		Package,
-		Users,
-		ShoppingCart,
-		BarChart3,
-		Settings,
-		Menu,
-		X,
-		LogOut,
-		Store
-	} from 'lucide-svelte';
+	import { Menu, X } from 'lucide-svelte';
+	import Sidebar from '$lib/components/Sidebar.svelte';
 
 	let user = $state(null);
 	let tenant = $state(null);
@@ -23,15 +13,7 @@
 	let redirecting = $state(false);
 	let mobileMenuOpen = $state(false);
 
-	const navigation = [
-		{ name: 'Dashboard', href: '/', icon: LayoutDashboard },
-		{ name: 'POS', href: '/pos', icon: Store },
-		{ name: 'Products', href: '/products', icon: Package },
-		{ name: 'Customers', href: '/customers', icon: Users },
-		{ name: 'Orders', href: '/orders', icon: ShoppingCart },
-		{ name: 'Analytics', href: '/analytics', icon: BarChart3 },
-		{ name: 'Settings', href: '/settings', icon: Settings }
-	];
+
 
 	// Store the path to avoid unnecessary repeat fetches
 	let lastCheckedPath = $state('');
@@ -48,12 +30,12 @@
 	});
 
 	let userDataCache = $state(null);
-
 	let initialCheckDone = $state(false);
+	let realtimeChannel = $state(null);
 
 	async function checkUserAccess(session: any, currentPath: string) {
 		const isAuthPath = currentPath.startsWith('/auth');
-		if (!initialCheckDone || !isAuthPath) {
+		if (!initialCheckDone) {
 			loading = true;
 		}
 
@@ -66,29 +48,47 @@
 
 		if (session) {
 			user = session.user;
-			console.log('[Layout] Auth valid. Fetching profile for:', user.email);
+			if (!initialCheckDone || !userDataCache || userDataCache.id !== session.user.id) {
+				console.log('[Layout] Auth valid. Fetching profile for:', user.email);
 
-			const { data: userData, error: userError } = await supabase
-				.from('users')
-				.select(`
-					*, 
-					tenants:tenants!users_tenant_id_fkey(*)
-				`)
-				.eq('id', session.user.id)
-				.maybeSingle();
-			
-			if (userError) {
-				console.error('[Layout] Profile fetch error:', userError);
+				const { data: userData, error: userError } = await supabase
+					.from('users')
+					.select(`
+						*, 
+						tenants:tenants!users_tenant_id_fkey(*)
+					`)
+					.eq('id', session.user.id)
+					.maybeSingle();
+				
+				if (userError) {
+					console.error('[Layout] Profile fetch error:', userError);
+				}
+
+				userDataCache = userData;
+
+				// Subscribe to permissions dynamically
+				if (!realtimeChannel) {
+					realtimeChannel = supabase.channel('user-permissions')
+						.on('postgres_changes', {
+							event: 'UPDATE',
+							schema: 'public',
+							table: 'users',
+							filter: `id=eq.${user.id}`
+						}, (payload) => {
+							console.log('Realtime updated permissions:', payload);
+							if (userDataCache) {
+								userDataCache = { ...userDataCache, ...payload.new };
+							}
+						}).subscribe();
+				}
 			}
 
-			userDataCache = userData;
-
-			if (userData?.onboarding_done) {
+			if (userDataCache?.onboarding_done) {
 				console.log('[Layout] Full access granted.');
 				// The payload returns "tenants" key when aliased this way if using aliases, 
 				// but when using exclamation mark notation, it replaces the key as "tenants" or "tenants_users_tenant_id_fkey"? 
 				// Supabase JS maps the exclamation mark notation directly to the top level name if it matches the table!
-				tenant = Array.isArray(userData.tenants) ? userData.tenants[0] : userData.tenants;
+				tenant = Array.isArray(userDataCache.tenants) ? userDataCache.tenants[0] : userDataCache.tenants;
 				redirecting = false;
 				
 				// Re-route from auth or onboarding to dashboard if already logged in fully
@@ -151,7 +151,13 @@
 			}
 		});
 
-		return () => subscription.unsubscribe();
+		return () => {
+			subscription.unsubscribe();
+			if (realtimeChannel) {
+				supabase.removeChannel(realtimeChannel);
+				realtimeChannel = null;
+			}
+		};
 	});
 
 	async function handleLogout() {
@@ -197,71 +203,15 @@
 		{/if}
 
 		<!-- Sidebar -->
-		<aside class="hidden lg:flex lg:flex-col w-64 flex-shrink-0 bg-white border-r border-gray-200 h-screen sticky top-0">
-			<!-- Brand -->
-			<div class="p-4 border-b">
-				<h1 class="text-xl font-bold text-gray-900">{tenant.name || 'Kemani POS'}</h1>
-				<p class="text-sm text-gray-500">Business Dashboard</p>
-			</div>
-
-			<!-- Navigation -->
-			<nav class="p-4 space-y-1 flex-1 overflow-y-auto">
-				{#each navigation as item}
-					{@const Icon = item.icon}
-					<a
-						href={item.href}
-						class="flex items-center gap-3 px-3 py-2 rounded-md transition-colors {$page.url.pathname === item.href ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-700 hover:bg-gray-100'}"
-					>
-						<Icon class="h-5 w-5" />
-						{item.name}
-					</a>
-				{/each}
-			</nav>
-
-			<!-- Logout -->
-			<div class="p-4 border-t">
-				<button
-					onclick={handleLogout}
-					class="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
-				>
-					<LogOut class="h-4 w-4" />
-					Logout
-				</button>
-			</div>
+		<aside class="hidden lg:block w-64 flex-shrink-0 bg-white border-r border-gray-200 h-screen sticky top-0 overflow-hidden">
+			<Sidebar {tenant} userData={userDataCache} email={user.email} {handleLogout} />
 		</aside>
 
 		<!-- Mobile Sidebar -->
 		<div
 			class="lg:hidden fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-50 transform transition-all duration-300 {mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}"
 		>
-			<div class="p-4 border-b">
-				<h1 class="text-xl font-bold text-gray-900">{tenant.name || 'Kemani POS'}</h1>
-				<p class="text-sm text-gray-500">Business Dashboard</p>
-			</div>
-
-			<nav class="p-4 space-y-1 flex-1 overflow-y-auto" style="max-height: calc(100vh - 200px);">
-				{#each navigation as item}
-					{@const Icon = item.icon}
-					<a
-						href={item.href}
-						onclick={toggleMobileMenu}
-						class="flex items-center gap-3 px-3 py-2 rounded-md transition-colors {$page.url.pathname === item.href ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-700 hover:bg-gray-100'}"
-					>
-						<Icon class="h-5 w-5" />
-						{item.name}
-					</a>
-				{/each}
-			</nav>
-
-			<div class="p-4 border-t">
-				<button
-					onclick={handleLogout}
-					class="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
-				>
-					<LogOut class="h-4 w-4" />
-					Logout
-				</button>
-			</div>
+			<Sidebar {tenant} userData={userDataCache} email={user.email} {handleLogout} onnavclick={toggleMobileMenu} />
 		</div>
 
 		<!-- Main Content -->
