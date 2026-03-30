@@ -2,7 +2,8 @@
 	import { page } from '$app/stores';
 	import {
 		LayoutDashboard, Package, Users, ShoppingCart, BarChart3, Settings, 
-		Store, LogOut, MessageSquare, Briefcase, Building, ClipboardList
+		Store, LogOut, MessageSquare, Briefcase, Building, ClipboardList,
+		FlaskConical, Truck
 	} from 'lucide-svelte';
 
 	let { tenant, userData, email, handleLogout, onnavclick = (e: any) => {} } = $props<any>();
@@ -11,6 +12,8 @@
 		{ name: 'Dashboard', href: '/', icon: LayoutDashboard, visible: true },
 		{ name: 'POS', href: '/pos', icon: Store, visible: userData?.canManagePOS ?? false },
 		{ name: 'Products', href: '/products', icon: Package, visible: userData?.canManageProducts ?? false },
+		{ name: 'Lab Tests', href: '/lab-tests', icon: FlaskConical, visible: userData?.canManageProducts ?? false },
+		{ name: 'Suppliers', href: '/suppliers', icon: Truck, visible: userData?.canManageProducts ?? false },
 		{ name: 'Customers', href: '/customers', icon: Users, visible: userData?.['canManage Customers'] ?? false },
 		{ name: 'Orders', href: '/orders', icon: ShoppingCart, visible: userData?.canManageOrders ?? false },
 		{ name: 'Inventory', href: '/inventory', icon: ClipboardList, visible: userData?.canManageInventory ?? false },

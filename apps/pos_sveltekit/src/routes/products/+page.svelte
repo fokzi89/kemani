@@ -52,6 +52,7 @@
 		if (!tenantId) return;
 		const { data, error: dbErr } = await supabase.from('products')
 			.select('*')
+			.neq('product_type', 'Laboratory test')
 			.order('created_at', { ascending: false });
 		
 		if (dbErr) {
@@ -71,10 +72,7 @@
 		let r = products;
 		if (selectedCategory !== 'all') r = r.filter(p => p.category === selectedCategory);
 		if (productTypeFilter !== 'all') {
-			r = r.filter(p => {
-				if (productTypeFilter === 'Test') return p.product_type === 'Laboratory test';
-				return p.product_type === productTypeFilter;
-			});
+			r = r.filter(p => p.product_type === productTypeFilter);
 		}
 		if (searchQuery) r = r.filter(p =>
 			p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -231,7 +229,6 @@
 			<option value="all">All Types</option>
 			<option value="Grocery">Grocery</option>
 			<option value="Drug">Drug</option>
-			<option value="Test">Test</option>
 		</select>
 	</div>
 
