@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { supabase } from '$lib/supabase';
 	import { Search, Plus, Truck, Edit, Trash2, Phone, Mail, MapPin } from 'lucide-svelte';
 
@@ -8,18 +9,6 @@
 	let loading = $state(true);
 	let searchQuery = $state('');
 	let tenantId = $state('');
-
-	// Modal state
-	let showModal = $state(false);
-	let editingSupplier = $state<any>(null);
-	let form = $state({
-		name: '',
-		contact_person: '',
-		email: '',
-		phone: '',
-		address: ''
-	});
-	let saving = $state(false);
 
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
@@ -63,49 +52,12 @@
 		}
 	}
 
-	function resetForm() {
-		form = { name: '', contact_person: '', email: '', phone: '', address: '' };
-		editingSupplier = null;
-	}
-
 	function openAddModal() {
-		resetForm();
-		showModal = true;
+		goto('/suppliers/new');
 	}
 
 	function openEditModal(supplier: any) {
-		editingSupplier = supplier;
-		form = {
-			name: supplier.name,
-			contact_person: supplier.contact_person || '',
-			email: supplier.email || '',
-			phone: supplier.phone || '',
-			address: supplier.address || ''
-		};
-		showModal = true;
-	}
-
-	async function handleSave() {
-		if (!form.name || !tenantId) return;
-		saving = true;
-		try {
-			if (editingSupplier) {
-				const { error } = await supabase.from('suppliers')
-					.update(form)
-					.eq('id', editingSupplier.id);
-				if (error) throw error;
-			} else {
-				const { error } = await supabase.from('suppliers')
-					.insert([{ ...form, tenant_id: tenantId }]);
-				if (error) throw error;
-			}
-			await loadSuppliers();
-			showModal = false;
-		} catch (err: any) {
-			alert(err.message || 'Failed to save supplier');
-		} finally {
-			saving = false;
-		}
+		goto(`/suppliers/${supplier.id}/edit`);
 	}
 
 	async function handleDelete(id: string) {
@@ -201,53 +153,3 @@
 		</div>
 	{/if}
 </div>
-
-<!-- Add/Edit Modal -->
-{#if showModal}
-	<div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-		<div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-			<div class="p-6 border-b">
-				<h2 class="text-xl font-bold text-gray-900">{editingSupplier ? 'Edit' : 'Add New'} Supplier</h2>
-			</div>
-			
-			<div class="p-6 space-y-4">
-				<div>
-					<label class="block text-sm font-semibold text-gray-700 mb-1">Company Name *</label>
-					<input type="text" bind:value={form.name} placeholder="e.g. Acme Pharma Ltd" class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500 border-gray-200 outline-none" />
-				</div>
-				
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<div>
-						<label class="block text-sm font-semibold text-gray-700 mb-1">Contact Person</label>
-						<input type="text" bind:value={form.contact_person} placeholder="John Doe" class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500 border-gray-200" />
-					</div>
-					<div>
-						<label class="block text-sm font-semibold text-gray-700 mb-1">Phone Number</label>
-						<input type="text" bind:value={form.phone} placeholder="+234..." class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500 border-gray-200" />
-					</div>
-				</div>
-
-				<div>
-					<label class="block text-sm font-semibold text-gray-700 mb-1">Email Address</label>
-					<input type="email" bind:value={form.email} placeholder="supplier@example.com" class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500 border-gray-200" />
-				</div>
-
-				<div>
-					<label class="block text-sm font-semibold text-gray-700 mb-1">Office/Warehouse Address</label>
-					<textarea bind:value={form.address} rows="2" placeholder="Full street address..." class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500 border-gray-200 resize-none"></textarea>
-				</div>
-			</div>
-
-			<div class="p-6 bg-gray-50 border-t flex gap-3">
-				<button onclick={() => showModal = false} class="flex-1 px-4 py-2.5 font-semibold text-gray-700 hover:bg-gray-100 rounded-xl transition-colors">Cancel</button>
-				<button 
-					onclick={handleSave} 
-					disabled={saving || !form.name} 
-					class="flex-1 px-4 py-2.5 font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50"
-				>
-					{saving ? 'Saving...' : 'Save Supplier'}
-				</button>
-			</div>
-		</div>
-	</div>
-{/if}

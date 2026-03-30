@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { supabase } from '$lib/supabase';
+	import { goto } from '$app/navigation';
 	import { Search, Plus, FlaskConical, Edit, Trash2, Microscope, TestTube2, AlertCircle } from 'lucide-svelte';
 
 	let labTests = $state<any[]>([]);
@@ -8,19 +9,6 @@
 	let loading = $state(true);
 	let searchQuery = $state('');
 	let tenantId = $state('');
-
-	// Modal state
-	let showModal = $state(false);
-	let editingTest = $state<any>(null);
-	let form = $state({
-		name: '',
-		category: '',
-		description: '',
-		sample_type: '',
-		is_active: true,
-		product_type: 'Laboratory test'
-	});
-	let saving = $state(false);
 	let categories = $state<string[]>([]);
 
 	onMount(async () => {
@@ -67,57 +55,12 @@
 		}
 	}
 
-	function resetForm() {
-		form = { 
-			name: '', 
-			category: '', 
-			description: '', 
-			sample_type: '', 
-			is_active: true,
-			product_type: 'Laboratory test'
-		};
-		editingTest = null;
-	}
-
 	function openAddModal() {
-		resetForm();
-		showModal = true;
+		goto('/lab-tests/new');
 	}
 
 	function openEditModal(test: any) {
-		editingTest = test;
-		form = {
-			name: test.name,
-			category: test.category || '',
-			description: test.description || '',
-			sample_type: test.sample_type || '',
-			is_active: test.is_active ?? true,
-			product_type: 'Laboratory test'
-		};
-		showModal = true;
-	}
-
-	async function handleSave() {
-		if (!form.name || !tenantId) return;
-		saving = true;
-		try {
-			if (editingTest) {
-				const { error } = await supabase.from('products')
-					.update(form)
-					.eq('id', editingTest.id);
-				if (error) throw error;
-			} else {
-				const { error } = await supabase.from('products')
-					.insert([{ ...form, tenant_id: tenantId }]);
-				if (error) throw error;
-			}
-			await loadLabTests();
-			showModal = false;
-		} catch (err: any) {
-			alert(err.message || 'Failed to save test');
-		} finally {
-			saving = false;
-		}
+		goto(`/lab-tests/${test.id}/edit`);
 	}
 
 	async function handleDelete(id: string) {
@@ -242,75 +185,3 @@
 		{/if}
 	</div>
 </div>
-
-<!-- Modal -->
-{#if showModal}
-	<div class="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
-		<div class="bg-white rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-			<div class="h-2 bg-indigo-600"></div>
-			<div class="p-8">
-				<div class="flex items-start justify-between mb-8">
-					<div class="h-14 w-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100">
-						<FlaskConical class="h-7 w-7" />
-					</div>
-					<div class="text-right">
-						<h2 class="text-2xl font-black text-gray-900">{editingTest ? 'Edit Investigation' : 'New Lab Test'}</h2>
-						<p class="text-sm text-gray-400">Laboratory Catalog Management</p>
-					</div>
-				</div>
-				
-				<div class="space-y-6">
-					<div>
-						<label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Investigation Name</label>
-						<input type="text" bind:value={form.name} placeholder="e.g. Malaria Parasite (MP), Fasting Blood Sugar" 
-							class="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-semibold" />
-					</div>
-					
-					<div class="grid grid-cols-2 gap-6">
-						<div>
-							<label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Category</label>
-							<select bind:value={form.category} class="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 outline-none font-semibold">
-								<option value="">Select Category</option>
-								<option value="Hematology">Hematology</option>
-								<option value="Biochemistry">Biochemistry</option>
-								<option value="Microbiology">Microbiology</option>
-								<option value="Serology">Serology</option>
-								<option value="Endocrinology">Endocrinology</option>
-							</select>
-						</div>
-						<div>
-							<label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Sample Required</label>
-							<input type="text" bind:value={form.sample_type} placeholder="e.g. Whole Blood, Urine" 
-								class="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:ring-4 focus:ring-indigo-500/10" />
-						</div>
-					</div>
-
-					<div>
-						<label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Description / Notes</label>
-						<textarea bind:value={form.description} rows="3" placeholder="Additional details or patient preparation instructions..." 
-							class="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:ring-4 focus:ring-indigo-500/10 resize-none"></textarea>
-					</div>
-
-					<label class="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl cursor-pointer hover:bg-gray-100 transition-colors border border-gray-100">
-						<input type="checkbox" bind:checked={form.is_active} class="w-5 h-5 text-indigo-600 rounded-lg border-gray-300 pointer-events-none" />
-						<div class="flex-1">
-							<p class="text-sm font-bold text-gray-800">Investigation is Active</p>
-							<p class="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Allow this test to be ordered in POS</p>
-						</div>
-					</label>
-				</div>
-
-				<div class="mt-8 flex gap-3">
-					<button onclick={() => showModal = false} class="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-600 font-black rounded-2xl transition-all uppercase tracking-widest text-xs">Cancel</button>
-					<button 
-						onclick={handleSave} 
-						disabled={saving || !form.name} 
-						class="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl transition-all shadow-lg shadow-indigo-100 uppercase tracking-widest text-xs disabled:opacity-50"
-					>
-						{saving ? 'Processing...' : 'Save Investigation'}
-					</button>
-				</div>
-			</div>
-		</div>
-	</div>
-{/if}
