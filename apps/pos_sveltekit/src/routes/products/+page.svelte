@@ -48,7 +48,10 @@
 			return;
 		}
 		
-		products = data || [];
+		products = (data || []).map(p => ({
+			...p,
+			provisioning: { qty: 0, batch: '', cost: 0, selling: 0 }
+		}));
 		categories = [...new Set(products.map(p => p.category).filter(Boolean))];
 		applyFilter();
 	}
@@ -83,9 +86,10 @@
 					tenant_id: tenantId,
 					branch_id: userBranchId,
 					product_id: id,
-					stock_quantity: 0,
-					unit_cost: 0,
-					cost_price: 0,
+					stock_quantity: product.provisioning?.qty || 0,
+					sku: product.provisioning?.batch || null,
+					cost_price: product.provisioning?.cost || 0,
+					unit_cost: product.provisioning?.selling || 0,
 					product_type: product.product_type || null,
 					barcode: product.barcode || null
 				};
@@ -197,8 +201,11 @@
 							</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Product</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Barcode</th>
-							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
-							<th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Stock Qty</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Batch No</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Unit Cost</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Selling</th>
+							<th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider uppercase tracking-wider">Type/Actions</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-gray-100">
@@ -228,13 +235,27 @@
 									</div>
 								</td>
 								<td class="px-4 py-3 text-gray-500 font-mono text-xs">{product.barcode || '–'}</td>
-								<td class="px-4 py-3">
-									<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider {product.product_type === 'Drug' ? 'bg-blue-100 text-blue-700' : product.product_type === 'Laboratory test' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}">
-										{product.product_type || 'Retail'}
-									</span>
+								<td class="px-2 py-3">
+									<input type="number" bind:value={product.provisioning.qty} disabled={!selectedIds.includes(product.id)} placeholder="Qty"
+										class="w-20 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium" />
+								</td>
+								<td class="px-2 py-3">
+									<input type="text" bind:value={product.provisioning.batch} disabled={!selectedIds.includes(product.id)} placeholder="Batch"
+										class="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium" />
+								</td>
+								<td class="px-2 py-3">
+									<input type="number" bind:value={product.provisioning.cost} disabled={!selectedIds.includes(product.id)} placeholder="Cost"
+										class="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium" />
+								</td>
+								<td class="px-2 py-3">
+									<input type="number" bind:value={product.provisioning.selling} disabled={!selectedIds.includes(product.id)} placeholder="Price"
+										class="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium" />
 								</td>
 								<td class="px-4 py-3">
-									<div class="flex items-center justify-end gap-1">
+									<div class="flex items-center justify-end gap-2">
+										<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider {product.product_type === 'Drug' ? 'bg-blue-100 text-blue-700' : product.product_type === 'Laboratory test' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}">
+											{product.product_type || 'Retail'}
+										</span>
 										<a href="/products/{product.id}" class="p-2 rounded-xl hover:bg-white hover:shadow-md text-gray-400 hover:text-indigo-600 transition-all border border-transparent hover:border-gray-100"><Eye class="h-4 w-4" /></a>
 									</div>
 								</td>
