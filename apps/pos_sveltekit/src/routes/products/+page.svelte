@@ -84,6 +84,12 @@
 		try {
 			const inserts = selectedIds.map(id => {
 				const product = products.find(p => p.id === id) || {};
+				
+				// Validation check
+				if ((product.provisioning?.qty || 0) <= 0 || (product.provisioning?.cost || 0) <= 0 || (product.provisioning?.selling || 0) <= 0) {
+					throw new Error(`Incomplete details for ${product.name}. Qty, Cost and Selling price must be greater than 0.`);
+				}
+
 				return {
 					tenant_id: tenantId,
 					branch_id: userBranchId,
@@ -97,7 +103,7 @@
 					unit_cost: product.provisioning?.selling || 0,
 					product_type: product.product_type || null,
 					barcode: product.barcode || null,
-					sku: product.provisioning?.batch || null // Mapping batch to sku as well for compatibility
+					sku: product.provisioning?.batch || null
 				};
 			});
 			
@@ -139,6 +145,20 @@
 		if (qty <= 0) return 'bg-red-100 text-red-700';
 		if (qty < 10) return 'bg-orange-100 text-orange-700';
 		return 'bg-green-100 text-green-700';
+	}
+
+	function getExpiryClass(expiryStr: string) {
+		if (!expiryStr) return 'bg-gray-50';
+		const expiry = new Date(expiryStr);
+		const today = new Date();
+		const diffMs = expiry.getTime() - today.getTime();
+		const diffMonths = diffMs / (1000 * 60 * 60 * 24 * 30.44);
+
+		if (diffMonths <= 0) return 'bg-red-50 text-red-700 border-red-200';
+		if (diffMonths < 3) return 'bg-red-50 text-red-600 border-red-200';
+		if (diffMonths < 6) return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+		if (diffMonths >= 12) return 'bg-green-50 text-green-700 border-green-200';
+		return 'bg-gray-50';
 	}
 </script>
 
@@ -272,7 +292,7 @@
 								</td>
 								<td class="px-2 py-3">
 									<input type="date" bind:value={product.provisioning.expiry} disabled={!selectedIds.includes(product.id)} 
-										class="w-32 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium" />
+										class="w-32 px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium {getExpiryClass(product.provisioning.expiry)}" />
 								</td>
 								<td class="px-2 py-3">
 									<input type="number" bind:value={product.provisioning.cost} disabled={!selectedIds.includes(product.id)} placeholder="Cost"
