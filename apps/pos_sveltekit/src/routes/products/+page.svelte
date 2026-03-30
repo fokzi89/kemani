@@ -80,6 +80,8 @@
 		
 		loading = true;
 		try {
+			const inserts = selectedIds.map(id => {
+				const product = products.find(p => p.id === id) || {};
 				return {
 					tenant_id: tenantId,
 					branch_id: userBranchId,
