@@ -9,9 +9,12 @@
 	let loading = $state(true);
 	let searchQuery = $state('');
 	let selectedCategory = $state('all');
+	let productTypeFilter = $state('all');
 	let categories = $state<string[]>([]);
 	let tenantId = $state('');
+	let userBranchId = $state('');
 	let page = $state(1);
+	let selectedIds = $state<string[]>([]);
 	const PER_PAGE = 20;
 
 	let paginated = $derived(filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE));
@@ -20,13 +23,31 @@
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
 		if (!session) return;
-		const { data: user } = await supabase.from('users').select('tenant_id').eq('id', session.user.id).single();
-		if (user?.tenant_id) { tenantId = user.tenant_id; await loadProducts(); }
+		
+		const { data: user } = await supabase.from('users')
+			.select('tenant_id, branch_id')
+			.eq('id', session.user.id)
+			.single();
+			
+		if (user?.tenant_id) { 
+			tenantId = user.tenant_id; 
+			userBranchId = user.branch_id || '';
+			await loadProducts(); 
+		}
 		loading = false;
 	});
 
 	async function loadProducts() {
-		const { data } = await supabase.from('products').select('*').eq('tenant_id', tenantId).order('name');
+		if (!tenantId) return;
+		const { data, error: dbErr } = await supabase.from('products')
+			.select('*')
+			.order('created_at', { ascending: false });
+		
+		if (dbErr) {
+			console.error('Failed to load products:', dbErr);
+			return;
+		}
+		
 		products = data || [];
 		categories = [...new Set(products.map(p => p.category).filter(Boolean))];
 		applyFilter();
@@ -35,15 +56,71 @@
 	function applyFilter() {
 		let r = products;
 		if (selectedCategory !== 'all') r = r.filter(p => p.category === selectedCategory);
+		if (productTypeFilter !== 'all') {
+			r = r.filter(p => {
+				if (productTypeFilter === 'Test') return p.product_type === 'Laboratory test';
+				return p.product_type === productTypeFilter;
+			});
+		}
 		if (searchQuery) r = r.filter(p =>
 			p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			(p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+			(p.barcode && p.barcode.toLowerCase().includes(searchQuery.toLowerCase()))
 		);
 		filtered = r;
 		page = 1;
+		selectedIds = [];
 	}
 
-	$effect(() => { searchQuery; selectedCategory; applyFilter(); });
+	async function handleAddToStock() {
+		if (!userBranchId) { alert('No branch assigned to your user account.'); return; }
+		if (selectedIds.length === 0) return;
+		
+		loading = true;
+		try {
+			const inserts = selectedIds.map(id => {
+				const product = products.find(p => p.id === id) || {};
+				return {
+					tenant_id: tenantId,
+					branch_id: userBranchId,
+					product_id: id,
+					stock_quantity: 0,
+					unit_cost: 0,
+					cost_price: 0,
+					product_type: product.product_type || null,
+					barcode: product.barcode || null
+				};
+			});
+			
+			const { error: err } = await supabase.from('branch_inventory')
+				.upsert(inserts, { onConflict: 'branch_id, product_id' });
+				
+			if (err) throw err;
+			alert(`Successfully added ${selectedIds.length} products to your branch inventory.`);
+			selectedIds = [];
+		} catch (err: any) {
+			alert(err.message || 'Failed to add products to stock');
+		} finally {
+			loading = false;
+		}
+	}
+
+	function toggleSelectAll() {
+		if (selectedIds.length === paginated.length && paginated.length > 0) {
+			selectedIds = [];
+		} else {
+			selectedIds = paginated.map(p => p.id);
+		}
+	}
+
+	function toggleSelect(id: string) {
+		if (selectedIds.includes(id)) {
+			selectedIds = selectedIds.filter(i => i !== id);
+		} else {
+			selectedIds = [...selectedIds, id];
+		}
+	}
+
+	$effect(() => { searchQuery; selectedCategory; productTypeFilter; applyFilter(); });
 
 	function stockBadge(qty: number) {
 		if (qty <= 0) return 'bg-red-100 text-red-700';
@@ -61,21 +138,37 @@
 			<h1 class="text-2xl font-bold text-gray-900">Products</h1>
 			<p class="text-sm text-gray-500 mt-0.5">{filtered.length} product{filtered.length !== 1 ? 's' : ''}</p>
 		</div>
-		<a href="/products/new" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm">
-			<Plus class="h-4 w-4" /> Add Product
-		</a>
+		<div class="flex items-center gap-3">
+			{#if selectedIds.length > 0}
+				<button 
+					onclick={handleAddToStock}
+					class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm shadow-lg shadow-green-100"
+				>
+					<Package class="h-4 w-4" /> Add {selectedIds.length} to Stock
+				</button>
+			{/if}
+			<a href="/products/new" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm">
+				<Plus class="h-4 w-4" /> Add Product
+			</a>
+		</div>
 	</div>
 
 	<!-- Filters -->
 	<div class="bg-white rounded-xl border p-4 flex flex-wrap gap-3">
 		<div class="relative flex-1 min-w-48">
 			<Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-			<input type="text" bind:value={searchQuery} placeholder="Search by name or SKU..."
-				class="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+			<input type="text" bind:value={searchQuery} placeholder="Search by name or barcode..." 
+				class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow text-sm" />
 		</div>
 		<select bind:value={selectedCategory} class="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white">
 			<option value="all">All Categories</option>
 			{#each categories as cat}<option value={cat}>{cat}</option>{/each}
+		</select>
+		<select bind:value={productTypeFilter} class="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white">
+			<option value="all">All Types</option>
+			<option value="Grocery">Grocery</option>
+			<option value="Drug">Drug</option>
+			<option value="Test">Test</option>
 		</select>
 	</div>
 
@@ -94,53 +187,55 @@
 				<table class="w-full text-sm">
 					<thead class="bg-gray-50 border-b">
 						<tr>
+							<th class="px-4 py-3 text-left">
+								<input 
+									type="checkbox" 
+									checked={selectedIds.length === paginated.length && paginated.length > 0} 
+									onchange={toggleSelectAll}
+									class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer" 
+								/>
+							</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Product</th>
-							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">SKU</th>
-							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</th>
-							<th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Price</th>
-							<th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Stock</th>
-							<th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Barcode</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
 							<th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-gray-100">
 						{#each paginated as product}
-							<tr class="hover:bg-gray-50 transition-colors">
+							<tr class="hover:bg-gray-50 transition-colors {selectedIds.includes(product.id) ? 'bg-indigo-50/30' : ''}">
+								<td class="px-4 py-3">
+									<input 
+										type="checkbox" 
+										checked={selectedIds.includes(product.id)}
+										onchange={() => toggleSelect(product.id)}
+										class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer" 
+									/>
+								</td>
 								<td class="px-4 py-3">
 									<div class="flex items-center gap-3">
-										<div class="w-9 h-9 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+										<div class="w-10 h-10 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden border border-white shadow-sm">
 											{#if product.image_url}
-												<img src={product.image_url} alt={product.name} class="w-9 h-9 object-cover rounded-lg" />
+												<img src={product.image_url} alt={product.name} class="w-full h-full object-cover" />
 											{:else}
-												<Package class="h-4 w-4 text-indigo-400" />
+												<Package class="h-5 w-5 text-indigo-400" />
 											{/if}
 										</div>
 										<div>
-											<p class="font-medium text-gray-900">{product.name}</p>
-											{#if product.description}
-												<p class="text-xs text-gray-400 truncate max-w-32">{product.description}</p>
-											{/if}
+											<p class="font-semibold text-gray-900 leading-tight">{product.name}</p>
+											<p class="text-xs text-gray-400 mt-0.5">{product.category || 'No Category'}</p>
 										</div>
 									</div>
 								</td>
-								<td class="px-4 py-3 text-gray-500 font-mono text-xs">{product.sku || '–'}</td>
-								<td class="px-4 py-3 text-gray-600">{product.category || '–'}</td>
-								<td class="px-4 py-3 text-right font-semibold text-gray-900">₦{parseFloat(product.price).toLocaleString()}</td>
-								<td class="px-4 py-3 text-center">
-									<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {stockBadge(product.stock_quantity)}">
-										{#if product.stock_quantity < 10}<AlertTriangle class="h-3 w-3" />{/if}
-										{product.stock_quantity}
-									</span>
-								</td>
-								<td class="px-4 py-3 text-center">
-									<span class="px-2 py-0.5 rounded-full text-xs font-medium {product.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
-										{product.is_active ? 'Active' : 'Inactive'}
+								<td class="px-4 py-3 text-gray-500 font-mono text-xs">{product.barcode || '–'}</td>
+								<td class="px-4 py-3">
+									<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider {product.product_type === 'Drug' ? 'bg-blue-100 text-blue-700' : product.product_type === 'Laboratory test' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}">
+										{product.product_type || 'Retail'}
 									</span>
 								</td>
 								<td class="px-4 py-3">
 									<div class="flex items-center justify-end gap-1">
-										<a href="/products/{product.id}" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"><Eye class="h-4 w-4" /></a>
-										<a href="/products/{product.id}/edit" class="p-1.5 rounded-lg hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 transition-colors"><Edit class="h-4 w-4" /></a>
+										<a href="/products/{product.id}" class="p-2 rounded-xl hover:bg-white hover:shadow-md text-gray-400 hover:text-indigo-600 transition-all border border-transparent hover:border-gray-100"><Eye class="h-4 w-4" /></a>
 									</div>
 								</td>
 							</tr>

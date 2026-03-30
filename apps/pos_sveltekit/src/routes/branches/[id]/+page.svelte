@@ -52,14 +52,24 @@
 			staff = sData || [];
 			stats.staffCount = staff.length;
 
-			// 3. Fetch Products / Stock
-			const { data: pData, error: pError } = await supabase
-				.from('products')
-				.select('*')
-				.eq('branch_id', branchId)
-				.is('deleted_at', null);
+			// 3. Fetch Products / Stock from branch_inventory
+			const { data: biData, error: pError } = await supabase
+				.from('branch_inventory')
+				.select('*, products(*)')
+				.eq('branch_id', branchId);
+				
 			if (pError) console.error('Products fetch error:', pError);
-			products = pData || [];
+			
+			// Map values for the remaining calculation logic
+			products = (biData || []).map(bi => ({
+				...bi.products,
+				stock_quantity: bi.stock_quantity,
+				unit_cost: bi.unit_cost,
+				cost_price: bi.cost_price,
+				low_stock_threshold: bi.low_stock_threshold,
+				expiry_date: bi.expiry_date,
+				expiry_alert_days: bi.expiry_alert_days
+			}));
 			stats.productCount = products.length;
 
 			// Calculate stock value and profit
@@ -73,7 +83,7 @@
 
 			for (const p of products) {
 				const cost = p.cost_price || 0;
-				const price = p.unit_price || 0;
+				const price = p.unit_cost || 0;
 				const qty = p.stock_quantity || 0;
 				
 				totalValue += cost * qty;
@@ -346,7 +356,7 @@
 											<tr class="hover:bg-amber-50/30 transition-colors">
 												<td class="px-6 py-4">
 													<p class="text-sm font-bold text-gray-900">{item.name}</p>
-													<p class="text-[10px] text-gray-400 font-medium">SKU: {item.sku || 'N/A'}</p>
+													<p class="text-[10px] text-gray-400 font-medium">Barcode: {item.barcode || 'N/A'}</p>
 												</td>
 												<td class="px-6 py-4 text-sm font-black text-amber-700">{item.stock_quantity}</td>
 												<td class="px-6 py-4 text-sm text-gray-400">{item.low_stock_threshold || 10}</td>
@@ -387,7 +397,7 @@
 											<tr class="hover:bg-rose-50/30 transition-colors">
 												<td class="px-6 py-4">
 													<p class="text-sm font-bold text-gray-900">{item.name}</p>
-													<p class="text-[10px] text-gray-400 font-medium">SKU: {item.sku || 'N/A'}</p>
+													<p class="text-[10px] text-gray-400 font-medium">Barcode: {item.barcode || 'N/A'}</p>
 												</td>
 												<td class="px-6 py-4">
 													<span class="text-sm font-black text-rose-600">{new Date(item.expiry_date).toLocaleDateString()}</span>

@@ -20,6 +20,17 @@ CREATE TABLE products (
     expiry_date DATE,
     expiry_alert_days INTEGER DEFAULT 30 CHECK (expiry_alert_days >= 0),
     image_url TEXT,
+
+    -- Healthcare & Laboratory expansions
+    unit_of_measure VARCHAR(20) DEFAULT 'piece',
+    product_type TEXT, -- 'medication', 'lab_test', 'retail'
+    generic_name TEXT,
+    strength TEXT,
+    dosage_form TEXT,
+    manufacturer TEXT,
+    test_name TEXT,
+    sample_type TEXT,
+
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

@@ -14,6 +14,7 @@
 	let selectedCategory = $state('all');
 	let categories = $state<string[]>([]);
 	let tenantId = $state('');
+	let userBranchId = $state('');
 	let loading = $state(true);
 	let checkoutOpen = $state(false);
 	let paymentMethod = $state<'cash' | 'card' | 'transfer'>('cash');
@@ -36,24 +37,30 @@
 		if (!session) return;
 
 		const { data: userData } = await supabase
-			.from('users').select('tenant_id').eq('id', session.user.id).single();
-
-		if (userData?.tenant_id) {
+			.from('users').select('tenant_id, branch_id').eq('id', session.user.id).single();
+		
+		if (userData) {
 			tenantId = userData.tenant_id;
-			await loadProducts();
+			userBranchId = userData.branch_id;
+			if (userBranchId) await loadProducts();
 		}
 		loading = false;
 	});
 
 	async function loadProducts() {
+		if (!userBranchId) return;
 		const { data } = await supabase
-			.from('products')
-			.select('*')
-			.eq('tenant_id', tenantId)
+			.from('branch_inventory')
+			.select('*, products(*)')
+			.eq('branch_id', userBranchId)
 			.eq('is_active', true)
-			.gt('stock_quantity', 0)
-			.order('name');
-		products = data || [];
+			.gt('stock_quantity', 0);
+			
+		products = (data || []).map(bi => ({
+			...bi.products,
+			stock_quantity: bi.stock_quantity,
+			price: bi.unit_cost || 0
+		}));
 		filteredProducts = products;
 		const cats = [...new Set(products.map(p => p.category).filter(Boolean))];
 		categories = cats;
@@ -65,7 +72,7 @@
 		if (selectedCategory !== 'all') result = result.filter(p => p.category === selectedCategory);
 		if (searchQuery) result = result.filter(p =>
 			p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			(p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+			(p.barcode && p.barcode.toLowerCase().includes(searchQuery.toLowerCase()))
 		);
 		filteredProducts = result;
 	}
@@ -112,14 +119,20 @@
 				items: cart.map(i => ({ product_id: i.id, name: i.name, qty: i.qty, unit_price: i.price, total: i.price * i.qty }))
 			};
 
+			const { data: { session } } = await supabase.auth.getSession();
+			const sale_number = `SALE-${Date.now().toString().slice(-6)}`;
+			
 			const { data: sale, error } = await supabase.from('sales').insert({
 				tenant_id: tenantId,
+				branch_id: userBranchId,
+				cashier_id: session?.user.id,
+				sale_number: sale_number,
 				subtotal,
 				discount_amount: discountAmt,
 				total_amount: total,
 				payment_method: paymentMethod,
-				cash_received: saleData.cash_received,
-				change_given: saleData.change_given,
+				cash_received: parseFloat(cashReceived) || null,
+				change_given: change || null,
 				customer_name: customerName || null,
 				status: 'completed'
 			}).select().single();
@@ -138,11 +151,15 @@
 					}))
 				);
 
-				// Update stock
+				// Update stock in branch_inventory
 				for (const item of cart) {
-					await supabase.from('products')
-						.update({ stock_quantity: item.stock_quantity - item.qty })
-						.eq('id', item.id);
+					await supabase.from('branch_inventory')
+						.update({ 
+							stock_quantity: Math.max(0, item.stock_quantity - item.qty),
+							updated_at: new Date().toISOString()
+						})
+						.eq('branch_id', userBranchId)
+						.eq('product_id', item.id);
 				}
 			}
 
@@ -361,8 +378,8 @@
 				<!-- Cash Received -->
 				{#if paymentMethod === 'cash'}
 					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-1">Cash Received</label>
-						<input type="number" bind:value={cashReceived} placeholder="0.00" step="0.01"
+						<label for="cash_received" class="block text-sm font-medium text-gray-700 mb-1">Cash Received</label>
+						<input id="cash_received" type="number" bind:value={cashReceived} placeholder="0.00" step="0.01"
 							class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg font-bold" />
 						{#if parseFloat(cashReceived) >= total}
 							<div class="flex justify-between mt-2 text-green-600 font-semibold">

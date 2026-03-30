@@ -335,6 +335,17 @@ SELECT
     bi.expiry_date,
     bi.expiry_alert_days,
     bi.is_active as inventory_active,
+    
+    -- Healthcare & Laboratory expansions
+    p.unit_of_measure,
+    p.product_type,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer,
+    p.test_name,
+    p.sample_type,
+
     CASE
         WHEN bi.stock_quantity <= bi.low_stock_threshold THEN true
         ELSE false
@@ -392,7 +403,17 @@ SELECT
     p.unit_price as max_price,
 
     p.created_at,
-    p.updated_at
+    p.updated_at,
+    
+    -- Healthcare & Laboratory expansions
+    p.unit_of_measure,
+    p.product_type,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer,
+    p.test_name,
+    p.sample_type
 FROM products p
 LEFT JOIN branch_inventory bi ON bi.product_id = p.id AND bi.is_active = true
 LEFT JOIN branches b ON bi.branch_id = b.id AND b.deleted_at IS NULL
@@ -408,7 +429,17 @@ GROUP BY
     p.image_url,
     p.is_active,
     p.created_at,
-    p.updated_at;
+    p.updated_at,
+    
+    -- Essential group by fields
+    p.unit_of_measure,
+    p.product_type,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer,
+    p.test_name,
+    p.sample_type;
 
 COMMENT ON VIEW ecommerce_products IS
 'Aggregated product view for e-commerce storefront. Shows tenant products across all branches with stock and location information.';

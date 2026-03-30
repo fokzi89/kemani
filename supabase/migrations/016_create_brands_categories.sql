@@ -92,50 +92,35 @@ COMMENT ON COLUMN brands.is_house_brand IS 'True if this is the store''s own bra
 
 CREATE TABLE IF NOT EXISTS categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-
     name VARCHAR(255) NOT NULL,
-    code VARCHAR(50),
-    parent_category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-
-    -- Category hierarchy
-    level INTEGER DEFAULT 1, -- 1=main, 2=sub, 3=sub-sub
-    path TEXT, -- Materialized path: /Electronics/Phones/Smartphones/
-
-    description TEXT,
-    sort_order INTEGER DEFAULT 0,
+    path TEXT,
     is_active BOOLEAN DEFAULT true,
-
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-
-    UNIQUE(tenant_id, name, parent_category_id)
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Indexes for categories
-CREATE INDEX IF NOT EXISTS idx_categories_tenant ON categories(tenant_id) WHERE is_active = true;
-CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_category_id) WHERE parent_category_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_categories_level ON categories(tenant_id, level);
-CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active, tenant_id);
+CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_categories_path ON categories(path);
+CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
 
--- RLS for categories
+-- RLS for categories (Global Table)
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can view categories in their tenant" ON categories;
-CREATE POLICY "Users can view categories in their tenant"
+DROP POLICY IF EXISTS "Public can view categories" ON categories;
+CREATE POLICY "Public can view categories"
     ON categories FOR SELECT
-    USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+    USING (true);
 
-DROP POLICY IF EXISTS "Managers can manage categories" ON categories;
-CREATE POLICY "Managers can manage categories"
-    ON categories FOR ALL
-    USING (
-        tenant_id IN (
-            SELECT tenant_id FROM users
-            WHERE id = auth.uid()
-            AND role IN ('tenant_admin', 'branch_manager')
-        )
-    );
+DROP POLICY IF EXISTS "Authenticated users can create categories" ON categories;
+CREATE POLICY "Authenticated users can create categories"
+    ON categories FOR INSERT
+    WITH CHECK (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "Authenticated users can update categories" ON categories;
+CREATE POLICY "Authenticated users can update categories"
+    ON categories FOR UPDATE
+    USING (auth.uid() IS NOT NULL);
 
 -- Trigger to update updated_at
 DROP TRIGGER IF EXISTS set_updated_at ON categories;
@@ -147,21 +132,8 @@ CREATE TRIGGER set_updated_at
 -- Trigger to auto-populate category path
 CREATE OR REPLACE FUNCTION update_category_path()
 RETURNS TRIGGER AS $$
-DECLARE
-    v_parent_path TEXT;
 BEGIN
-    IF NEW.parent_category_id IS NULL THEN
-        NEW.path := '/' || NEW.name || '/';
-        NEW.level := 1;
-    ELSE
-        SELECT path, level INTO v_parent_path, NEW.level
-        FROM categories
-        WHERE id = NEW.parent_category_id;
-
-        NEW.path := v_parent_path || NEW.name || '/';
-        NEW.level := NEW.level + 1;
-    END IF;
-
+    NEW.path := '/' || LOWER(REGEXP_REPLACE(NEW.name, '[^a-zA-Z0-9]+', '-', 'g')) || '/';
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -172,9 +144,9 @@ CREATE TRIGGER trg_update_category_path
     FOR EACH ROW
     EXECUTE FUNCTION update_category_path();
 
-COMMENT ON TABLE categories IS 'Hierarchical product categories';
-COMMENT ON COLUMN categories.level IS 'Hierarchy level: 1=main, 2=sub, 3=sub-sub';
-COMMENT ON COLUMN categories.path IS 'Materialized path for efficient hierarchy queries';
+-- Global categories classification
+COMMENT ON TABLE categories IS 'Global product categories for classification';
+COMMENT ON COLUMN categories.path IS 'Slug-based path for classification queries';
 
 -- ============================================
 -- ENHANCE PRODUCTS TABLE
@@ -189,10 +161,13 @@ BEGIN
     ) THEN
         ALTER TABLE products ADD COLUMN brand_id UUID REFERENCES brands(id) ON DELETE SET NULL;
         COMMENT ON COLUMN products.brand_id IS 'Brand classification for analytics';
-
-        -- Create index
-        CREATE INDEX idx_products_brand ON products(brand_id) WHERE brand_id IS NOT NULL;
     END IF;
+
+    -- Standard project indexes for products
+    CREATE INDEX IF NOT EXISTS idx_products_sku ON products(tenant_id, sku) WHERE sku IS NOT NULL AND deleted_at IS NULL;
+    CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(tenant_id, barcode) WHERE barcode IS NOT NULL AND deleted_at IS NULL;
+    CREATE INDEX IF NOT EXISTS idx_products_name_search ON products USING gin (to_tsvector('english', name));
+    CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand_id) WHERE brand_id IS NOT NULL;
 
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
@@ -275,7 +250,7 @@ CREATE OR REPLACE FUNCTION track_product_price_change()
 RETURNS TRIGGER AS $$
 BEGIN
     -- If price changed, archive old price and create new history entry
-    IF (OLD.selling_price IS DISTINCT FROM NEW.selling_price) OR
+    IF (OLD.unit_price IS DISTINCT FROM NEW.unit_price) OR
        (OLD.cost_price IS DISTINCT FROM NEW.cost_price) THEN
 
         -- Mark old price as no longer current
@@ -299,7 +274,7 @@ BEGIN
             NEW.id,
             NEW.tenant_id,
             NEW.cost_price,
-            NEW.selling_price,
+            NEW.unit_price,
             'price_update',
             auth.uid(),
             NOW(),

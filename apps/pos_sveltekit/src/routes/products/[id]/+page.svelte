@@ -72,8 +72,8 @@
 								{#if product.category}
 									<span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-full">{product.category}</span>
 								{/if}
-								{#if product.sku}
-									<span class="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs font-mono rounded-full">SKU: {product.sku}</span>
+								{#if product.barcode}
+									<span class="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs font-mono rounded-full">Barcode: {product.barcode}</span>
 								{/if}
 							</div>
 						</div>
@@ -106,26 +106,18 @@
 			<!-- Right: Stats -->
 			<div class="space-y-4">
 				<div class="bg-white rounded-xl border p-5 space-y-4">
-					<h3 class="font-semibold text-gray-900 text-sm uppercase tracking-wider text-gray-500">Details</h3>
+					<h3 class="font-semibold text-gray-900 text-sm uppercase tracking-wider text-gray-500">Additional Info</h3>
 					<div class="space-y-3 text-sm">
-						<div class="flex justify-between"><span class="text-gray-500">Selling Price</span><span class="font-bold text-indigo-600">₦{parseFloat(product.price).toLocaleString()}</span></div>
-						{#if product.cost_price}<div class="flex justify-between"><span class="text-gray-500">Cost Price</span><span class="font-medium">₦{parseFloat(product.cost_price).toLocaleString()}</span></div>{/if}
-						{#if product.unit}<div class="flex justify-between"><span class="text-gray-500">Unit</span><span class="font-medium">{product.unit}</span></div>{/if}
-					</div>
-				</div>
-
-				<div class="bg-white rounded-xl border p-5 space-y-4">
-					<h3 class="font-semibold text-gray-900 text-sm uppercase tracking-wider text-gray-500">Inventory</h3>
-					<div class="text-center">
-						<p class="text-4xl font-bold {product.stock_quantity < 10 ? 'text-orange-600' : 'text-gray-900'}">{product.stock_quantity}</p>
-						<p class="text-sm text-gray-500 mt-1">units in stock</p>
-						{#if product.stock_quantity < 10}
-							<div class="mt-2 flex items-center justify-center gap-1 text-orange-600 text-xs">
-								<AlertTriangle class="h-3.5 w-3.5" /> Low stock alert
-							</div>
+						{#if product.product_type}
+							<div class="flex justify-between"><span class="text-gray-500">Product Type</span><span class="font-medium">{product.product_type}</span></div>
+						{/if}
+						{#if product.sample_type}
+							<div class="flex justify-between"><span class="text-gray-500">Sample Type</span><span class="font-medium">{product.sample_type}</span></div>
+						{/if}
+						{#if product.manufacturer}
+							<div class="flex justify-between"><span class="text-gray-500">Manufacturer</span><span class="font-medium">{product.manufacturer}</span></div>
 						{/if}
 					</div>
-					<div class="text-xs text-gray-400 text-center">Alert threshold: {product.low_stock_threshold || 10}</div>
 				</div>
 
 				<div class="bg-white rounded-xl border p-5">
