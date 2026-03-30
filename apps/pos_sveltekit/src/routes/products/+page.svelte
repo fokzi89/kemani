@@ -11,6 +11,7 @@
 	let selectedCategory = $state('all');
 	let productTypeFilter = $state('all');
 	let categories = $state<string[]>([]);
+	let suppliers = $state<any[]>([]);
 	let tenantId = $state('');
 	let userBranchId = $state('');
 	let page = $state(1);
@@ -33,10 +34,19 @@
 		if (user?.tenant_id) { 
 			tenantId = user.tenant_id; 
 			userBranchId = user.branch_id || '';
-			await loadProducts(); 
+			await Promise.all([loadProducts(), loadSuppliers()]); 
 		}
 		loading = false;
 	});
+
+	async function loadSuppliers() {
+		if (!tenantId) return;
+		const { data } = await supabase.from('suppliers')
+			.select('id, name')
+			.eq('is_active', true)
+			.order('name');
+		suppliers = data || [];
+	}
 
 	async function loadProducts() {
 		if (!tenantId) return;
@@ -51,7 +61,7 @@
 		
 		products = (data || []).map(p => ({
 			...p,
-			provisioning: { qty: 0, batch: '', cost: 0, selling: 0, expiry: '' }
+			provisioning: { qty: 0, batch: '', cost: 0, selling: 0, expiry: '', supplier_id: null }
 		}));
 		categories = [...new Set(products.map(p => p.category).filter(Boolean))];
 		applyFilter();
@@ -101,6 +111,7 @@
 					expiry_date: product.provisioning?.expiry || null,
 					cost_price: product.provisioning?.cost || 0,
 					unit_cost: product.provisioning?.selling || 0,
+					supplier_id: product.provisioning?.supplier_id || null,
 					product_type: product.product_type || null,
 					barcode: product.barcode || null,
 					sku: product.provisioning?.batch || null
@@ -236,7 +247,7 @@
 			</div>
 		{:else}
 			<div class="overflow-x-auto">
-				<table class="w-full text-sm">
+				<table class="w-full text-sm min-w-[1200px]">
 					<thead class="bg-gray-50 border-b">
 						<tr>
 							<th class="px-4 py-3 text-left">
@@ -251,6 +262,7 @@
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Stock Qty</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Batch No</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Exp Date</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Unit Cost</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Selling</th>
 							<th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider uppercase tracking-wider">Type/Actions</th>
@@ -293,6 +305,13 @@
 								<td class="px-2 py-3">
 									<input type="date" bind:value={product.provisioning.expiry} disabled={!selectedIds.includes(product.id)} 
 										class="w-32 px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium {getExpiryClass(product.provisioning.expiry)}" />
+								</td>
+								<td class="px-2 py-3">
+									<select bind:value={product.provisioning.supplier_id} disabled={!selectedIds.includes(product.id)}
+										class="w-40 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium">
+										<option value={null}>No Supplier</option>
+										{#each suppliers as s}<option value={s.id}>{s.name}</option>{/each}
+									</select>
 								</td>
 								<td class="px-2 py-3">
 									<input type="number" bind:value={product.provisioning.cost} disabled={!selectedIds.includes(product.id)} placeholder="Cost"
