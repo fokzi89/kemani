@@ -392,30 +392,33 @@
 			</div>
 		</div>
 
+		<!-- Image Upload (Standalone) -->
 		<div class="bg-white rounded-xl border p-5 space-y-4">
-			<h2 class="font-semibold text-sm uppercase tracking-wider text-gray-500">Additional Details</h2>
-			<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-				<!-- Image Upload -->
-				<div class="sm:col-span-2">
-					<FileUpload 
-						label="Product Image" 
-						bind:file={file} 
-						bind:previewUrl={previewUrl} 
-						onFileSelect={() => {}} 
-					/>
-				</div>
-				
-				<div class="sm:col-span-2 relative">
-					<label for="manufacturer" class="block text-sm font-medium text-gray-700 mb-1">Manufacturer / Producing Company</label>
-					<input id="manufacturer" type="text" bind:value={form.manufacturer} placeholder="e.g. Pfizer, Nestle, Emzor" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
+			<FileUpload 
+				label="Product Image" 
+				bind:file={file} 
+				bind:previewUrl={previewUrl} 
+				onFileSelect={() => {}} 
+			/>
+		</div>
+
+		{#if form.product_type !== 'Laboratory test'}
+			<div class="bg-white rounded-xl border p-5 space-y-4">
+				<h2 class="font-semibold text-sm uppercase tracking-wider text-gray-500">Additional Details</h2>
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+					<div class="sm:col-span-2 relative">
+						<label for="manufacturer" class="block text-sm font-medium text-gray-700 mb-1">Manufacturer / Producing Company</label>
+						<input id="manufacturer" type="text" bind:value={form.manufacturer} placeholder="e.g. Pfizer, Nestle, Emzor" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
+					</div>
 				</div>
 			</div>
-			<div class="pt-2">
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input type="checkbox" bind:checked={form.is_active} class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" />
-					<span class="text-sm font-medium text-gray-700">Product is active and visible in catalog</span>
-				</label>
-			</div>
+		{/if}
+
+		<div class="bg-white rounded-xl border p-5">
+			<label class="flex items-center gap-3 cursor-pointer">
+				<input type="checkbox" bind:checked={form.is_active} class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" />
+				<span class="text-sm font-medium text-gray-700">Product is active and visible in catalog</span>
+			</label>
 		</div>
 
 		<div class="flex gap-3">
