@@ -86,13 +86,16 @@
 					tenant_id: tenantId,
 					branch_id: userBranchId,
 					product_id: id,
+					product_name: product.name,
+					image_url: product.image_url || null,
 					stock_quantity: product.provisioning?.qty || 0,
 					batch_no: product.provisioning?.batch || '',
 					expiry_date: product.provisioning?.expiry || null,
 					cost_price: product.provisioning?.cost || 0,
 					unit_cost: product.provisioning?.selling || 0,
 					product_type: product.product_type || null,
-					barcode: product.barcode || null
+					barcode: product.barcode || null,
+					sku: product.provisioning?.batch || null // Mapping batch to sku as well for compatibility
 				};
 			});
 			
