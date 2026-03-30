@@ -15,6 +15,7 @@
 	let userBranchId = $state('');
 	let page = $state(1);
 	let selectedIds = $state<string[]>([]);
+	let lastResult = $state<{names: string[], count: number} | null>(null);
 	const PER_PAGE = 20;
 
 	let paginated = $derived(filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE));
@@ -72,6 +73,7 @@
 		filtered = r;
 		page = 1;
 		selectedIds = [];
+		lastResult = null;
 	}
 
 	async function handleAddToStock() {
@@ -102,7 +104,11 @@
 			const { error: err } = await supabase.from('branch_inventory').insert(inserts);
 				
 			if (err) throw err;
-			alert(`Successfully added ${selectedIds.length} products to your branch inventory.`);
+			
+			lastResult = { 
+				names: inserts.map(i => i.product_name), 
+				count: inserts.length 
+			};
 			selectedIds = [];
 		} catch (err: any) {
 			alert(err.message || 'Failed to add products to stock');
@@ -139,6 +145,25 @@
 <svelte:head><title>Products – Kemani POS</title></svelte:head>
 
 <div class="p-6 space-y-5 max-w-7xl mx-auto">
+	<!-- Batch Result Notification -->
+	{#if lastResult}
+		<div class="bg-green-50 border border-green-200 rounded-xl p-4 flex gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+			<div class="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+				<Package class="h-5 w-5 text-green-600" />
+			</div>
+			<div class="flex-1">
+				<h3 class="font-bold text-green-900 text-sm">Batch Provisioning Successful!</h3>
+				<p class="text-xs text-green-700 mt-0.5">Successfully added {lastResult.count} products to branch inventory:</p>
+				<div class="mt-2 flex flex-wrap gap-1.5">
+					{#each lastResult.names as name}
+						<span class="px-2 py-0.5 bg-white/50 border border-green-200 rounded text-[10px] font-medium text-green-800">{name}</span>
+					{/each}
+				</div>
+			</div>
+			<button onclick={() => lastResult = null} class="text-green-400 hover:text-green-600 transition-colors self-start p-1"><Plus class="h-5 w-5 rotate-45" /></button>
+		</div>
+	{/if}
+
 	<!-- Header -->
 	<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 		<div>
