@@ -339,7 +339,7 @@ CREATE TABLE users (
 ```sql
 CREATE TABLE products (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    -- tenant_id removed as product is now a global table
     name VARCHAR(255) NOT NULL,
     description TEXT,
     sku VARCHAR(100),
@@ -369,31 +369,38 @@ CREATE TABLE products (
 
 ```sql
 CREATE TABLE branch_inventory (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-
-    -- Stock management
-    stock_quantity INTEGER NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
-    reserved_quantity INTEGER NOT NULL DEFAULT 0 CHECK (reserved_quantity >= 0),
-    low_stock_threshold INTEGER DEFAULT 10 CHECK (low_stock_threshold >= 0),
-
-    -- Expiry tracking (for perishable items)
-    expiry_date DATE,
-    expiry_alert_days INTEGER DEFAULT 30 CHECK (expiry_alert_days >= 0),
-
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    -- Sync fields
-    _sync_version BIGINT DEFAULT 1,
-    _sync_modified_at TIMESTAMPTZ DEFAULT NOW(),
-    _sync_client_id UUID,
-    _sync_is_deleted BOOLEAN DEFAULT FALSE,
-
-    UNIQUE(branch_id, product_id),
+    id uuid not null default gen_random_uuid (),
+    tenant_id uuid not null REFERENCES tenants(id) ON DELETE CASCADE,
+    branch_id uuid not null REFERENCES branches(id) ON DELETE CASCADE,
+    product_id uuid not null REFERENCES products(id) ON DELETE CASCADE,
+    stock_quantity integer not null default 0 CHECK (stock_quantity >= 0),
+    low_stock_threshold integer null default 10 CHECK (low_stock_threshold >= 0),
+    expiry_date date null,
+    expiry_alert_days integer null default 30 CHECK (expiry_alert_days >= 0),
+    is_active boolean null default true,
+    created_at timestamp with time zone not null default now(),
+    updated_at timestamp with time zone not null default now(),
+    _sync_version bigint null default 1,
+    _sync_modified_at timestamp with time zone null default now(),
+    _sync_client_id uuid null,
+    _sync_is_deleted boolean null default false,
+    reserved_quantity integer not null default 0 CHECK (reserved_quantity >= 0),
+    unit_cost double precision not null,
+    cost_price double precision null,
+    unit_of_measure text null,
+    product_type text null,
+    barcode text null,
+    sku text null,
+    batch_no text null,
+    dispense_qty integer null,
+    product_name text null,
+    image_url text null,
+    supplier_id uuid null REFERENCES suppliers(id) ON DELETE SET NULL,
+    purchase_invoice text null,
+    purchase_code text null,
+    added_by text null,
+    
+    UNIQUE(branch_id, product_id, batch_no),
     CONSTRAINT check_stock_available CHECK (stock_quantity >= reserved_quantity)
 );
 ```

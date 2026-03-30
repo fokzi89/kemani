@@ -63,26 +63,25 @@ Staff members per tenant.
 ### Product Management
 
 #### `products`
-Product catalog with tenant isolation.
+Global product catalog across all tenants.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | UUID | Primary key |
-| `tenant_id` | UUID | References tenants(id) |
 | `name` | TEXT | Product name |
 | `description` | TEXT | Product description |
 | `sku` | TEXT | Stock keeping unit |
 | `barcode` | TEXT | Barcode/UPC |
 | `category_id` | UUID | References categories(id) |
 | `brand_id` | UUID | References brands(id) |
-| `unit_price` | DECIMAL | Selling price |
-| `cost_price` | DECIMAL | Cost price |
+| `unit_price` | DECIMAL | Base selling price |
+| `cost_price` | DECIMAL | Base cost price |
 | `tax_rate` | DECIMAL | Tax rate (%) |
 | `image_url` | TEXT | Product image |
 | `is_active` | BOOLEAN | Active status |
 | `created_at` | TIMESTAMPTZ | Creation timestamp |
 
-**RLS:** Enabled. Tenant scoped.
+**RLS:** Read access broadly, mutation scoped.
 
 **Indexes:**
 - `idx_products_tenant_id`
@@ -115,18 +114,27 @@ Product categories with hierarchy support.
 
 **RLS:** Enabled. Tenant scoped.
 
-#### `inventory`
-Stock level tracking.
+#### `branch_inventory`
+Extensive per-branch stock level and product metadata tracking.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | UUID | Primary key |
 | `tenant_id` | UUID | References tenants(id) |
+| `branch_id` | UUID | References branches(id) |
 | `product_id` | UUID | References products(id) |
-| `quantity` | INTEGER | Current stock level |
-| `reorder_level` | INTEGER | Reorder threshold |
-| `reorder_quantity` | INTEGER | Reorder amount |
-| `last_restocked_at` | TIMESTAMPTZ | Last restock date |
+| `stock_quantity` | INTEGER | Current stock level |
+| `reserved_quantity` | INTEGER | Reserved quantity |
+| `low_stock_threshold`| INTEGER | Low stock alert threshold |
+| `expiry_date` | DATE | Expiry date |
+| `unit_cost` | DOUBLE | Unit selling cost |
+| `cost_price` | DOUBLE | Unit acquiring cost |
+| `batch_no` | TEXT | Batch number |
+| `barcode` | TEXT | Branch-specific barcode |
+| `sku` | TEXT | Branch-specific SKU |
+| `product_name` | TEXT | Denormalized product name |
+| `image_url` | TEXT | Denormalized product image |
+| `supplier_id` | UUID | References suppliers(id) |
 
 **RLS:** Enabled. Tenant scoped.
 

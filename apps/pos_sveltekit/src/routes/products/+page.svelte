@@ -14,10 +14,27 @@
 	let suppliers = $state<any[]>([]);
 	let tenantId = $state('');
 	let userBranchId = $state('');
+	let businessName = $state('');
+	let branchName = $state('');
+	let staffName = $state('');
 	let page = $state(1);
 	let selectedIds = $state<string[]>([]);
 	let lastResult = $state<{names: string[], count: number} | null>(null);
-	const PER_PAGE = 20;
+
+	let userRole = $state('');
+	let branches = $state<any[]>([]);
+
+	// Invoice Details Modal State
+	let showInvoiceModal = $state(false);
+	let invoiceForm = $state({
+		invoiceNum: '',
+		purchaseOrderNum: '',
+		addedBy: '',
+		targetBranchId: ''
+	});
+
+	const PER_PAGE = 20; // Keep display pagination at 20
+	const BATCH_LIMIT = 50; // Selection limit increased to 50
 
 	let paginated = $derived(filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE));
 	let totalPages = $derived(Math.ceil(filtered.length / PER_PAGE));
@@ -26,18 +43,46 @@
 		const { data: { session } } = await supabase.auth.getSession();
 		if (!session) return;
 		
-		const { data: user } = await supabase.from('users')
-			.select('tenant_id, branch_id')
+		// 1. Fetch core user info first to unblock data loading
+		const { data: userData, error: userErr } = await supabase.from('users')
+			.select('tenant_id, branch_id, full_name, role')
 			.eq('id', session.user.id)
 			.single();
 			
-		if (user?.tenant_id) { 
-			tenantId = user.tenant_id; 
-			userBranchId = user.branch_id || '';
-			await Promise.all([loadProducts(), loadSuppliers()]); 
+		if (userErr || !userData?.tenant_id) {
+			console.error('Core user data not found:', userErr);
+			loading = false;
+			return;
 		}
+
+		tenantId = userData.tenant_id; 
+		userBranchId = userData.branch_id || '';
+		userRole = userData.role || '';
+		staffName = userData.full_name || '';
+		invoiceForm.addedBy = staffName;
+		invoiceForm.targetBranchId = userBranchId;
+
+		// 2. Trigger loading of list data immediately
+		await Promise.all([loadProducts(), loadSuppliers(), loadBranches()]); 
 		loading = false;
+
+		// 3. Background fetch metadata (business name, branch name) for provisioning
+		const { data: tnt } = await supabase.from('tenants').select('name').eq('id', tenantId).single();
+		if (tnt) businessName = tnt.name;
+
+		if (userBranchId) {
+			const { data: brch } = await supabase.from('branches').select('name').eq('id', userBranchId).single();
+			if (brch) branchName = brch.name;
+		}
 	});
+
+	async function loadBranches() {
+		if (!tenantId) return;
+		const { data } = await supabase.from('branches')
+			.select('id, name')
+			.eq('tenant_id', tenantId);
+		branches = data || [];
+	}
 
 	async function loadSuppliers() {
 		if (!tenantId) return;
@@ -52,7 +97,7 @@
 		if (!tenantId) return;
 		const { data, error: dbErr } = await supabase.from('products')
 			.select('*')
-			.neq('product_type', 'Laboratory test')
+			.or('product_type.is.null,product_type.neq.Laboratory test')
 			.order('created_at', { ascending: false });
 		
 		if (dbErr) {
@@ -84,23 +129,66 @@
 		lastResult = null;
 	}
 
-	async function handleAddToStock() {
-		if (!userBranchId) { alert('No branch assigned to your user account.'); return; }
+	async function prepareStockProvision() {
+		if (!invoiceForm.targetBranchId) { alert('No branch selected for provisioning.'); return; }
 		if (selectedIds.length === 0) return;
 		
+		// Generate the next Purchase Order Number
+		await generateNextPOCode();
+		showInvoiceModal = true;
+	}
+
+	async function generateNextPOCode() {
+		try {
+			const bId = invoiceForm.targetBranchId;
+			if (!bId) return;
+
+			let { data: seq, error } = await supabase
+				.from('purchase_sequences')
+				.select('last_serial')
+				.eq('branch_id', bId)
+				.single();
+
+			if (error && error.code === 'PGRST116') {
+				await supabase.from('purchase_sequences').insert({
+					tenant_id: tenantId,
+					branch_id: bId,
+					last_serial: 0
+				});
+				seq = { last_serial: 0 };
+			} else if (error) throw error;
+
+			const nextSerial = (seq?.last_serial || 0) + 1;
+			const prefix = businessName.substring(0, 3).toUpperCase();
+			const bItem = branches.find(b => b.id === bId);
+			const bNameClean = (bItem?.name || 'BRCH').replace(/\s+/g, '').toUpperCase();
+			const serialStr = String(nextSerial).padStart(6, '0');
+			
+			invoiceForm.purchaseOrderNum = `${prefix}-${bNameClean}-${serialStr}`;
+		} catch (err) {
+			console.error('Error generating PO code:', err);
+			invoiceForm.purchaseOrderNum = 'AUTO-GEN-ERROR';
+		}
+	}
+
+	async function handleAddToStock() {
+		if (!invoiceForm.invoiceNum) { alert('Please enter Invoice Number'); return; }
+		if (!invoiceForm.targetBranchId) { alert('No branch selected'); return; }
+		
+		showInvoiceModal = false;
 		loading = true;
 		try {
+			// 1. Prepare batch inserts
 			const inserts = selectedIds.map(id => {
 				const product = products.find(p => p.id === id) || {};
 				
-				// Validation check
 				if ((product.provisioning?.qty || 0) <= 0 || (product.provisioning?.cost || 0) <= 0 || (product.provisioning?.selling || 0) <= 0) {
 					throw new Error(`Incomplete details for ${product.name}. Qty, Cost and Selling price must be greater than 0.`);
 				}
 
 				return {
 					tenant_id: tenantId,
-					branch_id: userBranchId,
+					branch_id: invoiceForm.targetBranchId,
 					product_id: id,
 					product_name: product.name,
 					image_url: product.image_url || null,
@@ -112,19 +200,30 @@
 					supplier_id: product.provisioning?.supplier_id || null,
 					product_type: product.product_type || null,
 					barcode: product.barcode || null,
-					sku: product.provisioning?.batch || null
+					sku: product.provisioning?.batch || null,
+					purchase_invoice: invoiceForm.invoiceNum,
+					purchase_code: invoiceForm.purchaseOrderNum,
+					added_by: invoiceForm.addedBy
 				};
 			});
 			
+			// 2. Perform insert
 			const { error: err } = await supabase.from('branch_inventory').insert(inserts);
-				
 			if (err) throw err;
 			
+			// 3. Increment sequence
+			const currentSerialStr = invoiceForm.purchaseOrderNum.split('-').pop() || '1';
+			const currentSerial = parseInt(currentSerialStr);
+			await supabase.from('purchase_sequences')
+				.update({ last_serial: currentSerial })
+				.eq('branch_id', invoiceForm.targetBranchId);
+
 			lastResult = { 
 				names: inserts.map(i => i.product_name), 
 				count: inserts.length 
 			};
 			selectedIds = [];
+			invoiceForm.invoiceNum = '';
 		} catch (err: any) {
 			alert(err.message || 'Failed to add products to stock');
 		} finally {
@@ -133,10 +232,19 @@
 	}
 
 	function toggleSelectAll() {
-		if (selectedIds.length === paginated.length && paginated.length > 0) {
-			selectedIds = [];
+		const allInPageSelected = paginated.length > 0 && paginated.every(p => selectedIds.includes(p.id));
+		
+		if (allInPageSelected) {
+			// Deselect current page items
+			const pageIds = paginated.map(p => p.id);
+			selectedIds = selectedIds.filter(id => !pageIds.includes(id));
 		} else {
-			selectedIds = paginated.map(p => p.id);
+			const newInPage = paginated.filter(p => !selectedIds.includes(p.id));
+			if (selectedIds.length + newInPage.length > BATCH_LIMIT) {
+				selectedIds = paginated.map(p => p.id);
+			} else {
+				selectedIds = [...selectedIds, ...newInPage.map(p => p.id)];
+			}
 		}
 	}
 
@@ -144,6 +252,10 @@
 		if (selectedIds.includes(id)) {
 			selectedIds = selectedIds.filter(i => i !== id);
 		} else {
+			if (selectedIds.length >= BATCH_LIMIT) {
+				alert(`Maximum limit of ${BATCH_LIMIT} products per batch reached.`);
+				return;
+			}
 			selectedIds = [...selectedIds, id];
 		}
 	}
@@ -201,12 +313,17 @@
 		</div>
 		<div class="flex items-center gap-3">
 			{#if selectedIds.length > 0}
-				<button 
-					onclick={handleAddToStock}
-					class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm shadow-lg shadow-green-100"
-				>
-					<Package class="h-4 w-4" /> Add {selectedIds.length} to Stock
-				</button>
+				<div class="flex items-center gap-2">
+					<span class="text-xs font-medium {selectedIds.length === BATCH_LIMIT ? 'text-amber-600' : 'text-gray-500'}">
+						{selectedIds.length}/{BATCH_LIMIT} selected
+					</span>
+					<button 
+						onclick={prepareStockProvision}
+						class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm shadow-lg shadow-green-100"
+					>
+						<Package class="h-4 w-4" /> Add to Stock
+					</button>
+				</div>
 			{/if}
 			<a href="/products/new" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm">
 				<Plus class="h-4 w-4" /> Add Product
@@ -250,7 +367,7 @@
 							<th class="px-4 py-3 text-left">
 								<input 
 									type="checkbox" 
-									checked={selectedIds.length === paginated.length && paginated.length > 0} 
+									checked={paginated.length > 0 && paginated.every(p => selectedIds.includes(p.id))} 
 									onchange={toggleSelectAll}
 									class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer" 
 								/>
@@ -334,14 +451,88 @@
 
 			<!-- Pagination -->
 			{#if totalPages > 1}
-				<div class="px-4 py-3 border-t flex items-center justify-between text-sm text-gray-600">
-					<span>Showing {(page-1)*PER_PAGE+1}–{Math.min(page*PER_PAGE, filtered.length)} of {filtered.length}</span>
+				<div class="px-4 py-3 border-t bg-gray-50/30 flex items-center justify-between text-sm text-gray-600">
+					<p class="text-xs font-medium">
+						Showing <span class="text-gray-900 font-bold">{(page-1)*PER_PAGE+1}</span> – 
+						<span class="text-gray-900 font-bold">{Math.min(filtered.length, page * PER_PAGE)}</span> of 
+						<span class="text-gray-900 font-bold">{filtered.length}</span>
+					</p>
 					<div class="flex gap-1">
-						<button onclick={() => page--} disabled={page === 1} class="p-1.5 rounded hover:bg-gray-100 disabled:opacity-40"><ChevronLeft class="h-4 w-4" /></button>
-						<button onclick={() => page++} disabled={page === totalPages} class="p-1.5 rounded hover:bg-gray-100 disabled:opacity-40"><ChevronRight class="h-4 w-4" /></button>
+						<button onclick={() => page--} disabled={page === 1} class="p-2 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors disabled:opacity-40">
+							<ChevronLeft class="h-4 w-4" />
+						</button>
+						<button onclick={() => page++} disabled={page === totalPages} class="p-2 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors disabled:opacity-40">
+							<ChevronRight class="h-4 w-4" />
+						</button>
 					</div>
 				</div>
 			{/if}
 		{/if}
 	</div>
 </div>
+
+<!-- Invoice Details Modal -->
+{#if showInvoiceModal}
+	<div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+		<div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+			<div class="p-6 border-b flex justify-between items-center">
+				<div>
+					<h2 class="text-lg font-extrabold text-gray-900">Provisioning Details</h2>
+					<p class="text-xs text-gray-500">Confirm purchase info for {selectedIds.length} items</p>
+				</div>
+				<button onclick={() => showInvoiceModal = false} class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+					<Plus class="h-5 w-5 rotate-45 text-gray-400" />
+				</button>
+			</div>
+
+			<div class="p-6 space-y-4">
+				<div>
+					<label for="invoice_num" class="block text-sm font-bold text-gray-700 mb-1.5">Purchase Invoice Number <span class="text-red-500">*</span></label>
+					<input id="invoice_num" type="text" bind:value={invoiceForm.invoiceNum} placeholder="Enter invoice number..."
+						class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium" />
+				</div>
+
+				{#if userRole === 'tenant_admin' || userRole === 'platform_admin'}
+					<div>
+						<label for="target_branch" class="block text-sm font-bold text-gray-700 mb-1.5">Destination Branch <span class="text-red-500">*</span></label>
+						<select 
+							id="target_branch" 
+							bind:value={invoiceForm.targetBranchId}
+							onchange={generateNextPOCode}
+							class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium"
+						>
+							{#each branches as b}
+								<option value={b.id}>{b.name}</option>
+							{/each}
+						</select>
+					</div>
+				{/if}
+
+				<div>
+					<div class="block text-sm font-bold text-gray-700 mb-1.5">Purchase Order Code (Auto-generated)</div>
+					<div class="px-4 py-2.5 bg-indigo-50 border border-indigo-100 rounded-xl font-mono text-sm text-indigo-700 font-bold uppercase tracking-wider">
+						{invoiceForm.purchaseOrderNum}
+					</div>
+					<p class="text-[10px] text-indigo-400 mt-1 italic">Format: [Tenant]-[Branch]-[Serial]</p>
+				</div>
+
+				<div>
+					<div class="block text-sm font-bold text-gray-700 mb-1.5">Added By</div>
+					<div class="px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-600 font-medium">
+						{invoiceForm.addedBy}
+					</div>
+				</div>
+			</div>
+
+			<div class="p-6 bg-gray-50 border-t flex gap-3">
+				<button onclick={() => showInvoiceModal = false} class="flex-1 py-3 text-sm font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors">
+					Cancel
+				</button>
+				<button onclick={handleAddToStock} disabled={!invoiceForm.invoiceNum}
+					class="flex-1 py-3 text-sm font-bold text-white bg-green-600 rounded-xl hover:bg-green-700 shadow-lg shadow-green-100 transition-all disabled:opacity-50">
+					Confirm & Upload
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
