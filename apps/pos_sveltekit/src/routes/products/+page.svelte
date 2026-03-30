@@ -50,7 +50,7 @@
 		
 		products = (data || []).map(p => ({
 			...p,
-			provisioning: { qty: 0, batch: '', cost: 0, selling: 0 }
+			provisioning: { qty: 0, batch: '', cost: 0, selling: 0, expiry: '' }
 		}));
 		categories = [...new Set(products.map(p => p.category).filter(Boolean))];
 		applyFilter();
@@ -80,14 +80,13 @@
 		
 		loading = true;
 		try {
-			const inserts = selectedIds.map(id => {
-				const product = products.find(p => p.id === id) || {};
 				return {
 					tenant_id: tenantId,
 					branch_id: userBranchId,
 					product_id: id,
 					stock_quantity: product.provisioning?.qty || 0,
-					sku: product.provisioning?.batch || null,
+					batch_no: product.provisioning?.batch || '',
+					expiry_date: product.provisioning?.expiry || null,
 					cost_price: product.provisioning?.cost || 0,
 					unit_cost: product.provisioning?.selling || 0,
 					product_type: product.product_type || null,
@@ -95,8 +94,7 @@
 				};
 			});
 			
-			const { error: err } = await supabase.from('branch_inventory')
-				.upsert(inserts, { onConflict: 'branch_id, product_id' });
+			const { error: err } = await supabase.from('branch_inventory').insert(inserts);
 				
 			if (err) throw err;
 			alert(`Successfully added ${selectedIds.length} products to your branch inventory.`);
@@ -200,9 +198,9 @@
 								/>
 							</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Product</th>
-							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Barcode</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Stock Qty</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Batch No</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Exp Date</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Unit Cost</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Selling</th>
 							<th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider uppercase tracking-wider">Type/Actions</th>
@@ -234,7 +232,6 @@
 										</div>
 									</div>
 								</td>
-								<td class="px-4 py-3 text-gray-500 font-mono text-xs">{product.barcode || '–'}</td>
 								<td class="px-2 py-3">
 									<input type="number" bind:value={product.provisioning.qty} disabled={!selectedIds.includes(product.id)} placeholder="Qty"
 										class="w-20 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium" />
@@ -242,6 +239,10 @@
 								<td class="px-2 py-3">
 									<input type="text" bind:value={product.provisioning.batch} disabled={!selectedIds.includes(product.id)} placeholder="Batch"
 										class="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium" />
+								</td>
+								<td class="px-2 py-3">
+									<input type="date" bind:value={product.provisioning.expiry} disabled={!selectedIds.includes(product.id)} 
+										class="w-32 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium" />
 								</td>
 								<td class="px-2 py-3">
 									<input type="number" bind:value={product.provisioning.cost} disabled={!selectedIds.includes(product.id)} placeholder="Cost"
