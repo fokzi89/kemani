@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { supabase } from '$lib/supabase';
-	import { 
-		UserPlus, MoreVertical, Edit2, ShieldOff, Shield, 
-		X, Building2, Mail, Phone, User, Search, Copy, CheckCircle2, Link
+	import {
+		UserPlus, MoreVertical, Edit2, ShieldOff, Shield,
+		X, Building2, Mail, Phone, User, Search
 	} from 'lucide-svelte';
 
 	let staff = $state<any[]>([]);
@@ -13,40 +13,11 @@
 	let searchQuery = $state('');
 	let activeDropdown = $state<string | null>(null);
 
-	// Invite modal
-	let showInviteModal = $state(false);
-	let inviting = $state(false);
-	let inviteSuccess = $state(false);
-	let generatedInviteLink = $state('');
-	let linkCopied = $state(false);
-	let inviteForm = $state<any>({
-		email: '',
-		full_name: '',
-		role: 'cashier' as string,
-		branch_id: '',
-		canManagePOS: false,
-		canManageProducts: false,
-		canManageCustomers: false,
-		canManageOrders: false,
-		canViewMessages: false,
-		canViewAnalytics: false,
-		canManageStaff: false,
-		canManageInventory: false,
-		canManageTransfer: false,
-		canManageBranches: false,
-		canManageRoles: false,
-		canManageScrap: false,
-		canTransferProduct: false,
-		canReturnProducts: false
-	});
-
 	// Edit privileges modal
 	let showPrivilegesModal = $state(false);
 	let editingStaff = $state<any>(null);
 	let savingPrivileges = $state(false);
 	let privilegeForm = $state<any>({});
-
-	const roles = ['manager', 'cashier', 'pharmacist', 'tenant_admin'];
 
 	const privileges = [
 		{ key: 'canManagePOS', label: 'POS Access', description: 'Can process sales' },
@@ -66,8 +37,8 @@
 	];
 
 	let filteredStaff = $derived(
-		staff.filter(s => 
-			!searchQuery || 
+		staff.filter(s =>
+			!searchQuery ||
 			s.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			s.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			s.role?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -88,7 +59,6 @@
 			if (!me) return;
 			tenantId = me.tenant_id;
 
-			// Fetch all staff under this tenant
 			const { data: staffData, error: staffErr } = await supabase
 				.from('users')
 				.select(`*, branches!branch_id(name)`)
@@ -99,7 +69,6 @@
 			if (staffErr) console.error('Staff error:', staffErr);
 			staff = staffData || [];
 
-			// Fetch branches for assignment
 			const { data: branchData } = await supabase
 				.from('branches')
 				.select('id, name')
@@ -115,89 +84,6 @@
 	}
 
 	onMount(fetchData);
-
-	function openInviteModal() {
-		inviteForm = {
-			email: '', full_name: '', role: 'cashier', branch_id: '',
-			canManagePOS: false, canManageProducts: false, canManageCustomers: false, canManageOrders: false,
-			canViewMessages: false, canViewAnalytics: false, canManageStaff: false, canManageInventory: false,
-			canManageTransfer: false, canManageBranches: false, canManageRoles: false, canManageScrap: false,
-			canTransferProduct: false, canReturnProducts: false
-		};
-		inviteSuccess = false;
-		generatedInviteLink = '';
-		linkCopied = false;
-		showInviteModal = true;
-	}
-
-	async function sendInvite(e: Event) {
-		e.preventDefault();
-		if (!tenantId) return;
-		inviting = true;
-		try {
-			const { data: { session } } = await supabase.auth.getSession();
-			if (!session) throw new Error('Not authenticated');
-
-			// Generate a unique token
-			const token = crypto.randomUUID();
-
-			// Insert into staff_invitations table
-			const { error: insertError } = await supabase
-				.from('staff_invitations')
-				.insert({
-					tenant_id: tenantId,
-					invited_by: session.user.id,
-					email: inviteForm.email.trim().toLowerCase(),
-					full_name: inviteForm.full_name.trim(),
-					role: inviteForm.role,
-					branch_id: inviteForm.branch_id || null,
-					invitation_token: token,
-					status: 'pending',
-					canManagePOS: inviteForm.canManagePOS,
-					canManageProducts: inviteForm.canManageProducts,
-					canManageCustomers: inviteForm.canManageCustomers,
-					canManageOrders: inviteForm.canManageOrders,
-					canViewMessages: inviteForm.canViewMessages,
-					canViewAnalytics: inviteForm.canViewAnalytics,
-					canManageStaff: inviteForm.canManageStaff,
-					canManageInventory: inviteForm.canManageInventory,
-					canManageTransfer: inviteForm.canManageTransfer,
-					canManageBranches: inviteForm.canManageBranches,
-					canManageRoles: inviteForm.canManageRoles,
-					canManageScrap: inviteForm.canManageScrap,
-					canTransferProduct: inviteForm.canTransferProduct,
-					canReturnProducts: inviteForm.canReturnProducts
-				});
-
-			if (insertError) throw insertError;
-
-			// Build copyable invite link
-			generatedInviteLink = `${window.location.origin}/auth/accept-invite?token=${token}`;
-			inviteSuccess = true;
-		} catch (err: any) {
-			alert('Failed to create invitation: ' + err.message);
-		} finally {
-			inviting = false;
-		}
-	}
-
-	async function copyInviteLink() {
-		try {
-			await navigator.clipboard.writeText(generatedInviteLink);
-			linkCopied = true;
-			setTimeout(() => linkCopied = false, 2500);
-		} catch {
-			// Fallback for older browsers
-			const el = document.createElement('textarea');
-			el.value = generatedInviteLink;
-			document.body.appendChild(el);
-			el.select();
-			document.execCommand('copy');
-			document.body.removeChild(el);
-			linkCopied = true;
-			setTimeout(() => linkCopied = false, 2500);
-		}
-	}
 
 	function openPrivilegesModal(person: any) {
 		editingStaff = person;
@@ -283,13 +169,13 @@
 			<h1 class="text-2xl font-bold text-gray-900">Staff Management</h1>
 			<p class="text-sm text-gray-500 mt-1">Manage team members, roles and their access privileges.</p>
 		</div>
-		<button
-			onclick={openInviteModal}
+		<a
+			href="/staffs/new"
 			class="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 focus:ring-4 focus:ring-blue-600/20"
 		>
 			<UserPlus class="h-4 w-4" />
 			Invite Staff
-		</button>
+		</a>
 	</div>
 
 	<!-- Search -->
@@ -314,13 +200,13 @@
 			</div>
 			<h3 class="text-lg font-bold text-gray-900 mb-2">No Staff Found</h3>
 			<p class="text-gray-500 text-sm max-w-sm">Your team is empty. Invite your first staff member to get started.</p>
-			<button
-				onclick={openInviteModal}
+			<a
+				href="/staffs/new"
 				class="mt-6 inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors"
 			>
 				<UserPlus class="h-4 w-4" />
 				Invite First Member
-			</button>
+			</a>
 		</div>
 	{:else}
 		<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-visible">
@@ -462,160 +348,6 @@
 		</div>
 	{/if}
 </div>
-
-<!-- ===== INVITE MODAL ===== -->
-{#if showInviteModal}
-	<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-		<button class="absolute inset-0 bg-slate-900/30 backdrop-blur-sm cursor-default" onclick={() => !inviting && (showInviteModal = false)} aria-label="Close"></button>
-
-		<div class="relative bg-white rounded-2xl shadow-2xl w-full overflow-hidden border border-gray-100/50 flex flex-col max-h-[90vh]" style="max-width: 500px;">
-			<!-- Header -->
-			<div class="p-6 border-b border-gray-100 flex justify-between items-start shrink-0">
-				<div>
-					<div class="h-12 w-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
-						<UserPlus class="h-6 w-6" />
-					</div>
-					<h2 class="text-xl font-extrabold text-gray-900">Invite Staff Member</h2>
-					<p class="text-sm text-gray-500 mt-1">They'll receive a magic link to sign in.</p>
-				</div>
-				<button onclick={() => showInviteModal = false} disabled={inviting} class="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-50 rounded-xl transition-colors" aria-label="Close">
-					<X class="h-5 w-5" />
-				</button>
-			</div>
-
-			<!-- Success state OR form -->
-			{#if inviteSuccess}
-				<!-- Success Screen -->
-				<div class="p-8 flex flex-col items-center text-center overflow-y-auto max-h-[85vh]">
-					<div class="h-16 w-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-5 shrink-0">
-						<CheckCircle2 class="h-8 w-8" />
-					</div>
-					<h3 class="text-xl font-black text-gray-900 mb-1">Invite Sent!</h3>
-					<p class="text-sm text-gray-500 mb-6 shrink-0">
-						A magic sign-in link was emailed to <span class="font-bold text-gray-800">{inviteForm.email}</span>.
-						Share the link below if they didn't receive the email.
-					</p>
-
-					<!-- Invite link box -->
-					<div class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-4 shrink-0">
-						<div class="flex items-center gap-2 mb-3">
-							<Link class="h-3.5 w-3.5 text-gray-400 shrink-0" />
-							<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Invite Link</span>
-						</div>
-						<div class="bg-white border border-gray-100 rounded-xl px-3 py-2.5 mb-3 overflow-x-auto">
-							<p class="text-[11px] text-gray-600 font-mono break-all text-left whitespace-pre-wrap">{generatedInviteLink}</p>
-						</div>
-						<button
-							type="button"
-							onclick={copyInviteLink}
-							class="w-full py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all
-								{linkCopied 
-									? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-									: 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm shadow-blue-200'}"
-						>
-							{#if linkCopied}
-								<CheckCircle2 class="h-4 w-4" />
-								Copied to Clipboard!
-							{:else}
-								<Copy class="h-4 w-4" />
-								Copy Invite Link
-							{/if}
-						</button>
-					</div>
-
-					<button
-						type="button"
-						onclick={() => { showInviteModal = false; inviteSuccess = false; }}
-						class="w-full py-2.5 rounded-xl text-sm font-bold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
-					>
-						Close
-					</button>
-				</div>
-			{:else}
-				<form onsubmit={sendInvite} class="flex flex-col min-h-0">
-					<div class="p-6 space-y-4 overflow-y-auto">
-						<!-- Basic Info -->
-						<div>
-							<label for="inv-name" class="block text-xs font-bold text-gray-700 mb-1.5">Full Name <span class="text-red-500">*</span></label>
-							<input id="inv-name" type="text" required bind:value={inviteForm.full_name}
-								placeholder="John Doe"
-								class="w-full px-3.5 py-3 text-sm bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white outline-none transition-all" />
-						</div>
-
-						<div>
-							<label for="inv-email" class="block text-xs font-bold text-gray-700 mb-1.5">Work Email <span class="text-red-500">*</span></label>
-							<input id="inv-email" type="email" required bind:value={inviteForm.email}
-								placeholder="staff@example.com"
-								class="w-full px-3.5 py-3 text-sm bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white outline-none transition-all" />
-							<p class="text-[11px] text-gray-400 mt-1.5">Staff must sign in with this exact Google account.</p>
-						</div>
-
-						<div class="grid grid-cols-2 gap-4">
-							<div>
-								<label for="inv-role" class="block text-xs font-bold text-gray-700 mb-1.5">Role</label>
-								<select id="inv-role" bind:value={inviteForm.role}
-									class="w-full px-3.5 py-3 text-sm bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white outline-none transition-all appearance-none">
-									{#each roles as r}
-										<option value={r}>{r.replace('_', ' ')}</option>
-									{/each}
-								</select>
-							</div>
-							<div>
-								<label for="inv-branch" class="block text-xs font-bold text-gray-700 mb-1.5">Branch</label>
-								<select id="inv-branch" bind:value={inviteForm.branch_id}
-									class="w-full px-3.5 py-3 text-sm bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-600 focus:bg-white outline-none transition-all appearance-none">
-									<option value="">Unassigned</option>
-									{#each branches as b}
-										<option value={b.id}>{b.name}</option>
-									{/each}
-								</select>
-							</div>
-						</div>
-
-						<div class="mt-4 border-t border-gray-100 pt-4">
-							<div class="flex items-center gap-2 mb-3">
-								<Shield class="h-4 w-4 text-blue-500" />
-								<label class="block text-xs font-bold text-gray-700">Initial Access Privileges</label>
-							</div>
-							<div class="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
-								{#each privileges as priv}
-									<label class="flex items-center justify-between p-2.5 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors group">
-										<div class="overflow-hidden">
-											<p class="text-xs font-bold text-gray-800 truncate">{priv.label}</p>
-											<p class="text-[9px] text-gray-400 truncate">{priv.description}</p>
-										</div>
-										<div class="relative shrink-0 ml-2">
-											<input type="checkbox" bind:checked={inviteForm[priv.key]} class="sr-only peer" />
-											<div class="w-8 h-4.5 bg-gray-200 peer-checked:bg-blue-600 rounded-full transition-colors"></div>
-											<div class="absolute top-[2px] left-[2px] h-3.5 w-3.5 bg-white rounded-full shadow transition-all peer-checked:translate-x-3.5"></div>
-										</div>
-									</label>
-								{/each}
-							</div>
-						</div>
-					</div>
-
-					<div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3 shrink-0">
-						<button type="button" onclick={() => showInviteModal = false} disabled={inviting}
-							class="px-5 py-2.5 text-sm font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors disabled:opacity-50">
-							Cancel
-						</button>
-						<button type="submit" disabled={inviting || !inviteForm.email.trim() || !inviteForm.full_name.trim()}
-							class="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-sm shadow-blue-200 transition-all disabled:opacity-50 flex items-center gap-2">
-							{#if inviting}
-								<div class="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
-								Sending...
-							{:else}
-								<UserPlus class="h-4 w-4" />
-								Send Invite
-							{/if}
-						</button>
-					</div>
-				</form>
-			{/if}
-		</div>
-	</div>
-{/if}
 
 <!-- ===== PRIVILEGES MODAL ===== -->
 {#if showPrivilegesModal && editingStaff}
