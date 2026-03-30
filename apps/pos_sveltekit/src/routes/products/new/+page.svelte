@@ -393,14 +393,16 @@
 		</div>
 
 		<!-- Image Upload (Standalone) -->
-		<div class="bg-white rounded-xl border p-5 space-y-4">
-			<FileUpload 
-				label="Product Image" 
-				bind:file={file} 
-				bind:previewUrl={previewUrl} 
-				onFileSelect={() => {}} 
-			/>
-		</div>
+		{#if form.product_type !== 'Laboratory test'}
+			<div class="bg-white rounded-xl border p-5 space-y-4">
+				<FileUpload 
+					label="Product Image" 
+					bind:file={file} 
+					bind:previewUrl={previewUrl} 
+					onFileSelect={() => {}} 
+				/>
+			</div>
+		{/if}
 
 		{#if form.product_type !== 'Laboratory test'}
 			<div class="bg-white rounded-xl border p-5 space-y-4">

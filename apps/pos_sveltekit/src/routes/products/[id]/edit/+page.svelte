@@ -188,14 +188,16 @@
 
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
 					<!-- Image Upload -->
-					<div class="sm:col-span-2">
-						<FileUpload 
-							label="Product Image" 
-							bind:file={file} 
-							bind:previewUrl={previewUrl} 
-							onFileSelect={() => {}} 
-						/>
-					</div>
+					{#if form.product_type !== 'Laboratory test'}
+						<div class="sm:col-span-2">
+							<FileUpload 
+								label="Product Image" 
+								bind:file={file} 
+								bind:previewUrl={previewUrl} 
+								onFileSelect={() => {}} 
+							/>
+						</div>
+					{/if}
 					
 					{#if form.product_type === 'Drug'}
 						<!-- Drug Specific Fields -->
