@@ -149,8 +149,6 @@
 			error = err.message || 'Failed to save';
 		} finally { saving = false; }
 	}
-
-	}
 </script>
 
 <svelte:head><title>Edit Product – Kemani POS</title></svelte:head>
