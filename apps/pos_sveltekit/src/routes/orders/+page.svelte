@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { supabase } from '$lib/supabase';
 	import { ShoppingBag, Search, ChevronLeft, ChevronRight, Eye } from 'lucide-svelte';
+	import { goto } from '$app/navigation';
 
 	let orders = $state<any[]>([]);
 	let filtered = $state<any[]>([]);
@@ -31,7 +32,7 @@
 
 	function applyFilter() {
 		let r = orders;
-		if (statusFilter !== 'all') r = r.filter(o => o.status === statusFilter);
+		if (statusFilter !== 'all') r = r.filter(o => o.sale_status === statusFilter);
 		if (searchQuery) r = r.filter(o =>
 			o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			(o.customer_name && o.customer_name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -112,7 +113,7 @@
 					</thead>
 					<tbody class="divide-y divide-gray-100">
 						{#each paginated as order}
-							<tr class="hover:bg-gray-50 transition-colors">
+							<tr class="hover:bg-gray-50 transition-colors cursor-pointer" onclick={() => goto(`/orders/${order.id}`)}>
 								<td class="px-4 py-3 font-mono text-xs text-gray-600">#{order.id?.slice(-8).toUpperCase()}</td>
 								<td class="px-4 py-3 font-medium text-gray-800">{order.customer_name || 'Walk-in'}</td>
 								<td class="px-4 py-3 text-gray-500">{new Date(order.created_at).toLocaleDateString()} <span class="text-xs">{new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></td>
@@ -120,11 +121,11 @@
 									<span class="px-2 py-0.5 rounded-full text-xs font-medium capitalize {paymentBadge(order.payment_method)}">{order.payment_method}</span>
 								</td>
 								<td class="px-4 py-3 text-center">
-									<span class="px-2 py-0.5 rounded-full text-xs font-medium capitalize {statusColor(order.status)}">{order.status}</span>
+									<span class="px-2 py-0.5 rounded-full text-xs font-medium capitalize {statusColor(order.sale_status)}">{order.sale_status}</span>
 								</td>
 								<td class="px-4 py-3 text-right font-bold text-gray-900">₦{parseFloat(order.total_amount).toLocaleString()}</td>
 								<td class="px-4 py-3 text-right">
-									<a href="/orders/{order.id}" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors inline-flex"><Eye class="h-4 w-4" /></a>
+									<button class="p-1.5 rounded-lg hover:bg-white text-gray-400 hover:text-indigo-600 shadow-sm border border-transparent hover:border-gray-200 transition-all inline-flex bg-gray-50"><Eye class="h-4 w-4" /></button>
 								</td>
 							</tr>
 						{/each}

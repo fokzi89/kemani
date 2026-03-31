@@ -4,19 +4,27 @@
 	import { page } from '$app/stores';
 	import { ArrowLeft, Receipt, CheckCircle, XCircle, Clock, Printer } from 'lucide-svelte';
 
-	const orderId = $page.params.id;
+	// Svelte 5: Use reactive state from stores
+	let orderId = $derived($page.params.id);
 	let order = $state<any>(null);
 	let items = $state<any[]>([]);
 	let loading = $state(true);
 
 	onMount(async () => {
-		const { data } = await supabase.from('sales').select('*').eq('id', orderId).single();
-		order = data;
-		if (data) {
-			const { data: lineItems } = await supabase.from('sale_items').select('*').eq('sale_id', orderId);
-			items = lineItems || [];
+		if (!orderId) return;
+		try {
+			const { data, error } = await supabase.from('sales').select('*').eq('id', orderId).single();
+			if (error) throw error;
+			order = data;
+			if (data) {
+				const { data: lineItems } = await supabase.from('sale_items').select('*').eq('sale_id', orderId);
+				items = lineItems || [];
+			}
+		} catch (e) {
+			console.error('Order fetch error:', e);
+		} finally {
+			loading = false;
 		}
-		loading = false;
 	});
 
 	function statusIcon(status: string) { return status === 'completed' ? CheckCircle : status === 'cancelled' ? XCircle : Clock; }
@@ -50,9 +58,9 @@
 			<!-- Status + Info -->
 			<div class="bg-white rounded-xl border p-5">
 				<div class="flex items-center justify-between mb-4">
-					{@const StatusIcon = statusIcon(order.status)}
-					<span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold capitalize {statusColor(order.status)}">
-						<StatusIcon class="h-4 w-4" /> {order.status}
+					{@const StatusIcon = statusIcon(order.sale_status)}
+					<span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold capitalize {statusColor(order.sale_status)}">
+						<StatusIcon class="h-4 w-4" /> {order.sale_status}
 					</span>
 					<span class="text-sm text-gray-500 capitalize">{order.payment_method}</span>
 				</div>
@@ -78,7 +86,7 @@
 								<p class="text-sm font-medium text-gray-800">{item.product_name}</p>
 								<p class="text-xs text-gray-400">{item.quantity} × ₦{parseFloat(item.unit_price).toLocaleString()}</p>
 							</div>
-							<span class="text-sm font-semibold text-gray-900">₦{parseFloat(item.total_price).toLocaleString()}</span>
+							<span class="text-sm font-semibold text-gray-900">₦{parseFloat(item.subtotal).toLocaleString()}</span>
 						</div>
 					{/each}
 				</div>
