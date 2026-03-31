@@ -54,11 +54,11 @@
 	{#if loading}
 		<div class="p-12 text-center"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto"></div></div>
 	{:else if order}
+		{@const StatusIcon = statusIcon(order.sale_status)}
 		<div class="space-y-4">
 			<!-- Status + Info -->
 			<div class="bg-white rounded-xl border p-5">
 				<div class="flex items-center justify-between mb-4">
-					{@const StatusIcon = statusIcon(order.sale_status)}
 					<span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold capitalize {statusColor(order.sale_status)}">
 						<StatusIcon class="h-4 w-4" /> {order.sale_status}
 					</span>
