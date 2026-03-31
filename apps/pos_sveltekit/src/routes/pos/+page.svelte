@@ -4,7 +4,7 @@
 	import {
 		Search, ShoppingCart, Plus, Minus, Trash2, CreditCard,
 		Banknote, Smartphone, X, CheckCircle, Tag, User, AlertTriangle,
-		RotateCcw, PackageSearch, ChevronDown
+		RotateCcw, PackageSearch, ChevronDown, Receipt, Printer, ArrowLeft
 	} from 'lucide-svelte';
 
 	// ── Types ──────────────────────────────────────────────────────────────────
@@ -209,7 +209,19 @@
 					.update({ stock_quantity: Math.max(0, item.batch_stock - item.qty), updated_at: new Date().toISOString() })
 					.eq('id', item.batch_id);
 			}
-			lastSale = { id: sale.id, total_amount: total };
+			lastSale = { 
+				id: sale.id, 
+				total_amount: total,
+				subtotal,
+				discount_amount: discountAmt,
+				sale_number,
+				customer_name: tab.customerName,
+				items: [...tab.items],
+				payment_method: paymentMethod,
+				cash_received: parseFloat(cashReceived) || null,
+				change_given: change || null,
+				created_at: now
+			};
 			saleSuccess = true; checkoutOpen = false;
 			clearCart(activeCartIdx); cashReceived = '';
 			await loadProducts();
@@ -568,17 +580,106 @@
 	</div>
 {/if}
 
-<!-- ── Sale Success Toast ───────────────────────────────────────────────────── -->
-{#if saleSuccess}
-	<div class="fixed bottom-6 right-4 left-4 sm:left-auto sm:w-auto sm:max-w-sm bg-green-600 text-white rounded-xl shadow-2xl p-4 z-[60] flex items-center gap-3">
-		<CheckCircle class="h-6 w-6 flex-shrink-0" />
-		<div class="flex-1">
-			<p class="font-semibold">Sale Completed!</p>
-			<p class="text-sm text-green-100">Total: {fmt(lastSale?.total_amount || 0)}</p>
+<!-- ── Sale Success & Receipt Modal ────────────────────────────────────────── -->
+{#if saleSuccess && lastSale}
+	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+		<div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+			<!-- Header -->
+			<div class="p-4 border-b flex items-center justify-between bg-gray-50">
+				<div class="flex items-center gap-2 text-indigo-600">
+					<Receipt class="h-5 w-5" />
+					<span class="font-bold uppercase tracking-wider text-sm">Receipt</span>
+				</div>
+				<button onclick={() => saleSuccess = false} class="p-2 hover:bg-gray-200 rounded-full transition-colors">
+					<X class="h-5 w-5 text-gray-500" />
+				</button>
+			</div>
+
+			<!-- Scrollable Receipt Content -->
+			<div id="printable-receipt" class="flex-1 overflow-y-auto p-6 space-y-6 print:p-0">
+				<!-- Header info -->
+				<div class="text-center space-y-1">
+					<h2 class="text-xl font-bold text-gray-900">Kemani POS</h2>
+					<p class="text-xs text-gray-500 font-mono">{lastSale.sale_number}</p>
+					<p class="text-xs text-gray-400 font-medium">Date: {new Date(lastSale.created_at).toLocaleString()}</p>
+				</div>
+
+				<!-- Items Table -->
+				<div class="space-y-3">
+					<div class="border-b-2 border-dashed border-gray-200 pb-2 flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+						<span>Item Description</span>
+						<span>Total</span>
+					</div>
+					<div class="space-y-3">
+						{#each lastSale.items as item}
+							<div class="flex justify-between items-start gap-4">
+								<div class="flex-1 min-w-0">
+									<p class="text-sm font-bold text-gray-800 leading-tight truncate">{item.name}</p>
+									<p class="text-xs text-gray-500 mt-0.5">{item.qty} × {fmt(item.price)}</p>
+								</div>
+								<p class="text-sm font-bold text-gray-900 tabular-nums">{fmt(item.price * item.qty)}</p>
+							</div>
+						{/each}
+					</div>
+					<div class="border-t-2 border-dashed border-gray-200 pt-3 space-y-1.5">
+						<div class="flex justify-between text-sm text-gray-500">
+							<span>Subtotal</span>
+							<span class="tabular-nums font-medium">{fmt(lastSale.subtotal)}</span>
+						</div>
+						{#if lastSale.discount_amount > 0}
+							<div class="flex justify-between text-sm text-green-600">
+								<span>Discount</span>
+								<span class="tabular-nums font-medium">-{fmt(lastSale.discount_amount)}</span>
+							</div>
+						{/if}
+						<div class="flex justify-between items-center pt-2 border-t border-gray-100">
+							<span class="text-base font-black text-gray-900">TOTAL</span>
+							<span class="text-xl font-black text-indigo-600 tabular-nums">{fmt(lastSale.total_amount)}</span>
+						</div>
+					</div>
+				</div>
+
+				<!-- Payment Info -->
+				<div class="bg-gray-50 rounded-xl p-4 space-y-2 border border-gray-100">
+					<div class="flex justify-between text-xs text-gray-500 italic">
+						<span>Payment Method</span>
+						<span class="font-bold not-italic text-gray-700 capitalize">{lastSale.payment_method}</span>
+					</div>
+					{#if lastSale.payment_method === 'cash'}
+						<div class="flex justify-between text-sm">
+							<span class="text-gray-600 font-medium tracking-tight">Cash Received</span>
+							<span class="font-bold tabular-nums text-gray-900">{fmt(lastSale.cash_received || 0)}</span>
+						</div>
+						<div class="flex justify-between text-sm pt-1 border-t border-gray-200/50">
+							<span class="text-gray-600 font-medium tracking-tight">Change Given</span>
+							<span class="font-bold tabular-nums text-indigo-600 underline underline-offset-4 decoration-indigo-200">{fmt(lastSale.change_given || 0)}</span>
+						</div>
+					{/if}
+				</div>
+
+				{#if lastSale.customer_name}
+					<div class="text-center py-2 px-4 bg-indigo-50/50 rounded-lg border border-indigo-100/50">
+						<p class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest text-center mb-1">Customer</p>
+						<p class="text-sm font-black text-indigo-600 italic tracking-tighter capitalize">"{lastSale.customer_name}"</p>
+					</div>
+				{/if}
+
+				<div class="text-center pt-4 border-t-2 border-dashed border-gray-100">
+					<p class="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">Thank you for your business!</p>
+				</div>
+			</div>
+
+			<!-- Quick Actions Bar -->
+			<div class="p-4 bg-gray-50 border-t flex flex-col sm:flex-row gap-3">
+				<button onclick={() => window.print()} class="flex-1 inline-flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black px-6 py-4 rounded-xl shadow-xl shadow-indigo-100 transition-all active:scale-95 group">
+					<Printer class="h-5 w-5 group-hover:animate-bounce" />
+					<span class="tracking-tight">Print Receipt</span>
+				</button>
+				<button onclick={() => saleSuccess = false} class="inline-flex items-center justify-center bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-100 text-gray-700 font-bold px-6 py-4 rounded-xl transition-all active:scale-95">
+					New Sale
+				</button>
+			</div>
 		</div>
-		<button onclick={() => saleSuccess = false} class="text-green-200 hover:text-white">
-			<X class="h-4 w-4" />
-		</button>
 	</div>
 {/if}
 
@@ -598,4 +699,36 @@
 
 	/* Safe area padding for iOS home bar */
 	.safe-bottom { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+
+	/* ── Print Styles ───────────────────────────────────────────────────────── */
+	@media print {
+		/* Hide everything except the receipt */
+		:global(body > *:not(.fixed)) { display: none !important; }
+		:global(.fixed:not(:has(#printable-receipt))) { display: none !important; }
+		
+		#printable-receipt {
+			position: fixed;
+			inset: 0;
+			background: white;
+			z-index: 9999;
+			visibility: visible;
+			padding: 0;
+			margin: 0;
+			width: 100%;
+			height: 100%;
+		}
+
+		/* Reset modal styling for print */
+		#printable-receipt * { visibility: visible; }
+		:global(header), :global(nav), .p-4.border-b, .p-4.bg-gray-50.border-t { display: none !important; }
+	}
+
+	/* ── Animations ─────────────────────────────────────────────────────────── */
+	.animate-in { animation-duration: 200ms; animation-fill-mode: both; }
+	.fade-in { animation-name: fadeIn; }
+	.zoom-in-95 { animation-name: zoomIn95; }
+
+	@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+	@keyframes zoomIn95 { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
 </style>
