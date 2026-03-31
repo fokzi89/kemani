@@ -138,9 +138,26 @@ Extensive per-branch stock level and product metadata tracking.
 
 **RLS:** Enabled. Tenant scoped.
 
+#### `product_stock_balance`
+Aggregated stock levels per product and branch (rollup table).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `tenant_id` | UUID | References tenants(id) |
+| `branch_id` | UUID | References branches(id) |
+| `product_id` | UUID | References products(id) |
+| `stock_balance` | DECIMAL | Sum of quantities from branch_inventory |
+| `low_stock_threshold` | DECIMAL | Overrides product-level threshold |
+| `last_updated` | TIMESTAMPTZ | Automated timestamp |
+
+**Sync:** Kept in sync via `trg_sync_stock_balance` triggers on `branch_inventory`.
+
 **Triggers:**
-- Auto-update on sale
-- Low stock alerts
+- Auto-update from branch inventory batches
+- Low stock alerts 
+- Sync to marketplace channels
+- Auto-update on completed sales
 
 ### Sales & Transactions
 
@@ -159,7 +176,16 @@ Transaction headers.
 | `discount_amount` | DECIMAL | Total discount |
 | `total_amount` | DECIMAL | Final amount |
 | `payment_method` | TEXT | Payment type (cash, card, transfer) |
-| `payment_status` | TEXT | Status (pending, completed, refunded) |
+| `sale_status` | TEXT | Status (pending, completed, refunded) |
+| `cash_received` | NUMERIC | Amount of cash received |
+| `change_given` | NUMERIC | Amount of change given back |
+| `customer_name` | TEXT | Name of the customer (optional) |
+| `customer_type` | TEXT | walk-in or loyalty |
+| `sales_attendant_id` | UUID | References users(id) |
+| `channel` | TEXT | in-store or online |
+| `sale_date` | DATE | Date of sale |
+| `sale_time` | TIME | Time of sale |
+| `completed_at` | TIMESTAMPTZ | Full completion timestamp |
 | `notes` | TEXT | Sale notes |
 | `created_at` | TIMESTAMPTZ | Sale timestamp |
 

@@ -3,7 +3,7 @@
 	import {
 		LayoutDashboard, Package, Users, ShoppingCart, BarChart3, Settings, 
 		Store, LogOut, MessageSquare, Briefcase, Building, ClipboardList,
-		FlaskConical, Truck
+		FlaskConical, Truck, Stethoscope, Coins
 	} from 'lucide-svelte';
 
 	let { tenant, userData, email, handleLogout, onnavclick = (e: any) => {} } = $props<any>();
@@ -14,11 +14,13 @@
 		{ name: 'Products', href: '/products', icon: Package, visible: userData?.canManageProducts ?? false },
 		{ name: 'Lab Tests', href: '/lab-tests', icon: FlaskConical, visible: userData?.canManageProducts ?? false },
 		{ name: 'Suppliers', href: '/suppliers', icon: Truck, visible: userData?.canManageProducts ?? false },
+		{ name: 'Medics', href: '/medics', icon: Stethoscope, visible: true },
 		{ name: 'Customers', href: '/customers', icon: Users, visible: userData?.['canManage Customers'] ?? false },
 		{ name: 'Orders', href: '/orders', icon: ShoppingCart, visible: userData?.canManageOrders ?? false },
 		{ name: 'Inventory', href: '/inventory', icon: ClipboardList, visible: userData?.canManageInventory ?? false },
 		{ name: 'Staffs', href: '/staffs', icon: Briefcase, visible: userData?.canMangeStaff ?? false },
 		{ name: 'Messages', href: '/messages', icon: MessageSquare, visible: userData?.canViewMessages ?? false },
+		{ name: 'Commissions', href: '/commissions', icon: Coins, visible: userData?.role === 'tenant_admin' },
 		{ name: 'Branches', href: '/branches', icon: Building, visible: userData?.canManagebranches ?? false },
 		{ name: 'Analytics', href: '/analytics', icon: BarChart3, visible: userData?.canViewAnalytics ?? false },
 		{ name: 'Settings', href: '/settings', icon: Settings, visible: true }

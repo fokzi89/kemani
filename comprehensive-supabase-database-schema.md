@@ -472,9 +472,32 @@ CREATE TABLE transfer_items (
 );
 ```
 
+### 10. product_stock_balance
+
+**Purpose:** Rollup table for aggregated stock levels per product and branch.
+
+```sql
+CREATE TABLE product_stock_balance (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+    branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
+    product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+    stock_balance DECIMAL(12,2) DEFAULT 0,
+    reserved_balance DECIMAL(12,2) DEFAULT 0,
+    available_balance DECIMAL(12,2) DEFAULT 0,
+    low_stock_threshold DECIMAL(12,2) DEFAULT 5,
+    last_updated TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(branch_id, product_id)
+);
+```
+
+**Sync Strategy:**
+- Automatically updated via `trg_sync_stock_balance` triggers on `branch_inventory`.
+- Aggregates all batches for a specific product and branch into a single row for faster POS queries.
+
 ---
 
-### 10. customers
+### 11. customers
 
 **Purpose:** Customer records with loyalty program integration.
 
@@ -504,7 +527,7 @@ CREATE TABLE customers (
 
 ---
 
-### 11. customer_addresses
+### 12. customer_addresses
 
 **Purpose:** Delivery addresses for customers.
 
@@ -522,45 +545,54 @@ CREATE TABLE customer_addresses (
 
 ---
 
-### 12. sales
+### 13. sales
 
 **Purpose:** POS sales transactions.
 
 ```sql
-CREATE TABLE sales (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    sale_number VARCHAR(50) NOT NULL,
-    cashier_id UUID NOT NULL REFERENCES users(id),
-    customer_id UUID REFERENCES customers(id),
-    subtotal DECIMAL(12,2) NOT NULL CHECK (subtotal >= 0),
-    tax_amount DECIMAL(12,2) NOT NULL DEFAULT 0 CHECK (tax_amount >= 0),
-    discount_amount DECIMAL(12,2) NOT NULL DEFAULT 0 CHECK (discount_amount >= 0),
-    total_amount DECIMAL(12,2) NOT NULL CHECK (total_amount > 0),
-    payment_method payment_method NOT NULL,
-    payment_reference VARCHAR(255),
-    status sale_status DEFAULT 'completed',
-    voided_at TIMESTAMPTZ,
-    voided_by_id UUID REFERENCES users(id),
-    void_reason TEXT,
-    is_synced BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    -- Sync fields
-    _sync_version BIGINT DEFAULT 1,
-    _sync_modified_at TIMESTAMPTZ DEFAULT NOW(),
-    _sync_client_id UUID,
-    _sync_is_deleted BOOLEAN DEFAULT FALSE,
-
-    CONSTRAINT valid_total CHECK (total_amount = subtotal + tax_amount - discount_amount)
+CREATE TABLE public.sales (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  tenant_id uuid not null,
+  branch_id uuid not null,
+  sale_number character varying(50) not null,
+  cashier_id uuid not null,
+  customer_id uuid null,
+  subtotal numeric(12, 2) not null,
+  tax_amount numeric(12, 2) not null default 0,
+  discount_amount numeric(12, 2) not null default 0,
+  total_amount numeric(12, 2) not null,
+  payment_method public.payment_method not null,
+  payment_reference character varying(255) null,
+  sale_status public.sale_status null default 'completed'::sale_status,
+  voided_at timestamp with time zone null,
+  voided_by_id uuid null,
+  void_reason text null,
+  is_synced boolean null default false,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now(),
+  _sync_version bigint null default 1,
+  _sync_modified_at timestamp with time zone null default now(),
+  _sync_client_id uuid null,
+  _sync_is_deleted boolean null default false,
+  customer_type character varying(20) null default 'walk-in'::character varying,
+  sales_attendant_id uuid null,
+  sale_type character varying(20) null default 'pos'::character varying,
+  channel character varying(20) null default 'in-store'::character varying,
+  voided_by uuid null,
+  sale_date date not null,
+  sale_time time without time zone not null,
+  completed_at timestamp with time zone not null default now(),
+  cash_received numeric(12, 2) null,
+  change_given numeric(12, 2) null,
+  customer_name character varying(255) null,
+  constraint sales_pkey primary key (id),
+  constraint valid_total check (total_amount = (subtotal + tax_amount) - discount_amount)
 );
 ```
 
 ---
 
-### 13. sale_items
+### 14. sale_items
 
 **Purpose:** Line items for sales.
 
@@ -583,7 +615,7 @@ CREATE TABLE sale_items (
 
 ---
 
-### 14. orders
+### 15. orders
 
 **Purpose:** E-commerce and marketplace orders.
 

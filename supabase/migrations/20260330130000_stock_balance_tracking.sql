@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS product_stock_balance (
     branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
     product_id UUID REFERENCES products(id) ON DELETE CASCADE,
     stock_balance DECIMAL(12,2) DEFAULT 0,
+    reserved_balance DECIMAL(12,2) DEFAULT 0,
+    available_balance DECIMAL(12,2) DEFAULT 0,
     low_stock_threshold DECIMAL(12,2) DEFAULT 5,
     last_updated TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(branch_id, product_id)
@@ -39,12 +41,22 @@ BEGIN
     END IF;
 
     -- Update or Insert the aggregated balance
-    INSERT INTO product_stock_balance (tenant_id, branch_id, product_id, stock_balance, last_updated)
+    INSERT INTO product_stock_balance (
+        tenant_id, 
+        branch_id, 
+        product_id, 
+        stock_balance, 
+        reserved_balance,
+        available_balance,
+        last_updated
+    )
     SELECT 
         v_tenant_id,
         COALESCE(NEW.branch_id, OLD.branch_id),
         COALESCE(NEW.product_id, OLD.product_id),
         COALESCE(SUM(stock_quantity), 0),
+        COALESCE(SUM(reserved_quantity), 0),
+        COALESCE(SUM(stock_quantity - reserved_quantity), 0),
         NOW()
     FROM branch_inventory
     WHERE branch_id = COALESCE(NEW.branch_id, OLD.branch_id)
@@ -53,6 +65,8 @@ BEGIN
     ON CONFLICT (branch_id, product_id) 
     DO UPDATE SET 
         stock_balance = EXCLUDED.stock_balance,
+        reserved_balance = EXCLUDED.reserved_balance,
+        available_balance = EXCLUDED.available_balance,
         last_updated = EXCLUDED.last_updated;
 
     RETURN NULL;

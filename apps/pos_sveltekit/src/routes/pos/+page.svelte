@@ -169,18 +169,39 @@
 		try {
 			const { data: { session } } = await supabase.auth.getSession();
 			const sale_number = `SALE-${Date.now().toString().slice(-6)}`;
+			const now = new Date();
+			const sale_date = now.toISOString().split('T')[0];
+			const sale_time = now.toTimeString().split(' ')[0];
+
 			const { data: sale, error: saleErr } = await supabase.from('sales').insert({
-				tenant_id: tenantId, branch_id: userBranchId, cashier_id: session?.user.id,
-				sale_number, subtotal, discount_amount: discountAmt, total_amount: total,
-				payment_method: paymentMethod, cash_received: parseFloat(cashReceived) || null,
-				change_given: change || null, customer_name: tab.customerName || null, status: 'completed'
+				tenant_id: tenantId, 
+				branch_id: userBranchId, 
+				cashier_id: session?.user.id,
+				sale_number, 
+				subtotal, 
+				discount_amount: discountAmt, 
+				total_amount: total,
+				payment_method: paymentMethod, 
+				cash_received: parseFloat(cashReceived) || null,
+				change_given: change || null, 
+				customer_name: tab.customerName || null, 
+				sale_status: 'completed',
+				sale_date,
+				sale_time
 			}).select().single();
 			if (saleErr) throw saleErr;
 
 			await supabase.from('sale_items').insert(
 				tab.items.map(i => ({
-					sale_id: sale.id, product_id: i.product_id, product_name: i.name,
-					quantity: i.qty, unit_price: i.price, total_price: i.price * i.qty
+					sale_id: sale.id,
+					tenant_id: tenantId,
+					product_id: i.product_id,
+					product_name: i.name,
+					quantity: i.qty,
+					unit_price: i.price,
+					subtotal: i.price * i.qty,
+					discount_amount: 0,
+					discount_percent: 0
 				}))
 			);
 			for (const item of tab.items) {
