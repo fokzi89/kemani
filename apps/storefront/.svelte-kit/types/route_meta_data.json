@@ -75,7 +75,13 @@
 		"src/routes/(marketplace)/+layout.server.ts",
 		"src/routes/+layout.server.ts"
 	],
+	"/(marketplace)/medics/[medicId]": [
+		"src/routes/(marketplace)/medics/[medicId]/+page.server.ts",
+		"src/routes/(marketplace)/+layout.server.ts",
+		"src/routes/+layout.server.ts"
+	],
 	"/(marketplace)/products/[productId]": [
+		"src/routes/(marketplace)/products/[productId]/+page.server.ts",
 		"src/routes/(marketplace)/+layout.server.ts",
 		"src/routes/+layout.server.ts"
 	],

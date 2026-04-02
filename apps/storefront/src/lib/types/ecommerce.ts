@@ -101,6 +101,12 @@ export interface MarketplaceProduct {
   is_available: boolean;
   business_name?: string;
   rating?: number; // Optional display rating (0–5), not stored in DB
+  generic_name?: string;
+  strength?: string;
+  dosage_form?: string;
+  product_side_effect?: string;
+  interactions?: string;
+  product_details?: string;
 }
 
 /**

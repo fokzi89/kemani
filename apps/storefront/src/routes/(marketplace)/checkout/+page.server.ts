@@ -1,8 +1,13 @@
-import type { PageServerLoad } from './$types';
+import { error } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export async function load({ locals }) {
+	const tenantId = locals.referringTenantId;
+
+	if (!tenantId) {
+		throw error(404, 'Checkout session context invalid');
+	}
+
 	return {
-		referringTenantId: locals.referringTenantId || null,
-		user: locals.session?.user || null
+		tenantId
 	};
-};
+}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import type { MarketplaceProduct } from '$lib/types/ecommerce';
 	import {
 		Search, ShoppingCart, ChevronRight, Star,
@@ -142,11 +143,11 @@
 							<span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/10 text-white/60 capitalize">{svc}</span>
 						{/each}
 					</div>
-					<h1 class="text-4xl md:text-5xl font-black text-white leading-[1.1] tracking-tight">
-						Shop <span style="color:{brandColor};">{storefront.name}</span><br/>Online
+					<h1 class="text-3xl md:text-4xl font-black text-white leading-[1.1] tracking-tight">
+						Shop <span style="color:{brandColor};">{storefront?.name || 'Local Store'}</span><br/>Online
 					</h1>
 					<p class="text-sm text-gray-300 font-medium max-w-md">
-						{(storefront.ecommerce_settings as any)?.description || 'Browse our full catalog — available for delivery or pickup.'}
+						{(storefront?.ecommerce_settings as any)?.description || 'Browse our full catalog — available for delivery or pickup.'}
 					</p>
 				</div>
 			</div>
@@ -260,13 +261,13 @@
 
 					<!-- Products -->
 					{#if isLoading}
-						<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-							{#each Array(6) as _}
-								<div class="bg-white rounded-3xl p-4 border border-gray-100 animate-pulse space-y-4">
-									<div class="aspect-square bg-gray-100 rounded-2xl"></div>
-									<div class="h-4 bg-gray-100 rounded w-2/3"></div>
-									<div class="h-4 bg-gray-100 rounded w-1/3"></div>
-									<div class="h-10 bg-gray-100 rounded-xl"></div>
+						<div class="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+							{#each Array(10) as _}
+								<div class="bg-white rounded-2xl p-3 border border-gray-100 animate-pulse space-y-3">
+									<div class="aspect-square bg-gray-100 rounded-xl"></div>
+									<div class="h-3 bg-gray-100 rounded w-2/3"></div>
+									<div class="h-3 bg-gray-100 rounded w-1/3"></div>
+									<div class="h-8 bg-gray-100 rounded-lg"></div>
 								</div>
 							{/each}
 						</div>
@@ -281,11 +282,14 @@
 							>Browse All</button>
 						</div>
 					{:else}
-						<div class={viewMode==='grid'?'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6':'flex flex-col gap-5'}>
+						<div class={viewMode==='grid'?'grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4':'flex flex-col gap-3'}>
 							{#each products as product}
-								<div class="group bg-white rounded-3xl border border-gray-100 p-4 transition-all duration-300 hover:shadow-xl flex {viewMode==='list'?'flex-row gap-5':'flex-col'}">
+								<a 
+									href={`/products/${product.id}`}
+									class="group text-left bg-white rounded-2xl border border-gray-100 p-3 transition-all duration-300 hover:shadow-lg flex {viewMode==='list'?'flex-row gap-4':'flex-col'}"
+								>
 									<!-- Image -->
-									<div class="relative {viewMode==='list'?'w-36 h-36 flex-shrink-0':'aspect-square mb-4'} bg-gray-50 rounded-2xl overflow-hidden">
+									<div class="relative {viewMode==='list'?'w-24 h-24 flex-shrink-0':'aspect-square mb-3'} bg-gray-50 rounded-xl overflow-hidden">
 										{#if product.image_url}
 											<img src={product.image_url} alt={product.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
 										{:else}
@@ -312,37 +316,40 @@
 
 									<!-- Info -->
 									<div class="flex-1 flex flex-col">
-										<div class="flex-1 mb-3">
+										<div class="flex-1 mb-2">
 											<div class="flex items-center gap-0.5 mb-1">
 												{#each Array(5) as _, i}
-													<Star class="h-3 w-3 {i < Math.floor((product as any).rating ?? 4.5) ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}" />
+													<Star class="h-2.5 w-2.5 {i < Math.floor((product as any).rating ?? 4.5) ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}" />
 												{/each}
-												<span class="text-[10px] font-bold text-gray-400 ml-1">{((product as any).rating ?? 4.5).toFixed(1)}</span>
+												<span class="text-[9px] font-bold text-gray-400 ml-1">{((product as any).rating ?? 4.5).toFixed(1)}</span>
 											</div>
-											<h3 class="text-base font-black text-gray-900 tracking-tight leading-snug">{product.name}</h3>
+											<h3 class="text-sm font-black text-gray-900 tracking-tight leading-snug line-clamp-2">{product.name}</h3>
 											{#if product.description}
-												<p class="text-xs text-gray-500 line-clamp-2 mt-1">{product.description}</p>
+												<p class="text-[10px] text-gray-500 line-clamp-1 mt-0.5">{product.description}</p>
 											{/if}
 										</div>
 										<div class="flex items-center justify-between">
 											<div class="flex flex-col">
 												{#if product.sale_price && product.sale_price > 0}
-													<span class="text-[10px] font-black text-gray-400 line-through tracking-tighter decoration-rose-500/50">₦{product.selling_price?.toLocaleString()}</span>
-													<span class="text-xl font-black tracking-tighter" style="color:{brandColor};">₦{product.sale_price.toLocaleString()}</span>
+													<span class="text-[9px] font-black text-gray-400 line-through tracking-tighter decoration-rose-500/50">₦{product.selling_price?.toLocaleString()}</span>
+													<span class="text-base font-black tracking-tighter" style="color:{brandColor};">₦{product.sale_price.toLocaleString()}</span>
 												{:else}
-													<span class="text-xl font-black tracking-tighter" style="color:{brandColor};">₦{product.price.toLocaleString()}</span>
+													<span class="text-base font-black tracking-tighter" style="color:{brandColor};">₦{product.price.toLocaleString()}</span>
 												{/if}
 											</div>
 											{#if product.is_available && product.stock_quantity > 0}
-												<button on:click={() => addToCart(product)} class="h-11 w-11 brand-bg text-white rounded-2xl flex items-center justify-center shadow-lg hover:scale-105 active:scale-90 transition-all">
-													<Plus class="h-5 w-5" />
+												<button 
+													on:click|stopPropagation={() => addToCart(product)} 
+													class="h-8 w-8 brand-bg text-white rounded-xl flex items-center justify-center shadow-md hover:scale-105 active:scale-90 transition-all"
+												>
+													<Plus class="h-4 w-4" />
 												</button>
 											{:else}
-												<span class="h-11 px-3 bg-gray-100 text-gray-400 text-[10px] font-black rounded-2xl flex items-center uppercase tracking-widest">Restocking</span>
+												<span class="h-8 px-2 bg-gray-100 text-gray-400 text-[9px] font-black rounded-xl flex items-center uppercase tracking-widest">Restocking</span>
 											{/if}
 										</div>
 									</div>
-								</div>
+								</a>
 							{/each}
 						</div>
 

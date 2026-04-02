@@ -8,13 +8,32 @@
 	const productId = $page.params.id;
 	let product = $state<any>(null);
 	let salesHistory = $state<any[]>([]);
+	let branchInventory = $state<any>(null);
 	let loading = $state(true);
 
 	onMount(async () => {
+		const { data: { session } } = await supabase.auth.getSession();
+		let currentBranchId = null;
+		if (session) {
+			const { data: user } = await supabase.from('users').select('branch_id').eq('id', session.user.id).single();
+			currentBranchId = user?.branch_id;
+		}
+
 		const { data } = await supabase.from('products').select('*').eq('id', productId).single();
 		product = data;
 
 		if (data) {
+			if (currentBranchId) {
+				const { data: invData } = await supabase
+					.from('branch_inventory')
+					.select('stock_quantity, unit_cost')
+					.eq('product_id', productId)
+					.eq('branch_id', currentBranchId)
+					.limit(1)
+					.maybeSingle();
+				branchInventory = invData;
+			}
+
 			const { data: items } = await supabase
 				.from('sale_items')
 				.select('*, sales(created_at, payment_method, status)')
@@ -68,6 +87,9 @@
 							{#if product.description}
 								<p class="text-sm text-gray-500 mt-1">{product.description}</p>
 							{/if}
+							{#if product.product_details}
+								<p class="text-sm text-gray-600 mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100">{product.product_details}</p>
+							{/if}
 							<div class="flex flex-wrap gap-2 mt-3">
 								{#if product.category}
 									<span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-full">{product.category}</span>
@@ -79,6 +101,24 @@
 						</div>
 					</div>
 				</div>
+
+				{#if branchInventory}
+					<div class="bg-indigo-50 rounded-xl border border-indigo-100 p-5">
+						<h3 class="font-semibold text-indigo-900 mb-2 flex items-center gap-2">
+							<Package class="h-4 w-4 text-indigo-500" /> Branch Inventory
+						</h3>
+						<div class="grid grid-cols-2 gap-4">
+							<div class="bg-white p-3 rounded-lg border border-indigo-50">
+								<p class="text-xs text-indigo-400 font-medium uppercase tracking-wider mb-1">Stock Balance</p>
+								<p class="text-xl font-bold text-indigo-900">{branchInventory.stock_quantity}</p>
+							</div>
+							<div class="bg-white p-3 rounded-lg border border-indigo-50">
+								<p class="text-xs text-indigo-400 font-medium uppercase tracking-wider mb-1">Product Price</p>
+								<p class="text-xl font-bold text-indigo-900">₦{(branchInventory.unit_cost || 0).toLocaleString()}</p>
+							</div>
+						</div>
+					</div>
+				{/if}
 
 				<!-- Sales History -->
 				<div class="bg-white rounded-xl border p-5">
@@ -109,13 +149,32 @@
 					<h3 class="font-semibold text-gray-900 text-sm uppercase tracking-wider text-gray-500">Additional Info</h3>
 					<div class="space-y-3 text-sm">
 						{#if product.product_type}
-							<div class="flex justify-between"><span class="text-gray-500">Product Type</span><span class="font-medium">{product.product_type}</span></div>
+							<div class="flex justify-between"><span class="text-gray-500">Product Type</span><span class="font-medium text-right">{product.product_type}</span></div>
+						{/if}
+						{#if product.product_type === 'Drug'}
+							{#if product.generic_name}
+								<div class="flex justify-between"><span class="text-gray-500">Generic Name</span><span class="font-medium text-right">{product.generic_name}</span></div>
+							{/if}
+							{#if product.strength}
+								<div class="flex justify-between"><span class="text-gray-500">Strength</span><span class="font-medium text-right">{product.strength}</span></div>
+							{/if}
+							{#if product.dosage_form}
+								<div class="flex justify-between"><span class="text-gray-500">Dosage Form</span><span class="font-medium text-right">{product.dosage_form}</span></div>
+							{/if}
 						{/if}
 						{#if product.sample_type}
-							<div class="flex justify-between"><span class="text-gray-500">Sample Type</span><span class="font-medium">{product.sample_type}</span></div>
+							<div class="flex justify-between"><span class="text-gray-500">Sample Type</span><span class="font-medium text-right">{product.sample_type}</span></div>
+						{/if}
+						{#if product.product_type === 'Drug'}
+							{#if product['product side effect'] || product.product_side_effect}
+								<div class="flex justify-between flex-col gap-1"><span class="text-gray-500">Side Effects</span><span class="font-medium">{product['product side effect'] || product.product_side_effect}</span></div>
+							{/if}
+							{#if product.interactions}
+								<div class="flex justify-between flex-col gap-1"><span class="text-gray-500">Interactions</span><span class="font-medium">{product.interactions}</span></div>
+							{/if}
 						{/if}
 						{#if product.manufacturer}
-							<div class="flex justify-between"><span class="text-gray-500">Manufacturer</span><span class="font-medium">{product.manufacturer}</span></div>
+							<div class="flex justify-between"><span class="text-gray-500">Manufacturer</span><span class="font-medium text-right">{product.manufacturer}</span></div>
 						{/if}
 					</div>
 				</div>

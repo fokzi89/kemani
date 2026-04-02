@@ -170,7 +170,17 @@ export class MarketplaceService {
 
       const { data, error } = await this.supabase
         .from('branch_inventory')
-        .select('*')
+        .select(`
+          *,
+          products (
+            generic_name,
+            strength,
+            dosage_form,
+            "product side effect",
+            interactions,
+            product_details
+          )
+        `)
         .eq('product_id', productId)
         .eq('tenant_id', resolvedTenantId)
         .not('is_active', 'is', false)
@@ -202,7 +212,13 @@ export class MarketplaceService {
           image_url: data.image_url,
           stock_quantity: availableStock,
           is_available: availableStock > 0,
-          business_name: ''
+          business_name: '',
+          generic_name: data.products?.generic_name,
+          strength: data.products?.strength,
+          dosage_form: data.products?.dosage_form,
+          product_side_effect: data.products?.['product side effect'] || data.products?.product_side_effect,
+          interactions: data.products?.interactions,
+          product_details: data.products?.product_details
         }
       };
     } catch (error: any) {

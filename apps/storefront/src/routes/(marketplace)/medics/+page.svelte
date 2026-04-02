@@ -42,7 +42,7 @@
 				{#each providers as medic}
 					{@const fullName = medic.full_name || 'Healthcare Provider'}
 					{@const imgUrl = medic.profile_photo_url}
-					<div class="bg-white rounded-3xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-500 group flex flex-col">
+					<a href="/medics/{medic.id}" class="bg-white rounded-3xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-500 group flex flex-col cursor-pointer hover:-translate-y-1">
 						<!-- Provider Image -->
 						<div class="h-56 bg-gray-50 relative overflow-hidden">
 							{#if imgUrl}
@@ -115,7 +115,7 @@
 								<span class="truncate">{medic.country} {medic.region || ''}</span>
 							</div>
 						</div>
-					</div>
+					</a>
 				{/each}
 			</div>
 		{/if}

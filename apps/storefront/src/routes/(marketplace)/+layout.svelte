@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ShoppingCart, Search, User, Menu, X, ArrowRight, Instagram, Twitter, Facebook, Stethoscope } from 'lucide-svelte';
+	import { ShoppingCart, Search, User, Menu, X, ArrowRight, Instagram, Twitter, Facebook, Stethoscope, MessageCircle, Send } from 'lucide-svelte';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { authStore } from '$lib/stores/auth';
@@ -13,6 +13,11 @@
 	let isMenuOpen = false;
 	let isScrolled = false;
 	let cartCount = 0;
+	let isChatOpen = false;
+	
+	function toggleChat() {
+		isChatOpen = !isChatOpen;
+	}
 
 	onMount(() => {
 		const handleScroll = () => {
@@ -111,7 +116,7 @@
 							<p class="text-[10px] font-black uppercase tracking-[0.2em]" style="color:{brandColor};">{storeUrl}</p>
 						</div>
 					</div>
-					<p class="text-gray-400 text-sm leading-relaxed max-w-sm font-medium">{storefront?.description || 'Your trusted neighborhood store, now online for your convenience.'}</p>
+					<p class="text-white text-sm leading-relaxed max-w-sm font-medium">{storefront?.description || 'Your trusted neighborhood store, now online for your convenience.'}</p>
 					<div class="flex gap-4">
 						<a href="#" class="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/5 hover:brand-bg transition-colors"><Instagram class="h-4 w-4" /></a>
 						<a href="#" class="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/5 hover:brand-bg transition-colors"><Twitter class="h-4 w-4" /></a>
@@ -121,35 +126,71 @@
 				
 				<div class="grid grid-cols-2 gap-8 md:col-span-2">
 					<div class="space-y-6">
-						<h4 class="text-xs font-black uppercase tracking-[0.2em] text-white/40">Shop</h4>
+						<h4 class="text-xs font-black uppercase tracking-[0.2em] text-white">Shop</h4>
 						<ul class="space-y-4 text-sm font-bold">
-							<li><a href="/" class="text-gray-400 hover:text-white transition-colors">Products</a></li>
-							<li><a href="/medics" class="text-gray-400 hover:text-white transition-colors">Medics</a></li>
-							<li><a href="/cart" class="text-gray-400 hover:text-white transition-colors">My Cart</a></li>
-							<li><a href="/tracking" class="text-gray-400 hover:text-white transition-colors">Track Order</a></li>
+							<li><a href="/" class="text-white hover:opacity-80 transition-opacity">Products</a></li>
+							<li><a href="/medics" class="text-white hover:opacity-80 transition-opacity">Medics</a></li>
+							<li><a href="/cart" class="text-white hover:opacity-80 transition-opacity">My Cart</a></li>
+							<li><a href="/tracking" class="text-white hover:opacity-80 transition-opacity">Track Order</a></li>
 						</ul>
 					</div>
 					<div class="space-y-6">
-						<h4 class="text-xs font-black uppercase tracking-[0.2em] text-white/40">Newsletter</h4>
-						<p class="text-gray-400 text-xs font-medium leading-relaxed">Subscribe to stay updated with {storefront?.name} deals.</p>
+						<h4 class="text-xs font-black uppercase tracking-[0.2em] text-white">Newsletter</h4>
+						<p class="text-white text-xs font-medium leading-relaxed">Subscribe to stay updated with {storefront?.name} deals.</p>
 						<div class="flex gap-2">
-							<input type="email" placeholder="your@email.com" class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-500 transition-colors" />
-							<button class="brand-bg hover:opacity-90 p-3 rounded-xl transition-opacity flex items-center justify-center"><ArrowRight class="h-4 w-4" /></button>
+							<input type="email" placeholder="your@email.com" class="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-sm outline-none text-white placeholder-white/50 focus:border-white transition-colors" />
+							<button class="brand-bg text-white hover:opacity-90 p-3 rounded-xl transition-opacity flex items-center justify-center"><ArrowRight class="h-4 w-4" /></button>
 						</div>
 					</div>
 				</div>
 			</div>
 			
-			<div class="pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
+			<div class="pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] text-white">
 				<p>© {new Date().getFullYear()} {storefront?.name}. All rights reserved.</p>
 				<div class="flex items-center gap-6">
-					<a href="#" class="hover:text-white transition-colors">Privacy Policy</a>
-					<a href="#" class="hover:text-white transition-colors">Terms of Service</a>
+					<a href="#" class="hover:opacity-80 transition-opacity">Privacy Policy</a>
+					<a href="#" class="hover:opacity-80 transition-opacity">Terms of Service</a>
 					<p>Powered by <span style="color:{brandColor};">Kemani OS</span></p>
 				</div>
 			</div>
 		</div>
 	</footer>
+
+	<!-- Floating Chat Widget -->
+	<div class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
+		{#if isChatOpen}
+			<div class="w-[calc(100vw-3rem)] sm:w-80 bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden translate-y-0 opacity-100 transition-all duration-300 origin-bottom-right flex flex-col h-[400px]">
+				<div class="h-16 brand-bg flex items-center justify-between px-5 text-white">
+					<div>
+						<p class="font-black tracking-tight leading-none text-sm">{storefront?.name || 'Support'}</p>
+						<p class="text-[10px] font-bold tracking-widest text-white/70 uppercase mt-1">We typically reply instantly</p>
+					</div>
+					<button on:click={toggleChat} class="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all"><X class="h-4 w-4" /></button>
+				</div>
+				<div class="flex-1 bg-[#F8FAFC] p-4 flex flex-col gap-3 overflow-y-auto">
+					<div class="self-start max-w-[85%]">
+						<div class="bg-white px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm border border-gray-100 text-sm font-medium text-gray-700">
+							Hi there! 👋 How can we help you today?
+						</div>
+						<p class="text-[9px] font-black uppercase text-gray-400 mt-1 ml-1">Just now</p>
+					</div>
+				</div>
+				<div class="p-4 bg-white border-t border-gray-100 flex items-center gap-2">
+					<input type="text" placeholder="Type your message..." class="flex-1 bg-gray-50 border border-gray-100 rounded-full px-4 py-3 text-sm outline-none focus:border-indigo-500 transition-all" />
+					<button class="h-11 w-11 rounded-full brand-bg flex items-center justify-center text-white shadow-md hover:scale-105 transition-all outline-none">
+						<Send class="h-4 w-4 ml-0.5" />
+					</button>
+				</div>
+			</div>
+		{/if}
+		
+		<button 
+			on:click={toggleChat}
+			class="h-16 w-16 brand-bg rounded-full flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30 hover:scale-110 active:scale-95 transition-all group"
+		>
+			<MessageCircle class="h-7 w-7 group-hover:animate-pulse" />
+		</button>
+	</div>
 </div>
 
 <style>

@@ -123,6 +123,7 @@ declare module '$env/static/private' {
 	export const VSCODE_ESM_ENTRYPOINT: string;
 	export const VSCODE_HANDLES_UNCAUGHT_ERRORS: string;
 	export const VSCODE_IPC_HOOK: string;
+	export const VSCODE_L10N_BUNDLE_LOCATION: string;
 	export const VSCODE_NLS_CONFIG: string;
 	export const VSCODE_PID: string;
 	export const windir: string;
@@ -302,6 +303,7 @@ declare module '$env/dynamic/private' {
 		VSCODE_ESM_ENTRYPOINT: string;
 		VSCODE_HANDLES_UNCAUGHT_ERRORS: string;
 		VSCODE_IPC_HOOK: string;
+		VSCODE_L10N_BUNDLE_LOCATION: string;
 		VSCODE_NLS_CONFIG: string;
 		VSCODE_PID: string;
 		windir: string;
