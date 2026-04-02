@@ -54,10 +54,10 @@ CREATE POLICY "Customers can update branch inventory"
     )
   );
 
--- Allow public/anonymous users to view healthcare providers for the storefront Medics page
+-- Allow public/anonymous users to view verified healthcare professionals (Relaxed for initial setup)
 DROP POLICY IF EXISTS "Public can view healthcare providers" ON public.healthcare_providers;
 CREATE POLICY "Public can view healthcare providers"
   ON public.healthcare_providers
   FOR SELECT
   TO public
-  USING (status = 'active');
+  USING (is_active IS NOT FALSE);

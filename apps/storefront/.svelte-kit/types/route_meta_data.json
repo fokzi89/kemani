@@ -1,6 +1,9 @@
 {
 	"/(marketplace)": [
 		"src/routes/(marketplace)/+page.server.ts",
+		"src/routes/(marketplace)/+layout.server.ts",
+		"src/routes/+layout.server.ts",
+		"src/routes/(marketplace)/+layout.server.ts",
 		"src/routes/+layout.server.ts"
 	],
 	"/": [
@@ -49,13 +52,16 @@
 		"src/routes/api/track/[id]/+server.ts"
 	],
 	"/(marketplace)/auth/login": [
+		"src/routes/(marketplace)/+layout.server.ts",
 		"src/routes/+layout.server.ts"
 	],
 	"/(marketplace)/cart": [
+		"src/routes/(marketplace)/+layout.server.ts",
 		"src/routes/+layout.server.ts"
 	],
 	"/(marketplace)/checkout": [
 		"src/routes/(marketplace)/checkout/+page.server.ts",
+		"src/routes/(marketplace)/+layout.server.ts",
 		"src/routes/+layout.server.ts"
 	],
 	"/consultations": [
@@ -66,12 +72,15 @@
 	],
 	"/(marketplace)/medics": [
 		"src/routes/(marketplace)/medics/+page.server.ts",
+		"src/routes/(marketplace)/+layout.server.ts",
 		"src/routes/+layout.server.ts"
 	],
 	"/(marketplace)/products/[productId]": [
+		"src/routes/(marketplace)/+layout.server.ts",
 		"src/routes/+layout.server.ts"
 	],
 	"/(marketplace)/profile": [
+		"src/routes/(marketplace)/+layout.server.ts",
 		"src/routes/+layout.server.ts"
 	]
 }
