@@ -3,7 +3,9 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 
-	let tenantId = $page.params.tenantId;
+	// The tenant is identified by the host (Approach 2)
+	export let data: { tenant: any };
+	$: tenantSlug = data.tenant.slug;
 
 	type Customer = {
 		id: string;
@@ -144,7 +146,7 @@
 	<header class="bg-white dark:bg-gray-800 shadow-sm">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="flex justify-between items-center h-16">
-				<a href="/{tenantId}" class="text-emerald-600 dark:text-emerald-400 hover:underline">
+				<a href="/" class="text-emerald-600 dark:text-emerald-400 hover:underline">
 					← Back to Shop
 				</a>
 				<h1 class="text-2xl font-bold text-gray-900 dark:text-white">My Profile</h1>
@@ -362,7 +364,7 @@
 								<div class="text-center py-12">
 									<p class="text-gray-600 dark:text-gray-400 mb-4">No orders yet</p>
 									<a
-										href="/{tenantId}"
+										href="/"
 										class="inline-block px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
 									>
 										Start Shopping

@@ -1,8 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { currentUser } from '$lib/stores/auth';
 
+	// The tenant is identified by the host (Approach 2)
+	export let data: { referringTenantId: string | null; user: any };
+	let tenantId = data.referringTenantId;
 	let orderData: any = null;
 	let isLoading = false;
 	let error = '';
@@ -36,9 +40,9 @@
 
 			success = 'Order placed successfully!';
 
-			// Redirect to orders page after 2 seconds
+			// Redirect to profile after 2 seconds
 			setTimeout(() => {
-				goto('/orders');
+				goto(`/profile`);
 			}, 2000);
 		} catch (err: any) {
 			error = err.message || 'Failed to place order. Please try again.';

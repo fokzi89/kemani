@@ -4,14 +4,11 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '$lib/supabase';
 import { OrderService } from '$lib/services/order';
 import type { CreateOrderRequest } from '$lib/types/ecommerce';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+
 
 export const GET: RequestHandler = async ({ url }) => {
   try {
@@ -101,3 +98,4 @@ export const POST: RequestHandler = async ({ request }) => {
     return json({ error: error.message || 'Failed to create order' }, { status: 500 });
   }
 };
+

@@ -64,9 +64,14 @@ const referralSessionHandle: Handle = async ({ event, resolve }) => {
 		// Split by dots
 		const parts = hostWithoutPort.split('.');
 
-		// For localhost or IPs, no subdomain
-		if (parts.length <= 1 || hostWithoutPort === 'localhost') {
+		// For plain "localhost", no subdomain
+		if (hostWithoutPort === 'localhost' && parts.length === 1) {
 			return null;
+		}
+
+		// Support "sub.localhost"
+		if (hostWithoutPort.endsWith('.localhost') && parts.length === 2) {
+			return parts[0];
 		}
 
 		// For domains like "subdomain.domain.com", extract "subdomain"
@@ -97,11 +102,12 @@ const referralSessionHandle: Handle = async ({ event, resolve }) => {
 				event.locals.referringTenantId = session.referring_tenant_id;
 			} else {
 				// Session expired or invalid, create new one
-				// TODO: Map subdomain to tenant_id via database lookup
-				// For now, we'll use a placeholder - this should query tenants table
 				const tenantId = await lookupTenantBySubdomain(event.locals.supabase, subdomain);
 
 				if (tenantId) {
+					// Always set the tenant ID so the storefront loads
+					event.locals.referringTenantId = tenantId;
+					
 					const result = await ReferralSessionService.createSession(
 						tenantId,
 						event.locals.session?.user?.id || null
@@ -116,8 +122,6 @@ const referralSessionHandle: Handle = async ({ event, resolve }) => {
 							sameSite: 'lax',
 							maxAge: 60 * 60 * 24 // 24 hours
 						});
-
-						event.locals.referringTenantId = result.session.referring_tenant_id;
 					}
 				}
 			}
@@ -126,6 +130,9 @@ const referralSessionHandle: Handle = async ({ event, resolve }) => {
 			const tenantId = await lookupTenantBySubdomain(event.locals.supabase, subdomain);
 
 			if (tenantId) {
+				// Always set the tenant ID so the storefront loads
+				event.locals.referringTenantId = tenantId;
+
 				const result = await ReferralSessionService.createSession(
 					tenantId,
 					event.locals.session?.user?.id || null
@@ -139,8 +146,6 @@ const referralSessionHandle: Handle = async ({ event, resolve }) => {
 						sameSite: 'lax',
 						maxAge: 60 * 60 * 24
 					});
-
-					event.locals.referringTenantId = result.session.referring_tenant_id;
 				}
 			}
 		}
@@ -155,6 +160,7 @@ const referralSessionHandle: Handle = async ({ event, resolve }) => {
  * Tries subdomain first, then falls back to slug for backwards compatibility
  */
 async function lookupTenantBySubdomain(supabase: any, subdomain: string): Promise<string | null> {
+	console.log(`[Hooks] Looking up tenant for subdomain: "${subdomain}"`);
 	try {
 		// Try subdomain first
 		const { data: bySubdomain, error: subdomainError } = await supabase
@@ -164,7 +170,12 @@ async function lookupTenantBySubdomain(supabase: any, subdomain: string): Promis
 			.single();
 
 		if (!subdomainError && bySubdomain) {
+			console.log(`[Hooks] Found tenant by subdomain: ${bySubdomain.id}`);
 			return bySubdomain.id;
+		}
+
+		if (subdomainError && subdomainError.code !== 'PGRST116') {
+			console.warn(`[Hooks] Supabase error (subdomain lookup):`, subdomainError);
 		}
 
 		// Fall back to slug for backwards compatibility
@@ -175,12 +186,18 @@ async function lookupTenantBySubdomain(supabase: any, subdomain: string): Promis
 			.single();
 
 		if (!slugError && bySlug) {
+			console.log(`[Hooks] Found tenant by slug: ${bySlug.id}`);
 			return bySlug.id;
 		}
 
+		if (slugError && slugError.code !== 'PGRST116') {
+			console.warn(`[Hooks] Supabase error (slug lookup):`, slugError);
+		}
+
+		console.warn(`[Hooks] No tenant found for subdomain/slug: "${subdomain}"`);
 		return null;
 	} catch (err) {
-		console.error('Error looking up tenant by subdomain:', err);
+		console.error('[Hooks] Exception in lookupTenantBySubdomain:', err);
 		return null;
 	}
 }

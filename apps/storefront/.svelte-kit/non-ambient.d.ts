@@ -29,35 +29,29 @@ declare module "$app/types" {
 	type MatcherParam<M> = M extends (param : string) => param is (infer U extends string) ? U : string;
 
 	export interface AppTypes {
-		RouteId(): "/(marketplace)" | "/" | "/api" | "/api/customers" | "/api/customers/auth" | "/api/customers/[id]" | "/api/customers/[id]/addresses" | "/api/marketplace" | "/api/marketplace/[tenantId]" | "/api/marketplace/[tenantId]/products" | "/api/marketplace/[tenantId]/products/[productId]" | "/api/orders" | "/api/orders/[id]" | "/api/orders/[id]/status" | "/api/payment" | "/api/payment/initialize" | "/api/payment/verify" | "/api/track" | "/api/track/[id]" | "/auth" | "/auth/callback" | "/auth/login" | "/checkout" | "/consultations" | "/customers" | "/diagnostics" | "/orders" | "/payment" | "/payment/callback" | "/products" | "/track" | "/track/[orderId]" | "/(marketplace)/[tenantId]" | "/(marketplace)/[tenantId]/cart" | "/(marketplace)/[tenantId]/products" | "/(marketplace)/[tenantId]/products/[productId]" | "/(marketplace)/[tenantId]/profile";
+		RouteId(): "/(marketplace)" | "/" | "/api" | "/api/customers" | "/api/customers/auth" | "/api/customers/[id]" | "/api/customers/[id]/addresses" | "/api/marketplace" | "/api/marketplace/categories" | "/api/marketplace/info" | "/api/marketplace/products" | "/api/marketplace/products/[productId]" | "/api/orders" | "/api/orders/[id]" | "/api/orders/[id]/status" | "/api/payment" | "/api/payment/initialize" | "/api/payment/verify" | "/api/track" | "/api/track/[id]" | "/(marketplace)/auth" | "/(marketplace)/auth/login" | "/(marketplace)/cart" | "/(marketplace)/checkout" | "/consultations" | "/diagnostics" | "/(marketplace)/medics" | "/(marketplace)/products" | "/(marketplace)/products/[productId]" | "/(marketplace)/profile";
 		RouteParams(): {
 			"/api/customers/[id]": { id: string };
 			"/api/customers/[id]/addresses": { id: string };
-			"/api/marketplace/[tenantId]": { tenantId: string };
-			"/api/marketplace/[tenantId]/products": { tenantId: string };
-			"/api/marketplace/[tenantId]/products/[productId]": { tenantId: string; productId: string };
+			"/api/marketplace/products/[productId]": { productId: string };
 			"/api/orders/[id]": { id: string };
 			"/api/orders/[id]/status": { id: string };
 			"/api/track/[id]": { id: string };
-			"/track/[orderId]": { orderId: string };
-			"/(marketplace)/[tenantId]": { tenantId: string };
-			"/(marketplace)/[tenantId]/cart": { tenantId: string };
-			"/(marketplace)/[tenantId]/products": { tenantId: string };
-			"/(marketplace)/[tenantId]/products/[productId]": { tenantId: string; productId: string };
-			"/(marketplace)/[tenantId]/profile": { tenantId: string }
+			"/(marketplace)/products/[productId]": { productId: string }
 		};
 		LayoutParams(): {
-			"/(marketplace)": { tenantId?: string; productId?: string };
-			"/": { id?: string; tenantId?: string; productId?: string; orderId?: string };
-			"/api": { id?: string; tenantId?: string; productId?: string };
+			"/(marketplace)": { productId?: string };
+			"/": { id?: string; productId?: string };
+			"/api": { id?: string; productId?: string };
 			"/api/customers": { id?: string };
 			"/api/customers/auth": Record<string, never>;
 			"/api/customers/[id]": { id: string };
 			"/api/customers/[id]/addresses": { id: string };
-			"/api/marketplace": { tenantId?: string; productId?: string };
-			"/api/marketplace/[tenantId]": { tenantId: string; productId?: string };
-			"/api/marketplace/[tenantId]/products": { tenantId: string; productId?: string };
-			"/api/marketplace/[tenantId]/products/[productId]": { tenantId: string; productId: string };
+			"/api/marketplace": { productId?: string };
+			"/api/marketplace/categories": Record<string, never>;
+			"/api/marketplace/info": Record<string, never>;
+			"/api/marketplace/products": { productId?: string };
+			"/api/marketplace/products/[productId]": { productId: string };
 			"/api/orders": { id?: string };
 			"/api/orders/[id]": { id: string };
 			"/api/orders/[id]/status": { id: string };
@@ -66,26 +60,18 @@ declare module "$app/types" {
 			"/api/payment/verify": Record<string, never>;
 			"/api/track": { id?: string };
 			"/api/track/[id]": { id: string };
-			"/auth": Record<string, never>;
-			"/auth/callback": Record<string, never>;
-			"/auth/login": Record<string, never>;
-			"/checkout": Record<string, never>;
+			"/(marketplace)/auth": Record<string, never>;
+			"/(marketplace)/auth/login": Record<string, never>;
+			"/(marketplace)/cart": Record<string, never>;
+			"/(marketplace)/checkout": Record<string, never>;
 			"/consultations": Record<string, never>;
-			"/customers": Record<string, never>;
 			"/diagnostics": Record<string, never>;
-			"/orders": Record<string, never>;
-			"/payment": Record<string, never>;
-			"/payment/callback": Record<string, never>;
-			"/products": Record<string, never>;
-			"/track": { orderId?: string };
-			"/track/[orderId]": { orderId: string };
-			"/(marketplace)/[tenantId]": { tenantId: string; productId?: string };
-			"/(marketplace)/[tenantId]/cart": { tenantId: string };
-			"/(marketplace)/[tenantId]/products": { tenantId: string; productId?: string };
-			"/(marketplace)/[tenantId]/products/[productId]": { tenantId: string; productId: string };
-			"/(marketplace)/[tenantId]/profile": { tenantId: string }
+			"/(marketplace)/medics": Record<string, never>;
+			"/(marketplace)/products": { productId?: string };
+			"/(marketplace)/products/[productId]": { productId: string };
+			"/(marketplace)/profile": Record<string, never>
 		};
-		Pathname(): "/" | "/api/customers" | "/api/customers/auth" | `/api/customers/${string}` & {} | `/api/customers/${string}/addresses` & {} | `/api/marketplace/${string}/products` & {} | `/api/marketplace/${string}/products/${string}` & {} | "/api/orders" | `/api/orders/${string}` & {} | `/api/orders/${string}/status` & {} | "/api/payment/initialize" | "/api/payment/verify" | `/api/track/${string}` & {} | "/auth/callback" | "/auth/login" | "/checkout" | "/consultations" | "/customers" | "/diagnostics" | "/orders" | "/payment/callback" | "/products" | `/track/${string}` & {} | `/${string}` & {} | `/${string}/cart` & {} | `/${string}/products/${string}` & {} | `/${string}/profile` & {};
+		Pathname(): "/" | "/api/customers" | "/api/customers/auth" | `/api/customers/${string}` & {} | `/api/customers/${string}/addresses` & {} | "/api/marketplace/categories" | "/api/marketplace/info" | "/api/marketplace/products" | `/api/marketplace/products/${string}` & {} | "/api/orders" | `/api/orders/${string}` & {} | `/api/orders/${string}/status` & {} | "/api/payment/initialize" | "/api/payment/verify" | `/api/track/${string}` & {} | "/auth/login" | "/cart" | "/checkout" | "/consultations" | "/diagnostics" | "/medics" | `/products/${string}` & {} | "/profile";
 		ResolvedPathname(): `${"" | `/${string}`}${ReturnType<AppTypes['Pathname']>}`;
 		Asset(): string & {};
 	}

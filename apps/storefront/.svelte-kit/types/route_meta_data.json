@@ -1,4 +1,8 @@
 {
+	"/(marketplace)": [
+		"src/routes/(marketplace)/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
 	"/": [
 		"src/routes/+layout.server.ts"
 	],
@@ -14,11 +18,17 @@
 	"/api/customers/[id]/addresses": [
 		"src/routes/api/customers/[id]/addresses/+server.ts"
 	],
-	"/api/marketplace/[tenantId]/products": [
-		"src/routes/api/marketplace/[tenantId]/products/+server.ts"
+	"/api/marketplace/categories": [
+		"src/routes/api/marketplace/categories/+server.ts"
 	],
-	"/api/marketplace/[tenantId]/products/[productId]": [
-		"src/routes/api/marketplace/[tenantId]/products/[productId]/+server.ts"
+	"/api/marketplace/info": [
+		"src/routes/api/marketplace/info/+server.ts"
+	],
+	"/api/marketplace/products": [
+		"src/routes/api/marketplace/products/+server.ts"
+	],
+	"/api/marketplace/products/[productId]": [
+		"src/routes/api/marketplace/products/[productId]/+server.ts"
 	],
 	"/api/orders": [
 		"src/routes/api/orders/+server.ts"
@@ -38,47 +48,30 @@
 	"/api/track/[id]": [
 		"src/routes/api/track/[id]/+server.ts"
 	],
-	"/auth/callback": [
+	"/(marketplace)/auth/login": [
 		"src/routes/+layout.server.ts"
 	],
-	"/auth/login": [
+	"/(marketplace)/cart": [
 		"src/routes/+layout.server.ts"
 	],
-	"/checkout": [
-		"src/routes/checkout/+page.server.ts",
+	"/(marketplace)/checkout": [
+		"src/routes/(marketplace)/checkout/+page.server.ts",
 		"src/routes/+layout.server.ts"
 	],
 	"/consultations": [
 		"src/routes/+layout.server.ts"
 	],
-	"/customers": [
-		"src/routes/+layout.server.ts"
-	],
 	"/diagnostics": [
 		"src/routes/+layout.server.ts"
 	],
-	"/orders": [
+	"/(marketplace)/medics": [
+		"src/routes/(marketplace)/medics/+page.server.ts",
 		"src/routes/+layout.server.ts"
 	],
-	"/payment/callback": [
+	"/(marketplace)/products/[productId]": [
 		"src/routes/+layout.server.ts"
 	],
-	"/products": [
-		"src/routes/+layout.server.ts"
-	],
-	"/track/[orderId]": [
-		"src/routes/+layout.server.ts"
-	],
-	"/(marketplace)/[tenantId]": [
-		"src/routes/+layout.server.ts"
-	],
-	"/(marketplace)/[tenantId]/cart": [
-		"src/routes/+layout.server.ts"
-	],
-	"/(marketplace)/[tenantId]/products/[productId]": [
-		"src/routes/+layout.server.ts"
-	],
-	"/(marketplace)/[tenantId]/profile": [
+	"/(marketplace)/profile": [
 		"src/routes/+layout.server.ts"
 	]
 }

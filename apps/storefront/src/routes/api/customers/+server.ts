@@ -4,13 +4,10 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '$lib/supabase';
 import { CustomerService } from '$lib/services/customer';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+
 
 export const GET: RequestHandler = async ({ url }) => {
   try {
@@ -77,3 +74,4 @@ export const POST: RequestHandler = async ({ request }) => {
     return json({ error: error.message || 'Failed to register customer' }, { status: 500 });
   }
 };
+

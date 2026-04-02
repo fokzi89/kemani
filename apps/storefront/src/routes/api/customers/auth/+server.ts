@@ -3,14 +3,11 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '$lib/supabase';
 import { CustomerService } from '$lib/services/customer';
 import type { CustomerAuthRequest, CustomerAuthResponse } from '$lib/types/ecommerce';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+
 
 export const POST: RequestHandler = async ({ request }) => {
   try {
@@ -65,3 +62,4 @@ export const POST: RequestHandler = async ({ request }) => {
     return json({ error: error.message || 'Authentication failed' }, { status: 500 });
   }
 };
+

@@ -1,19 +1,14 @@
 // Marketplace Product Detail API Endpoint (Public)
-// GET /api/marketplace/[tenantId]/products/[productId] - Get single product details
+// GET /api/marketplace/[slug]/products/[productId] - Get single product details
 
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '$lib/supabase';
 import { MarketplaceService } from '$lib/services/marketplace';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
-
-export const GET: RequestHandler = async ({ params }) => {
+export async function GET({ locals, params }: { locals: any; params: any }) {
   try {
-    const { tenantId, productId } = params;
+    const tenantId = locals.referringTenantId || params.slug || params.tenantId;
+    const { productId } = params;
 
     const marketplaceService = new MarketplaceService(supabase);
     const result = await marketplaceService.getMarketplaceProduct(productId, tenantId);

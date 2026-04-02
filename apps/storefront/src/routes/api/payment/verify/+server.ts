@@ -101,3 +101,4 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		throw error(500, err instanceof Error ? err.message : 'Internal server error');
 	}
 };
+

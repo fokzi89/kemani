@@ -85,17 +85,22 @@ export interface OrderItemDetail extends OrderItem {
  */
 export interface MarketplaceProduct {
   id: string;
+  inventory_id?: string; // Reference to specific branch_inventory record
   tenant_id: string;
   branch_id: string;
   name: string;
   description?: string;
   sku: string;
   category?: string;
-  price: number;
+  price: number; // Final effective price (original or sale)
+  selling_price?: number; // Original strike-through price
+  sale_price?: number; // Discounted price
+  percentage_discount?: number; // Badge value
   image_url?: string;
   stock_quantity: number;
   is_available: boolean;
   business_name?: string;
+  rating?: number; // Optional display rating (0–5), not stored in DB
 }
 
 /**
@@ -106,6 +111,7 @@ export interface CartItem {
   product_name: string;
   product_image?: string;
   price: number;
+  selling_price?: number; // Original price for display
   quantity: number;
   subtotal: number;
   stock_available: number;
@@ -192,6 +198,7 @@ export interface MarketplaceFilters {
   min_price?: number;
   max_price?: number;
   in_stock_only?: boolean;
+  branch_id?: string;
   sort_by?: 'price_asc' | 'price_desc' | 'name' | 'newest';
   page?: number;
   limit?: number;

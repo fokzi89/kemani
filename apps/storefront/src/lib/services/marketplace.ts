@@ -1,20 +1,44 @@
 // Marketplace Service
 // Feature: 001-multi-tenant-pos (User Story 3)
 // Handles public product listings, search, filtering, and storefront generation
+// Optimized for direct branch_inventory querying (standalone storefront API)
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   MarketplaceProduct,
   MarketplaceFilters,
-  MarketplaceProductListResponse,
-  Product
+  MarketplaceProductListResponse
 } from '../types/ecommerce';
 
 export class MarketplaceService {
   constructor(private supabase: SupabaseClient) {}
 
   /**
+   * Resolves a tenant slug (or UUID) to the valid tenant UUID
+   */
+  async resolveTenantSlug(identifier: string): Promise<string | null> {
+    try {
+      // Check if it's already a valid UUID
+      const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(identifier);
+      if (isUUID) return identifier;
+
+      const { data, error } = await this.supabase
+        .from('tenants')
+        .select('id')
+        .eq('slug', identifier)
+        .is('deleted_at', null)
+        .single();
+        
+      if (error || !data) return null;
+      return data.id;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
    * Get tenant's marketplace products (public-facing)
+   * Fetches directly from branch_inventory to ensure total independence from other tables
    */
   async getMarketplaceProducts(
     tenantId: string,
@@ -24,46 +48,41 @@ export class MarketplaceService {
     error?: string;
   }> {
     try {
+      const resolvedTenantId = await this.resolveTenantSlug(tenantId);
+      if (!resolvedTenantId) return { error: 'Invalid tenant identifier or slug.' };
+
       const page = filters?.page || 1;
       const limit = filters?.limit || 24;
       const offset = (page - 1) * limit;
 
-      // Build query
+      // Build pure query on branch_inventory
       let query = this.supabase
-        .from('products')
-        .select(`
-          id,
-          tenant_id,
-          branch_id,
-          name,
-          description,
-          sku,
-          category,
-          price,
-          image_url,
-          stock_quantity,
-          tenants!inner(business_name)
-        `, { count: 'exact' })
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true);
+        .from('branch_inventory')
+        .select('*', { count: 'exact' })
+        .eq('tenant_id', resolvedTenantId)
+        .not('is_active', 'is', false)
+        .eq('_sync_is_deleted', false);
 
-      // Apply filters
+      // Apply branch filter
+      if (filters?.branch_id) {
+        query = query.eq('branch_id', filters.branch_id);
+      }
+
+      // Apply product-level filters (Using product_type as category)
       if (filters?.category) {
-        query = query.eq('category', filters.category);
+        query = query.eq('product_type', filters.category);
       }
 
       if (filters?.search) {
-        query = query.or(
-          `name.ilike.%${filters.search}%,description.ilike.%${filters.search}%,sku.ilike.%${filters.search}%`
-        );
+        query = query.ilike('product_name', `%${filters.search}%`);
       }
 
       if (filters?.min_price !== undefined) {
-        query = query.gte('price', filters.min_price);
+        query = query.gte('selling_price', filters.min_price);
       }
 
       if (filters?.max_price !== undefined) {
-        query = query.lte('price', filters.max_price);
+        query = query.lte('selling_price', filters.max_price);
       }
 
       if (filters?.in_stock_only) {
@@ -73,16 +92,13 @@ export class MarketplaceService {
       // Apply sorting
       switch (filters?.sort_by) {
         case 'price_asc':
-          query = query.order('price', { ascending: true });
+          query = query.order('selling_price', { ascending: true });
           break;
         case 'price_desc':
-          query = query.order('price', { ascending: false });
+          query = query.order('selling_price', { ascending: false });
           break;
         case 'name':
-          query = query.order('name', { ascending: true });
-          break;
-        case 'newest':
-          query = query.order('created_at', { ascending: false });
+          query = query.order('product_name', { ascending: true });
           break;
         default:
           query = query.order('created_at', { ascending: false });
@@ -95,40 +111,51 @@ export class MarketplaceService {
         return { error: error.message };
       }
 
-      // Transform to marketplace products
-      const products: MarketplaceProduct[] = (data || []).map((p: any) => ({
-        id: p.id,
-        tenant_id: p.tenant_id,
-        branch_id: p.branch_id,
-        name: p.name,
-        description: p.description,
-        sku: p.sku,
-        category: p.category,
-        price: p.price,
-        image_url: p.image_url,
-        stock_quantity: p.stock_quantity,
-        is_available: p.stock_quantity > 0,
-        business_name: p.tenants?.business_name
-      }));
+      // Transform record mapping directly from branch_inventory
+      const products: MarketplaceProduct[] = (data || []).map((item: any) => {
+        const availableStock = (item.stock_quantity || 0) - (item.reserved_quantity || 0);
+        
+        // Effective price is sale_price if set, otherwise selling_price
+        const finalPrice = (item.sale_price && item.sale_price > 0) ? item.sale_price : item.selling_price;
 
-      const response: MarketplaceProductListResponse = {
-        products,
-        pagination: {
-          page,
-          limit,
-          total: count || 0,
-          pages: Math.ceil((count || 0) / limit)
+        return {
+          id: item.product_id, // Link back to master product UUID for other APIs
+          inventory_id: item.id, // Primary key of this inventory entry
+          tenant_id: item.tenant_id,
+          branch_id: item.branch_id,
+          name: item.product_name || 'Unnamed Product',
+          description: item.product_type || 'General item',
+          sku: item.sku || item.batch_no || '', 
+          category: item.product_type || 'General',
+          price: finalPrice, 
+          selling_price: item.selling_price,
+          sale_price: item.sale_price,
+          percentage_discount: item.percentage_discount,
+          image_url: item.image_url,
+          stock_quantity: availableStock,
+          is_available: availableStock > 0,
+          business_name: '' 
+        };
+      });
+
+      return {
+        products: {
+          products,
+          pagination: {
+            page,
+            limit,
+            total: count || 0,
+            pages: Math.ceil((count || 0) / limit)
+          }
         }
       };
-
-      return { products: response };
     } catch (error: any) {
       return { error: error.message || 'Failed to fetch marketplace products' };
     }
   }
 
   /**
-   * Get single marketplace product details
+   * Get single marketplace product details directly from inventory
    */
   async getMarketplaceProduct(
     productId: string,
@@ -138,331 +165,86 @@ export class MarketplaceService {
     error?: string;
   }> {
     try {
+      const resolvedTenantId = await this.resolveTenantSlug(tenantId);
+      if (!resolvedTenantId) return { error: 'Invalid tenant identifier or slug.' };
+
       const { data, error } = await this.supabase
-        .from('products')
-        .select(`
-          id,
-          tenant_id,
-          branch_id,
-          name,
-          description,
-          sku,
-          category,
-          price,
-          image_url,
-          stock_quantity,
-          tenants!inner(business_name)
-        `)
-        .eq('id', productId)
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
+        .from('branch_inventory')
+        .select('*')
+        .eq('product_id', productId)
+        .eq('tenant_id', resolvedTenantId)
+        .not('is_active', 'is', false)
+        .order('stock_quantity', { ascending: false })
+        .limit(1)
         .single();
 
-      if (error) {
-        return { error: error.message };
+      if (error || !data) {
+        return { error: 'Product not found or out of stock.' };
       }
 
-      const product: MarketplaceProduct = {
-        id: data.id,
-        tenant_id: data.tenant_id,
-        branch_id: data.branch_id,
-        name: data.name,
-        description: data.description,
-        sku: data.sku,
-        category: data.category,
-        price: data.price,
-        image_url: data.image_url,
-        stock_quantity: data.stock_quantity,
-        is_available: data.stock_quantity > 0,
-        business_name: (data.tenants as any)?.business_name
-      };
+      const availableStock = (data.stock_quantity || 0) - (data.reserved_quantity || 0);
+      const finalPrice = (data.sale_price && data.sale_price > 0) ? data.sale_price : data.selling_price;
 
-      return { product };
+      return {
+        product: {
+          id: data.product_id,
+          inventory_id: data.id,
+          tenant_id: data.tenant_id,
+          branch_id: data.branch_id,
+          name: data.product_name || 'Unnamed Product',
+          description: data.product_type || 'Verified professional product',
+          sku: data.sku || data.batch_no || '',
+          category: data.product_type || 'General',
+          price: finalPrice,
+          selling_price: data.selling_price,
+          sale_price: data.sale_price,
+          percentage_discount: data.percentage_discount,
+          image_url: data.image_url,
+          stock_quantity: availableStock,
+          is_available: availableStock > 0,
+          business_name: ''
+        }
+      };
     } catch (error: any) {
-      return { error: error.message || 'Failed to fetch product' };
+      return { error: error.message || 'Failed to fetch product details' };
     }
   }
-
   /**
-   * Get marketplace categories for a tenant
+   * Get unique categories (product_types) for the storefront sidebar
    */
   async getMarketplaceCategories(tenantId: string): Promise<{
-    categories: Array<{ name: string; count: number }>;
+    categories?: Array<{ name: string; count: number }>;
     error?: string;
   }> {
     try {
+      const resolvedTenantId = await this.resolveTenantSlug(tenantId);
+      if (!resolvedTenantId) return { error: 'Invalid tenant identifier or slug.' };
+
+      // Query unique types from branch_inventory
       const { data, error } = await this.supabase
-        .from('products')
-        .select('category')
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .not('category', 'is', null);
+        .from('branch_inventory')
+        .select('product_type')
+        .eq('tenant_id', resolvedTenantId)
+        .not('is_active', 'is', false)
+        .eq('_sync_is_deleted', false);
 
-      if (error) {
-        return { categories: [], error: error.message };
-      }
+      if (error) return { error: error.message };
 
-      // Count products per category
-      const categoryCounts: Record<string, number> = {};
-      data.forEach((item: any) => {
-        const category = item.category;
-        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+      // Group and count unique types
+      const counts: Record<string, number> = {};
+      (data || []).forEach((item: any) => {
+        const type = item.product_type || 'General';
+        counts[type] = (counts[type] || 0) + 1;
       });
 
-      const categories = Object.entries(categoryCounts)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count);
+      const categories = Object.keys(counts).map(name => ({
+        name,
+        count: counts[name]
+      }));
 
       return { categories };
     } catch (error: any) {
-      return { categories: [], error: error.message || 'Failed to fetch categories' };
-    }
-  }
-
-  /**
-   * Get tenant storefront information
-   */
-  async getStorefrontInfo(tenantId: string): Promise<{
-    storefront?: {
-      tenant_id: string;
-      business_name: string;
-      description?: string;
-      logo_url?: string;
-      primary_color?: string;
-      is_accepting_orders: boolean;
-      branches: Array<{
-        id: string;
-        name: string;
-        address?: string;
-      }>;
-    };
-    error?: string;
-  }> {
-    try {
-      const { data: tenant, error: tenantError } = await this.supabase
-        .from('tenants')
-        .select(`
-          id,
-          business_name,
-          business_description,
-          logo_url,
-          primary_color,
-          branches!inner(id, name, address)
-        `)
-        .eq('id', tenantId)
-        .eq('is_active', true)
-        .single();
-
-      if (tenantError) {
-        return { error: tenantError.message };
-      }
-
-      const storefront = {
-        tenant_id: tenant.id,
-        business_name: tenant.business_name,
-        description: tenant.business_description,
-        logo_url: tenant.logo_url,
-        primary_color: tenant.primary_color,
-        is_accepting_orders: true, // TODO: Add this field to tenants table
-        branches: (tenant.branches as any[]).map(b => ({
-          id: b.id,
-          name: b.name,
-          address: b.address
-        }))
-      };
-
-      return { storefront };
-    } catch (error: any) {
-      return { error: error.message || 'Failed to fetch storefront information' };
-    }
-  }
-
-  /**
-   * Search products across all categories
-   */
-  async searchProducts(
-    tenantId: string,
-    searchQuery: string,
-    limit = 20
-  ): Promise<{
-    products: MarketplaceProduct[];
-    error?: string;
-  }> {
-    try {
-      const { data, error } = await this.supabase
-        .from('products')
-        .select(`
-          id,
-          tenant_id,
-          branch_id,
-          name,
-          description,
-          sku,
-          category,
-          price,
-          image_url,
-          stock_quantity,
-          tenants!inner(business_name)
-        `)
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .or(
-          `name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,sku.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%`
-        )
-        .limit(limit);
-
-      if (error) {
-        return { products: [], error: error.message };
-      }
-
-      const products: MarketplaceProduct[] = (data || []).map((p: any) => ({
-        id: p.id,
-        tenant_id: p.tenant_id,
-        branch_id: p.branch_id,
-        name: p.name,
-        description: p.description,
-        sku: p.sku,
-        category: p.category,
-        price: p.price,
-        image_url: p.image_url,
-        stock_quantity: p.stock_quantity,
-        is_available: p.stock_quantity > 0,
-        business_name: p.tenants?.business_name
-      }));
-
-      return { products };
-    } catch (error: any) {
-      return { products: [], error: error.message || 'Failed to search products' };
-    }
-  }
-
-  /**
-   * Get featured/trending products
-   */
-  async getFeaturedProducts(
-    tenantId: string,
-    limit = 12
-  ): Promise<{
-    products: MarketplaceProduct[];
-    error?: string;
-  }> {
-    try {
-      // TODO: Implement proper featured logic based on sales, ratings, etc.
-      // For now, just return newest products
-      const { data, error } = await this.supabase
-        .from('products')
-        .select(`
-          id,
-          tenant_id,
-          branch_id,
-          name,
-          description,
-          sku,
-          category,
-          price,
-          image_url,
-          stock_quantity,
-          tenants!inner(business_name)
-        `)
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .gt('stock_quantity', 0)
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (error) {
-        return { products: [], error: error.message };
-      }
-
-      const products: MarketplaceProduct[] = (data || []).map((p: any) => ({
-        id: p.id,
-        tenant_id: p.tenant_id,
-        branch_id: p.branch_id,
-        name: p.name,
-        description: p.description,
-        sku: p.sku,
-        category: p.category,
-        price: p.price,
-        image_url: p.image_url,
-        stock_quantity: p.stock_quantity,
-        is_available: p.stock_quantity > 0,
-        business_name: p.tenants?.business_name
-      }));
-
-      return { products };
-    } catch (error: any) {
-      return { products: [], error: error.message || 'Failed to fetch featured products' };
-    }
-  }
-
-  /**
-   * Get related products (same category)
-   */
-  async getRelatedProducts(
-    productId: string,
-    tenantId: string,
-    limit = 6
-  ): Promise<{
-    products: MarketplaceProduct[];
-    error?: string;
-  }> {
-    try {
-      // First get the product's category
-      const { data: product } = await this.supabase
-        .from('products')
-        .select('category')
-        .eq('id', productId)
-        .single();
-
-      if (!product || !product.category) {
-        return { products: [] };
-      }
-
-      // Get related products in same category
-      const { data, error } = await this.supabase
-        .from('products')
-        .select(`
-          id,
-          tenant_id,
-          branch_id,
-          name,
-          description,
-          sku,
-          category,
-          price,
-          image_url,
-          stock_quantity,
-          tenants!inner(business_name)
-        `)
-        .eq('tenant_id', tenantId)
-        .eq('category', product.category)
-        .eq('is_active', true)
-        .neq('id', productId)
-        .gt('stock_quantity', 0)
-        .limit(limit);
-
-      if (error) {
-        return { products: [], error: error.message };
-      }
-
-      const products: MarketplaceProduct[] = (data || []).map((p: any) => ({
-        id: p.id,
-        tenant_id: p.tenant_id,
-        branch_id: p.branch_id,
-        name: p.name,
-        description: p.description,
-        sku: p.sku,
-        category: p.category,
-        price: p.price,
-        image_url: p.image_url,
-        stock_quantity: p.stock_quantity,
-        is_available: p.stock_quantity > 0,
-        business_name: p.tenants?.business_name
-      }));
-
-      return { products };
-    } catch (error: any) {
-      return { products: [], error: error.message || 'Failed to fetch related products' };
+      return { error: error.message || 'Failed to fetch categories' };
     }
   }
 }
