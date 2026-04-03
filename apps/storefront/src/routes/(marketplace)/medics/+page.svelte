@@ -129,10 +129,10 @@
 	}
 
 	/* ─── HEADER ─── */
-	.page-header { padding: 5rem 0 3.5rem; background: #fff; border-bottom: 1px solid var(--border); }
-	.header-pre { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: var(--accent); margin-bottom: 1rem; }
-	.header-title { font-family: var(--font-display); font-size: 3.5rem; font-weight: 500; margin-bottom: 1.5rem; line-height: 1; }
-	.header-sub { font-size: 14px; color: var(--on-surface-muted); max-width: 500px; margin: 0 auto; line-height: 1.7; font-weight: 300; }
+	.page-header { padding: 3.5rem 0 2.5rem; background: #fff; border-bottom: 1px solid var(--border); }
+	.header-pre { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: var(--accent); margin-bottom: 0.75rem; }
+	.header-title { font-family: var(--font-display); font-size: 2.75rem; font-weight: 500; margin-bottom: 1rem; line-height: 1.1; }
+	.header-sub { font-size: 13px; color: var(--on-surface-muted); max-width: 440px; margin: 0 auto; line-height: 1.6; font-weight: 300; }
 
 	/* ─── EMPTY STATE ─── */
 	.empty-state { text-align: center; padding: 10rem 2rem; }
@@ -144,10 +144,11 @@
 	.medic-grid {
 		display: grid;
 		grid-template-columns: 1fr;
-		gap: 3.5rem 2rem;
+		gap: 2.5rem 1.5rem;
 	}
-	@media (min-width: 768px) { .medic-grid { grid-template-columns: repeat(2, 1fr); } }
-	@media (min-width: 1024px) { .medic-grid { grid-template-columns: repeat(3, 1fr); } }
+	@media (min-width: 640px) { .medic-grid { grid-template-columns: repeat(2, 1fr); } }
+	@media (min-width: 768px) { .medic-grid { grid-template-columns: repeat(3, 1fr); } }
+	@media (min-width: 1280px) { .medic-grid { grid-template-columns: repeat(4, 1fr); } }
 
 	/* ─── CARD ─── */
 	.medic-card { display: flex; flex-direction: column; background: transparent; }
@@ -166,9 +167,9 @@
 	.badge-verified { background: #fff; color: #059669; display: flex; align-items: center; gap: 4px; }
 	.badge-type { background: var(--on-surface); color: #fff; }
 
-	.medic-info { padding-top: 1.5rem; flex: 1; display: flex; flex-direction: column; }
-	.medic-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 0.5rem; }
-	.medic-name { font-family: var(--font-display); font-size: 1.5rem; font-weight: 500; }
+	.medic-info { padding-top: 1.25rem; flex: 1; display: flex; flex-direction: column; }
+	.medic-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.25rem; }
+	.medic-name { font-family: var(--font-display); font-size: 1.125rem; font-weight: 500; line-height: 1.3; }
 	.medic-name a:hover { border-bottom: 1px solid var(--on-surface); }
 	
 	.medic-rating { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; color: #f59e0b; }

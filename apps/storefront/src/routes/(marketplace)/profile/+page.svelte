@@ -4,7 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { 
 		User, ShoppingBag, MapPin, Award, LogOut, 
-		ChevronRight, Package, Clock, ShieldCheck, ArrowRight 
+		ChevronRight, Package, Clock, ShieldCheck, ArrowRight, MessageCircle, Stethoscope, ShoppingCart
 	} from 'lucide-svelte';
 	import { isAuthenticated, currentUser } from '$lib/stores/auth';
 	import { isAuthModalOpen } from '$lib/stores/ui';
@@ -22,6 +22,7 @@
 		total_orders: number;
 		total_spent: number;
 		created_at: string;
+		tier?: string;
 	};
 
 	type Order = {
@@ -35,14 +36,11 @@
 	let customer: Customer | null = null;
 	let orders: Order[] = [];
 	let isLoading = true;
-	let activeTab: 'profile' | 'orders' | 'loyalty' = 'profile';
+	let activeTab: 'profile' | 'orders' | 'loyalty' | 'messages' | 'medics' | 'products' = 'profile';
 	let error = '';
 
 	onMount(async () => {
-		if (!$isAuthenticated) {
-			isLoading = false;
-			return;
-		}
+		// For testing: always load mock data
 		await loadCustomerData();
 	});
 
@@ -51,14 +49,15 @@
 		try {
 			// In a real app, fetch from Supabase
 			customer = {
-				id: $currentUser?.id || '',
-				full_name: $currentUser?.user_metadata?.full_name || 'Member',
-				email: $currentUser?.email,
-				phone: $currentUser?.user_metadata?.phone || '',
+				id: $currentUser?.id || 'mock-user-123',
+				full_name: $currentUser?.user_metadata?.full_name || 'Amara Okechukwu',
+				email: $currentUser?.email || 'amara.o@curator.io',
+				phone: $currentUser?.user_metadata?.phone || '+234 812 345 6789',
 				loyalty_points_balance: 450,
 				total_orders: 12,
 				total_spent: 125000,
-				created_at: $currentUser?.created_at || new Date().toISOString()
+				created_at: $currentUser?.created_at || '2024-01-15T08:00:00Z',
+				tier: 'Standard'
 			};
 			
 			orders = [
@@ -91,19 +90,7 @@
 <div class="profile-page">
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
 		
-		{#if !$isAuthenticated}
-			<div class="auth-gate">
-				<div class="gate-icon"><User class="w-10 h-10" /></div>
-				<h2 class="gate-title">Member Access</h2>
-				<p class="gate-sub">Please sign in to view your personalized collection and order history.</p>
-				<button 
-					on:click={() => isAuthModalOpen.set(true)}
-					class="btn-primary gate-btn"
-				>
-					Sign In to Collection
-				</button>
-			</div>
-		{:else if isLoading}
+		{#if isLoading}
 			<div class="loading-state">
 				<div class="loader-ring"></div>
 				<p>Loading your profile...</p>
@@ -118,7 +105,7 @@
 						</div>
 						<div class="user-info">
 							<h3 class="user-name">{customer?.full_name}</h3>
-							<p class="user-email">{customer?.email || customer?.phone}</p>
+							<p class="user-tier">Standard Member</p>
 						</div>
 					</div>
 
@@ -140,6 +127,24 @@
 							class="nav-item {activeTab === 'loyalty' ? 'active' : ''}"
 						>
 							<Award class="nav-icon" /> Rewards
+						</button>
+						<button 
+							on:click={() => activeTab = 'messages'} 
+							class="nav-item {activeTab === 'messages' ? 'active' : ''}"
+						>
+							<MessageCircle class="nav-icon" /> Messages
+						</button>
+						<button 
+							on:click={() => activeTab = 'medics'} 
+							class="nav-item {activeTab === 'medics' ? 'active' : ''}"
+						>
+							<Stethoscope class="nav-icon" /> Medics
+						</button>
+						<button 
+							on:click={() => activeTab = 'products'} 
+							class="nav-item {activeTab === 'products' ? 'active' : ''}"
+						>
+							<ShoppingCart class="nav-icon" /> Products
 						</button>
 						<div class="nav-sep"></div>
 						<button on:click={handleSignOut} class="nav-item nav-logout text-red-500">
@@ -227,6 +232,11 @@
 									<p class="hero-balance">{customer?.loyalty_points_balance}</p>
 									<p class="hero-value">Equivalent to ₦{(customer?.loyalty_points_balance || 0) * 10} in store credit</p>
 								</div>
+                                <div class="hero-divider"></div>
+                                <div class="hero-footer">
+                                    <div class="tier-badge">Standard</div>
+                                    <p class="tier-next">50 points until <span class="text-white font-bold">Premium</span></p>
+                                </div>
 							</div>
 
 							<section class="reward-rules mt-12">
@@ -237,6 +247,35 @@
 									<li>Points are awarded upon successful delivery.</li>
 								</ul>
 							</section>
+						</div>
+					{:else if activeTab === 'messages'}
+						<div class="content-view">
+							<h2 class="view-title">Curator Messaging</h2>
+							<div class="empty-list">
+								<div class="h-10 w-10 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4"><MessageCircle class="w-5 h-5 text-gray-300" /></div>
+								<p>Your correspondence collection is currently empty.</p>
+								<p class="text-[10px] text-gray-400 mt-2">Start a conversation with a curator or healthcare professional.</p>
+							</div>
+						</div>
+
+					{:else if activeTab === 'medics'}
+						<div class="content-view">
+							<h2 class="view-title">Your Medics</h2>
+							<div class="empty-list">
+								<div class="h-10 w-10 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4"><Stethoscope class="w-5 h-5 text-gray-300" /></div>
+								<p>No professionals marked in your saved network.</p>
+								<a href="/medics" class="btn-text">Browse Medics <ArrowRight class="w-3 h-3" /></a>
+							</div>
+						</div>
+
+					{:else if activeTab === 'products'}
+						<div class="content-view">
+							<h2 class="view-title">Saved Products</h2>
+							<div class="empty-list">
+								<div class="h-10 w-10 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4"><ShoppingCart class="w-5 h-5 text-gray-300" /></div>
+								<p>The collection of items you follow is currently empty.</p>
+								<a href="/" class="btn-text">Explore Products <ArrowRight class="w-3 h-3" /></a>
+							</div>
 						</div>
 					{/if}
 				</main>
@@ -286,8 +325,8 @@
 	.profile-sidebar { display: flex; flex-direction: column; gap: 2.5rem; }
 	.sidebar-user { display: flex; align-items: center; gap: 1rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
 	.user-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--on-surface); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 1.25rem; }
-	.user-name { font-size: 14px; font-weight: 700; color: var(--on-surface); }
-	.user-email { font-size: 11px; color: var(--on-surface-muted); }
+	.user-name { font-size: 14px; font-weight: 700; color: var(--on-surface); margin-bottom: 2px; }
+	.user-tier { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); }
 
 	.sidebar-nav { display: flex; flex-direction: column; gap: 0.5rem; }
 	.nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 1rem; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--on-surface-muted); transition: all 0.2s; border: none; background: transparent; cursor: pointer; text-align: left; }
@@ -323,11 +362,17 @@
 	.order-amount { font-size: 14px; font-weight: 600; text-align: right; }
 
 	/* ─── LOYALTY ─── */
-	.loyalty-hero { background: var(--on-surface); color: #fff; padding: 4rem 2rem; border-radius: var(--radius); text-align: center; }
-	.hero-icon { width: 32px; height: 32px; color: var(--accent); margin: 0 auto 1.5rem; }
-	.hero-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); margin-bottom: 1rem; }
-	.hero-balance { font-family: var(--font-display); font-size: 4rem; line-height: 1; margin-bottom: 1rem; color: var(--accent); }
-	.hero-value { font-size: 13px; font-weight: 300; opacity: 0.6; }
+	.loyalty-hero { background: var(--on-surface); color: #fff; padding: 4rem 2rem; border-radius: var(--radius); text-align: center; position: relative; overflow: hidden; }
+    .loyalty-hero::after { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(120, 90, 26, 0.15) 0%, transparent 60%); pointer-events: none; }
+	.hero-icon { width: 32px; height: 32px; color: var(--accent); margin: 0 auto 1.5rem; position: relative; z-index: 1; }
+	.hero-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); margin-bottom: 1rem; position: relative; z-index: 1; }
+	.hero-balance { font-family: var(--font-display); font-size: 4rem; line-height: 1; margin-bottom: 1rem; color: var(--accent); position: relative; z-index: 1; }
+	.hero-value { font-size: 13px; font-weight: 300; opacity: 0.6; position: relative; z-index: 1; }
+    
+    .hero-divider { height: 1px; background: rgba(255,255,255,0.1); width: 100px; margin: 2.5rem auto; position: relative; z-index: 1; }
+    .hero-footer { position: relative; z-index: 1; }
+    .tier-badge { display: inline-block; padding: 4px 16px; border: 1px solid var(--accent); color: var(--accent); border-radius: 20px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 0.75rem; }
+    .tier-next { font-size: 11px; font-weight: 300; color: rgba(255,255,255,0.4); }
 
 	.rules-list { display: flex; flex-direction: column; gap: 1rem; font-size: 14px; }
 	.rules-list li { display: flex; align-items: start; gap: 10px; color: var(--on-surface-muted); }

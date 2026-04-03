@@ -30,17 +30,9 @@
 	}
 
 	async function signInWithGoogle() {
-		try {
-			const { error } = await supabase.auth.signInWithOAuth({
-				provider: 'google',
-				options: {
-					redirectTo: window.location.origin
-				}
-			});
-			if (error) alert(error.message);
-		} catch (err) {
-			console.error('OAuth error:', err);
-		}
+		// Mock login for testing: simply navigate to profile
+		isAuthModalOpen.set(false);
+		goto('/profile');
 	}
 
 	onMount(() => {
@@ -99,7 +91,7 @@
 
 				<!-- Desktop Menu -->
 				<div class="hidden md:flex items-center gap-8">
-					<a href="/" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 {$page.url.pathname === '/' ? 'text-gray-900' : 'text-gray-500'}">Collection</a>
+					<a href="/" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 {$page.url.pathname === '/' ? 'text-gray-900' : 'text-gray-500'}">Products</a>
 					<a href="/medics" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 {$page.url.pathname === '/medics' ? 'text-gray-900' : 'text-gray-500'}">Medics</a>
 					<a href="/tracking" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 text-gray-500">Track Order</a>
 				</div>
@@ -216,7 +208,7 @@
 					<div class="space-y-6">
 						<h4 class="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Discover</h4>
 						<ul class="space-y-4 text-xs font-semibold uppercase tracking-widest">
-							<li><a href="/" class="text-gray-600 hover:text-gray-900 transition-colors">Collection</a></li>
+							<li><a href="/" class="text-gray-600 hover:text-gray-900 transition-colors">Products</a></li>
 							<li><a href="/medics" class="text-gray-600 hover:text-gray-900 transition-colors">Medics</a></li>
 							<li><a href="/cart" class="text-gray-600 hover:text-gray-900 transition-colors">Bag</a></li>
 						</ul>
