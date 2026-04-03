@@ -1,39 +1,70 @@
 <script lang="ts">
-	import { ShoppingCart, Search, User, Menu, X, ArrowRight, Instagram, Twitter, Facebook, Stethoscope, MessageCircle, Send } from 'lucide-svelte';
+	import { ShoppingCart, Search, User, Menu, X, ArrowRight, Instagram, Twitter, Facebook, MessageCircle, Send, ChevronDown, ShieldCheck } from 'lucide-svelte';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	import { authStore } from '$lib/stores/auth';
+	import { goto } from '$app/navigation';
+	import { authStore, isAuthenticated, currentUser } from '$lib/stores/auth';
+	import { isAuthModalOpen } from '$lib/stores/ui';
+	import { supabase } from '$lib/supabase';
 
 	export let data;
 
 	$: storefront = data.storefront;
 	$: brandColor = storefront?.brand_color || '#4f46e5';
-	$: brandColorLight = `${brandColor}15`; // 8% opacity for backgrounds
+	$: brandColorLight = `${brandColor}15`;
 
 	let isMenuOpen = false;
 	let isScrolled = false;
 	let cartCount = 0;
 	let isChatOpen = false;
-	
-	function toggleChat() {
-		isChatOpen = !isChatOpen;
+	let isAccountOpen = false;
+
+	function toggleChat() { isChatOpen = !isChatOpen; }
+	function toggleAccountMenu() { isAccountOpen = !isAccountOpen; }
+
+	async function handleSignOut() {
+		await supabase.auth.signOut();
+		authStore.clearAuth();
+		isAccountOpen = false;
+		goto('/');
+	}
+
+	async function signInWithGoogle() {
+		try {
+			const { error } = await supabase.auth.signInWithOAuth({
+				provider: 'google',
+				options: {
+					redirectTo: window.location.origin
+				}
+			});
+			if (error) alert(error.message);
+		} catch (err) {
+			console.error('OAuth error:', err);
+		}
 	}
 
 	onMount(() => {
-		const handleScroll = () => {
-			isScrolled = window.scrollY > 20;
-		};
-		window.addEventListener('scroll', handleScroll);
-		
-		// In a real app, subscribe to a cart store here
-		cartCount = 2; // Demo count
+		authStore.initialize();
 
-		return () => window.removeEventListener('scroll', handleScroll);
+		const handleScroll = () => { isScrolled = window.scrollY > 20; };
+		window.addEventListener('scroll', handleScroll);
+
+		const updateCart = () => {
+			try {
+				const cart = JSON.parse(localStorage.getItem('cart') || '{"items":[]}');
+				cartCount = cart.items.reduce((s: number, i: any) => s + i.quantity, 0);
+			} catch { cartCount = 0; }
+		};
+		updateCart();
+		window.addEventListener('storage', updateCart);
+
+		return () => {
+			window.removeEventListener('scroll', handleScroll);
+			window.removeEventListener('storage', updateCart);
+		};
 	});
 
-	function toggleMenu() {
-		isMenuOpen = !isMenuOpen;
-	}
+	function toggleMenu() { isMenuOpen = !isMenuOpen; }
 
 	$: storeUrl = storefront?.subdomain 
 		? `${storefront.subdomain}.kemani.io` 
@@ -41,57 +72,124 @@
 
 </script>
 
+<svelte:head>
+</svelte:head>
+
 <div 
-	class="min-h-screen flex flex-col font-sans selection:bg-indigo-100 selection:text-indigo-900"
+	class="min-h-screen flex flex-col font-body selection:bg-gray-100 selection:text-gray-900"
 	style="--brand: {brandColor};"
 >
-	<!-- Top Promo Bar -->
-	<div class="h-10 flex items-center justify-center brand-bg text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 text-center">
-		Free delivery on all orders over ₦25,000 this week only! 🚀
-	</div>
-
 	<!-- Navigation -->
 	<nav 
-		class="sticky top-0 z-50 transition-all duration-500 {isScrolled ? 'bg-white/90 backdrop-blur-xl border-b border-gray-100 shadow-sm py-3' : 'bg-transparent py-5'}"
+		class="sticky top-0 z-50 transition-all duration-500 {isScrolled ? 'bg-white/80 backdrop-blur-md border-b border-gray-100 py-3' : 'bg-transparent py-6'}"
 	>
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="flex items-center justify-between">
 				<!-- Brand -->
 				<a href="/" class="flex items-center gap-3 group">
-					<div class="h-11 w-11 rounded-2xl brand-bg flex items-center justify-center text-white font-black text-xl shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform duration-300">
-						{#if storefront?.logo_url}
-							<img src={storefront.logo_url} alt="logo" class="h-full w-full object-cover rounded-2xl" />
-						{:else}
+					{#if storefront?.logo_url}
+						<img src={storefront.logo_url} alt="logo" class="h-8 w-8 object-contain" />
+					{:else}
+						<div class="h-8 w-8 bg-gray-900 flex items-center justify-center text-white font-serif text-sm">
 							{storefront?.name.charAt(0)}
+						</div>
 						{/if}
-					</div>
-					<div class="hidden sm:block">
-						<h1 class="text-lg font-black text-gray-900 leading-none tracking-tight">{storefront?.name}</h1>
-						<p class="text-[10px] font-black tracking-widest uppercase mt-1 opacity-40 group-hover:opacity-100 transition-opacity" style="color:{brandColor};">Verified Store</p>
-					</div>
+					<h1 class="font-display text-xl tracking-widest text-gray-900 uppercase font-light">{storefront?.name}</h1>
 				</a>
 
 				<!-- Desktop Menu -->
-				<div class="hidden md:flex items-center gap-1">
-					<a href="/" class="px-5 py-2.5 rounded-xl text-sm font-black transition-all hover:bg-gray-50 {$page.url.pathname === '/' ? 'text-gray-900 bg-gray-50' : 'text-gray-500'}">Products</a>
-					<a href="/medics" class="px-5 py-2.5 rounded-xl text-sm font-black transition-all hover:bg-gray-50 {$page.url.pathname === '/medics' ? 'text-gray-900 bg-gray-50' : 'text-gray-500'}">Medics</a>
-					<a href="/tracking" class="px-5 py-2.5 rounded-xl text-sm font-black transition-all hover:bg-gray-50 text-gray-500">Track Order</a>
+				<div class="hidden md:flex items-center gap-8">
+					<a href="/" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 {$page.url.pathname === '/' ? 'text-gray-900' : 'text-gray-500'}">Collection</a>
+					<a href="/medics" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 {$page.url.pathname === '/medics' ? 'text-gray-900' : 'text-gray-500'}">Medics</a>
+					<a href="/tracking" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 text-gray-500">Track Order</a>
 				</div>
 
 				<!-- Actions -->
-				<div class="flex items-center gap-2">
-					<button class="h-11 w-11 flex items-center justify-center rounded-2xl text-gray-600 hover:bg-gray-100 transition-colors"><Search class="h-5 w-5" /></button>
-					<a href="/profile" class="h-11 w-11 flex items-center justify-center rounded-2xl text-gray-600 hover:bg-gray-100 transition-colors"><User class="h-5 w-5" /></a>
-					<a href="/cart" class="h-11 px-4 flex items-center gap-3 brand-bg text-white rounded-2xl shadow-lg shadow-indigo-100 hover:scale-105 active:scale-95 transition-all">
-						<ShoppingCart class="h-5 w-5" />
-						<div class="w-px h-4 bg-white/20"></div>
-						<span class="text-sm font-black tracking-tighter">{cartCount}</span>
+				<div class="flex items-center gap-4">
+					<button class="text-gray-600 hover:text-gray-900 transition-colors">
+						<Search class="h-4 w-4" />
+					</button>
+
+					<!-- Account -->
+					<div class="relative">
+						{#if $isAuthenticated}
+							<button on:click={toggleAccountMenu} class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-gray-600 hover:text-gray-900 transition-colors">
+								<span class="max-w-[80px] truncate">{$currentUser?.user_metadata?.full_name?.split(' ')[0] || 'Account'}</span>
+								<ChevronDown class="h-3 w-3 opacity-40" />
+							</button>
+							{#if isAccountOpen}
+								<div class="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 rounded shadow-xl z-50 py-1 text-xs animate-in fade-in slide-in-from-top-2 duration-200">
+									<a href="/profile" class="block px-4 py-2 text-gray-700 hover:bg-gray-50 uppercase tracking-widest font-semibold text-[9px]">Profile</a>
+									<a href="/orders" class="block px-4 py-2 text-gray-700 hover:bg-gray-50 uppercase tracking-widest font-semibold text-[9px]">Orders</a>
+									<div class="border-t border-gray-100 my-1"></div>
+									<button on:click={handleSignOut} class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 uppercase tracking-widest font-semibold text-[9px]">Sign out</button>
+								</div>
+							{/if}
+						{:else}
+							<button on:click={() => isAuthModalOpen.set(true)} class="text-gray-600 hover:text-gray-900">
+								<User class="h-4 w-4" />
+							</button>
+						{/if}
+					</div>
+
+					<a href="/cart" class="relative group">
+						<ShoppingCart class="h-4 w-4 text-gray-900" />
+						{#if cartCount > 0}
+							<span class="absolute -top-2 -right-2 bg-gray-900 text-white text-[8px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-white">
+								{cartCount}
+							</span>
+						{/if}
 					</a>
-					<button on:click={toggleMenu} class="md:hidden h-11 w-11 flex items-center justify-center rounded-2xl text-gray-600 hover:bg-gray-100 transition-colors"><Menu class="h-5 w-5" /></button>
+
+					<button on:click={toggleMenu} class="md:hidden text-gray-600 hover:text-gray-900">
+						<Menu class="h-4 w-4" />
+					</button>
 				</div>
 			</div>
 		</div>
 	</nav>
+
+	<!-- Auth Modal (Centered Overlay) -->
+	{#if $isAuthModalOpen && !$isAuthenticated}
+		<div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+			<button 
+				on:click={() => isAuthModalOpen.set(false)}
+				class="absolute inset-0 bg-black/40 backdrop-blur-md transition-opacity cursor-default"
+			></button>
+			
+			<div class="relative w-full max-w-sm bg-white rounded-lg shadow-2xl p-10 animate-in fade-in zoom-in-95 duration-300">
+				<button 
+					on:click={() => isAuthModalOpen.set(false)}
+					class="absolute right-6 top-6 text-gray-400 hover:text-gray-900 transition-colors"
+				>
+					<X class="h-4 w-4" />
+				</button>
+
+				<div class="flex flex-col items-center text-center space-y-6">
+					<div class="h-12 w-12 bg-gray-50 rounded-full flex items-center justify-center text-gray-900">
+						<User class="h-6 w-6" />
+					</div>
+					
+					<div class="space-y-2">
+						<h3 class="font-display text-2xl">The Collection Identity</h3>
+						<p class="text-[10px] text-gray-500 uppercase tracking-widest leading-relaxed max-w-xs">Authentication is required to secure your selection and rewards.</p>
+					</div>
+					
+					<div class="w-full pt-4">
+						<button 
+							on:click={signInWithGoogle}
+							class="w-full py-4 border border-gray-200 rounded-lg flex items-center justify-center gap-3 hover:bg-gray-50 active:scale-[0.98] transition-all text-[11px] font-bold text-gray-700 uppercase tracking-[0.15em] shadow-sm"
+						>
+							<img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="Google" class="h-4 w-4" />
+							Continue with Google
+						</button>
+					</div>
+
+					<p class="text-[9px] text-gray-400 font-light leading-relaxed">By continuing, you agree to our curated terms and holistic privacy guidelines. Your identity is used exclusively for collection management.</p>
+				</div>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Main Content -->
 	<main class="flex-grow">
@@ -99,101 +197,100 @@
 	</main>
 
 	<!-- Footer -->
-	<footer class="bg-gray-950 text-white pt-20 pb-8 mt-20">
+	<footer class="bg-[#faf9f6]/50 border-t border-gray-100 pt-20 pb-12 mt-20">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-			<div class="grid grid-cols-1 md:grid-cols-4 gap-12 pb-16 border-b border-white/5">
+			<div class="grid grid-cols-1 md:grid-cols-4 gap-12 pb-16">
 				<div class="space-y-6 md:col-span-2">
-					<div class="flex items-center gap-4">
-						<div class="h-12 w-12 rounded-2xl brand-bg flex items-center justify-center text-white font-black text-xl">
-							{#if storefront?.logo_url}
-								<img src={storefront.logo_url} alt="logo" class="h-full w-full object-cover rounded-2xl" />
-							{:else}
-								{storefront?.name.charAt(0)}
-							{/if}
-						</div>
-						<div>
-							<p class="text-lg font-black tracking-tight">{storefront?.name}</p>
-							<p class="text-[10px] font-black uppercase tracking-[0.2em]" style="color:{brandColor};">{storeUrl}</p>
-						</div>
-					</div>
-					<p class="text-white text-sm leading-relaxed max-w-sm font-medium">{storefront?.description || 'Your trusted neighborhood store, now online for your convenience.'}</p>
-					<div class="flex gap-4">
-						<a href="#" class="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/5 hover:brand-bg transition-colors"><Instagram class="h-4 w-4" /></a>
-						<a href="#" class="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/5 hover:brand-bg transition-colors"><Twitter class="h-4 w-4" /></a>
-						<a href="#" class="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/5 hover:brand-bg transition-colors"><Facebook class="h-4 w-4" /></a>
+					<h4 class="font-display text-2xl tracking-widest text-gray-900 uppercase font-light">{storefront?.name}</h4>
+					<p class="text-gray-500 text-sm leading-relaxed max-w-sm font-light">
+						{storefront?.description || 'Curated releases, artisan stories, and specialized healthcare solutions.'}
+					</p>
+					<div class="flex gap-6">
+						<a href="#" class="text-gray-400 hover:text-gray-900 transition-colors"><Instagram class="h-5 w-5" /></a>
+						<a href="#" class="text-gray-400 hover:text-gray-900 transition-colors"><Twitter class="h-5 w-5" /></a>
+						<a href="#" class="text-gray-400 hover:text-gray-900 transition-colors"><Facebook class="h-5 w-5" /></a>
 					</div>
 				</div>
 				
 				<div class="grid grid-cols-2 gap-8 md:col-span-2">
 					<div class="space-y-6">
-						<h4 class="text-xs font-black uppercase tracking-[0.2em] text-white">Shop</h4>
-						<ul class="space-y-4 text-sm font-bold">
-							<li><a href="/" class="text-white hover:opacity-80 transition-opacity">Products</a></li>
-							<li><a href="/medics" class="text-white hover:opacity-80 transition-opacity">Medics</a></li>
-							<li><a href="/cart" class="text-white hover:opacity-80 transition-opacity">My Cart</a></li>
-							<li><a href="/tracking" class="text-white hover:opacity-80 transition-opacity">Track Order</a></li>
+						<h4 class="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Discover</h4>
+						<ul class="space-y-4 text-xs font-semibold uppercase tracking-widest">
+							<li><a href="/" class="text-gray-600 hover:text-gray-900 transition-colors">Collection</a></li>
+							<li><a href="/medics" class="text-gray-600 hover:text-gray-900 transition-colors">Medics</a></li>
+							<li><a href="/cart" class="text-gray-600 hover:text-gray-900 transition-colors">Bag</a></li>
 						</ul>
 					</div>
 					<div class="space-y-6">
-						<h4 class="text-xs font-black uppercase tracking-[0.2em] text-white">Newsletter</h4>
-						<p class="text-white text-xs font-medium leading-relaxed">Subscribe to stay updated with {storefront?.name} deals.</p>
-						<div class="flex gap-2">
-							<input type="email" placeholder="your@email.com" class="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-sm outline-none text-white placeholder-white/50 focus:border-white transition-colors" />
-							<button class="brand-bg text-white hover:opacity-90 p-3 rounded-xl transition-opacity flex items-center justify-center"><ArrowRight class="h-4 w-4" /></button>
+						<h4 class="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Newsletter</h4>
+						<div class="relative">
+							<input type="email" placeholder="Your email address" class="w-full bg-transparent border-b border-gray-200 py-2 text-xs outline-none focus:border-gray-900 transition-colors" />
+							<button class="absolute right-0 bottom-2 text-gray-400 hover:text-gray-900 transition-colors">
+								<ArrowRight class="h-4 w-4" />
+							</button>
 						</div>
 					</div>
 				</div>
 			</div>
 			
-			<div class="pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] text-white">
+			<div class="pt-12 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300">
 				<p>© {new Date().getFullYear()} {storefront?.name}. All rights reserved.</p>
-				<div class="flex items-center gap-6">
-					<a href="#" class="hover:opacity-80 transition-opacity">Privacy Policy</a>
-					<a href="#" class="hover:opacity-80 transition-opacity">Terms of Service</a>
-					<p>Powered by <span style="color:{brandColor};">Kemani OS</span></p>
+				<div class="flex gap-8">
+					<a href="#" class="hover:text-gray-600 transition-colors">Privacy</a>
+					<a href="#" class="hover:text-gray-600 transition-colors">Terms</a>
 				</div>
 			</div>
 		</div>
 	</footer>
 
-	<!-- Floating Chat Widget -->
-	<div class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
-		{#if isChatOpen}
-			<div class="w-[calc(100vw-3rem)] sm:w-80 bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden translate-y-0 opacity-100 transition-all duration-300 origin-bottom-right flex flex-col h-[400px]">
-				<div class="h-16 brand-bg flex items-center justify-between px-5 text-white">
-					<div>
-						<p class="font-black tracking-tight leading-none text-sm">{storefront?.name || 'Support'}</p>
-						<p class="text-[10px] font-bold tracking-widest text-white/70 uppercase mt-1">We typically reply instantly</p>
-					</div>
-					<button on:click={toggleChat} class="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all"><X class="h-4 w-4" /></button>
-				</div>
-				<div class="flex-1 bg-[#F8FAFC] p-4 flex flex-col gap-3 overflow-y-auto">
-					<div class="self-start max-w-[85%]">
-						<div class="bg-white px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm border border-gray-100 text-sm font-medium text-gray-700">
-							Hi there! 👋 How can we help you today?
-						</div>
-						<p class="text-[9px] font-black uppercase text-gray-400 mt-1 ml-1">Just now</p>
-					</div>
-				</div>
-				<div class="p-4 bg-white border-t border-gray-100 flex items-center gap-2">
-					<input type="text" placeholder="Type your message..." class="flex-1 bg-gray-50 border border-gray-100 rounded-full px-4 py-3 text-sm outline-none focus:border-indigo-500 transition-all" />
-					<button class="h-11 w-11 rounded-full brand-bg flex items-center justify-center text-white shadow-md hover:scale-105 transition-all outline-none">
-						<Send class="h-4 w-4 ml-0.5" />
-					</button>
-				</div>
-			</div>
+	<!-- Floating Chat Icon -->
+	<button 
+		on:click={toggleChat}
+		class="fixed bottom-8 right-8 z-[60] w-14 h-14 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 group"
+	>
+		<MessageCircle class="h-6 w-6 group-hover:rotate-12 transition-transform" />
+		{#if !isChatOpen}
+			<span class="absolute -right-1 -top-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
 		{/if}
-		
-		<button 
-			on:click={toggleChat}
-			class="h-16 w-16 brand-bg rounded-full flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30 hover:scale-110 active:scale-95 transition-all group"
-		>
-			<MessageCircle class="h-7 w-7 group-hover:animate-pulse" />
-		</button>
-	</div>
+	</button>
+
+	{#if isChatOpen}
+		<div class="fixed bottom-24 right-8 z-[60] w-80 bg-white border border-gray-100 rounded-lg shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 duration-300">
+			<!-- Chat Header -->
+			<div class="bg-gray-900 p-4 flex items-center justify-between text-white">
+				<div class="flex items-center gap-3">
+					<div class="h-8 w-8 bg-white/10 rounded-full flex items-center justify-center"><ShieldCheck class="h-4 w-4" /></div>
+					<div>
+						<p class="text-[10px] font-bold uppercase tracking-widest leading-none">Support</p>
+						<p class="text-[8px] opacity-60 mt-1 uppercase tracking-tighter">Response time: <span class="text-emerald-400">Under 1 min</span></p>
+					</div>
+				</div>
+				<button on:click={toggleChat} class="hover:opacity-70 transition-opacity"><X class="h-4 w-4" /></button>
+			</div>
+			<!-- Chat Body -->
+			<div class="h-64 p-6 bg-gray-50/50 flex flex-col justify-end items-center gap-2 text-center">
+				<div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-2"><MessageCircle class="h-6 w-6 text-gray-300" /></div>
+				<p class="text-xs text-gray-900 font-medium italic">"Objects designed for permanence."</p>
+				<p class="text-[10px] text-gray-500 max-w-[80%] font-light">Our curators are online and ready to assist with your collection inquiry.</p>
+			</div>
+			<!-- Chat Input -->
+			<div class="p-4 border-t border-gray-100 flex gap-2 bg-white">
+				<input type="text" placeholder="Type a message..." class="flex-1 text-xs outline-none bg-transparent" />
+				<button class="text-gray-900 hover:opacity-70 transition-opacity"><Send class="h-4 w-4" /></button>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style>
-	:global(body) { font-family: 'Outfit', 'Inter', sans-serif; background: #fff; }
-	.brand-bg { background-color: var(--brand, #4f46e5); }
+	:global(body) { 
+		font-family: 'Inter', sans-serif;
+		background: #faf9f6;
+		overflow-x: hidden;
+	}
+	:global(.font-display) { font-family: 'Playfair Display', serif; }
+    
+    :global(a, button) { transition: all 0.2s ease-in-out; }
+
+	.font-body { font-family: 'Inter', sans-serif; }
 </style>

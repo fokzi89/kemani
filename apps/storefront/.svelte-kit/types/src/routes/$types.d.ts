@@ -10,7 +10,7 @@ type OutputDataShape<T> = MaybeWithVoid<Omit<App.PageData, RequiredKeys<T>> & Pa
 type EnsureDefined<T> = T extends null | undefined ? {} : T;
 type OptionalUnion<U extends Record<string, any>, A extends keyof U = U extends U ? keyof U : never> = U extends unknown ? { [P in Exclude<A, keyof U>]?: never } & U : never;
 export type Snapshot<T = any> = Kit.Snapshot<T>;
-type LayoutRouteId = RouteId | "/(marketplace)" | "/(marketplace)/auth/login" | "/(marketplace)/cart" | "/(marketplace)/checkout" | "/(marketplace)/medics" | "/(marketplace)/medics/[medicId]" | "/(marketplace)/products/[productId]" | "/(marketplace)/profile" | "/consultations" | "/diagnostics" | null
+type LayoutRouteId = RouteId | "/(marketplace)" | "/(marketplace)/auth/forgot-password" | "/(marketplace)/auth/login" | "/(marketplace)/auth/register" | "/(marketplace)/auth/reset-password" | "/(marketplace)/cart" | "/(marketplace)/checkout" | "/(marketplace)/medics" | "/(marketplace)/medics/[medicId]" | "/(marketplace)/products/[productId]" | "/(marketplace)/profile" | "/consultations" | "/diagnostics" | null
 type LayoutParams = RouteParams & { medicId?: string; productId?: string }
 type LayoutServerParentData = EnsureDefined<{}>;
 type LayoutParentData = EnsureDefined<{}>;

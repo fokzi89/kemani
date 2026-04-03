@@ -1,11 +1,13 @@
 <script lang="ts">
-	import { Stethoscope, ShieldCheck, Star, Clock, MapPin, Award, Calendar, Video, ArrowLeft, Send, User } from 'lucide-svelte';
+	import { 
+		Stethoscope, ShieldCheck, Star, Clock, MapPin, 
+		Award, Calendar, Video, ArrowLeft, Send, User, ArrowRight 
+	} from 'lucide-svelte';
 	import { goto } from '$app/navigation';
 
 	export let data;
 	$: medic = data.medic;
 	$: tenant = data.tenant;
-	$: brandColor = tenant?.brand_color || '#4f46e5';
 
 	// Booking state
 	let consultationType = 'general_checkup';
@@ -24,11 +26,8 @@
 
 	async function bookConsultation() {
 		isBooking = true;
-		
-		// In a real implementation this would call an API such as POST /api/consultations/book
-		// For now we'll simulate a slight delay and show a success redirect or alert.
 		setTimeout(() => {
-			alert(`Consultation booked successfully with ${medic.full_name || 'Dr.'} for ${preferredDate || 'soon'}.`);
+			alert(`Consultation booked successfully with ${medic.full_name || 'Dr.'}.`);
 			isBooking = false;
 			goto('/medics');
 		}, 1500);
@@ -36,82 +35,64 @@
 </script>
 
 <svelte:head>
-	<title>{medic?.full_name || 'Healthcare Provider'} | {tenant?.name || 'Healthcare'}</title>
+	<title>{medic?.full_name || 'Expert'} | {tenant?.name || 'Healthcare'}</title>
 </svelte:head>
 
-<div class="min-h-screen bg-[#F8FAFC]">
+<div class="medic-detail-page">
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">
 		
-		<!-- Breadcrumbs -->
-		<div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 mb-8 overflow-x-auto whitespace-nowrap">
-			<a href="/medics" class="hover:text-indigo-600 transition-colors flex items-center gap-1"><ArrowLeft class="h-3 w-3" /> All Providers</a>
-			<span class="mx-2 opacity-30">/</span>
-			<span class="opacity-60">{medic?.type || 'Provider'}</span>
-			<span class="mx-2 opacity-30">/</span>
-			<span class="text-gray-900 truncate">{medic?.full_name || 'Details'}</span>
-		</div>
+		<!-- Back Link (Minimalist) -->
+		<nav class="breadcrumb">
+			<a href="/medics" class="back-link"><ArrowLeft class="w-3 h-3" /> All Professionals</a>
+			<span class="sep">/</span>
+			<span class="current">{medic?.specialization || 'Expert Profile'}</span>
+		</nav>
 
 		{#if medic}
-			<div class="grid lg:grid-cols-3 gap-8 md:gap-12 items-start">
+			<div class="profile-layout">
 				
-				<!-- Left Column: Medic Details -->
-				<div class="lg:col-span-2 space-y-8">
-					<!-- Profile Card -->
-					<div class="bg-white rounded-[40px] p-6 sm:p-10 border border-gray-100 shadow-sm flex flex-col md:flex-row gap-8">
-						<!-- Image -->
-						<div class="w-24 h-24 md:w-32 md:h-32 rounded-full rounded-tr-xl flex-shrink-0 bg-gray-50 overflow-hidden relative shadow-inner">
+				<!-- Left Column: Portrait & Biography -->
+				<div class="profile-main">
+					<div class="expert-header">
+						<div class="expert-portrait-wrap">
 							{#if medic.profile_photo_url}
-								<img src={medic.profile_photo_url} alt={medic.full_name} class="w-full h-full object-cover" />
+								<img src={medic.profile_photo_url} alt={medic.full_name} class="expert-portrait" />
 							{:else}
-								<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-indigo-50">
-									<Stethoscope class="h-16 w-16 text-gray-200" />
+								<div class="expert-placeholder">
+									<Stethoscope class="h-20 w-20" />
 								</div>
 							{/if}
 						</div>
-						
-						<!-- Header Info -->
-						<div class="flex-1 space-y-4 flex flex-col justify-center">
-							<div>
-								<div class="flex flex-wrap items-center gap-3 mb-2">
-									{#if medic.type}
-										<span class="px-3 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest rounded-full">{medic.type}</span>
-									{/if}
-									{#if medic.is_verified}
-										<span class="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest rounded-full flex items-center gap-1.5"><ShieldCheck class="w-3 h-3" /> Verified</span>
-									{/if}
-								</div>
-								
-								<h1 class="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-none mb-2">{medic.full_name || 'Healthcare Provider'}</h1>
-								{#if medic.specialization}
-									<p class="text-xs font-black uppercase tracking-[0.1em] opacity-80" style="color: {brandColor};">{medic.specialization}</p>
+
+						<div class="expert-meta">
+							<div class="badges">
+								{#if medic.type}
+									<span class="badge badge-type">{medic.type}</span>
+								{/if}
+								{#if medic.is_verified}
+									<span class="badge badge-verified"><ShieldCheck class="w-3 h-3" /> Verified Expert</span>
 								{/if}
 							</div>
 							
-							<div class="flex flex-wrap gap-4 pt-2">
+							<h1 class="expert-name">{medic.full_name}</h1>
+							<p class="expert-specialty">{medic.specialization}</p>
+
+							<div class="expert-stats">
 								{#if medic.average_rating}
-									<div class="flex items-center gap-1.5">
-										<div class="h-8 w-8 rounded-full bg-amber-50 flex items-center justify-center"><Star class="h-4 w-4 text-amber-500 fill-amber-500" /></div>
-										<div class="flex flex-col">
-											<span class="text-sm font-black text-gray-900 leading-none">{medic.average_rating}</span>
-											<span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Rating</span>
+									<div class="stat">
+										<Star class="stat-icon star" />
+										<div class="stat-text">
+											<p class="stat-val">{medic.average_rating}</p>
+											<p class="stat-label">Rating</p>
 										</div>
 									</div>
 								{/if}
 								{#if medic.years_of_experience}
-									<div class="flex items-center gap-1.5">
-										<div class="h-8 w-8 rounded-full bg-blue-50 flex items-center justify-center"><Clock class="h-4 w-4 text-blue-500" /></div>
-										<div class="flex flex-col">
-											<span class="text-sm font-black text-gray-900 leading-none">{medic.years_of_experience}+ Years</span>
-											<span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Experience</span>
-										</div>
-									</div>
-								{/if}
-								{#if medic.country}
-									<div class="flex items-center gap-1.5">
-										<div class="h-8 w-8 rounded-full bg-gray-50 flex items-center justify-center"><MapPin class="h-4 w-4 text-gray-500" /></div>
-										<div class="flex flex-col">
-											<span class="text-sm font-black text-gray-900 leading-none">{medic.country}</span>
-											<span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{medic.region || 'Location'}</span>
+									<div class="stat">
+										<Clock class="stat-icon" />
+										<div class="stat-text">
+											<p class="stat-val">{medic.years_of_experience}y</p>
+											<p class="stat-label">Experience</p>
 										</div>
 									</div>
 								{/if}
@@ -119,122 +100,198 @@
 						</div>
 					</div>
 
-					<!-- About Section -->
-					<div class="bg-white rounded-[40px] p-6 sm:p-10 border border-gray-100 shadow-sm space-y-6">
-						<h2 class="text-xs font-black uppercase tracking-[0.2em] text-gray-400 flex items-center gap-2"><User class="h-4 w-4" /> About Provider</h2>
-						{#if medic.bio}
-							<p class="text-gray-600 font-medium leading-relaxed text-sm">
-								{medic.bio}
-							</p>
-						{:else}
-							<p class="text-gray-400 font-medium italic">No detailed biography provided.</p>
-						{/if}
-
-						{#if medic.credentials}
-							<div class="pt-6 border-t border-gray-100 mt-6">
-								<h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3">Qualifications & Credentials</h3>
-								<div class="inline-flex items-center gap-2 px-4 py-3 bg-gray-50 rounded-2xl text-xs font-bold text-gray-700">
-									<Award class="h-4 w-4 text-indigo-500" />
-									{medic.credentials}
-								</div>
-							</div>
-						{/if}
-					</div>
-					
-					<!-- Trust Indicators -->
-					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-						<div class="bg-emerald-50/50 rounded-3xl p-6 border border-emerald-100/50 flex flex-col gap-2">
-							<ShieldCheck class="h-6 w-6 text-emerald-500" />
-							<p class="text-[10px] font-black uppercase tracking-widest text-emerald-700">Verified identity & degrees</p>
-						</div>
-						<div class="bg-blue-50/50 rounded-3xl p-6 border border-blue-100/50 flex flex-col gap-2">
-							<Video class="h-6 w-6 text-blue-500" />
-							<p class="text-[10px] font-black uppercase tracking-widest text-blue-700">Secure telehealth platform</p>
-						</div>
-					</div>
-				</div>
-
-				<!-- Right Column: Booking Widget -->
-				<div class="lg:sticky lg:top-32 space-y-6">
-					<div class="bg-white rounded-[40px] p-6 border border-gray-100 shadow-2xl shadow-indigo-100/30">
-						<div class="mb-6 space-y-1">
-							<h3 class="text-xl font-black text-gray-900 tracking-tight">Book Consultation</h3>
-							<p class="text-xs text-gray-500 font-medium">Select your requirements below to schedule an appointment.</p>
-						</div>
-
-						<form on:submit|preventDefault={bookConsultation} class="space-y-5">
-							
-							<!-- Consultation Type -->
-							<div class="space-y-2">
-								<label for="consult_type" class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Consultation Type</label>
-								<div class="relative">
-									<select 
-										id="consult_type" 
-										bind:value={consultationType}
-										class="w-full appearance-none bg-gray-50 border border-gray-100 text-gray-900 text-sm font-bold rounded-2xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer"
-									>
-										{#each consultationTypes as type}
-											<option value={type.value}>{type.label}</option>
-										{/each}
-									</select>
-									<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-										<svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-									</div>
-								</div>
-							</div>
-
-							<!-- Dynamic Info Box based on Selection -->
-							{#if selectedConsultation}
-								<div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 flex justify-between items-center">
-									<div class="flex flex-col">
-										<span class="text-[10px] text-indigo-400 font-black uppercase tracking-widest">Duration</span>
-										<span class="text-sm font-bold text-indigo-900 flex items-center gap-1"><Clock class="h-3 w-3" /> {selectedConsultation.duration}</span>
-									</div>
-									<div class="flex flex-col text-right">
-										<span class="text-[10px] text-indigo-400 font-black uppercase tracking-widest">Fee</span>
-										<span class="text-lg font-black text-indigo-900">{selectedConsultation.price}</span>
-									</div>
-								</div>
-							{/if}
-
-							<!-- Date & Time (Mocked for UI purposes) -->
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-								<div class="space-y-2">
-									<label for="date" class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</label>
-									<input type="date" id="date" bind:value={preferredDate} class="w-full bg-gray-50 border border-gray-100 text-gray-900 text-sm font-bold rounded-2xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer" />
-								</div>
-								<div class="space-y-2">
-									<label for="time" class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Time</label>
-									<input type="time" id="time" bind:value={preferredTime} class="w-full bg-gray-50 border border-gray-100 text-gray-900 text-sm font-bold rounded-2xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer" />
-								</div>
-							</div>
-
-							<button 
-								type="submit" 
-								disabled={isBooking}
-								class="w-full h-14 mt-6 text-white font-black text-xs uppercase tracking-[0.15em] rounded-2xl shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-								style="background: {brandColor};"
-							>
-								{#if isBooking}
-									<div class="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-									Processing...
+					<div class="expert-content">
+						<section class="bio-section">
+							<h3 class="section-label">The Professional Journey</h3>
+							<div class="bio-text">
+								{#if medic.bio}
+									<p>{medic.bio}</p>
 								{:else}
-									<Calendar class="h-4 w-4" /> Schedule Visit
+									<p>A distinguished healthcare professional dedicated to delivering excellence in medical care and holistic patient medics.</p>
 								{/if}
-							</button>
-						</form>
-						
-						<p class="text-center text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-6 bg-gray-50 py-2 rounded-xl">
-							Instant confirmation
-						</p>
+							</div>
+						</section>
+
+						<!-- Logistics Panel -->
+						<div class="logistics-grid">
+							<div class="logistics-card">
+								<MapPin class="logistics-icon" />
+								<div>
+									<p class="logi-label">Clinical Location</p>
+									<p class="logi-val">{medic.location_served || 'Lagos, Nigeria'}</p>
+								</div>
+							</div>
+							<div class="logistics-card">
+								<Award class="logistics-icon" />
+								<div>
+									<p class="logi-label">Accreditation</p>
+									<p class="logi-val">Medical Board Certified</p>
+								</div>
+							</div>
+						</div>
 					</div>
 				</div>
-				
+
+				<!-- Right Column: Booking & Consulting -->
+				<aside class="booking-sidebar">
+					<div class="booking-box">
+						<h2 class="booking-title">Book Consultation</h2>
+						<p class="booking-sub">Choose your consultation type and preferred schedule.</p>
+
+						<div class="consultation-selector">
+							{#each consultationTypes as type}
+								<button 
+									on:click={() => consultationType = type.value}
+									class="consult-item {consultationType === type.value ? 'active' : ''}"
+								>
+									<div class="consult-info">
+										<p class="consult-name">{type.label}</p>
+										<p class="consult-dur">{type.duration}</p>
+									</div>
+									<p class="consult-price">{type.price}</p>
+								</button>
+							{/each}
+						</div>
+
+						<div class="schedule-form">
+							<div class="input-group">
+								<label for="date" class="input-label">Preferred Date</label>
+								<input type="date" id="date" bind:value={preferredDate} class="input-field" />
+							</div>
+							<div class="input-group">
+								<label for="time" class="input-label">Preferred Time</label>
+								<input type="time" id="time" bind:value={preferredTime} class="input-field" />
+							</div>
+						</div>
+
+						<button 
+							on:click={bookConsultation}
+							disabled={isBooking}
+							class="btn-primary"
+						>
+							{#if isBooking}
+								<div class="loader-dot"></div> Processing...
+							{:else}
+								Confirm Consultation <ArrowRight class="btn-icon" />
+							{/if}
+						</button>
+
+						<div class="payment-note">
+							<ShieldCheck class="note-icon" />
+							<span>Pay online securely via Paystack integrated checkout.</span>
+						</div>
+					</div>
+				</aside>
 			</div>
 		{/if}
 	</div>
 </div>
 
 <style>
-	:global(body) { font-family: 'Outfit', 'Inter', sans-serif; }
+	/* ─── TOKENS ─── */
+	:root {
+		--font-display: 'Playfair Display', Georgia, serif;
+		--font-body: 'Inter', -apple-system, sans-serif;
+		--surface: #faf9f6;
+		--on-surface: #1a1c1a;
+		--on-surface-muted: #6b7280;
+		--border: #f0eeea;
+		--accent: #785a1a;
+		--radius: 8px;
+	}
+
+	.medic-detail-page {
+		background: var(--surface);
+		color: var(--on-surface);
+		font-family: var(--font-body);
+		min-height: 100vh;
+	}
+
+	/* ─── BREADCRUMB ─── */
+	.breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--on-surface-muted); margin-bottom: 3rem; }
+	.back-link { display: flex; align-items: center; gap: 6px; color: var(--on-surface); }
+	.sep { opacity: 0.4; }
+
+	/* ─── LAYOUT ─── */
+	.profile-layout {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 4rem;
+	}
+	@media (min-width: 1024px) {
+		.profile-layout { grid-template-columns: 1fr 360px; gap: 6rem; }
+	}
+
+	/* ─── MAIN COLUMN ─── */
+	.profile-main { display: flex; flex-direction: column; gap: 4rem; }
+	.expert-header { display: flex; flex-direction: column; gap: 2.5rem; }
+	@media (min-width: 768px) { .expert-header { flex-direction: row; align-items: center; } }
+
+	.expert-portrait-wrap { 
+		width: 180px; aspect-ratio: 3/4; border-radius: var(--radius); 
+		background: #fff; border: 1px solid var(--border); overflow: hidden;
+		flex-shrink: 0;
+	}
+	.expert-portrait { width: 100%; height: 100%; object-fit: cover; }
+	.expert-placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #f3f4f6; }
+
+	.expert-meta { display: flex; flex-direction: column; gap: 1rem; }
+	.badges { display: flex; gap: 8px; }
+	.badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 12px; border-radius: 4px; }
+	.badge-type { background: var(--on-surface); color: #fff; }
+	.badge-verified { background: #fff; border: 1px solid var(--border); color: #059669; display: flex; align-items: center; gap: 4px; }
+
+	.expert-name { font-family: var(--font-display); font-size: 3rem; font-weight: 500; line-height: 1; }
+	.expert-specialty { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.25em; color: var(--accent); }
+
+	.expert-stats { display: flex; gap: 2.5rem; margin-top: 1rem; }
+	.stat { display: flex; align-items: center; gap: 12px; }
+	.stat-icon { width: 20px; height: 20px; color: #d1d5db; }
+	.stat-icon.star { color: #f59e0b; fill: currentColor; }
+	.stat-val { font-size: 15px; font-weight: 700; line-height: 1; }
+	.stat-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--on-surface-muted); letter-spacing: 0.05em; }
+
+	.section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: var(--on-surface-muted); margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+	.bio-text { font-size: 15px; line-height: 1.8; color: var(--on-surface-muted); max-width: 600px; font-weight: 300; }
+
+	.logistics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-top: 2rem; }
+	.logistics-card { padding: 1.5rem; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); display: flex; align-items: center; gap: 1rem; }
+	.logistics-icon { width: 24px; height: 24px; color: var(--accent); opacity: 0.6; }
+	.logi-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--on-surface-muted); margin-bottom: 2px; }
+	.logi-val { font-size: 13px; font-weight: 600; }
+
+	/* ─── BOOKING SIDEBAR ─── */
+	.booking-sidebar { display: flex; flex-direction: column; }
+	.booking-box { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 2.5rem; position: sticky; top: 120px; }
+	.booking-title { font-family: var(--font-display); font-size: 1.75rem; font-weight: 500; margin-bottom: 0.5rem; }
+	.booking-sub { font-size: 13px; color: var(--on-surface-muted); margin-bottom: 2.5rem; line-height: 1.5; }
+
+	.consultation-selector { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2.5rem; }
+	.consult-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid var(--border); border-radius: 6px; background: transparent; cursor: pointer; transition: all 0.2s; text-align: left; }
+	.consult-item.active { border-color: var(--on-surface); background: rgba(0,0,0,0.01); }
+	.consult-name { font-size: 12px; font-weight: 700; color: var(--on-surface); }
+	.consult-dur { font-size: 10px; color: var(--on-surface-muted); text-transform: uppercase; }
+	.consult-price { font-size: 13px; font-weight: 700; color: var(--on-surface); }
+
+	.schedule-form { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2.5rem; }
+	.input-group { display: flex; flex-direction: column; gap: 0.4rem; }
+	.input-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--on-surface-muted); }
+	.input-field { border: none; border-bottom: 1px solid var(--border); padding: 8px 0; font-size: 13px; font-weight: 600; background: transparent; outline: none; }
+	.input-field:focus { border-color: var(--on-surface); }
+
+	.btn-primary {
+		width: 100%; padding: 18px; border: none; border-radius: 6px;
+		background: var(--on-surface); color: #fff;
+		font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em;
+		display: flex; align-items: center; justify-content: center; gap: 8px;
+		cursor: pointer; transition: background 0.2s;
+	}
+	.btn-primary:hover { background: #000; }
+	.btn-primary:disabled { opacity: 0.5; }
+
+	.payment-note { margin-top: 1.5rem; display: flex; align-items: start; gap: 8px; font-size: 10px; color: var(--on-surface-muted); line-height: 1.4; font-weight: 500; }
+	.note-icon { width: 14px; height: 14px; flex-shrink: 0; color: #059669; }
+
+	.loader-dot { width: 8px; height: 8px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+	@keyframes spin { to { transform: rotate(360deg); } }
 </style>

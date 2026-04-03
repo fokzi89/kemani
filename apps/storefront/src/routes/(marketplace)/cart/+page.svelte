@@ -4,12 +4,13 @@
 	import { goto } from '$app/navigation';
 	import { 
 		ShoppingCart, Trash2, Plus, Minus, ArrowLeft, 
-		CreditCard, ShieldCheck, Truck, Tag, Ticket, ChevronRight 
+		CreditCard, ShieldCheck, Truck, Tag, Ticket, ChevronRight, ArrowRight
 	} from 'lucide-svelte';
+	import { isAuthenticated } from '$lib/stores/auth';
+	import { isAuthModalOpen } from '$lib/stores/ui';
 
 	export let data;
 
-	// Injected from layout context
 	$: storefront = data.storefront;
     $: brandColor = storefront?.brand_color || '#4f46e5';
     $: brandColorLight = brandColor + '18';
@@ -29,8 +30,6 @@
 	};
 
 	let cart: Cart = { items: [] };
-	let loyaltyPointsAvailable = 450; 
-	let loyaltyPointsToRedeem = 0;
 	let deliveryFee = 1500;
 	let orderType: 'delivery' | 'pickup' = 'delivery';
 	let isLoading = false;
@@ -60,6 +59,7 @@
 			removeItem(index);
 		} else if (newQuantity <= (item.stock_available || 999)) {
 			cart.items[index].quantity = newQuantity;
+			cart = cart; 
 			saveCart();
 		}
 	}
@@ -70,31 +70,19 @@
 		saveCart();
 	}
 
-	function clearCart() {
-		if (confirm('Are you sure you want to clear your cart?')) {
-			cart = { items: [] };
-			saveCart();
-		}
-	}
-
 	$: subtotal = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 	$: tax = subtotal * 0.075; 
 	$: actualDeliveryFee = orderType === 'delivery' ? deliveryFee : 0;
-	$: loyaltyDiscount = loyaltyPointsToRedeem * 10; 
-	$: total = subtotal + tax + actualDeliveryFee - loyaltyDiscount;
-
-	$: maxRedeemablePoints = Math.min(
-		loyaltyPointsAvailable,
-		Math.floor(subtotal / 10) 
-	);
-
-	function handleLoyaltyPointsChange() {
-		if (loyaltyPointsToRedeem > maxRedeemablePoints) loyaltyPointsToRedeem = maxRedeemablePoints;
-		if (loyaltyPointsToRedeem < 0) loyaltyPointsToRedeem = 0;
-	}
+	$: total = subtotal + tax + actualDeliveryFee;
 
 	async function proceedToCheckout() {
 		if (cart.items.length === 0) return;
+		
+		if (!$isAuthenticated) {
+			isAuthModalOpen.set(true);
+			return;
+		}
+
 		isLoading = true;
 		
 		const orderData = {
@@ -102,8 +90,6 @@
 			subtotal,
 			tax,
 			delivery_fee: actualDeliveryFee,
-			loyalty_discount: loyaltyDiscount,
-			loyalty_points_to_redeem: loyaltyPointsToRedeem,
 			total,
 			order_type: orderType
 		};
@@ -117,171 +103,209 @@
 	<title>Your Bag | {storefront?.name || 'Shop'}</title>
 </svelte:head>
 
-<div class="min-h-screen bg-[#F8FAFC]">
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
+<div class="cart-page">
+	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">
 		
+		<header class="cart-header">
+			<h1 class="cart-title">Your Bag</h1>
+			<p class="cart-subtitle">Review your selection before proceeding to checkout.</p>
+		</header>
+
 		{#if cart.items.length === 0}
-			<div class="bg-white rounded-[40px] p-24 text-center border border-dashed border-gray-100 flex flex-col items-center">
-				<div class="h-24 w-24 bg-gray-50 rounded-full flex items-center justify-center mb-8">
-					<ShoppingCart class="h-10 w-10 text-gray-200" />
-				</div>
-				<h3 class="text-3xl font-black text-gray-900 tracking-tight uppercase">Your bag is empty</h3>
-				<p class="text-gray-500 mt-3 max-w-sm font-medium leading-relaxed uppercase text-xs tracking-widest">Discover our premium healthcare collection and start your wellness journey.</p>
-				<a 
-					href="/"
-					class="mt-10 px-12 py-5 text-white font-black rounded-3xl shadow-2xl transition-all active:scale-95 uppercase tracking-[0.2em] text-[11px]"
-                    style="background: var(--brand); box-shadow: 0 20px 40px {brandColor}22;"
-				>
-					Start Shopping
-				</a>
+			<div class="empty-cart">
+				<div class="empty-icon"><ShoppingCart class="w-12 h-12" /></div>
+				<h3 class="empty-msg">Your bag is currently empty</h3>
+				<p class="empty-sub">Discover our curated healthcare collection and start your medics journey.</p>
+				<a href="/" class="btn-primary empty-cta">Start Shopping</a>
 			</div>
 		{:else}
-			<div class="grid lg:grid-cols-3 gap-16">
-				<!-- Cart Items -->
-				<div class="lg:col-span-2 space-y-8">
-					<div class="flex justify-between items-end border-b border-gray-100 pb-6">
-						<div class="space-y-1">
-                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Review your selection</p>
-						    <h2 class="text-3xl font-black text-gray-900 uppercase tracking-tight">Shopping Bag ({cart.items.length})</h2>
-                        </div>
-						<button on:click={clearCart} class="text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase tracking-[0.2em]">Clear All</button>
-					</div>
+			<div class="cart-layout">
+				<!-- Items List -->
+				<div class="cart-items">
+					{#each cart.items as item, index}
+						<div class="cart-row">
+							<div class="item-img-wrap">
+								{#if item.product_image}
+									<img src={item.product_image} alt={item.product_name} class="item-img" />
+								{:else}
+									<div class="item-placeholder"><ShoppingCart class="w-8 h-8" /></div>
+								{/if}
+							</div>
 
-					<div class="space-y-5">
-						{#each cart.items as item, index}
-							<div class="group bg-white rounded-[32px] p-6 border border-gray-100 flex flex-col md:flex-row gap-8 transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-500/5">
-								<!-- Product Image -->
-								<div class="w-full md:w-36 h-36 bg-gray-50 rounded-2xl overflow-hidden flex-shrink-0 p-4">
-									{#if item.product_image}
-										<img src={item.product_image} alt={item.product_name} class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700" />
-									{:else}
-										<div class="w-full h-full flex items-center justify-center text-gray-200"><ShoppingCart class="h-10 w-10" /></div>
-									{/if}
+							<div class="item-info">
+								<div class="item-details">
+									<h3 class="item-name">{item.product_name}</h3>
+									<p class="item-price">₦{item.price.toLocaleString()}</p>
 								</div>
 
-								<!-- Product Details -->
-								<div class="flex-1 flex flex-col">
-									<div class="flex justify-between items-start gap-4">
-										<div class="space-y-1">
-                                            <p class="text-[9px] font-black uppercase tracking-[0.2em]" style="color:var(--brand);">Inventory Item</p>
-											<h3 class="text-xl font-black text-gray-900 leading-tight transition-colors uppercase tracking-tight cursor-default">{item.product_name}</h3>
-										</div>
-										<button on:click={() => removeItem(index)} class="h-10 w-10 flex items-center justify-center text-gray-200 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"><Trash2 class="h-5 w-5" /></button>
+								<div class="item-controls">
+									<div class="qty-control">
+										<button on:click={() => updateQuantity(index, item.quantity - 1)} class="qty-btn"><Minus class="w-2.5 h-2.5" /></button>
+										<span class="qty-val">{item.quantity}</span>
+										<button on:click={() => updateQuantity(index, item.quantity + 1)} class="qty-btn"><Plus class="w-2.5 h-2.5" /></button>
 									</div>
-
-									<div class="mt-auto pt-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-										<div class="flex items-center gap-2 p-1.5 bg-gray-50 rounded-2xl border border-gray-100">
-											<button 
-												on:click={() => updateQuantity(index, item.quantity - 1)}
-												class="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-gray-900 hover:bg-gray-950 hover:text-white transition-all shadow-sm active:scale-90"
-											><Minus class="h-4 w-4" /></button>
-											<span class="w-12 text-center text-lg font-black text-gray-900 tracking-tighter">{item.quantity}</span>
-											<button 
-												on:click={() => updateQuantity(index, item.quantity + 1)}
-												class="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-gray-900 hover:bg-gray-950 hover:text-white transition-all shadow-sm active:scale-90"
-											><Plus class="h-4 w-4" /></button>
-										</div>
-
-										<div class="text-right">
-											<p class="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1">Subtotal</p>
-											<p class="text-2xl font-black text-gray-900 tracking-tighter">₦{(item.price * item.quantity).toLocaleString()}</p>
-										</div>
-									</div>
+									<button on:click={() => removeItem(index)} class="remove-btn">Remove</button>
 								</div>
 							</div>
-						{/each}
-					</div>
-
-					<!-- Trust Strip -->
-					<div class="bg-white p-8 rounded-[40px] border border-gray-100 grid grid-cols-2 md:grid-cols-3 gap-8">
-                        <div class="flex items-center gap-4">
-                            <div class="h-12 w-12 rounded-2xl flex items-center justify-center" style="background:{brandColorLight};color:var(--brand);"><ShieldCheck class="w-6 h-6" /></div>
-                            <div><p class="text-[11px] font-black uppercase tracking-widest">Secure</p><p class="text-[10px] font-medium text-gray-400">SSL Encrypted</p></div>
-                        </div>
-                        <div class="flex items-center gap-4">
-                            <div class="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><Truck class="w-6 h-6" /></div>
-                            <div><p class="text-[11px] font-black uppercase tracking-widest">Fast</p><p class="text-[10px] font-medium text-gray-400">Real-time Tracking</p></div>
-                        </div>
-                        <div class="flex items-center gap-4 hidden md:flex">
-                            <div class="h-12 w-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center"><Tag class="w-6 h-6" /></div>
-                            <div><p class="text-[11px] font-black uppercase tracking-widest">Quality</p><p class="text-[10px] font-medium text-gray-400">Verified Stocks</p></div>
-                        </div>
-                    </div>
+						</div>
+					{/each}
 				</div>
 
-				<!-- Bag Summary -->
-				<div class="lg:col-span-1">
-					<div class="bg-white rounded-[44px] p-10 border border-gray-100 shadow-2xl shadow-gray-200/50 sticky top-32 space-y-10">
-						<h3 class="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em] border-b border-gray-50 pb-6">Payment Summary</h3>
-
-						<!-- Order Type Selection -->
-						<div class="flex p-1.5 bg-gray-50 rounded-[28px] border border-gray-100">
+				<!-- Summary Table -->
+				<aside class="cart-summary">
+					<div class="summary-box">
+						<h2 class="summary-title">Summary</h2>
+						
+						<div class="order-type-tabs">
 							<button 
 								on:click={() => orderType = 'delivery'}
-								class="flex-1 py-4 px-4 rounded-[22px] text-[10px] font-black uppercase tracking-widest transition-all duration-300 {orderType === 'delivery' ? 'bg-gray-950 text-white shadow-xl' : 'text-gray-400 hover:text-gray-900'}"
-							>
-								Home Delivery
-							</button>
+								class="type-tab {orderType === 'delivery' ? 'active' : ''}"
+							>Delivery</button>
 							<button 
 								on:click={() => orderType = 'pickup'}
-								class="flex-1 py-4 px-4 rounded-[22px] text-[10px] font-black uppercase tracking-widest transition-all duration-300 {orderType === 'pickup' ? 'bg-gray-950 text-white shadow-xl' : 'text-gray-400 hover:text-gray-900'}"
-							>
-								Pick up
-							</button>
+								class="type-tab {orderType === 'pickup' ? 'active' : ''}"
+							>Pickup</button>
 						</div>
 
-						<!-- Costs Breakdown -->
-						<div class="space-y-5">
-							<div class="flex justify-between items-center text-[11px] font-black text-gray-400 uppercase tracking-widest">
-								<span>Merchandise</span>
-								<span class="text-gray-900 font-black">₦{subtotal.toLocaleString()}</span>
+						<div class="summary-details">
+							<div class="summary-row">
+								<span>Subtotal</span>
+								<span>₦{subtotal.toLocaleString()}</span>
 							</div>
-							<div class="flex justify-between items-center text-[11px] font-black text-gray-400 uppercase tracking-widest">
+							<div class="summary-row">
 								<span>VAT (7.5%)</span>
-								<span class="text-gray-900 font-black">₦{tax.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
+								<span>₦{tax.toLocaleString()}</span>
 							</div>
-							<div class="flex justify-between items-center text-[11px] font-black text-gray-400 uppercase tracking-widest">
-								<span>Shipping</span>
-								<span class={orderType === 'delivery' ? 'text-gray-900' : 'text-emerald-500'}>
-									{orderType === 'delivery' ? `₦${actualDeliveryFee.toLocaleString()}` : 'FREE'}
-								</span>
+							{#if orderType === 'delivery'}
+								<div class="summary-row">
+									<span>Delivery Fee</span>
+									<span>₦{deliveryFee.toLocaleString()}</span>
+								</div>
+							{:else}
+								<div class="summary-row text-emerald-600">
+									<span>Pickup</span>
+									<span>Free</span>
+								</div>
+							{/if}
+							<div class="summary-total">
+								<span>Total</span>
+								<span>₦{total.toLocaleString()}</span>
 							</div>
 						</div>
 
-						<!-- Grand Total -->
-						<div class="pt-10 border-t border-gray-100 flex flex-col gap-3">
-							<p class="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none">Estimated Total</p>
-							<p class="text-5xl font-black text-gray-950 tracking-tighter">₦{total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-						</div>
-
-						<!-- Checkout Button -->
 						<button 
 							on:click={proceedToCheckout}
 							disabled={isLoading}
-							class="w-full py-7 text-white text-[11px] font-black rounded-[32px] shadow-2xl transition-all flex items-center justify-center gap-4 uppercase tracking-[0.3em] active:scale-95 disabled:opacity-50"
-                            style="background: var(--brand); box-shadow: 0 20px 40px {brandColor}33;"
+							class="btn-primary checkout-btn"
 						>
 							{#if isLoading}
-								<div class="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full"></div>
-								Processing...
+								<div class="loader-dot"></div> Processing...
 							{:else}
-								Secure Checkout <ChevronRight class="h-4 w-4" />
+								Proceed to Checkout <ArrowRight class="w-4 h-4" />
 							{/if}
 						</button>
 
-						<!-- Payment Badges -->
-						<div class="pt-4 flex items-center justify-center gap-6 opacity-30 grayscale hover:grayscale-0 transition-all duration-700">
-							<CreditCard class="h-6 w-6" />
-                            <div class="h-4 w-px bg-gray-200"></div>
-							<span class="text-[10px] font-black uppercase tracking-widest">Paystack Secured</span>
+						<div class="trust-points">
+							<div class="trust-item">
+								<ShieldCheck class="w-3.5 h-3.5" />
+								<span>Industrial Grade Encryption</span>
+							</div>
+							<div class="trust-item">
+								<Truck class="w-3.5 h-3.5" />
+								<span>Express Priority Dispatch</span>
+							</div>
 						</div>
 					</div>
-				</div>
+				</aside>
 			</div>
 		{/if}
+
+		<div class="mt-12">
+			<a href="/" class="continue-shopping">
+				<ArrowLeft class="w-3.5 h-3.5" /> Continue Shopping
+			</a>
+		</div>
 	</div>
 </div>
 
 <style>
-	:global(body) { font-family: 'Outfit', 'Inter', sans-serif; }
+    /* Design Tokens */
+    :root {
+        --font-display: 'Playfair Display', serif;
+        --font-body: 'Inter', sans-serif;
+        --surface: #faf9f6;
+        --border: #f0eeea;
+        --on-surface: #1a1c1a;
+        --on-surface-muted: #6b7280;
+        --radius: 8px;
+    }
+
+    .cart-page { background: var(--surface); color: var(--on-surface); font-family: var(--font-body); min-height: 100vh; }
+    
+    .cart-header { margin-bottom: 3rem; }
+    .cart-title { font-family: var(--font-display); font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .cart-subtitle { font-size: 0.875rem; color: var(--on-surface-muted); }
+
+    /* Layout */
+    .cart-layout { display: grid; grid-template-columns: 1fr; gap: 4rem; }
+    @media (min-width: 1024px) { .cart-layout { grid-template-columns: 1fr 380px; } }
+
+    /* Rows */
+    .cart-row { display: flex; gap: 1.5rem; padding: 2rem 0; border-bottom: 1px solid var(--border); }
+    .item-img-wrap { width: 100px; aspect-ratio: 3/4; border-radius: var(--radius); overflow: hidden; background: #fff; border: 1px solid var(--border); }
+    .item-img { width: 100%; height: 100%; object-fit: cover; }
+    .item-placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #f3f4f6; }
+    
+    .item-info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .item-name { font-family: var(--font-display); font-size: 1.25rem; margin-bottom: 0.25rem; }
+    .item-price { font-weight: 600; font-size: 0.875rem; }
+
+    .item-controls { display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; }
+    .qty-control { display: flex; align-items: center; gap: 1rem; background: #fff; border: 1px solid var(--border); padding: 4px 8px; border-radius: 4px; }
+    .qty-btn { opacity: 0.4; transition: opacity 0.2s; }
+    .qty-btn:hover { opacity: 1; }
+    .qty-val { font-size: 0.75rem; font-weight: 700; min-width: 1rem; text-align: center; }
+    
+    .remove-btn { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--on-surface-muted); }
+    .remove-btn:hover { color: #ef4444; }
+
+    /* Summary */
+    .summary-box { background: #fff; border: 1px solid var(--border); padding: 2.5rem; border-radius: var(--radius); position: sticky; top: 120px; }
+    .summary-title { font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 2rem; }
+
+    .order-type-tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface); padding: 4px; border-radius: 6px; margin-bottom: 2rem; }
+    .type-tab { padding: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; border-radius: 4px; transition: all 0.3s; }
+    .type-tab.active { background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); color: var(--on-surface); }
+    .type-tab:not(.active) { color: var(--on-surface-muted); }
+
+    .summary-details { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem; }
+    .summary-row { display: flex; justify-content: space-between; font-size: 0.875rem; color: var(--on-surface-muted); }
+    .summary-total { display: flex; justify-content: space-between; font-weight: 700; font-size: 1.125rem; color: var(--on-surface); border-top: 1px solid var(--border); padding-top: 1.5rem; margin-top: 1rem; }
+
+    .btn-primary { 
+        width: 100%; padding: 1.25rem; background: var(--on-surface); color: #fff; 
+        border-radius: var(--radius); font-size: 0.75rem; font-weight: 700; 
+        text-transform: uppercase; letter-spacing: 0.15em; display: flex; 
+        align-items: center; justify-content: center; gap: 0.75rem;
+        transition: all 0.3s;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .trust-points { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem; }
+    .trust-item { display: flex; align-items: center; gap: 0.75rem; color: var(--on-surface-muted); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    .continue-shopping { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--on-surface-muted); transition: color 0.2s; }
+    .continue-shopping:hover { color: var(--on-surface); }
+
+    /* Empty State */
+    .empty-cart { text-align: center; padding: 6rem 0; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); }
+    .empty-icon { opacity: 0.1; display: flex; justify-content: center; margin-bottom: 2rem; }
+    .empty-msg { font-family: var(--font-display); font-size: 1.75rem; margin-bottom: 0.5rem; }
+    .empty-sub { font-size: 0.875rem; color: var(--on-surface-muted); margin-bottom: 2.5rem; }
+    .empty-cta { max-width: 240px; margin: 0 auto; }
+
+    /* Loader */
+    .loader-dot { width: 4px; height: 4px; background: currentColor; border-radius: 50%; animation: pulse 0.6s infinite alternate; }
+    @keyframes pulse { to { transform: scale(1.5); opacity: 0.5; } }
 </style>

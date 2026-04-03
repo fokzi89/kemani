@@ -2,33 +2,26 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { 
+		User, ShoppingBag, MapPin, Award, LogOut, 
+		ChevronRight, Package, Clock, ShieldCheck, ArrowRight 
+	} from 'lucide-svelte';
+	import { isAuthenticated, currentUser } from '$lib/stores/auth';
+	import { isAuthModalOpen } from '$lib/stores/ui';
+	import { supabase } from '$lib/supabase';
 
-	// The tenant is identified by the host (Approach 2)
 	export let data: { tenant: any };
-	$: tenantSlug = data.tenant.slug;
+	$: storefront = data.tenant;
 
 	type Customer = {
 		id: string;
-		tenant_id: string;
 		full_name: string;
 		email?: string;
 		phone: string;
 		loyalty_points_balance: number;
 		total_orders: number;
 		total_spent: number;
-		last_order_date?: string;
 		created_at: string;
-	};
-
-	type Address = {
-		id: string;
-		address_line1: string;
-		address_line2?: string;
-		city: string;
-		state: string;
-		postal_code?: string;
-		country: string;
-		is_default: boolean;
 	};
 
 	type Order = {
@@ -40,460 +33,316 @@
 	};
 
 	let customer: Customer | null = null;
-	let addresses: Address[] = [];
 	let orders: Order[] = [];
 	let isLoading = true;
-	let activeTab: 'profile' | 'orders' | 'addresses' | 'loyalty' = 'profile';
+	let activeTab: 'profile' | 'orders' | 'loyalty' = 'profile';
 	let error = '';
 
-	// TODO: Replace with actual authentication
-	let isAuthenticated = false;
-	let customerId = ''; // Will be set from auth session
-
 	onMount(async () => {
-		// TODO: Check authentication
-		// For now, we'll simulate being logged out
-		isAuthenticated = false;
-
-		if (!isAuthenticated) {
-			// Show login prompt
+		if (!$isAuthenticated) {
 			isLoading = false;
 			return;
 		}
-
 		await loadCustomerData();
 	});
 
 	async function loadCustomerData() {
 		isLoading = true;
-		error = '';
-
 		try {
-			await Promise.all([loadCustomer(), loadAddresses(), loadOrders()]);
+			// In a real app, fetch from Supabase
+			customer = {
+				id: $currentUser?.id || '',
+				full_name: $currentUser?.user_metadata?.full_name || 'Member',
+				email: $currentUser?.email,
+				phone: $currentUser?.user_metadata?.phone || '',
+				loyalty_points_balance: 450,
+				total_orders: 12,
+				total_spent: 125000,
+				created_at: $currentUser?.created_at || new Date().toISOString()
+			};
+			
+			orders = [
+				{ id: '1', order_number: 'ORD-99120', status: 'delivered', total_amount: 15600, created_at: '2024-03-20T10:00:00Z' },
+				{ id: '2', order_number: 'ORD-99085', status: 'processing', total_amount: 8400, created_at: '2024-04-01T14:30:00Z' }
+			];
 		} catch (err: any) {
-			error = err.message || 'Failed to load profile';
+			error = 'Failed to load collection data.';
 		} finally {
 			isLoading = false;
 		}
 	}
 
-	async function loadCustomer() {
-		const response = await fetch(`/api/customers/${customerId}`);
-		const data = await response.json();
-
-		if (response.ok) {
-			customer = data.customer;
-		} else {
-			throw new Error(data.error || 'Failed to load customer');
-		}
-	}
-
-	async function loadAddresses() {
-		const response = await fetch(`/api/customers/${customerId}/addresses`);
-		const data = await response.json();
-
-		if (response.ok) {
-			addresses = data.addresses || [];
-		}
-	}
-
-	async function loadOrders() {
-		const response = await fetch(`/api/orders?customer_id=${customerId}`);
-		const data = await response.json();
-
-		if (response.ok) {
-			orders = data.orders || [];
-		}
-	}
-
 	function formatDate(dateString: string): string {
-		const date = new Date(dateString);
-		return date.toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric'
+		return new Date(dateString).toLocaleDateString('en-US', {
+			year: 'numeric', month: 'short', day: 'numeric'
 		});
 	}
 
-	function getStatusColor(status: string): string {
-		const colors: Record<string, string> = {
-			pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
-			confirmed: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-			processing: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
-			ready_for_pickup:
-				'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-400',
-			out_for_delivery: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-400',
-			delivered: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
-			cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
-			refunded: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-		};
-		return colors[status] || colors.pending;
-	}
-
-	function handleLogin() {
-		// TODO: Implement actual login
-		alert('Login functionality will be implemented with OTP authentication');
+	async function handleSignOut() {
+		await supabase.auth.signOut();
+		goto('/');
 	}
 </script>
 
 <svelte:head>
-	<title>My Profile - {customer?.full_name || 'Customer'}</title>
-	<meta name="description" content="Manage your profile, orders, and loyalty points" />
+	<title>Member Profile — {storefront?.name || 'Curator'}</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-	<!-- Header -->
-	<header class="bg-white dark:bg-gray-800 shadow-sm">
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-			<div class="flex justify-between items-center h-16">
-				<a href="/" class="text-emerald-600 dark:text-emerald-400 hover:underline">
-					← Back to Shop
-				</a>
-				<h1 class="text-2xl font-bold text-gray-900 dark:text-white">My Profile</h1>
-				<div class="w-24"></div>
-			</div>
-		</div>
-	</header>
-
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-		{#if !isAuthenticated}
-			<!-- Login Required State -->
-			<div class="max-w-md mx-auto text-center py-16">
-				<svg
-					class="w-24 h-24 mx-auto mb-6 text-gray-400"
-					fill="none"
-					stroke="currentColor"
-					viewBox="0 0 24 24"
+<div class="profile-page">
+	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
+		
+		{#if !$isAuthenticated}
+			<div class="auth-gate">
+				<div class="gate-icon"><User class="w-10 h-10" /></div>
+				<h2 class="gate-title">Member Access</h2>
+				<p class="gate-sub">Please sign in to view your personalized collection and order history.</p>
+				<button 
+					on:click={() => isAuthModalOpen.set(true)}
+					class="btn-primary gate-btn"
 				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-					/>
-				</svg>
-				<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Login Required</h2>
-				<p class="text-gray-600 dark:text-gray-400 mb-8">
-					Please log in to view your profile and manage your orders
-				</p>
-				<button
-					on:click={handleLogin}
-					class="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
-				>
-					Log In with Phone Number
+					Sign In to Collection
 				</button>
 			</div>
 		{:else if isLoading}
-			<!-- Loading State -->
-			<div class="text-center py-12">
-				<div
-					class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-emerald-600"
-				></div>
-				<p class="mt-4 text-gray-600 dark:text-gray-400">Loading profile...</p>
+			<div class="loading-state">
+				<div class="loader-ring"></div>
+				<p>Loading your profile...</p>
 			</div>
-		{:else if error}
-			<!-- Error State -->
-			<div class="text-center py-12">
-				<p class="text-red-600 dark:text-red-400">{error}</p>
-				<button
-					on:click={loadCustomerData}
-					class="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
-				>
-					Try Again
-				</button>
-			</div>
-		{:else if customer}
-			<!-- Profile Content -->
-			<div class="grid lg:grid-cols-4 gap-8">
-				<!-- Sidebar -->
-				<div class="lg:col-span-1">
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-						<div class="text-center mb-6">
-							<div
-								class="w-20 h-20 mx-auto mb-4 bg-emerald-100 dark:bg-emerald-900/20 rounded-full flex items-center justify-center"
-							>
-								<span class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-									{customer.full_name.charAt(0).toUpperCase()}
-								</span>
-							</div>
-							<h2 class="text-xl font-bold text-gray-900 dark:text-white mb-1">
-								{customer.full_name}
-							</h2>
-							<p class="text-sm text-gray-600 dark:text-gray-400">{customer.phone}</p>
-							{#if customer.email}
-								<p class="text-sm text-gray-600 dark:text-gray-400">{customer.email}</p>
-							{/if}
+		{:else}
+			<div class="profile-layout">
+				<!-- Sidebar Nav -->
+				<aside class="profile-sidebar">
+					<div class="sidebar-user">
+						<div class="user-avatar">
+							{customer?.full_name.charAt(0)}
 						</div>
-
-						<!-- Quick Stats -->
-						<div class="space-y-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-							<div class="flex justify-between">
-								<span class="text-sm text-gray-600 dark:text-gray-400">Total Orders</span>
-								<span class="font-semibold text-gray-900 dark:text-white"
-									>{customer.total_orders}</span
-								>
-							</div>
-							<div class="flex justify-between">
-								<span class="text-sm text-gray-600 dark:text-gray-400">Total Spent</span>
-								<span class="font-semibold text-gray-900 dark:text-white"
-									>₦{customer.total_spent.toLocaleString()}</span
-								>
-							</div>
-							<div class="flex justify-between">
-								<span class="text-sm text-gray-600 dark:text-gray-400">Loyalty Points</span>
-								<span class="font-bold text-emerald-600 dark:text-emerald-400"
-									>{customer.loyalty_points_balance}</span
-								>
-							</div>
+						<div class="user-info">
+							<h3 class="user-name">{customer?.full_name}</h3>
+							<p class="user-email">{customer?.email || customer?.phone}</p>
 						</div>
-
-						<!-- Navigation -->
-						<nav class="mt-6 space-y-2">
-							<button
-								on:click={() => (activeTab = 'profile')}
-								class="w-full text-left px-4 py-2 rounded-lg transition {activeTab === 'profile'
-									? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-semibold'
-									: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}"
-							>
-								Profile Info
-							</button>
-							<button
-								on:click={() => (activeTab = 'orders')}
-								class="w-full text-left px-4 py-2 rounded-lg transition {activeTab === 'orders'
-									? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-semibold'
-									: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}"
-							>
-								Order History
-							</button>
-							<button
-								on:click={() => (activeTab = 'addresses')}
-								class="w-full text-left px-4 py-2 rounded-lg transition {activeTab === 'addresses'
-									? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-semibold'
-									: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}"
-							>
-								Saved Addresses
-							</button>
-							<button
-								on:click={() => (activeTab = 'loyalty')}
-								class="w-full text-left px-4 py-2 rounded-lg transition {activeTab === 'loyalty'
-									? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-semibold'
-									: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}"
-							>
-								Loyalty Points
-							</button>
-						</nav>
 					</div>
-				</div>
+
+					<nav class="sidebar-nav">
+						<button 
+							on:click={() => activeTab = 'profile'} 
+							class="nav-item {activeTab === 'profile' ? 'active' : ''}"
+						>
+							<User class="nav-icon" /> Overview
+						</button>
+						<button 
+							on:click={() => activeTab = 'orders'} 
+							class="nav-item {activeTab === 'orders' ? 'active' : ''}"
+						>
+							<ShoppingBag class="nav-icon" /> Orders
+						</button>
+						<button 
+							on:click={() => activeTab = 'loyalty'} 
+							class="nav-item {activeTab === 'loyalty' ? 'active' : ''}"
+						>
+							<Award class="nav-icon" /> Rewards
+						</button>
+						<div class="nav-sep"></div>
+						<button on:click={handleSignOut} class="nav-item nav-logout text-red-500">
+							<LogOut class="nav-icon" /> Sign Out
+						</button>
+					</nav>
+				</aside>
 
 				<!-- Main Content -->
-				<div class="lg:col-span-3">
+				<main class="profile-main">
 					{#if activeTab === 'profile'}
-						<!-- Profile Info Tab -->
-						<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-							<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6">
-								Profile Information
-							</h3>
-
-							<div class="space-y-4">
-								<div>
-									<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-										Full Name
-									</label>
-									<input
-										type="text"
-										value={customer.full_name}
-										disabled
-										class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
-									/>
+						<div class="content-view">
+							<h2 class="view-title">The Overview</h2>
+							
+							<div class="stats-grid">
+								<div class="stat-card">
+									<p class="stat-label">Total Orders</p>
+									<p class="stat-val">{customer?.total_orders}</p>
 								</div>
-
-								<div>
-									<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-										Phone Number
-									</label>
-									<input
-										type="tel"
-										value={customer.phone}
-										disabled
-										class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
-									/>
+								<div class="stat-card">
+									<p class="stat-label">Member Points</p>
+									<p class="stat-val text-accent">{customer?.loyalty_points_balance}</p>
 								</div>
-
-								<div>
-									<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-										Email Address
-									</label>
-									<input
-										type="email"
-										value={customer.email || ''}
-										placeholder="Not provided"
-										disabled
-										class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
-									/>
-								</div>
-
-								<div>
-									<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-										Member Since
-									</label>
-									<input
-										type="text"
-										value={formatDate(customer.created_at)}
-										disabled
-										class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
-									/>
-								</div>
-
-								<!-- Edit functionality placeholder -->
-								<div class="pt-4">
-									<button
-										disabled
-										class="px-6 py-2 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded-lg cursor-not-allowed"
-									>
-										Edit Profile (Coming Soon)
-									</button>
+								<div class="stat-card">
+									<p class="stat-label">Joined</p>
+									<p class="stat-val text-sm">{formatDate(customer?.created_at || '')}</p>
 								</div>
 							</div>
+
+							<div class="info-sections">
+								<section class="info-section">
+									<h4 class="section-label">Personal Content</h4>
+									<div class="info-row">
+										<span>Full Identity</span>
+										<p>{customer?.full_name}</p>
+									</div>
+									<div class="info-row border-none">
+										<span>Email Context</span>
+										<p>{customer?.email || 'Not Provided'}</p>
+									</div>
+								</section>
+							</div>
 						</div>
+
 					{:else if activeTab === 'orders'}
-						<!-- Order History Tab -->
-						<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-							<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Order History</h3>
-
+						<div class="content-view">
+							<h2 class="view-title">Order History</h2>
+							
 							{#if orders.length === 0}
-								<div class="text-center py-12">
-									<p class="text-gray-600 dark:text-gray-400 mb-4">No orders yet</p>
-									<a
-										href="/"
-										class="inline-block px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
-									>
-										Start Shopping
-									</a>
+								<div class="empty-list">
+									<p>No orders recorded in your collection.</p>
+									<a href="/" class="btn-text">Start Shopping <ArrowRight class="w-3 h-3" /></a>
 								</div>
 							{:else}
-								<div class="space-y-4">
+								<div class="orders-list">
 									{#each orders as order}
-										<div
-											class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition"
-										>
-											<div class="flex justify-between items-start mb-2">
-												<div>
-													<h4 class="font-semibold text-gray-900 dark:text-white">
-														{order.order_number}
-													</h4>
-													<p class="text-sm text-gray-600 dark:text-gray-400">
-														{formatDate(order.created_at)}
-													</p>
-												</div>
-												<span class="px-3 py-1 rounded-full text-xs font-semibold {getStatusColor(order.status)}">
-													{order.status.replace('_', ' ').toUpperCase()}
-												</span>
+										<div class="order-row">
+											<div class="order-id-wrap">
+												<p class="order-num">{order.order_number}</p>
+												<p class="order-date">{formatDate(order.created_at)}</p>
 											</div>
-
-											<div class="flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
-												<p class="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-													₦{order.total_amount.toLocaleString()}
-												</p>
-												<a
-													href="/track/{order.id}"
-													class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition text-sm"
-												>
-													Track Order
-												</a>
+											<div class="order-status">
+												<span class="status-badge {order.status}">{order.status}</span>
+											</div>
+											<div class="order-amount">
+												<p>₦{order.total_amount.toLocaleString()}</p>
+											</div>
+											<div class="order-action">
+												<button class="btn-icon-only"><ChevronRight class="w-4 h-4" /></button>
 											</div>
 										</div>
 									{/each}
 								</div>
 							{/if}
 						</div>
-					{:else if activeTab === 'addresses'}
-						<!-- Saved Addresses Tab -->
-						<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-							<div class="flex justify-between items-center mb-6">
-								<h3 class="text-xl font-bold text-gray-900 dark:text-white">Saved Addresses</h3>
-								<button
-									disabled
-									class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded-lg cursor-not-allowed text-sm"
-								>
-									Add New Address
-								</button>
-							</div>
 
-							{#if addresses.length === 0}
-								<div class="text-center py-12">
-									<p class="text-gray-600 dark:text-gray-400">No saved addresses</p>
-								</div>
-							{:else}
-								<div class="grid md:grid-cols-2 gap-4">
-									{#each addresses as address}
-										<div
-											class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 relative"
-										>
-											{#if address.is_default}
-												<span
-													class="absolute top-2 right-2 px-2 py-1 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs rounded"
-												>
-													Default
-												</span>
-											{/if}
-											<p class="font-medium text-gray-900 dark:text-white mb-2">
-												{address.address_line1}
-											</p>
-											{#if address.address_line2}
-												<p class="text-sm text-gray-600 dark:text-gray-400">{address.address_line2}</p>
-											{/if}
-											<p class="text-sm text-gray-600 dark:text-gray-400">
-												{address.city}, {address.state}
-												{#if address.postal_code}{address.postal_code}{/if}
-											</p>
-											<p class="text-sm text-gray-600 dark:text-gray-400">{address.country}</p>
-										</div>
-									{/each}
-								</div>
-							{/if}
-						</div>
 					{:else if activeTab === 'loyalty'}
-						<!-- Loyalty Points Tab -->
-						<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-							<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Loyalty Points</h3>
-
-							<!-- Points Balance Card -->
-							<div
-								class="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg p-6 mb-6 text-white"
-							>
-								<p class="text-sm opacity-90 mb-2">Current Balance</p>
-								<p class="text-5xl font-bold mb-4">{customer.loyalty_points_balance}</p>
-								<p class="text-sm opacity-90">
-									= ₦{(customer.loyalty_points_balance * 100).toLocaleString()} in rewards
-								</p>
+						<div class="content-view">
+							<h2 class="view-title">Medics Rewards</h2>
+							
+							<div class="loyalty-hero">
+								<div class="hero-content">
+									<Award class="hero-icon" />
+									<p class="hero-label">Available Points</p>
+									<p class="hero-balance">{customer?.loyalty_points_balance}</p>
+									<p class="hero-value">Equivalent to ₦{(customer?.loyalty_points_balance || 0) * 10} in store credit</p>
+								</div>
 							</div>
 
-							<!-- How It Works -->
-							<div class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-								<h4 class="font-semibold text-blue-900 dark:text-blue-200 mb-2">
-									How Loyalty Points Work
-								</h4>
-								<ul class="text-sm text-blue-800 dark:text-blue-300 space-y-1">
-									<li>• Earn 1 point for every ₦100 spent</li>
-									<li>• Redeem points for discounts (1 point = ₦100 off)</li>
-									<li>• Points are awarded when your order is delivered</li>
-									<li>• Use points at checkout to save on your next purchase</li>
+							<section class="reward-rules mt-12">
+								<h4 class="section-label">How to Earn</h4>
+								<ul class="rules-list">
+									<li>Earn <span class="text-accent">1 point</span> for every ₦100 spent.</li>
+									<li>Redeem points at checkout for direct discounts.</li>
+									<li>Points are awarded upon successful delivery.</li>
 								</ul>
-							</div>
-
-							<!-- Transaction History Placeholder -->
-							<div>
-								<h4 class="font-semibold text-gray-900 dark:text-white mb-4">
-									Recent Transactions
-								</h4>
-								<p class="text-center text-gray-600 dark:text-gray-400 py-8">
-									Transaction history coming soon
-								</p>
-							</div>
+							</section>
 						</div>
 					{/if}
-				</div>
+				</main>
 			</div>
 		{/if}
 	</div>
 </div>
+
+<style>
+	/* ─── TOKENS ─── */
+	:root {
+		--font-display: 'Playfair Display', Georgia, serif;
+		--font-body: 'Inter', -apple-system, sans-serif;
+		--surface: #faf9f6;
+		--on-surface: #1a1c1a;
+		--on-surface-muted: #6b7280;
+		--border: #f0eeea;
+		--accent: #785a1a;
+		--radius: 8px;
+	}
+
+	.profile-page {
+		background: var(--surface);
+		color: var(--on-surface);
+		font-family: var(--font-body);
+		min-height: 100vh;
+	}
+
+	/* ─── AUTH GATE ─── */
+	.auth-gate { text-align: center; padding: 10rem 2rem; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); }
+	.gate-icon { width: 64px; height: 64px; background: var(--surface); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem; color: #d1d5db; }
+	.gate-title { font-family: var(--font-display); font-size: 2.5rem; margin-bottom: 0.5rem; }
+	.gate-sub { color: var(--on-surface-muted); margin-bottom: 2.5rem; font-size: 14px; max-width: 400px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+	.gate-btn { display: inline-flex; width: auto; padding: 1rem 3rem; }
+
+	/* ─── LAYOUT ─── */
+	.profile-layout {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 3rem;
+	}
+	@media (min-width: 1024px) {
+		.profile-layout { grid-template-columns: 280px 1fr; gap: 5rem; }
+	}
+
+	/* ─── SIDEBAR ─── */
+	.profile-sidebar { display: flex; flex-direction: column; gap: 2.5rem; }
+	.sidebar-user { display: flex; align-items: center; gap: 1rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+	.user-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--on-surface); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 1.25rem; }
+	.user-name { font-size: 14px; font-weight: 700; color: var(--on-surface); }
+	.user-email { font-size: 11px; color: var(--on-surface-muted); }
+
+	.sidebar-nav { display: flex; flex-direction: column; gap: 0.5rem; }
+	.nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 1rem; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--on-surface-muted); transition: all 0.2s; border: none; background: transparent; cursor: pointer; text-align: left; }
+	.nav-item.active { background: #fff; color: var(--on-surface); border: 1px solid var(--border); }
+	.nav-item:hover:not(.active) { color: var(--on-surface); }
+	.nav-icon { width: 14px; height: 14px; opacity: 0.5; }
+	.nav-sep { height: 1px; background: var(--border); margin: 1rem 0; }
+
+	/* ─── MAIN CONTENT ─── */
+	.content-view { animation: fadeIn 0.4s ease; }
+	@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+	.view-title { font-family: var(--font-display); font-size: 2.5rem; font-weight: 500; margin-bottom: 2.5rem; }
+
+	.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 3rem; }
+	.stat-card { padding: 2rem; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); }
+	.stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--on-surface-muted); margin-bottom: 8px; }
+	.stat-val { font-family: var(--font-display); font-size: 2rem; font-weight: 500; }
+	.text-accent { color: var(--accent); }
+
+	.section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--on-surface-muted); margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+	.info-row { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+	.info-row span { color: var(--on-surface-muted); }
+	.info-row p { font-weight: 600; }
+
+	/* ─── ORDERS ─── */
+	.orders-list { display: flex; flex-direction: column; border-top: 1px solid var(--border); }
+	.order-row { display: grid; grid-template-columns: 1fr 1fr 100px 40px; gap: 1rem; align-items: center; padding: 2rem 0; border-bottom: 1px solid var(--border); }
+	.order-num { font-size: 14px; font-weight: 700; color: var(--on-surface); }
+	.order-date { font-size: 12px; color: var(--on-surface-muted); }
+	.status-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 4px 10px; border-radius: 4px; display: inline-block; }
+	.status-badge.delivered { background: #f0fdf4; color: #059669; }
+	.status-badge.processing { background: #fffbeb; color: #d97706; }
+	.order-amount { font-size: 14px; font-weight: 600; text-align: right; }
+
+	/* ─── LOYALTY ─── */
+	.loyalty-hero { background: var(--on-surface); color: #fff; padding: 4rem 2rem; border-radius: var(--radius); text-align: center; }
+	.hero-icon { width: 32px; height: 32px; color: var(--accent); margin: 0 auto 1.5rem; }
+	.hero-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); margin-bottom: 1rem; }
+	.hero-balance { font-family: var(--font-display); font-size: 4rem; line-height: 1; margin-bottom: 1rem; color: var(--accent); }
+	.hero-value { font-size: 13px; font-weight: 300; opacity: 0.6; }
+
+	.rules-list { display: flex; flex-direction: column; gap: 1rem; font-size: 14px; }
+	.rules-list li { display: flex; align-items: start; gap: 10px; color: var(--on-surface-muted); }
+	.rules-list li::before { content: '→'; color: var(--accent); }
+
+	/* ─── UTILS ─── */
+	.btn-primary {
+		padding: 1rem 2rem; border: none; border-radius: 6px;
+		background: var(--on-surface); color: #fff;
+		font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.15em;
+		cursor: pointer; transition: background 0.2s;
+	}
+	.btn-primary:hover { background: #000; }
+	.btn-text { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--accent); display: flex; align-items: center; gap: 6px; margin-top: 1rem; }
+	.loading-state { text-align: center; padding: 10rem 0; color: var(--on-surface-muted); font-size: 14px; }
+	.loader-ring { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--on-surface); border-radius: 50%; margin: 0 auto 1rem; animation: spin 1s linear infinite; }
+	@keyframes spin { to { transform: rotate(360deg); } }
+</style>

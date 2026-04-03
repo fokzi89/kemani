@@ -1,26 +1,30 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { currentUser } from '$lib/stores/auth';
+	import { currentUser, isAuthenticated } from '$lib/stores/auth';
+	import { isAuthModalOpen } from '$lib/stores/ui';
 	import { 
 		ShieldCheck, CreditCard, Truck, ArrowLeft, 
-		CheckCircle2, Package, Mail, MapPin, ChevronRight, ShoppingBag
+		CheckCircle2, Package, Mail, MapPin, ChevronRight, ShoppingBag, ArrowRight, User
 	} from 'lucide-svelte';
 
 	export let data;
 
-	// Inherited from layout and server load
 	$: storefront = data.storefront;
     $: brandColor = storefront?.brand_color || '#4f46e5';
-    $: brandColorLight = brandColor + '18';
 
 	let orderData: any = null;
 	let isLoading = false;
 	let error = '';
 	let success = '';
-    let step = 1; // 1: Details, 2: Payment, 3: Confirmation
+    let step = 1; 
 
 	onMount(() => {
+		// Auto-open auth modal if checkout is accessed unauthenticated
+		if (!$isAuthenticated) {
+			isAuthModalOpen.set(true);
+		}
+
 		const savedData = localStorage.getItem('checkout_data');
 		if (!savedData) {
 			goto('/');
@@ -34,17 +38,15 @@
 		error = '';
 
 		try {
-			// Simulate order processing for demonstration
+			// Simulate order processing
 			await new Promise(resolve => setTimeout(resolve, 2000));
 
-			// In reality, here we would call /api/orders/create with Supabase
 			localStorage.removeItem('cart');
 			localStorage.removeItem('checkout_data');
 
 			success = 'Order placed successfully!';
-            step = 3; // Success state
+            step = 3; 
 
-			// Redirect after a delay
 			setTimeout(() => {
 				goto(`/profile`);
 			}, 3000);
@@ -60,111 +62,100 @@
 	<title>Checkout | {storefront?.name || 'Secure Checkout'}</title>
 </svelte:head>
 
-<div class="min-h-screen bg-[#F8FAFC]">
+<div class="checkout-page">
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
 		
-		<div class="flex flex-col md:flex-row gap-16">
-			<!-- Main Checkout Flow -->
-			<div class="flex-1 space-y-10">
+		<div class="checkout-layout">
+			<!-- Main Content -->
+			<div class="checkout-main">
 				{#if success}
-					<div class="bg-white rounded-[44px] p-20 text-center border border-gray-100 flex flex-col items-center animate-in fade-in zoom-in duration-700">
-						<div class="h-24 w-24 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-8">
-							<CheckCircle2 class="h-12 w-12" />
+					<div class="success-screen">
+						<div class="success-icon">
+							<CheckCircle2 class="w-12 h-12" />
 						</div>
-						<h2 class="text-4xl font-black text-gray-900 tracking-tight uppercase mb-4">You're all set!</h2>
-						<p class="text-gray-500 max-w-sm mx-auto font-medium leading-relaxed uppercase text-xs tracking-widest">Your order has been secured. We've sent a confirmed receipt to your email address.</p>
+						<h2 class="success-title">Your order is secured</h2>
+						<p class="success-sub">A confirmation has been sent to your email. Your medics journey continues.</p>
 						
-                        <div class="mt-12 p-6 bg-gray-50 rounded-[32px] w-full max-w-sm space-y-3">
-                            <p class="text-[10px] font-black uppercase tracking-widest text-gray-400">Next Steps</p>
-                            <div class="flex items-center gap-3 text-left">
-                                <Package class="h-5 w-5 text-indigo-600" />
-                                <span class="text-xs font-bold text-gray-600">Preparing your inventory items</span>
+                        <div class="success-steps">
+                            <div class="step-item">
+                                <Package class="step-icon" />
+                                <span>Curating your items</span>
                             </div>
-                            <div class="flex items-center gap-3 text-left">
-                                <Truck class="h-5 w-5 text-emerald-600" />
-                                <span class="text-xs font-bold text-gray-600">Dispatch via priority courier</span>
+                            <div class="step-item">
+                                <Truck class="step-icon" />
+                                <span>Express priority dispatch</span>
                             </div>
                         </div>
 
 						<button 
 							on:click={() => goto('/profile')}
-							class="mt-10 px-12 py-5 bg-gray-950 text-white font-black rounded-3xl transition-all active:scale-95 uppercase tracking-[0.2em] text-[11px] shadow-2xl"
+							class="btn-primary success-btn"
 						>
-							View Order Status
+							View Collection Status
 						</button>
 					</div>
 				{:else}
-                    <!-- Steps Indicator -->
-                    <div class="flex items-center gap-4 mb-12">
-                        <div class="flex items-center gap-2">
-                            <div class="h-8 w-8 rounded-full bg-gray-950 text-white flex items-center justify-center text-[10px] font-black">1</div>
-                            <span class="text-[10px] font-black uppercase tracking-widest text-gray-900">Details</span>
-                        </div>
-                        <div class="h-px w-8 bg-gray-200"></div>
-                        <div class="flex items-center gap-2 opacity-30">
-                            <div class="h-8 w-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-[10px] font-black">2</div>
-                            <span class="text-[10px] font-black uppercase tracking-widest">Payment</span>
-                        </div>
-                    </div>
+					<!-- Process Header -->
+					<header class="process-header">
+						<div class="process-steps">
+							<div class="step {step >= 1 ? 'active' : ''}">Details</div>
+							<div class="step-sep"></div>
+							<div class="step {step >= 2 ? 'active' : ''}">Payment</div>
+						</div>
+						<h1 class="page-title">Finalize Order</h1>
+					</header>
 
-					<div class="space-y-8">
-						<header class="space-y-2">
-							<p class="text-[10px] font-black uppercase tracking-widest opacity-40 leading-none" style="color:var(--brand);">Secure Transaction</p>
-							<h1 class="text-4xl md:text-5xl font-black text-gray-900 uppercase tracking-tight leading-none">Confirm order</h1>
-						</header>
+					{#if error}
+						<div class="alert alert-error">
+							<ShieldCheck class="w-4 h-4" />
+							<span>{error}</span>
+						</div>
+					{/if}
 
-						{#if error}
-							<div class="p-6 bg-rose-50 border border-rose-100 rounded-3xl text-rose-600 flex items-center gap-4 animate-in slide-in-from-top duration-300">
-								<ShieldCheck class="h-6 w-6 flex-shrink-0" />
-								<p class="text-xs font-black uppercase tracking-widest">{error}</p>
+					<div class="form-sections">
+						<!-- Identity Section -->
+						<section class="form-section">
+							<h3 class="section-label">Identity & Context</h3>
+							<div class="info-card">
+								<div class="info-item">
+									<div class="item-icon-box"><Mail class="w-5 h-5" /></div>
+									<div class="item-text">
+										<p class="item-label">Account</p>
+										<p class="item-val">{$currentUser?.email || 'Guest Session'}</p>
+									</div>
+								</div>
+								<div class="info-item">
+									<div class="item-icon-box"><MapPin class="w-5 h-5" /></div>
+									<div class="item-text">
+										<p class="item-label">Delivery</p>
+										<p class="item-val">{orderData?.order_type === 'delivery' ? 'Standard Home Delivery' : 'Self Collection'}</p>
+									</div>
+								</div>
 							</div>
-						{/if}
+						</section>
 
-						<div class="grid gap-8">
-							<!-- Identity Card -->
-							<div class="bg-white rounded-[32px] p-8 border border-gray-100 shadow-sm space-y-8">
-								<div class="flex items-center justify-between border-b border-gray-50 pb-6">
-                                    <div class="flex items-center gap-4">
-                                        <div class="h-12 w-12 rounded-2xl flex items-center justify-center bg-gray-50 text-gray-900"><Mail class="h-6 w-6" /></div>
-                                        <div><p class="text-[10px] font-black uppercase tracking-widest text-gray-400">Order Contact</p><p class="text-sm font-black text-gray-900">{$currentUser?.email || 'Guest Session'}</p></div>
-                                    </div>
-                                    <button class="text-[10px] font-black uppercase tracking-widest opacity-30 hover:opacity-100 transition-all">Edit</button>
-                                </div>
-
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-4">
-                                        <div class="h-12 w-12 rounded-2xl flex items-center justify-center bg-gray-50 text-gray-900"><MapPin class="h-6 w-6" /></div>
-                                        <div>
-                                            <p class="text-[10px] font-black uppercase tracking-widest text-gray-400">Delivery Method</p>
-                                            <p class="text-sm font-black text-gray-900 uppercase tracking-tight">
-                                                {orderData?.order_type === 'delivery' ? 'Home Delivery (Standard)' : 'Self Collection (Store Front)'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <span class="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-widest">Active</span>
-                                </div>
+						<!-- Payment Section -->
+						<section class="form-section">
+							<h3 class="section-label">Settlement Method</h3>
+							<div class="payment-card active">
+								<div class="payment-info">
+									<div class="item-icon-box"><CreditCard class="w-5 h-5" /></div>
+									<div class="item-text">
+										<p class="item-val">Paystack Integrated</p>
+										<p class="item-sub">Cards, Transfers, Bank, USSD</p>
+									</div>
+								</div>
+								<div class="payment-check"><CheckCircle2 class="w-4 h-4" /></div>
 							</div>
+						</section>
 
-                            <!-- Payment Method Card -->
-                            <div class="bg-white rounded-[32px] p-8 border border-gray-100 shadow-sm space-y-6">
-                                <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Available Methods</h3>
-                                <div class="p-5 rounded-2xl border-2 border-indigo-600 bg-indigo-50/30 flex items-center justify-between group cursor-pointer transition-all">
-                                    <div class="flex items-center gap-5">
-                                        <div class="h-12 w-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-indigo-600"><CreditCard class="h-6 w-6" /></div>
-                                        <div><p class="text-sm font-black text-indigo-900 uppercase tracking-widest">Paystack Integrated</p><p class="text-[10px] font-medium text-indigo-400 leading-none">Cards, Transfers, Bank, USSD</p></div>
-                                    </div>
-                                    <CheckCircle2 class="h-5 w-5 text-indigo-600" />
-                                </div>
-                            </div>
-
-                            <!-- Notice -->
-                            <div class="p-8 bg-gray-900 rounded-[32px] flex items-center gap-6 group hover:translate-x-1 transition-transform">
-                                <div class="h-14 w-14 rounded-2xl flex items-center justify-center bg-white/10 text-white/40 group-hover:text-amber-400 transition-colors"><ShieldCheck class="h-8 w-8" /></div>
-                                <div class="space-y-1">
-                                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Secure Settlement</p>
-                                    <p class="text-xs text-white/80 font-medium max-w-sm">This store uses industrial-grade encryption for all financial settlements. Your data is never stored locally.</p>
-                                </div>
-                            </div>
+						<!-- Quality Notice -->
+						<div class="quality-box">
+							<ShieldCheck class="quality-icon" />
+							<div class="quality-text">
+								<p class="quality-title">Secure & Encrypted</p>
+								<p class="quality-sub">Your financial data is processed via industrial-grade encryption and never stored locally.</p>
+							</div>
 						</div>
 					</div>
 				{/if}
@@ -172,82 +163,185 @@
 
 			<!-- Sidebar Summary -->
 			{#if orderData && !success}
-				<div class="w-full md:w-[420px]">
-					<div class="bg-white rounded-[44px] p-10 border border-gray-100 shadow-2xl shadow-gray-200/50 space-y-10 sticky top-28">
-						<header class="flex items-baseline justify-between border-b border-gray-50 pb-6">
-                            <h3 class="text-[11px] font-black text-gray-900 uppercase tracking-[0.3em]">Final Summary</h3>
-                            <ShoppingBag class="h-4 w-4 opacity-20" />
-                        </header>
+				<aside class="checkout-summary">
+					<div class="summary-box">
+						<header class="summary-header">
+							<h2 class="summary-title">Summary</h2>
+							<ShoppingBag class="summary-icon" />
+						</header>
 
-						<div class="space-y-6 max-h-48 overflow-y-auto pr-4 scrollbar-hide">
+						<div class="summary-items">
 							{#each orderData.items as item}
-								<div class="flex items-center gap-5 group">
-									<div class="h-14 w-14 bg-gray-50 rounded-2xl overflow-hidden flex-shrink-0 p-2">
-										<img src={item.product_image} alt={item.product_name} class="w-full h-full object-contain group-hover:scale-110 transition-all duration-500" />
+								<div class="summary-item">
+									<div class="item-img-wrap">
+										<img src={item.product_image} alt={item.product_name} class="item-img shadow-sm" />
 									</div>
-									<div class="flex-1 min-w-0">
-										<h4 class="text-[11px] font-black text-gray-900 uppercase tracking-tight truncate">{item.product_name}</h4>
-										<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{item.quantity} x Item</p>
+									<div class="item-info">
+										<h4 class="item-name">{item.product_name}</h4>
+										<p class="item-qty">Qty: {item.quantity}</p>
 									</div>
-									<p class="text-xs font-black text-gray-900">₦{(item.price * item.quantity).toLocaleString()}</p>
+									<p class="item-total">₦{(item.price * item.quantity).toLocaleString()}</p>
 								</div>
 							{/each}
 						</div>
 
-						<div class="space-y-4 pt-4 border-t border-gray-50">
-							<div class="flex justify-between items-center text-[11px] font-black text-gray-400 uppercase tracking-widest">
+						<div class="summary-rows">
+							<div class="summary-row">
 								<span>Merchandise</span>
-								<span class="text-gray-900">₦{orderData.subtotal.toLocaleString()}</span>
+								<span>₦{orderData.subtotal.toLocaleString()}</span>
 							</div>
-							<div class="flex justify-between items-center text-[11px] font-black text-gray-400 uppercase tracking-widest">
+							<div class="summary-row">
 								<span>Processing (VAT)</span>
-								<span class="text-gray-900">₦{orderData.tax.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+								<span>₦{orderData.tax.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
 							</div>
 							{#if orderData.delivery_fee > 0}
-								<div class="flex justify-between items-center text-[11px] font-black text-gray-400 uppercase tracking-widest">
-									<span>Logistic Fee</span>
-									<span class="text-gray-900">₦{orderData.delivery_fee.toLocaleString()}</span>
-								</div>
-							{/if}
-							{#if orderData.loyalty_discount > 0}
-								<div class="flex justify-between items-center text-[11px] font-black text-emerald-600 uppercase tracking-widest">
-									<span>Loyalty credit</span>
-									<span class="font-black">-₦{orderData.loyalty_discount.toLocaleString()}</span>
+								<div class="summary-row">
+									<span>Logistics</span>
+									<span>₦{orderData.delivery_fee.toLocaleString()}</span>
 								</div>
 							{/if}
 						</div>
 
-						<div class="pt-8 border-t border-gray-100 flex flex-col gap-3">
-							<p class="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none">Total Settlement</p>
-							<p class="text-5xl font-black text-gray-950 tracking-tighter">₦{orderData.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+						<div class="summary-total-row">
+							<p class="total-label">Subtotal Due</p>
+							<p class="total-val">₦{orderData.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
 						</div>
 
 						<button
 							on:click={completeOrder}
-							disabled={isLoading}
-							class="w-full py-7 text-white text-[11px] font-black rounded-[32px] shadow-2xl transition-all flex items-center justify-center gap-4 uppercase tracking-[0.3em] active:scale-95 disabled:opacity-50"
-                            style="background: var(--brand); box-shadow: 0 20px 40px {brandColor}33;"
+							disabled={isLoading || !$isAuthenticated}
+							class="btn-primary checkout-btn"
 						>
 							{#if isLoading}
-								<div class="animate-spin h-5 w-5 border-2 border-white/20 border-t-white rounded-full"></div>
-								Securing Order...
+								<div class="loader-dot"></div> Securing...
 							{:else}
-								Authorize & Pay <ChevronRight class="h-4 w-4" />
+								Authorize & Pay <ArrowRight class="btn-icon" />
 							{/if}
 						</button>
                         
-                        <a href="/cart" class="w-full h-14 flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-900 transition-all">
-                            Modify selection
-                        </a>
+                        <a href="/cart" class="btn-back">Modify Selection</a>
 					</div>
-				</div>
+				</aside>
 			{/if}
 		</div>
 	</div>
 </div>
 
 <style>
-	:global(body) { font-family: 'Outfit', 'Inter', sans-serif; }
-    .scrollbar-hide::-webkit-scrollbar { display: none; }
-	.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+	/* ─── TOKENS ─── */
+	:root {
+		--font-display: 'Playfair Display', Georgia, serif;
+		--font-body: 'Inter', -apple-system, sans-serif;
+		--surface: #faf9f6;
+		--on-surface: #1a1c1a;
+		--on-surface-muted: #6b7280;
+		--border: #f0eeea;
+		--accent: #785a1a;
+		--radius: 8px;
+	}
+
+	.checkout-page {
+		background: var(--surface);
+		color: var(--on-surface);
+		font-family: var(--font-body);
+		min-height: 100vh;
+	}
+
+	/* ─── LAYOUT ─── */
+	.checkout-layout {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 4rem;
+	}
+	@media (min-width: 1024px) {
+		.checkout-layout { grid-template-columns: 1fr 380px; gap: 6rem; }
+	}
+
+	.checkout-main { display: flex; flex-direction: column; }
+
+	/* ─── SUCCESS SCREEN ─── */
+	.success-screen { 
+		text-align: center; padding: 6rem 2rem; background: #fff; 
+		border-radius: var(--radius); border: 1px solid var(--border);
+		animation: fadeIn 0.6s ease;
+	}
+	@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+	
+	.success-icon { width: 80px; height: 80px; background: #f0fdf4; color: #059669; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem; }
+	.success-title { font-family: var(--font-display); font-size: 3rem; font-weight: 500; margin-bottom: 1rem; }
+	.success-sub { font-size: 14px; color: var(--on-surface-muted); max-width: 400px; margin: 0 auto 3rem; line-height: 1.6; }
+	
+	.success-steps { display: flex; flex-direction: column; gap: 1rem; max-width: 300px; margin: 0 auto 3rem; text-align: left; }
+	.step-item { display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 600; color: var(--on-surface-muted); }
+	.step-icon { width: 16px; height: 16px; color: var(--on-surface); }
+	.success-btn { display: inline-flex; width: auto; padding-left: 3rem; padding-right: 3rem; }
+
+	/* ─── HEADER ─── */
+	.process-header { margin-bottom: 3.5rem; }
+	.process-steps { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+	.step { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--on-surface-muted); }
+	.step.active { color: var(--on-surface); border-bottom: 1px solid var(--on-surface); padding-bottom: 2px; }
+	.step-sep { width: 24px; height: 1px; background: var(--border); }
+	.page-title { font-family: var(--font-display); font-size: 3rem; font-weight: 500; line-height: 1; }
+
+	.alert { margin-bottom: 2rem; padding: 1.25rem; border-radius: 8px; font-size: 12px; display: flex; align-items: center; gap: 10px; }
+	.alert-error { background: #fef2f2; border: 1px solid #fee2e2; color: #b91c1c; }
+
+	/* ─── FORM ─── */
+	.form-sections { display: flex; flex-direction: column; gap: 3rem; }
+	.section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--on-surface-muted); margin-bottom: 1.5rem; }
+	
+	.info-card { display: flex; flex-direction: column; gap: 1.5rem; padding: 2rem; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); }
+	.info-item { display: flex; align-items: center; gap: 1.25rem; }
+	.item-icon-box { width: 44px; height: 44px; background: var(--surface); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--on-surface-muted); }
+	.item-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--on-surface-muted); margin-bottom: 2px; }
+	.item-val { font-size: 14px; font-weight: 600; color: var(--on-surface); }
+	.item-sub { font-size: 11px; color: var(--on-surface-muted); }
+
+	.payment-card { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: all 0.2s; }
+	.payment-card.active { border-color: var(--on-surface); background: rgba(0,0,0,0.01); }
+	.payment-info { display: flex; align-items: center; gap: 1.25rem; }
+	.payment-check { color: #059669; }
+
+	.quality-box { display: flex; align-items: center; gap: 1.5rem; padding: 1.5rem; background: var(--on-surface); color: #fff; border-radius: var(--radius); }
+	.quality-icon { width: 24px; height: 24px; color: #fff; opacity: 0.5; }
+	.quality-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 2px; }
+	.quality-sub { font-size: 11px; color: rgba(255,255,255,0.6); line-height: 1.5; max-width: 320px; }
+
+	/* ─── SUMMARY ─── */
+	.checkout-summary { position: sticky; top: 120px; }
+	.summary-box { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; box-shadow: 0 4px 30px rgba(0,0,0,0.02); }
+	.summary-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2rem; }
+	.summary-title { font-family: var(--font-display); font-size: 1.5rem; }
+	.summary-icon { width: 14px; height: 14px; color: #d1d5db; }
+
+	.sidebar-user { display: flex; align-items: center; gap: 1rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+	.summary-items { display: flex; flex-direction: column; gap: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; max-height: 300px; overflow-y: auto; }
+	.summary-item { display: grid; grid-template-columns: 50px 1fr 60px; gap: 1rem; align-items: center; }
+	.item-img-wrap { aspect-ratio: 1; border-radius: 4px; overflow: hidden; background: var(--surface); }
+	.item-img { width: 100%; height: 100%; object-fit: contain; }
+	.item-name { font-size: 12px; font-weight: 600; line-height: 1.3; }
+	.item-qty { font-size: 10px; color: var(--on-surface-muted); }
+	.item-total { font-size: 12px; font-weight: 700; text-align: right; }
+
+	.summary-rows { display: flex; flex-direction: column; gap: 0.75rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+	.summary-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--on-surface-muted); font-weight: 500; }
+
+	.summary-total-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 2rem; }
+	.total-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--on-surface-muted); letter-spacing: 0.15em; }
+	.total-val { font-size: 2.5rem; font-weight: 500; line-height: 1; letter-spacing: -0.02em; }
+
+	.btn-primary {
+		width: 100%; padding: 18px; border: none; border-radius: 6px;
+		background: var(--on-surface); color: #fff;
+		font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.15em;
+		display: flex; align-items: center; justify-content: center; gap: 8px;
+		cursor: pointer; transition: background 0.2s;
+	}
+	.btn-primary:hover { background: #000; }
+	.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+	.btn-back { display: block; text-align: center; margin-top: 1.5rem; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--on-surface-muted); }
+
+	.loader-dot { width: 8px; height: 8px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+	@keyframes spin { to { transform: rotate(360deg); } }
 </style>

@@ -1,181 +1,223 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	import { ArrowRight, ShieldCheck, Mail, Lock, Phone } from 'lucide-svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
+	import { ShieldCheck, Mail, Lock, Eye, EyeOff, AlertCircle, Loader, ArrowRight } from 'lucide-svelte';
+	import { supabase } from '$lib/supabase';
 
-	// The tenant is identified by the host (Approach 2)
-	export let data: { tenant: any };
-	$: tenantSlug = data.tenant.slug;
-	let storefront: any = null;
+	export let data: { storefront: any };
+	$: storefront = data.storefront;
+	$: brandColor = storefront?.brand_color || '#131921';
+
+	let email = '';
+	let password = '';
+	let showPassword = false;
 	let isLoading = false;
-	let authMode: 'email' | 'phone' = 'email';
+	let errorMsg = '';
 
+	// Redirect if already logged in
 	onMount(async () => {
-		try {
-			const res = await fetch(`/api/marketplace/info`);
-			const data = await res.json();
-			if (data.storefront) {
-				storefront = data.storefront;
-				if (!storefront.banner_url) {
-					storefront.banner_url = 'https://images.unsplash.com/photo-1576091160550-217359f51f8c?q=80&w=2000&auto=format&fit=crop';
-				}
-			}
-		} catch (e) {
-			console.error('Failed to load storefront info:', e);
-		}
+		const { data: session } = await supabase.auth.getSession();
+		if (session.session) goto('/');
 	});
 
-	function handleSubmit() {
+	async function handleLogin(e: Event) {
+		e.preventDefault();
+		errorMsg = '';
 		isLoading = true;
-		// Simulated auth call for now
-		setTimeout(() => {
+		try {
+			const { error } = await supabase.auth.signInWithPassword({ email, password });
+			if (error) {
+				errorMsg = error.message === 'Invalid login credentials'
+					? 'The credentials you entered are incorrect.'
+					: error.message;
+			} else {
+				const redirectTo = $page.url.searchParams.get('redirect') || '/';
+				goto(redirectTo);
+			}
+		} catch {
+			errorMsg = 'An unexpected error occurred. Please try again.';
+		} finally {
 			isLoading = false;
-			window.location.href = `/`;
-		}, 1500);
+		}
 	}
 </script>
 
 <svelte:head>
-	<title>Sign In - {storefront?.business_name || 'Storefront'}</title>
+	<title>Sign In — {storefront?.name || 'Store'}</title>
 </svelte:head>
 
-<div class="min-h-screen flex text-gray-900 bg-[#F8FAFC]">
-	<!-- Left Side: Auth Form -->
-	<div class="flex-1 flex flex-col justify-center px-4 sm:px-6 lg:px-20 xl:px-24">
-		<div class="mx-auto w-full max-w-sm lg:w-96">
-			<!-- Branding -->
-			<div class="flex flex-col items-center sm:items-start text-center sm:text-left mb-10">
-				{#if storefront}
-					<div class="h-14 w-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100 mb-6 group hover:scale-105 transition-transform duration-300">
-						<ShieldCheck class="h-8 w-8 text-white group-hover:rotate-12 transition-transform duration-300" />
+<div class="auth-page">
+	<div class="auth-container">
+		
+		<!-- Left: Visual/Brand (Optional/Hidden on mobile) -->
+		<div class="auth-visual">
+			<div class="visual-content">
+				<h2 class="visual-title">{storefront?.name}</h2>
+				<p class="visual-sub">Curated healthcare solutions for a modern lifestyle.</p>
+			</div>
+			<div class="visual-overlay"></div>
+			<img src="https://images.unsplash.com/photo-1579389083078-4e7018379f7e?q=80&w=2000&auto=format&fit=crop" alt="Brand" class="visual-img" />
+		</div>
+
+		<!-- Right: Form -->
+		<div class="auth-form-wrap">
+			<div class="form-inner">
+				<header class="form-header">
+					<a href="/" class="form-logo">
+						{#if storefront?.logo_url}
+							<img src={storefront.logo_url} alt={storefront.name} class="logo-img" />
+						{:else}
+							<div class="logo-placeholder">{storefront?.name.charAt(0)}</div>
+						{/if}
+					</a>
+					<h1 class="form-title">Welcome Back</h1>
+					<p class="form-subtitle">Enter your credentials to access your collection.</p>
+				</header>
+
+				{#if errorMsg}
+					<div class="alert">
+						<AlertCircle class="w-4 h-4" />
+						<span>{errorMsg}</span>
 					</div>
-					<h2 class="text-3xl font-black tracking-tight text-gray-900 mb-2">
-						Welcome Back
-					</h2>
-					<p class="text-sm font-medium text-gray-500">
-						Sign in to your {storefront.business_name} account to manage orders, prescriptions, and loyalty points.
-					</p>
-				{:else}
-					<div class="h-14 w-14 bg-gray-200 rounded-2xl animate-pulse mb-6"></div>
-					<div class="h-8 w-48 bg-gray-200 rounded animate-pulse mb-2"></div>
-					<div class="h-4 w-64 bg-gray-200 rounded animate-pulse"></div>
 				{/if}
-			</div>
 
-			<!-- Auth Tabs -->
-			<div class="flex p-1 bg-white border border-gray-100 rounded-2xl shadow-sm mb-8">
-				<button 
-					onclick={() => authMode = 'email'} 
-					class="flex-1 py-2.5 text-sm font-bold rounded-xl transition-all {authMode === 'email' ? 'bg-indigo-50 text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-900'}"
-				>
-					Email
-				</button>
-				<button 
-					onclick={() => authMode = 'phone'} 
-					class="flex-1 py-2.5 text-sm font-bold rounded-xl transition-all {authMode === 'phone' ? 'bg-indigo-50 text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-900'}"
-				>
-					Phone
-				</button>
-			</div>
-
-			<!-- Form -->
-			<form class="space-y-6" onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
-				{#if authMode === 'email'}
-					<div class="relative group">
-						<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-							<Mail class="h-5 w-5 text-gray-400 group-focus-within:text-indigo-600 transition-colors" />
-						</div>
+				<form on:submit={handleLogin} class="auth-form">
+					<div class="input-group">
+						<label for="email" class="input-label">Email Address</label>
 						<input
+							id="email"
 							type="email"
-							placeholder="Email address"
+							bind:value={email}
 							required
-							class="block w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-2xl text-sm font-bold text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-600 transition-all shadow-sm"
+							placeholder="e.g. name@curator.com"
+							class="input-field"
 						/>
 					</div>
-				{:else}
-					<div class="relative group">
-						<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-							<Phone class="h-5 w-5 text-gray-400 group-focus-within:text-indigo-600 transition-colors" />
+
+					<div class="input-group">
+						<div class="label-row">
+							<label for="password" class="input-label">Password</label>
+							<a href="/auth/forgot-password" class="text-link">Forgot?</a>
 						</div>
-						<input
-							type="tel"
-							placeholder="Phone number"
-							required
-							class="block w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-2xl text-sm font-bold text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-600 transition-all shadow-sm"
-						/>
+						<div class="input-relative">
+							<input
+								id="password"
+								type={showPassword ? 'text' : 'password'}
+								bind:value={password}
+								required
+								placeholder="Enter your password"
+								class="input-field pr-10"
+							/>
+							<button 
+								type="button" 
+								on:click={() => showPassword = !showPassword}
+								class="toggle-eye"
+							>
+								{#if showPassword}<EyeOff class="w-4 h-4" />{:else}<Eye class="w-4 h-4" />{/if}
+							</button>
+						</div>
 					</div>
-				{/if}
 
-				<div class="relative group">
-					<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-						<Lock class="h-5 w-5 text-gray-400 group-focus-within:text-indigo-600 transition-colors" />
-					</div>
-					<input
-						type="password"
-						placeholder="Password"
-						required
-						class="block w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-2xl text-sm font-bold text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-600 transition-all shadow-sm"
-					/>
-				</div>
+					<button type="submit" disabled={isLoading} class="btn-primary">
+						{#if isLoading}
+							<div class="loader-dot"></div> Authenticating...
+						{:else}
+							Sign In <ArrowRight class="btn-icon" />
+						{/if}
+					</button>
+				</form>
 
-				<div class="flex items-center justify-between">
-					<label class="flex items-center gap-2 cursor-pointer group">
-						<input type="checkbox" class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" />
-						<span class="text-xs font-bold text-gray-500 group-hover:text-gray-900 transition-colors">Remember me</span>
-					</label>
-					<a href="/auth/forgot" class="text-xs font-black text-indigo-600 hover:text-indigo-500 transition-colors">
-						Forgot password?
-					</a>
-				</div>
-
-				<button
-					type="submit"
-					disabled={isLoading}
-					class="group relative w-full flex justify-center py-4 px-4 border border-transparent text-sm font-black rounded-2xl text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-100 shadow-xl shadow-indigo-200 transition-all disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden mt-6"
-				>
-					<span class="absolute right-0 inset-y-0 flex items-center pr-4 transform group-hover:translate-x-1 transition-transform">
-						<ArrowRight class="h-5 w-5 text-indigo-300" />
-					</span>
-					{isLoading ? 'Signing in...' : 'Sign in to Storefront'}
-				</button>
-			</form>
-
-			<div class="mt-8 text-center border-t border-gray-100 pt-8">
-				<p class="text-xs font-bold text-gray-500">
-					Don't have an account?
-					<a href="/auth/register" class="font-black text-indigo-600 hover:text-indigo-500 transition-colors ml-1">
-						Create one now
-					</a>
-				</p>
+				<footer class="form-footer">
+					<span>New to the collection?</span>
+					<a href="/auth/register" class="text-link-bold">Create an account</a>
+				</footer>
 			</div>
 		</div>
 	</div>
-
-	<!-- Right Side: Imagery Banner -->
-	{#if storefront?.banner_url}
-		<div class="hidden lg:block relative w-0 flex-1 bg-gray-900 overflow-hidden">
-			<img
-				class="absolute inset-0 h-full w-full object-cover scale-105 opacity-60"
-				src={storefront.banner_url}
-				alt="Storefront Banner"
-			/>
-			<div class="absolute inset-0 bg-gradient-to-tr from-gray-900 via-indigo-900/40 to-transparent mix-blend-multiply"></div>
-			
-			<div class="absolute bottom-12 left-12 right-12 text-white">
-				<h3 class="text-4xl font-black mb-4 uppercase tracking-tighter leading-none">
-					{storefront.business_name}
-				</h3>
-				<p class="text-lg font-medium text-gray-200 max-w-lg mb-8">
-					{storefront.description || 'Welcome back. Experience seamless shopping, exclusive deals, and premium products.'}
-				</p>
-				<div class="flex items-center gap-4">
-					<div class="h-12 w-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20">
-						<ShieldCheck class="h-6 w-6 text-white" />
-					</div>
-					<div class="text-sm font-black tracking-widest uppercase">Secure Portal</div>
-				</div>
-			</div>
-		</div>
-	{/if}
 </div>
+
+<style>
+	/* ─── TOKENS ─── */
+	:root {
+		--font-display: 'Playfair Display', Georgia, serif;
+		--font-body: 'Inter', -apple-system, sans-serif;
+		--surface: #faf9f6;
+		--on-surface: #1a1c1a;
+		--on-surface-muted: #6b7280;
+		--border: #e5e5e0;
+		--radius: 8px;
+	}
+
+	.auth-page {
+		min-height: 100vh;
+		background: var(--surface);
+		display: flex; align-items: stretch;
+		font-family: var(--font-body);
+	}
+
+	.auth-container {
+		display: flex; width: 100%;
+	}
+
+	/* ─── VISUAL COLUMN ─── */
+	.auth-visual {
+		display: none; flex: 1.2; position: relative; overflow: hidden;
+	}
+	@media (min-width: 1024px) { .auth-visual { display: block; } }
+
+	.visual-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%); z-index: 1; }
+	.visual-img { width: 100%; height: 100%; object-fit: cover; }
+	.visual-content { position: absolute; bottom: 4rem; left: 4rem; z-index: 2; color: #fff; max-width: 400px; }
+	.visual-title { font-family: var(--font-display); font-size: 3rem; margin-bottom: 1rem; }
+	.visual-sub { font-size: 1.1rem; opacity: 0.8; font-weight: 300; }
+
+	/* ─── FORM COLUMN ─── */
+	.auth-form-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem; background: #fff; }
+	.form-inner { width: 100%; max-width: 360px; }
+
+	.form-header { text-align: center; margin-bottom: 2.5rem; }
+	.form-logo { display: inline-block; margin-bottom: 1.5rem; }
+	.logo-img { h: 32px; w: 32px; object-fit: contain; }
+	.logo-placeholder { width: 44px; height: 44px; background: var(--on-surface); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 1.25rem; border-radius: 4px; }
+	.form-title { font-family: var(--font-display); font-size: 2rem; font-weight: 500; margin-bottom: 0.5rem; }
+	.form-subtitle { font-size: 13px; color: var(--on-surface-muted); }
+
+	.alert { margin-bottom: 1.5rem; padding: 1rem; background: #fef2f2; border: 1px solid #fee2e2; border-radius: 8px; color: #b91c1c; font-size: 12px; display: flex; align-items: center; gap: 8px; }
+
+	.auth-form { display: flex; flex-direction: column; gap: 1.5rem; }
+	.input-group { display: flex; flex-direction: column; gap: 0.5rem; }
+	.label-row { display: flex; justify-content: space-between; align-items: center; }
+	.input-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--on-surface-muted); }
+	
+	.input-field {
+		width: 100%; padding: 12px 0;
+		border: none; border-bottom: 1px solid var(--border);
+		background: transparent; font-size: 14px; color: var(--on-surface);
+		outline: none; transition: border-color 0.2s;
+	}
+	.input-field:focus { border-color: var(--on-surface); }
+	.input-field::placeholder { color: #d1d5db; opacity: 0.6; }
+
+	.input-relative { position: relative; }
+	.toggle-eye { position: absolute; right: 0; top: 50%; transform: translateY(-50%); color: var(--on-surface-muted); cursor: pointer; border: none; background: none; }
+
+	.btn-primary {
+		width: 100%; padding: 16px; border: none; border-radius: var(--radius);
+		background: var(--on-surface); color: #fff;
+		font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.15em;
+		display: flex; align-items: center; justify-content: center; gap: 8px;
+		cursor: pointer; transition: background 0.2s; margin-top: 1rem;
+	}
+	.btn-primary:hover { background: #000; }
+	.btn-primary:disabled { opacity: 0.5; }
+
+	.text-link { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--on-surface-muted); border-bottom: 1px solid transparent; }
+	.text-link:hover { border-color: var(--on-surface-muted); }
+
+	.form-footer { margin-top: 2.5rem; text-align: center; font-size: 13px; color: var(--on-surface-muted); }
+	.text-link-bold { font-weight: 700; color: var(--on-surface); margin-left: 4px; border-bottom: 1px solid var(--on-surface); padding-bottom: 2px; }
+
+	.loader-dot { width: 8px; height: 8px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+	@keyframes spin { to { transform: rotate(360deg); } }
+</style>
