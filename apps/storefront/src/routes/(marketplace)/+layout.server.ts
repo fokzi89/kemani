@@ -16,6 +16,20 @@ export async function load({ locals, params }) {
 	}
 
 	if (!tenantId) {
+		console.warn(`[Marketplace Layout] No tenantId found. locals.referringTenantId: ${locals.referringTenantId}, slug: ${slug}, hostname: ${locals.hostname || 'unknown'}`);
+		
+		// Fallback for local development if no tenant found
+		if (locals.hostname?.includes('localhost')) {
+			console.log('[Marketplace Layout] Localhost detected, attempting fallback to default tenant...');
+			const { data: defaultTenant } = await supabase.from('tenants').select('id').limit(1).single();
+			if (defaultTenant) {
+				tenantId = defaultTenant.id;
+				console.log(`[Marketplace Layout] Fallback successful: ${tenantId}`);
+			}
+		}
+	}
+
+	if (!tenantId) {
 		throw error(404, 'Storefront context not found. Please visit via a valid store subdomain or path.');
 	}
 

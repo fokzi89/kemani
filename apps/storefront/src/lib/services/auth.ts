@@ -40,7 +40,7 @@ export class AuthService {
 		try {
 			const { data: authData, error } = await supabase.auth.signUp({
 				email: data.email,
-				password: data.password,
+				password: data.password!,
 				options: {
 					data: {
 						full_name: data.full_name,
@@ -165,6 +165,37 @@ export class AuthService {
 			};
 		}
 	}
+	
+	/**
+	 * Sign in with Google OAuth using a "Shuttle" strategy for multi-tenant subdomains
+	 */
+	static async signInWithGoogle(options?: { next?: string; centralHost?: string }): Promise<{ error: AuthError | null }> {
+		const isLocal = window.location.hostname === 'localhost' || window.location.hostname.endsWith('.localhost');
+		
+		// If provided, use the centralHost (e.g. root domain) for the fixed Google Redirect URI
+		// otherwise default to current origin for single-domain apps.
+		const centralHost = options?.centralHost || (isLocal ? `${window.location.protocol}//${window.location.host}` : window.location.origin);
+		const currentOrigin = window.location.origin;
+		
+		// The final path we want the user to land on (e.g. /profile on the current subdomain)
+		const nextPath = options?.next || '/profile';
+		const nextUrl = nextPath.startsWith('http') ? nextPath : currentOrigin + nextPath;
+		
+		// The fixed redirect URL whitelisted in Google Cloud Console
+		const callbackUrl = `${centralHost}/auth/callback?next=${encodeURIComponent(nextUrl)}`;
+
+		const { error } = await supabase.auth.signInWithOAuth({
+			provider: 'google',
+			options: {
+				redirectTo: callbackUrl,
+				queryParams: {
+					access_type: 'offline',
+					prompt: 'consent'
+				}
+			}
+		});
+		return { error };
+	}
 
 	/**
 	 * Sign out current user
@@ -284,9 +315,9 @@ export class AuthService {
 
 	/**
 	 * Ensure customer record exists in database (create if missing)
-	 * Now includes multi-tenant patient identity linking
+	 * Now includes multi-tenant patient identity linking and branch association
 	 */
-	private static async ensureCustomerRecord(user: User, tenantId?: string): Promise<void> {
+	static async ensureCustomerRecord(user: User, tenantId?: string, branchId?: string): Promise<void> {
 		try {
 			// Check if customer record exists for this tenant
 			let existingCustomer = null;
@@ -356,6 +387,7 @@ export class AuthService {
 			const { error: customerError } = await supabase.from('customers').insert({
 				id: user.id,
 				tenant_id: tenantId,
+				branch_id: branchId,
 				full_name: fullName,
 				email: user.email,
 				phone: phone,

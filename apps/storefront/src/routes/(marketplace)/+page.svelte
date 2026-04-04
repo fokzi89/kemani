@@ -5,8 +5,10 @@
 	import type { MarketplaceProduct } from '$lib/types/ecommerce';
 	import {
 		Search, ShoppingCart, ChevronRight, Star,
-		Clock, ShieldCheck, Tag, ArrowRight, Plus, ArrowLeft
+		Clock, ShieldCheck, Tag, ArrowRight, Plus, ArrowLeft, MessageSquare
 	} from 'lucide-svelte';
+	import { isAuthenticated } from '$lib/stores/auth';
+	import { isAuthModalOpen, isChatOpen, chatProduct } from '$lib/stores/ui';
 
 	$: storefront = data.storefront;
 	$: brandColor      = storefront?.brand_color || '#4f46e5';
@@ -104,6 +106,15 @@
 	function handleCategoryClick(c: string){ selectedCategory = c; currentPage = 1; loadProducts(); }
 	function handleBranchClick(id: string) { selectedBranch = id; currentPage = 1; loadProducts(); }
 	function handlePageChange(p: number)   { currentPage = p; loadProducts(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+	function handleProductChat(product: any) {
+		if (!$isAuthenticated) {
+			isAuthModalOpen.set(true);
+			return;
+		}
+		chatProduct.set(product);
+		isChatOpen.set(true);
+	}
 </script>
 
 <svelte:head>
@@ -264,6 +275,15 @@
 								{#if product.stock_quantity > 0 && product.stock_quantity < 10}
 									<span class="badge badge-low">Only {product.stock_quantity} left</span>
 								{/if}
+								
+								<button 
+									class="product-chat-btn" 
+									on:click|preventDefault|stopPropagation={() => handleProductChat(product)}
+									title="Ask a curator about this item"
+								>
+									<MessageSquare class="w-4 h-4" />
+								</button>
+
 								{#if !product.is_available || product.stock_quantity === 0}
 									<div class="product-sold-out">
 										<span>Sold Out</span>
@@ -601,18 +621,46 @@
 	}
 	.product-img-placeholder :global(svg) { width: 40px; height: 40px; }
 
-	.badge {
-		position: absolute; top: 10px; left: 10px;
+	.badge { 
+		position: absolute;
 		padding: 3px 10px; border-radius: 4px;
 		font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+		z-index: 5;
 	}
-	.badge-discount { background: #059669; color: #fff; }
-	.badge-low { position: absolute; top: 10px; right: 10px; left: auto; background: #ef4444; color: #fff; }
+	.badge-discount { top: 1rem; left: 1rem; background: var(--brand); color: #fff; }
+	.badge-low { top: 2.75rem; left: 1rem; background: #fff; color: #ef4444; border: 1px solid #fee2e2; }
+	
+	.product-chat-btn {
+		position: absolute;
+		top: 1rem;
+		right: 1rem;
+		width: 32px;
+		height: 32px;
+		background: #fff;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--on-surface);
+		box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+		opacity: 0;
+		transform: translateY(10px);
+		transition: all 0.3s ease;
+		z-index: 10;
+		border: 1px solid var(--border);
+	}
+	.product-card:hover .product-chat-btn {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	.product-chat-btn:hover {
+		background: var(--on-surface);
+		color: #fff;
+	}
 
-	.product-sold-out {
-		position: absolute; inset: 0;
-		background: rgba(255,255,255,0.7); backdrop-filter: blur(2px);
-		display: flex; align-items: center; justify-content: center;
+	.product-sold-out { 
+		position: absolute; inset: 0; background: rgba(255,255,255,0.8); 
+		display: flex; align-items: center; justify-content: center; z-index: 20;
 	}
 	.product-sold-out span {
 		background: var(--on-surface); color: #fff;

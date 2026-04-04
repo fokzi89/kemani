@@ -4,7 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { 
 		User, ShoppingBag, MapPin, Award, LogOut, 
-		ChevronRight, Package, Clock, ShieldCheck, ArrowRight, MessageCircle, Stethoscope, ShoppingCart
+		ChevronRight, Package, Clock, ShieldCheck, ArrowRight, MessageCircle, Stethoscope, ShoppingCart, ArrowLeft, Calendar, Truck
 	} from 'lucide-svelte';
 	import { isAuthenticated, currentUser } from '$lib/stores/auth';
 	import { isAuthModalOpen } from '$lib/stores/ui';
@@ -33,10 +33,23 @@
 		created_at: string;
 	};
 
-	let customer: Customer | null = null;
-	let orders: Order[] = [];
-	let isLoading = true;
-	let activeTab: 'profile' | 'orders' | 'loyalty' | 'messages' | 'medics' | 'products' = 'profile';
+	let customer: Customer = {
+				id: $currentUser?.id || 'mock-user-123',
+				full_name: $currentUser?.user_metadata?.full_name || $currentUser?.email?.split('@')[0] || 'Member',
+				email: $currentUser?.email || 'member@kemani.io',
+				phone: $currentUser?.user_metadata?.phone || '',
+				loyalty_points_balance: 450,
+				total_orders: 12,
+				total_spent: 125000,
+				created_at: $currentUser?.created_at || '2024-01-15T08:00:00Z',
+				tier: 'Standard'
+			};
+	let orders: Order[] = [
+		{ id: '1', order_number: 'ORD-99120', status: 'delivered', total_amount: 15600, created_at: '2024-03-20T10:00:00Z' },
+		{ id: '2', order_number: 'ORD-99085', status: 'processing', total_amount: 8400, created_at: '2024-04-01T14:30:00Z' }
+	];
+	let isLoading = false;
+	let activeTab: 'profile' | 'orders' | 'loyalty' | 'messages' | 'medics' | 'products' | 'tracking' | 'appointments' = 'profile';
 	let error = '';
 
 	onMount(async () => {
@@ -146,6 +159,25 @@
 						>
 							<ShoppingCart class="nav-icon" /> Products
 						</button>
+						<button 
+							on:click={() => activeTab = 'tracking'} 
+							class="nav-item {activeTab === 'tracking' ? 'active' : ''}"
+						>
+							<Truck class="nav-icon" /> Tracking
+						</button>
+						<button 
+							on:click={() => activeTab = 'appointments'} 
+							class="nav-item {activeTab === 'appointments' ? 'active' : ''}"
+						>
+							<Calendar class="nav-icon" /> Appointments
+						</button>
+						<div class="nav-sep"></div>
+						<a href="/cart" class="nav-item">
+							<ShoppingCart class="nav-icon" /> Your Bag
+						</a>
+						<a href="/" class="nav-item">
+							<ArrowLeft class="nav-icon" /> Collection
+						</a>
 						<div class="nav-sep"></div>
 						<button on:click={handleSignOut} class="nav-item nav-logout text-red-500">
 							<LogOut class="nav-icon" /> Sign Out
@@ -275,6 +307,25 @@
 								<div class="h-10 w-10 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4"><ShoppingCart class="w-5 h-5 text-gray-300" /></div>
 								<p>The collection of items you follow is currently empty.</p>
 								<a href="/" class="btn-text">Explore Products <ArrowRight class="w-3 h-3" /></a>
+							</div>
+						</div>
+					{:else if activeTab === 'tracking'}
+						<div class="content-view">
+							<h2 class="view-title">Package Tracking</h2>
+							<div class="empty-list">
+								<div class="h-10 w-10 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4"><Truck class="w-5 h-5 text-gray-300" /></div>
+								<p>No active shipments currently in progress.</p>
+								<a href="/orders" class="btn-text" on:click={() => activeTab = 'orders'}>View Order History <ArrowRight class="w-3 h-3" /></a>
+							</div>
+						</div>
+
+					{:else if activeTab === 'appointments'}
+						<div class="content-view">
+							<h2 class="view-title">Medical Appointments</h2>
+							<div class="empty-list">
+								<div class="h-10 w-10 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4"><Calendar class="w-5 h-5 text-gray-300" /></div>
+								<p>Your calendar of appointments is currently empty.</p>
+								<a href="/medics" class="btn-text">Schedule Consultation <ArrowRight class="w-3 h-3" /></a>
 							</div>
 						</div>
 					{/if}

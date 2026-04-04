@@ -51,20 +51,10 @@
 	"/api/track/[id]": [
 		"src/routes/api/track/[id]/+server.ts"
 	],
-	"/(marketplace)/auth/forgot-password": [
-		"src/routes/(marketplace)/+layout.server.ts",
+	"/auth/callback": [
 		"src/routes/+layout.server.ts"
 	],
-	"/(marketplace)/auth/login": [
-		"src/routes/(marketplace)/+layout.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/(marketplace)/auth/register": [
-		"src/routes/(marketplace)/+layout.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/(marketplace)/auth/reset-password": [
-		"src/routes/(marketplace)/+layout.server.ts",
+	"/auth/portal": [
 		"src/routes/+layout.server.ts"
 	],
 	"/(marketplace)/cart": [

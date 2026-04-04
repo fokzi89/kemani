@@ -80,7 +80,7 @@
 	{:else}
 		<!-- Login button -->
 		<a
-			href="/auth/login"
+			href="/auth/portal"
 			class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
 		>
 			Sign In

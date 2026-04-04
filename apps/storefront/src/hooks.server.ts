@@ -1,8 +1,9 @@
 import { createServerClient } from '@supabase/ssr';
 import { type Handle, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, PUBLIC_APP_URL } from '$env/static/public';
 import { ReferralSessionService } from '$lib/services/referralSession';
+import { supabase as globalSupabase } from '$lib/supabase';
 
 const supabaseHandle: Handle = async ({ event, resolve }) => {
 	/**
@@ -84,6 +85,10 @@ const referralSessionHandle: Handle = async ({ event, resolve }) => {
 	};
 
 	const subdomain = extractSubdomain(event.url.hostname);
+	console.log(`[Hooks] Hostname: "${event.url.hostname}", Subdomain: "${subdomain}"`);
+	
+	// Set hostname context for the layout
+	event.locals.hostname = event.url.hostname;
 
 	// Initialize referringTenantId as null
 	event.locals.referringTenantId = null;
@@ -102,7 +107,7 @@ const referralSessionHandle: Handle = async ({ event, resolve }) => {
 				event.locals.referringTenantId = session.referring_tenant_id;
 			} else {
 				// Session expired or invalid, create new one
-				const tenantId = await lookupTenantBySubdomain(event.locals.supabase, subdomain);
+			const tenantId = await lookupTenantBySubdomain(subdomain);
 
 				if (tenantId) {
 					// Always set the tenant ID so the storefront loads
@@ -127,7 +132,7 @@ const referralSessionHandle: Handle = async ({ event, resolve }) => {
 			}
 		} else {
 			// No session cookie, create new session
-			const tenantId = await lookupTenantBySubdomain(event.locals.supabase, subdomain);
+			const tenantId = await lookupTenantBySubdomain(subdomain);
 
 			if (tenantId) {
 				// Always set the tenant ID so the storefront loads
@@ -159,11 +164,11 @@ const referralSessionHandle: Handle = async ({ event, resolve }) => {
  * Queries the tenants table to find tenant_id for a given subdomain
  * Tries subdomain first, then falls back to slug for backwards compatibility
  */
-async function lookupTenantBySubdomain(supabase: any, subdomain: string): Promise<string | null> {
+async function lookupTenantBySubdomain(subdomain: string): Promise<string | null> {
 	console.log(`[Hooks] Looking up tenant for subdomain: "${subdomain}"`);
 	try {
 		// Try subdomain first
-		const { data: bySubdomain, error: subdomainError } = await supabase
+		const { data: bySubdomain, error: subdomainError } = await globalSupabase
 			.from('tenants')
 			.select('id')
 			.eq('subdomain', subdomain)
@@ -179,7 +184,7 @@ async function lookupTenantBySubdomain(supabase: any, subdomain: string): Promis
 		}
 
 		// Fall back to slug for backwards compatibility
-		const { data: bySlug, error: slugError } = await supabase
+		const { data: bySlug, error: slugError } = await globalSupabase
 			.from('tenants')
 			.select('id')
 			.eq('slug', subdomain)
@@ -268,23 +273,23 @@ async function ensureCustomerRecordForTenant(
 
 const authGuard: Handle = async ({ event, resolve }) => {
 	// Define protected routes
-	const protectedRoutes = [
-		'/checkout',
-		'/profile',
-		'/orders'
-	];
+	// Note: We leave this empty because the storefront uses localStorage-based client-side auth.
+	// Server-side hooks cannot see localStorage, so server auth guards will reject valid browser sessions.
+	// Protection is instead handled gracefully on the client (e.g. checkout/+page.svelte).
+	const protectedRoutes: string[] = [];
 
 	// Check if the current route is protected
 	const isProtectedRoute = protectedRoutes.some((route) =>
 		event.url.pathname.startsWith(route)
 	);
 
-	// If protected and no session, redirect to login
+	// If protected and no session, redirect to the central identity portal with absolute URL
 	if (isProtectedRoute && !event.locals.session) {
-		throw redirect(303, `/auth/login?redirect=${encodeURIComponent(event.url.pathname)}`);
+		const redirectUrl = event.url.href;
+		throw redirect(303, `${PUBLIC_APP_URL}/auth/portal?next=${encodeURIComponent(redirectUrl)}`);
 	}
 
 	return resolve(event);
 };
 
-export const handle: Handle = sequence(supabaseHandle, referralSessionHandle, authGuard);
+export const handle: Handle = sequence(referralSessionHandle, supabaseHandle, authGuard);

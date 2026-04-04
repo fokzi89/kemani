@@ -6,8 +6,8 @@
 		ShoppingCart, Trash2, Plus, Minus, ArrowLeft, 
 		CreditCard, ShieldCheck, Truck, Tag, Ticket, ChevronRight, ArrowRight
 	} from 'lucide-svelte';
-	import { isAuthenticated } from '$lib/stores/auth';
-	import { isAuthModalOpen } from '$lib/stores/ui';
+	import { authStore, isAuthenticated } from '$lib/stores/auth';
+	import { PUBLIC_APP_URL } from '$env/static/public';
 
 	export let data;
 
@@ -79,7 +79,8 @@
 		if (cart.items.length === 0) return;
 		
 		if (!$isAuthenticated) {
-			isAuthModalOpen.set(true);
+			const next = window.location.href;
+			window.location.href = `${PUBLIC_APP_URL}/auth/portal?next=${encodeURIComponent(next)}`;
 			return;
 		}
 
