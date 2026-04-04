@@ -53,31 +53,62 @@
 	let error = '';
 
 	onMount(async () => {
-		// For testing: always load mock data
 		await loadCustomerData();
 	});
+
+	async function cancelOrder(orderId: string) {
+		if (!confirm('Are you sure you want to cancel this order?')) return;
+		
+		try {
+			const { error: err } = await supabase.rpc('cancel_storefront_order', { p_order_id: orderId });
+			if (err) throw err;
+			
+			// Refresh orders
+			await loadCustomerData();
+		} catch (err: any) {
+			console.error("Cancel Error:", err);
+			alert(err.message || 'Failed to cancel the order.');
+		}
+	}
 
 	async function loadCustomerData() {
 		isLoading = true;
 		try {
-			// In a real app, fetch from Supabase
+			// For user state, we continue using the Auth session info for now
 			customer = {
 				id: $currentUser?.id || 'mock-user-123',
-				full_name: $currentUser?.user_metadata?.full_name || 'Amara Okechukwu',
-				email: $currentUser?.email || 'amara.o@curator.io',
-				phone: $currentUser?.user_metadata?.phone || '+234 812 345 6789',
-				loyalty_points_balance: 450,
-				total_orders: 12,
-				total_spent: 125000,
-				created_at: $currentUser?.created_at || '2024-01-15T08:00:00Z',
+				full_name: $currentUser?.user_metadata?.full_name || 'Member',
+				email: $currentUser?.email || '',
+				phone: $currentUser?.user_metadata?.phone || '',
+				loyalty_points_balance: 0,
+				total_orders: 0,
+				total_spent: 0,
+				created_at: $currentUser?.created_at || new Date().toISOString(),
 				tier: 'Standard'
 			};
-			
-			orders = [
-				{ id: '1', order_number: 'ORD-99120', status: 'delivered', total_amount: 15600, created_at: '2024-03-20T10:00:00Z' },
-				{ id: '2', order_number: 'ORD-99085', status: 'processing', total_amount: 8400, created_at: '2024-04-01T14:30:00Z' }
-			];
+
+			if ($currentUser?.id) {
+				const { data: dbOrders, error: orderErr } = await supabase
+					.from('orders')
+					.select('id, order_number, order_status, total_amount, created_at')
+					.eq('customer_id', $currentUser.id)
+					.order('created_at', { ascending: false });
+				
+				if (!orderErr && dbOrders) {
+					orders = dbOrders.map(o => ({
+						id: o.id,
+						order_number: o.order_number,
+						status: o.order_status,
+						total_amount: o.total_amount,
+						created_at: o.created_at
+					}));
+					
+					customer.total_orders = orders.length;
+					customer.total_spent = orders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+				}
+			}
 		} catch (err: any) {
+			console.error(err);
 			error = 'Failed to load collection data.';
 		} finally {
 			isLoading = false;
@@ -244,7 +275,10 @@
 											<div class="order-amount">
 												<p>₦{order.total_amount.toLocaleString()}</p>
 											</div>
-											<div class="order-action">
+											<div class="order-action gap-2 flex items-center">
+												{#if order.status === 'pending' || order.status === 'processing'}
+													<button on:click={() => cancelOrder(order.id)} class="text-[10px] uppercase font-bold text-red-500 hover:text-red-700 transition-colors">Cancel</button>
+												{/if}
 												<button class="btn-icon-only"><ChevronRight class="w-4 h-4" /></button>
 											</div>
 										</div>
@@ -409,7 +443,8 @@
 	.order-date { font-size: 12px; color: var(--on-surface-muted); }
 	.status-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 4px 10px; border-radius: 4px; display: inline-block; }
 	.status-badge.delivered { background: #f0fdf4; color: #059669; }
-	.status-badge.processing { background: #fffbeb; color: #d97706; }
+	.status-badge.processing, .status-badge.pending { background: #fffbeb; color: #d97706; }
+	.status-badge.cancelled { background: #fef2f2; color: #dc2626; text-decoration: line-through; }
 	.order-amount { font-size: 14px; font-weight: 600; text-align: right; }
 
 	/* ─── LOYALTY ─── */

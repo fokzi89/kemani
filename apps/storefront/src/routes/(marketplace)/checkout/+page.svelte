@@ -9,6 +9,7 @@
 	} from 'lucide-svelte';
 
 	export let data;
+	import { supabase } from '$lib/supabase';
 
 	$: storefront = data.storefront;
     $: brandColor = storefront?.brand_color || '#4f46e5';
@@ -45,8 +46,31 @@
 		error = '';
 
 		try {
-			// Simulate order processing
-			await new Promise(resolve => setTimeout(resolve, 2000));
+			// Format items as required by the RPC
+			const formattedItems = orderData.items.map((i: any) => ({
+				product_id: i.product_id || i.id,
+				product_name: i.product_name || i.name,
+				quantity: i.quantity,
+				unit_price: i.price,
+				subtotal: i.price * i.quantity
+			}));
+
+			const { data: orderId, error: rpcError } = await supabase.rpc('checkout_storefront_order', {
+				p_tenant_id: storefront.id,
+				p_branch_id: orderData.branch_id || storefront.branches?.[0]?.id, // ensure branch_id is present
+				p_customer_id: $currentUser?.id,
+				p_order_type: orderData.order_type === 'delivery' ? 'delivery' : 'instore', // Default to instore if fallback
+				p_fulfillment_type: orderData.order_type === 'delivery' ? 'delivery' : 'pickup',
+				p_subtotal: orderData.subtotal,
+				p_delivery_fee: orderData.delivery_fee,
+				p_tax_amount: orderData.tax,
+				p_total_amount: orderData.total,
+				p_delivery_address_id: orderData.delivery_address_id || null,
+				p_special_instructions: orderData.special_instructions || null,
+				p_items: formattedItems
+			});
+
+			if (rpcError) throw rpcError;
 
 			localStorage.removeItem('cart');
 			localStorage.removeItem('checkout_data');
@@ -58,6 +82,7 @@
 				goto(`/profile`);
 			}, 3000);
 		} catch (err: any) {
+			console.error("Checkout Error:", err);
 			error = err.message || 'Failed to place order. Please try again.';
 		} finally {
 			isLoading = false;
