@@ -2,11 +2,11 @@
 	import { onMount } from 'svelte';
 	import { supabase } from '$lib/supabase';
 	import { goto } from '$app/navigation';
-	import { Settings, User, CreditCard, Bell, Shield, ArrowUpCircle, Clock, Save, DollarSign, Edit, MapPin, Briefcase, Award, FileCheck, Plus, Trash2 } from 'lucide-svelte';
+	import { Settings, User, CreditCard, Bell, Shield, ArrowUpCircle, Clock, Save, DollarSign, Edit, MapPin, Briefcase, Award, FileCheck, Plus, Trash2, Users, Inbox } from 'lucide-svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import FileUpload from '$lib/components/FileUpload.svelte';
 
-	let provider = $state(null);
+	let provider = $state<any>(null);
 	let subscription = $state(null);
 	let loading = $state(true);
 	let savingSchedule = $state(false);
@@ -52,6 +52,7 @@
 	// Time slot settings
 	let slotDuration = $state(30); // minutes
 	let bufferTime = $state(0); // minutes between appointments
+	let followUpDuration = $state(24); // hours for follow-up after consultation
 	let slotSettings = $state({
 		duration: 30,
 		buffer: 0,
@@ -73,7 +74,8 @@
 		phone: '',
 		specialization: '',
 		sub_specialty: '',
-		preferred_languages: ''
+		preferred_languages: '',
+		accept_invite: false
 	});
 
 	// Profile picture upload
@@ -135,110 +137,118 @@
 	let savingLicense = $state(false);
 
 	onMount(async () => {
-		const { data: { session } } = await supabase.auth.getSession();
+		try {
+			const { data: { session } } = await supabase.auth.getSession();
 
-		if (!session) {
-			goto('/auth/login');
-			return;
-		}
+			if (!session) {
+				goto('/auth/login');
+				return;
+			}
 
-		// Get provider
-		const { data: providerData } = await supabase
-			.from('healthcare_providers')
-			.select('*')
-			.eq('user_id', session.user.id)
-			.single();
-
-		provider = providerData;
-
-		// Load work schedule if exists
-		if (provider?.work_schedule && Array.isArray(provider.work_schedule) && provider.work_schedule.length > 0) {
-			schedule = provider.work_schedule;
-		}
-
-		// Load consultation fees if exists
-		if (provider?.fees) {
-			fees = { ...fees, ...provider.fees };
-		}
-
-		// Load time slot settings if exists
-		if (provider?.slot_settings) {
-			slotSettings = { ...slotSettings, ...provider.slot_settings };
-			slotDuration = slotSettings.duration;
-			bufferTime = slotSettings.buffer;
-		}
-
-		// Get subscription
-		if (provider?.medic_subscription_id) {
-			const { data: subData } = await supabase
-				.from('medic_subscriptions')
+			// Get provider
+			const { data: providerData } = await supabase
+				.from('healthcare_providers')
 				.select('*')
-				.eq('id', provider.medic_subscription_id)
+				.eq('user_id', session.user.id)
 				.single();
 
-			subscription = subData;
-		}
+			provider = providerData;
 
-		// Load work experiences
-		if (provider) {
-			const { data: workExpData } = await supabase
-				.from('provider_work_experience')
-				.select('*')
-				.eq('provider_id', provider.id)
-				.order('start_date', { ascending: false });
-
-			workExperiences = workExpData || [];
-
-			// Load certificates
-			const { data: certData } = await supabase
-				.from('provider_certificates')
-				.select('*')
-				.eq('provider_id', provider.id)
-				.order('issue_date', { ascending: false });
-
-			certificates = certData || [];
-
-			// Load licenses
-			const { data: licenseData } = await supabase
-				.from('provider_licenses')
-				.select('*')
-				.eq('provider_id', provider.id)
-				.order('issue_date', { ascending: false });
-
-			licenses = licenseData || [];
-
-			// Initialize profile form
-			profileForm = {
-				full_name: provider.full_name || '',
-				email: provider.email || '',
-				phone: provider.phone || '',
-				specialization: provider.specialization || '',
-				sub_specialty: provider.sub_specialty || '',
-				preferred_languages: provider.preferred_languages?.join(', ') || ''
-			};
-
-			profilePicPreview = provider.profile_photo_url || '';
-
-			// Initialize address form
-			if (provider.clinic_address) {
-				const addr = provider.clinic_address;
-				addressForm = {
-					country: addr.country || provider.country || '',
-					region: addr.state || provider.region || '',
-					city: addr.city || '',
-					street: addr.street || ''
-				};
-			} else {
-				addressForm = {
-					country: provider.country || '',
-					region: provider.region || '',
-					city: '',
-					street: ''
-				};
+			// Load work schedule if exists
+			if (provider?.work_schedule && Array.isArray(provider.work_schedule) && provider.work_schedule.length > 0) {
+				schedule = provider.work_schedule;
 			}
-		}
 
-		loading = false;
+			// Load consultation fees if exists
+			if (provider?.fees) {
+				fees = { ...fees, ...provider.fees };
+			}
+
+			// Load time slot settings if exists
+			if (provider?.slot_settings) {
+				slotSettings = { ...slotSettings, ...provider.slot_settings };
+				slotDuration = slotSettings.duration;
+				bufferTime = slotSettings.buffer;
+			}
+
+			// Load follow up duration
+			followUpDuration = provider?.follow_up_duration || 24;
+
+			// Get subscription
+			if (provider?.medic_subscription_id) {
+				const { data: subData } = await supabase
+					.from('medic_subscriptions')
+					.select('*')
+					.eq('id', provider.medic_subscription_id)
+					.single();
+
+				subscription = subData;
+			}
+
+			// Load work experiences
+			if (provider) {
+				const { data: workExpData } = await supabase
+					.from('provider_work_experience')
+					.select('*')
+					.eq('provider_id', provider.id)
+					.order('start_date', { ascending: false });
+
+				workExperiences = workExpData || [];
+
+				// Load certificates
+				const { data: certData } = await supabase
+					.from('provider_certificates')
+					.select('*')
+					.eq('provider_id', provider.id)
+					.order('issue_date', { ascending: false });
+
+				certificates = certData || [];
+
+				// Load licenses
+				const { data: licenseData } = await supabase
+					.from('provider_licenses')
+					.select('*')
+					.eq('provider_id', provider.id)
+					.order('issue_date', { ascending: false });
+
+				licenses = licenseData || [];
+
+				// Initialize profile form
+				profileForm = {
+					full_name: provider.full_name || '',
+					email: provider.email || '',
+					phone: provider.phone || '',
+					specialization: provider.specialization || '',
+					sub_specialty: provider.sub_specialty || '',
+					preferred_languages: provider.preferred_languages?.join(', ') || '',
+					accept_invite: provider.accept_invite || false
+				};
+
+				profilePicPreview = provider.profile_photo_url || '';
+
+				// Initialize address form
+				if (provider.clinic_address) {
+					const addr = provider.clinic_address;
+					addressForm = {
+						country: addr.country || provider.country || '',
+						region: addr.state || provider.region || '',
+						city: addr.city || '',
+						street: addr.street || ''
+					};
+				} else {
+					addressForm = {
+						country: provider.country || '',
+						region: provider.region || '',
+						city: '',
+						street: ''
+					};
+				}
+			}
+		} catch (error) {
+			console.error('Error in onMount:', error);
+		} finally {
+			loading = false;
+		}
 	});
 
 	function getTierName(tier: string) {
@@ -318,11 +328,12 @@
 				breakTimes: slotSettings.breakTimes
 			};
 
-			// Save slot settings to provider profile
+			// Save slot settings and follow up duration to provider profile
 			const { error } = await supabase
 				.from('healthcare_providers')
 				.update({
-					slot_settings: updatedSettings
+					slot_settings: updatedSettings,
+					follow_up_duration: followUpDuration
 				})
 				.eq('id', provider.id);
 
@@ -336,6 +347,24 @@
 			alert('An error occurred while saving slot settings');
 		} finally {
 			savingSlots = false;
+		}
+	}
+
+	async function toggleAcceptInvite() {
+		if (!provider) return;
+
+		try {
+			const newValue = !provider.accept_invite;
+			const { error } = await supabase
+				.from('healthcare_providers')
+				.update({ accept_invite: newValue } as any)
+				.eq('id', provider.id);
+
+			if (error) throw error;
+			provider.accept_invite = newValue;
+			profileForm.accept_invite = newValue;
+		} catch (err: any) {
+			alert('Failed to update invitation preference: ' + err.message);
 		}
 	}
 
@@ -1128,6 +1157,22 @@
 							</select>
 							<p class="mt-1 text-xs text-gray-500">Time gap between consecutive appointments</p>
 						</div>
+
+						<!-- Follow Up Duration -->
+						<div class="mt-4">
+							<label for="follow-up-duration" class="block text-sm font-medium text-gray-700 mb-2">
+								Follow-Up Duration (Hours)
+							</label>
+							<input
+								type="number"
+								id="follow-up-duration"
+								bind:value={followUpDuration}
+								min="1"
+								max="168"
+								class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+							/>
+							<p class="mt-1 text-xs text-gray-500">Hours allowed for patient follow-up after consultation (1-168 hours)</p>
+						</div>
 					</div>
 
 					<!-- Slot Preview -->
@@ -1162,6 +1207,47 @@
 						<h2 class="text-xl font-semibold text-gray-900">Notifications</h2>
 					</div>
 					<p class="text-gray-600">Notification preferences coming soon...</p>
+				</div>
+
+				<!-- Networking & Partnerships Section -->
+				<div class="bg-white rounded-lg shadow p-6">
+					<div class="flex items-center justify-between mb-4">
+						<div class="flex items-center gap-3">
+							<div class="p-2 bg-blue-100 rounded-lg">
+								<Users class="h-5 w-5 text-blue-600" />
+							</div>
+							<h2 class="text-xl font-semibold text-gray-900">Networking & Partnerships</h2>
+						</div>
+					</div>
+					<p class="text-sm text-gray-600 mb-6">Manage how other clinics find and interact with you</p>
+					
+					<div class="flex items-center justify-between p-5 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-blue-200 transition-all">
+						<div class="space-y-1">
+							<p class="font-black text-gray-900 tracking-tight">Allow Clinic Invitations</p>
+							<p class="text-xs text-gray-500 font-medium max-w-sm leading-relaxed">
+								When enabled, other primary doctors can find you in the directory and invite you to join their clinic as a partner.
+							</p>
+						</div>
+						<button 
+							onclick={toggleAcceptInvite}
+							aria-pressed={provider?.accept_invite}
+							class="relative inline-flex h-7 w-12 items-center rounded-full transition-all focus:outline-none {provider?.accept_invite ? 'bg-black' : 'bg-gray-300'} active:scale-95 shadow-inner"
+						>
+							<span class="inline-block h-5 w-5 transform rounded-full bg-white transition-all shadow-md {provider?.accept_invite ? 'translate-x-6' : 'translate-x-1'}"></span>
+						</button>
+					</div>
+
+					{#if provider?.accept_invite}
+						<div class="mt-4 pt-4 border-t border-gray-100 flex justify-end">
+							<a 
+								href="/settings/invites"
+								class="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-900 rounded-lg text-sm font-bold transition-all shadow-sm active:scale-95"
+							>
+								<Inbox class="h-4 w-4" />
+								My Invites
+							</a>
+						</div>
+					{/if}
 				</div>
 
 				<!-- Security Section -->

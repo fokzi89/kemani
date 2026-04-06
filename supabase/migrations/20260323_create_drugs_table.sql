@@ -17,7 +17,10 @@ CREATE TABLE IF NOT EXISTS drugs (
     -- Formulation & Dosage
     dosage_form TEXT,   -- Form (e.g., "Tablet", "Syrup", "Injection")
     strength TEXT,      -- Concentration (e.g., "500 mg", "10 mg/ml")
-    route_of_administration TEXT, -- How it's taken (e.g., "Oral", "Intravenous")
+    route_of_administration TEXT,
+    dispense_as TEXT, -- How it's dis (e.g., "unit", "pack")
+    dispense_quantity INT,
+    drug_pic_url TEXT,
     
     -- Medical Information
     description TEXT,

@@ -3,8 +3,8 @@
 	import { supabase } from '$lib/supabase';
 	import { Calendar, Video, MessageSquare, Phone, CheckCircle, Clock, XCircle } from 'lucide-svelte';
 
-	let provider = $state(null);
-	let consultations = $state([]);
+	let provider = $state<any>(null);
+	let consultations = $state<any[]>([]);
 	let loading = $state(true);
 	let filter = $state('all'); // all, pending, in_progress, completed
 
@@ -29,17 +29,37 @@
 	});
 
 	async function loadConsultations(providerId: string) {
+		// 1. Get all clinics this doctor is a partner with
+		const { data: partnerData } = await supabase
+			.from('doctor_aliases')
+			.select('primary_doctor_id')
+			.eq('doctor_id', providerId)
+			.eq('accepted', true)
+			.eq('is_active', true);
+
+		const clinicIds = partnerData?.map(p => p.primary_doctor_id) || [];
+		
+		// 2. Build the query
+		// We want consultations where I am the provider OR it belongs to a clinic I'm part of
+		let orFilter = `provider_id.eq.${providerId},tenant_id.eq.${providerId}`;
+		if (clinicIds.length > 0) {
+			orFilter += `,tenant_id.in.(${clinicIds.join(',')})`;
+		}
+
 		let query = supabase
 			.from('consultations')
 			.select('*')
-			.eq('provider_id', providerId)
-			.order('created_at', { ascending: false }); // Order by time created to show referred patients chronologically
+			.or(orFilter)
+			.order('created_at', { ascending: false });
 
 		if (filter !== 'all') {
 			query = query.eq('status', filter);
 		}
 
-		const { data } = await query;
+		const { data, error } = await query;
+		if (error) {
+			console.error('Error fetching consultations:', error);
+		}
 		consultations = data || [];
 	}
 
@@ -169,13 +189,14 @@
 		<div class="space-y-4">
 			{#each consultations as consultation}
 				{@const badge = getReferralBadge(consultation.referral_source || 'direct')}
+				{@const Icon = getTypeIcon(consultation.type)}
 				<div class="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
 					<div class="p-6">
 						<div class="flex items-start justify-between">
 							<div class="flex items-start gap-4 flex-1">
 								<!-- Icon -->
 								<div class="bg-primary-100 p-3 rounded-full flex-shrink-0">
-									<svelte:component this={getTypeIcon(consultation.type)} class="h-6 w-6 text-primary-600" />
+									<Icon class="h-6 w-6 text-primary-600" />
 								</div>
 
 								<!-- Details -->
@@ -184,6 +205,11 @@
 										<h3 class="text-lg font-semibold text-gray-900">
 											{consultation.provider_name || 'Patient'}
 										</h3>
+										{#if consultation.tenant_id !== provider?.id}
+											<span class="px-2 py-0.5 text-[10px] font-black uppercase tracking-widest bg-gray-900 text-white rounded-md">
+												Clinic Assignment
+											</span>
+										{/if}
 										<span class="px-2 py-1 text-xs font-semibold rounded-full {getStatusColor(consultation.status)}">
 											{consultation.status}
 										</span>
