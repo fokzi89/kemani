@@ -58,6 +58,7 @@
         </a>
 
         <nav class="desktop-nav">
+          <a href="/doctors" class="nav-link" class:active={$page.url.pathname === '/doctors'}>Doctors list</a>
           <a href="/pharmacies" class="nav-link" class:active={$page.url.pathname === '/pharmacies'}>Pharmacy shops</a>
           <a href="/diagnostics" class="nav-link" class:active={$page.url.pathname === '/diagnostics'}>Diagnostic centre</a>
         </nav>
@@ -112,6 +113,7 @@
     {#if isMobileMenuOpen}
       <div class="mobile-menu">
         <nav class="mobile-nav">
+          <a href="/doctors" on:click={toggleMobileMenu}>Doctors list</a>
           <a href="/pharmacies" on:click={toggleMobileMenu}>Pharmacy shops</a>
           <a href="/diagnostics" on:click={toggleMobileMenu}>Diagnostic centre</a>
           <hr />

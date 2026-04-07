@@ -20,7 +20,8 @@
 		FlaskConical,
 		Home,
 		Building,
-		Handshake
+		Handshake,
+		Star
 	} from 'lucide-svelte';
 
 	let user = $state<any>(null);
@@ -38,6 +39,7 @@
 		{ name: 'Messages', href: '/chats', icon: MessageSquare },
 		{ name: 'Commissions', href: '/commissions', icon: DollarSign },
 		{ name: 'Analytics', href: '/analytics', icon: BarChart3 },
+		{ name: 'Reviews', href: '/reviews', icon: Star },
 		{ name: 'Clinic', href: '/clinic', icon: Building },
 		{ name: 'Partners', href: '/partners', icon: Handshake },
 		{ name: 'Settings', href: '/settings', icon: Settings }

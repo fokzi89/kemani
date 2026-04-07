@@ -7,32 +7,46 @@ const db = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
 export async function load({ locals }) {
   let tenantId = locals.referringTenantId;
 
-  // Fallback: use user-provided provider for testing in local dev
-  if (!tenantId && locals.hostname?.includes('localhost')) {
+  const subdomain = locals.hostname?.split(':')[0].endsWith('.localhost') 
+    ? locals.hostname.split('.')[0] 
+    : (locals.hostname?.split('.').length >= 3 ? locals.hostname.split('.')[0] : null);
+
+  // Fallback: use user-provided provider for testing in local dev only if no subdomain found
+  if (!tenantId && !subdomain && locals.hostname?.includes('localhost')) {
     tenantId = 'c03d5466-e403-4721-911f-ebc25ce2a5f2';
   }
 
-  // Attempt to find the professional profile first, as it's our primary source of truth
-  const { data: hcp } = await db
-    .from('healthcare_providers')
-    .select('*')
-    .or(`id.eq.c03d5466-e403-4721-911f-ebc25ce2a5f2,slug.eq.bolo-bola-f4xkkt`)
-    .limit(1)
-    .single();
+  // Build hcp query - prioritization: Subdomain Slug > Tenant ID
+  let hcpQuery = db.from('healthcare_providers').select('*');
+  if (subdomain) {
+    hcpQuery = hcpQuery.eq('slug', subdomain);
+  } else if (tenantId) {
+    hcpQuery = hcpQuery.eq('id', tenantId);
+  } else {
+    throw error(404, 'No healthcare provider identified');
+  }
+
+  // Attempt to find the professional profile first
+  const { data: hcp } = await hcpQuery.maybeSingle();
+
+  // Then build tenant query - prioritize hcp slug if hcp was found
+  let tenantQuery = db.from('tenants').select(`
+        id, name, slug, subdomain, logo_url, brand_color,
+        phone, email,
+        services_offered, ecommerce_settings,
+        branches!tenant_id(id, name, address, phone, city)
+      `).is('deleted_at', null);
+
+  if (hcp?.slug) {
+    tenantQuery = tenantQuery.eq('slug', hcp.slug);
+  } else if (subdomain) {
+    tenantQuery = tenantQuery.eq('slug', subdomain);
+  } else if (tenantId) {
+    tenantQuery = tenantQuery.eq('id', tenantId);
+  }
 
   // Then try to find the tenant record
-  const { data: tenant } = await db
-    .from('tenants')
-    .select(`
-      id, name, slug, subdomain, logo_url, brand_color,
-      phone, email,
-      services_offered, ecommerce_settings,
-      branches!tenant_id(id, name, address, phone, city)
-    `)
-    .or(`id.eq.${tenantId},slug.eq.${hcp?.slug || 'bolo-bola-f4xkkt'},id.eq.c03d5466-e403-4721-911f-ebc25ce2a5f2`)
-    .is('deleted_at', null)
-    .limit(1)
-    .single();
+  const { data: tenant } = await tenantQuery.maybeSingle();
 
   if (!hcp && !tenant) throw error(404, 'Healthcare provider data not found');
 
@@ -65,7 +79,7 @@ export async function load({ locals }) {
       total_reviews: hcp?.total_reviews || 0,
       years_experience: hcp?.years_of_experience || 25,
       is_verified: hcp?.is_verified || false,
-      fees: hcp?.fees || { chat: 5000, audio: 8000, video: 10000 },
+      fees: hcp?.marked_up_fees || hcp?.fees || { chat: 5000, audio: 8000, video: 10000 },
       branches
     }
   };

@@ -75,7 +75,7 @@
 		specialization: '',
 		sub_specialty: '',
 		preferred_languages: '',
-		accept_invite: false
+		accept_invite: true
 	});
 
 	// Profile picture upload
@@ -154,9 +154,39 @@
 
 			provider = providerData;
 
-			// Load work schedule if exists
-			if (provider?.work_schedule && Array.isArray(provider.work_schedule) && provider.work_schedule.length > 0) {
-				schedule = provider.work_schedule;
+			// Load work schedule from templates table
+			if (provider) {
+				const { data: templateData } = await supabase
+					.from('provider_availability_templates')
+					.select('*')
+					.eq('provider_id', provider.id);
+				
+				if (templateData && templateData.length > 0) {
+					// Reset schedule state
+					const freshSchedule = [
+						{ day: 'Monday', enabled: false, startTime: '09:00', endTime: '17:00' },
+						{ day: 'Tuesday', enabled: false, startTime: '09:00', endTime: '17:00' },
+						{ day: 'Wednesday', enabled: false, startTime: '09:00', endTime: '17:00' },
+						{ day: 'Thursday', enabled: false, startTime: '09:00', endTime: '17:00' },
+						{ day: 'Friday', enabled: false, startTime: '09:00', endTime: '17:00' },
+						{ day: 'Saturday', enabled: false, startTime: '09:00', endTime: '17:00' },
+						{ day: 'Sunday', enabled: false, startTime: '09:00', endTime: '17:00' }
+					];
+
+					const dayMap: Record<number, string> = { 0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday' };
+					
+					templateData.forEach(tmpl => {
+						const dayName = dayMap[tmpl.day_of_week];
+						const dayIdx = freshSchedule.findIndex(d => d.day === dayName);
+						if (dayIdx !== -1) {
+							// Only mark as enabled if it's not closed
+							freshSchedule[dayIdx].enabled = !tmpl.is_closed;
+							freshSchedule[dayIdx].startTime = tmpl.start_time.substring(0, 5); // HH:mm
+							freshSchedule[dayIdx].endTime = tmpl.end_time.substring(0, 5);
+						}
+					});
+					schedule = freshSchedule;
+				}
 			}
 
 			// Load consultation fees if exists
@@ -164,12 +194,9 @@
 				fees = { ...fees, ...provider.fees };
 			}
 
-			// Load time slot settings if exists
-			if (provider?.slot_settings) {
-				slotSettings = { ...slotSettings, ...provider.slot_settings };
-				slotDuration = slotSettings.duration;
-				bufferTime = slotSettings.buffer;
-			}
+			// Load time slot settings from new columns
+			slotDuration = provider?.slot_duration_minutes || 30;
+			bufferTime = provider?.buffer_time_minutes || 0;
 
 			// Load follow up duration
 			followUpDuration = provider?.follow_up_duration || 24;
@@ -221,7 +248,7 @@
 					specialization: provider.specialization || '',
 					sub_specialty: provider.sub_specialty || '',
 					preferred_languages: provider.preferred_languages?.join(', ') || '',
-					accept_invite: provider.accept_invite || false
+					accept_invite: provider.accept_invite ?? true
 				};
 
 				profilePicPreview = provider.profile_photo_url || '';
@@ -262,22 +289,34 @@
 		savingSchedule = true;
 
 		try {
-			// Save schedule to provider profile
-			const { error } = await supabase
-				.from('healthcare_providers')
-				.update({
-					work_schedule: schedule
-				})
-				.eq('id', provider.id);
+			const dayMap: Record<string, number> = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+			
+			// Map ALL 7 days now (enabled = open, disabled = closed)
+			const templates = schedule.map(d => ({
+				provider_id: provider.id,
+				day_of_week: dayMap[d.day],
+				day_name: d.day,
+				start_time: d.startTime,
+				end_time: d.endTime,
+				slot_duration: slotDuration,
+				buffer_minutes: bufferTime,
+				is_closed: !d.enabled,
+				is_active: d.enabled // keeping legacy active sync
+			}));
 
-			if (error) {
-				alert('Failed to save schedule: ' + error.message);
-			} else {
-				alert('Work schedule saved successfully!');
-			}
-		} catch (err) {
-			console.error('Error saving schedule:', err);
-			alert('An error occurred while saving schedule');
+			// Use UPSERT on (provider_id, day_of_week) conflict
+			const { error } = await supabase
+				.from('provider_availability_templates')
+				.upsert(templates, { 
+					onConflict: 'provider_id, day_of_week' 
+				});
+
+			if (error) throw error;
+
+			alert('Work schedule updated (Closed days sync enabled)');
+		} catch (err: any) {
+			console.error('Error syncing schedule:', err);
+			alert('Failed to sync schedule: ' + err.message);
 		} finally {
 			savingSchedule = false;
 		}
@@ -319,31 +358,33 @@
 		if (!provider) return;
 
 		savingSlots = true;
+		console.log('Saving slot settings for provider:', provider.id);
 
 		try {
-			// Update slot settings object
-			const updatedSettings = {
-				duration: slotDuration,
-				buffer: bufferTime,
-				breakTimes: slotSettings.breakTimes
+			// Explicitly convert to numbers for the integer columns
+			const updateData = {
+				slot_duration_minutes: Number(slotDuration),
+				buffer_time_minutes: Number(bufferTime),
+				follow_up_duration: Number(followUpDuration)
 			};
+			
+			console.log('Update payload:', updateData);
 
-			// Save slot settings and follow up duration to provider profile
+			// Save slot settings separately as columns
 			const { error } = await supabase
 				.from('healthcare_providers')
-				.update({
-					slot_settings: updatedSettings,
-					follow_up_duration: followUpDuration
-				})
+				.update(updateData)
 				.eq('id', provider.id);
 
 			if (error) {
-				alert('Failed to save time slot settings: ' + error.message);
+				console.error('Supabase error:', error);
+				alert('Failed to save settings: ' + error.message);
 			} else {
-				alert('Time slot settings saved successfully!');
+				console.log('Update successful');
+				alert('Advanced slot settings saved successfully!');
 			}
 		} catch (err) {
-			console.error('Error saving slot settings:', err);
+			console.error('Exception during save:', err);
 			alert('An error occurred while saving slot settings');
 		} finally {
 			savingSlots = false;
@@ -1231,9 +1272,9 @@
 						<button 
 							onclick={toggleAcceptInvite}
 							aria-pressed={provider?.accept_invite}
-							class="relative inline-flex h-7 w-12 items-center rounded-full transition-all focus:outline-none {provider?.accept_invite ? 'bg-black' : 'bg-gray-300'} active:scale-95 shadow-inner"
+							class="relative inline-flex h-7 w-12 items-center rounded-full transition-all focus:outline-none {provider?.accept_invite ?? true ? 'bg-black' : 'bg-gray-300'} active:scale-95 shadow-inner"
 						>
-							<span class="inline-block h-5 w-5 transform rounded-full bg-white transition-all shadow-md {provider?.accept_invite ? 'translate-x-6' : 'translate-x-1'}"></span>
+							<span class="inline-block h-5 w-5 transform rounded-full bg-white transition-all shadow-md {provider?.accept_invite ?? true ? 'translate-x-6' : 'translate-x-1'}"></span>
 						</button>
 					</div>
 

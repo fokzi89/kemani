@@ -61,8 +61,8 @@
 		provider = providerData;
 
 		if (provider) {
-			// Handle clinic name - the database column is "clinic name" with space
-			const clinicNameValue = (provider as any)["clinic name"] || provider.full_name;
+			// Database column name is clinic_name (underscored)
+			const clinicNameValue = provider.clinic_name || provider.full_name;
 			clinicName = clinicNameValue;
 			clinicNameOriginal = clinicNameValue;
 
@@ -177,14 +177,14 @@
 		saving = true;
 		try {
 			const finalClinicName = clinicName.trim();
-			const newSlug = slugify(`${provider.full_name} ${finalClinicName}`);
+			const newSlug = slugify(finalClinicName);
 
 			const { error } = await supabase
 				.from('healthcare_providers')
 				.update({ 
-					"clinic name": finalClinicName,
+					clinic_name: finalClinicName,
 					slug: newSlug
-				} as any)
+				})
 				.eq('id', provider.id);
 
 			if (error) throw error;
@@ -395,7 +395,7 @@
 <!-- Add Doctor Modal (outside z-index context) -->
 {#if showAddDoctorModal}
 	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-		<div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick={() => showAddDoctorModal = false}></div>
+		<div class="absolute inset-0 bg-black/60 backdrop-blur-sm" role="button" tabindex="0" onclick={() => showAddDoctorModal = false} onkeydown={(e) => e.key === 'Enter' && (showAddDoctorModal = false)}></div>
 		<div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl z-10 overflow-hidden flex flex-col max-h-[85vh] border border-white/20 animate-in fade-in zoom-in-95 duration-200">
 			<div class="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
 				<div>
@@ -446,7 +446,10 @@
 							{@const selected = isSelected(doctor.id)}
 							<div 
 								class="flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer group {selected ? 'bg-gray-50 border-black shadow-sm ring-2 ring-black/5' : 'bg-white border-gray-100 hover:border-black/20 hover:bg-gray-50/50 shadow-sm'}"
+								role="button"
+								tabindex="0"
 								onclick={() => toggleDoctor(doctor)}
+								onkeydown={(e) => e.key === 'Enter' && toggleDoctor(doctor)}
 							>
 								<div class="relative flex-shrink-0">
 									<input

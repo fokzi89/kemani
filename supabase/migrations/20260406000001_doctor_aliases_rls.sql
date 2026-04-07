@@ -1,4 +1,8 @@
--- RLS Policies for doctor_aliases
+-- 5. PUBLIC SELECT policy (refining existing if any)
+DROP POLICY IF EXISTS "Anyone can see healthcare providers" ON public.healthcare_providers;
+CREATE POLICY "Anyone can see healthcare providers"
+ON public.healthcare_providers FOR SELECT
+USING (true);
 
 -- 1. SELECT policies (already exist but refined)
 DROP POLICY IF EXISTS "Primary doctor sees consultants" ON public.doctor_aliases;
@@ -63,5 +67,13 @@ USING (
   )
 );
 
--- Grant the table to authenticated users
+-- 5. PUBLIC SELECT policy
+-- Allows anyone (patients) to see accepted and active consultants for a clinic
+DROP POLICY IF EXISTS "Public can see active consultants" ON public.doctor_aliases;
+CREATE POLICY "Public can see active consultants"
+ON public.doctor_aliases FOR SELECT
+USING (accepted = true AND (is_active IS NOT FALSE));
+
+-- Grant the table to authenticated and anon users
 GRANT ALL ON public.doctor_aliases TO authenticated;
+GRANT SELECT ON public.doctor_aliases TO anon;
