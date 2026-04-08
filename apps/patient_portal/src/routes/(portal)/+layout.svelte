@@ -48,11 +48,15 @@
   <header class="navbar">
     <div class="layout-container nav-inner">
       <div class="nav-left">
-        <a href="/" class="logo">
+        <a href={provider?.subdomain ? `${$page.url.protocol}//${provider.subdomain}.${$page.url.host.includes('localhost') ? 'localhost:5143' : 'kemani.com'}/` : '/'} class="logo">
           <div class="logo-icon" style="color: {brandColor};">
-            <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6">
-              <path clip-rule="evenodd" d="M47.2426 24L24 47.2426L0.757355 24L24 0.757355L47.2426 24ZM12.2426 21H35.7574L24 9.24264L12.2426 21Z" fill="currentColor" fill-rule="evenodd"></path>
-            </svg>
+            {#if provider?.logo_url}
+              <img src={provider.logo_url} alt={provider?.name || 'Logo'} class="w-6 h-6 object-cover rounded" />
+            {:else}
+              <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6">
+                <path clip-rule="evenodd" d="M47.2426 24L24 47.2426L0.757355 24L24 0.757355L47.2426 24ZM12.2426 21H35.7574L24 9.24264L12.2426 21Z" fill="currentColor" fill-rule="evenodd"></path>
+              </svg>
+            {/if}
           </div>
           <span class="logo-text">{provider?.name || 'Healthcare Portal'}</span>
         </a>
