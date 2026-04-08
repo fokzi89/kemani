@@ -54,8 +54,13 @@
   let showSignInModal = false;
 
   async function signInWithGoogle() {
-    const centralHost = window.location.origin;
-    const callbackUrl = `${centralHost}/auth/callback?next=${encodeURIComponent(window.location.pathname)}`;
+    // The OAuth redirectTo must use the base (non-subdomain) origin that is
+    // whitelisted in Supabase & Google Cloud Console.
+    // We pass the full current URL (with subdomain) as `next` so the
+    // callback can bounce the user back to the right page after auth.
+    const baseOrigin = `http://localhost:5143`; // whitelisted redirect base
+    const returnTo = encodeURIComponent(window.location.href); // full subdomain URL
+    const callbackUrl = `${baseOrigin}/auth/callback?next=${returnTo}`;
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
