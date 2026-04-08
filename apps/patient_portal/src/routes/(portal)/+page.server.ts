@@ -14,16 +14,11 @@ export async function load({ parent }) {
     .eq('is_active', true)
     .limit(4);
 
-  // 1b. Fetch partner doctors from doctor_aliases
+  // 1b. Fetch partner doctors from doctor_aliases_with_details
   const { data: aliases } = await db
-    .from('doctor_aliases')
-    .select(`
-      id, doctor_id, alias,
-      doctor:healthcare_providers!doctor_id (
-        id, full_name, specialization, profile_photo_url, years_of_experience
-      )
-    `)
-    .eq('primary_doctor_id', provider.hcp_id)
+    .from('doctor_aliases_with_details')
+    .select('*')
+    .eq('clinic_id', provider.hcp_id)
     .eq('accepted', true)
     .is('is_active', true)
     .limit(4);
@@ -37,16 +32,25 @@ export async function load({ parent }) {
       photo_url: m.photo_url,
       type: 'internal'
     })),
-    ...(aliases || []).map(a => {
-      const hp = Array.isArray(a.doctor) ? a.doctor[0] : a.doctor;
-      return {
-        id: a.doctor_id,
-        full_name: hp?.full_name || a.alias || 'Specialist',
-        specialty: hp?.specialization || 'Medical Specialist',
-        photo_url: hp?.profile_photo_url,
-        type: 'partner'
-      };
-    })
+    // Explicitly add the primary doctor
+    {
+      id: provider.hcp_id, // Alias ID fallback
+      full_name: provider.name || 'Primary Doctor',
+      specialty: provider.category || 'Medical Specialist',
+      photo_url: provider.logo_url,
+      type: 'primary'
+    },
+    ...(aliases || [])
+      .filter(a => a.doctor_id !== provider.hcp_id) // Exclude if they mimic the primary doctor ID natively
+      .map(a => {
+        return {
+          id: a.alias_id, // Use alias ID for linking instead of doctor_id
+          full_name: a.display_name || a.actual_name || 'Specialist',
+          specialty: a.specialization || 'Medical Specialist',
+          photo_url: a.profile_photo_url,
+          type: 'partner'
+        };
+      })
   ].filter(Boolean);
 
   // 2. Fetch reviews for the Healthcare Provider (Professional Profiling)

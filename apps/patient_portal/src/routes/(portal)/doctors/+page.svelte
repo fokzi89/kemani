@@ -4,6 +4,9 @@
   $: doctors = rawDoctors.filter((d: any) => d !== null);
   $: provider = data.provider;
   $: brandColor = provider?.brand_color || '#003f87';
+
+  let isFilterModalOpen = false;
+  function toggleFilters() { isFilterModalOpen = !isFilterModalOpen; }
 </script>
 
 <div class="page-wrap">
@@ -123,15 +126,64 @@
           <h2 class="results-count">{doctors.length} doctor{doctors.length !== 1 ? 's' : ''} found</h2>
           <p class="results-sub">in {provider?.name || 'your network'}</p>
         </div>
-        <div class="sort-wrap">
-          <span class="sort-label">Sort by:</span>
-          <select class="sort-select">
-            <option>Best Match</option>
-            <option>Highest Rated</option>
-            <option>Most Experienced</option>
-          </select>
+        <div class="topbar-actions">
+          <button class="mobile-filter-btn" on:click={toggleFilters}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <path d="M3 4h18M6 10h12M9 16h6" stroke-linecap="round"/>
+            </svg>
+            Filters
+          </button>
+          <div class="sort-wrap">
+            <span class="sort-label">Sort by:</span>
+            <select class="sort-select">
+              <option>Best Match</option>
+              <option>Highest Rated</option>
+              <option>Most Experienced</option>
+            </select>
+          </div>
         </div>
       </div>
+
+      <!-- Mobile Filter Modal -->
+      {#if isFilterModalOpen}
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div class="filter-modal-backdrop" on:click={toggleFilters}>
+          <div class="filter-modal-content" on:click|stopPropagation on:keydown|stopPropagation role="dialog" aria-modal="true" aria-labelledby="filter-modal-title" tabindex="-1">
+            <div class="modal-header">
+              <h3 id="filter-modal-title">Refine Search</h3>
+              <button class="close-btn" on:click={toggleFilters}>✕</button>
+            </div>
+            <div class="modal-body">
+              <div class="modal-filters">
+                 <!-- Availability -->
+                 <div class="filter-group">
+                   <p class="filter-label">Availability</p>
+                   {#each ['Available Today', 'Next 3 Days', 'This Week'] as lbl}
+                     <label class="filter-row">
+                       <input type="checkbox" class="filter-check" style="accent-color:{brandColor}" />
+                       <span class="filter-text">{lbl}</span>
+                     </label>
+                   {/each}
+                 </div>
+                 <div class="filter-sep"></div>
+                 <!-- Gender -->
+                 <div class="filter-group">
+                   <p class="filter-label">Gender</p>
+                   {#each ['Any Gender', 'Male', 'Female'] as lbl, i}
+                     <label class="filter-row">
+                       <input type="radio" name="m-gender" class="filter-check" checked={i===0} style="accent-color:{brandColor}" />
+                       <span class="filter-text">{lbl}</span>
+                     </label>
+                   {/each}
+                 </div>
+                 <div class="filter-sep"></div>
+                 <button class="apply-btn" style="background:{brandColor}" on:click={toggleFilters}>Apply Filters</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      {/if}
 
       <!-- Doctor cards grid -->
       <div class="doctor-list">
@@ -178,7 +230,7 @@
                       <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
                       <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0z"/>
                     </svg>
-                    {provider?.name || 'Medical Center'}
+                    {doctor.clinic_alias || provider?.name || 'Medical Center'}
                   </span>
                   <span class="meta-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
@@ -196,8 +248,7 @@
                   Available Today
                 </div>
                 <div class="btn-row">
-                  <a href="/doctors/{doctor.doctor_id}" class="btn btn--secondary">Profile</a>
-                  <button class="btn btn--primary" style="background:{brandColor}">Book</button>
+                  <a href="/doctors/{doctor.alias_id}" class="btn btn--primary" style="background:{brandColor}">Book Now</a>
                 </div>
               </div>
             </article>
@@ -219,7 +270,7 @@
       <!-- Pagination -->
       {#if doctors.length > 0}
         <div class="pagination">
-          <button class="page-btn page-btn--nav">
+          <button class="page-btn page-btn--nav" aria-label="Previous Page">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
             </svg>
@@ -227,7 +278,7 @@
           <button class="page-btn page-btn--active" style="background:{brandColor};border-color:{brandColor};color:#fff">1</button>
           <button class="page-btn">2</button>
           <button class="page-btn">3</button>
-          <button class="page-btn page-btn--nav">
+          <button class="page-btn page-btn--nav" aria-label="Next Page">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
             </svg>
@@ -579,13 +630,6 @@
     border: 2.5px solid #fff;
     border-radius: 50%;
   }
-  .card-name-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-bottom: 2px;
-  }
   .card-name {
     font-size: 0.9375rem;
     font-weight: 700;
@@ -593,12 +637,6 @@
     font-family: 'Manrope', sans-serif;
     line-height: 1.3;
     margin-bottom: 2px;
-  }
-  .card-name-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
   }
   .verified-badge {
     display: inline-flex;
@@ -734,11 +772,24 @@
   @media (max-width: 640px) {
     .hero { padding: 2rem 1rem; }
     .hero-title { font-size: 1.625rem; }
-    .search-bar-wrap { flex-direction: column; border-radius: 12px; }
-    .search-field { height: 48px; border-bottom: 1px solid #e5e7eb; flex: none; width: 100%; }
-    .search-field--grow { border-bottom: none; }
+    .search-bar-wrap { flex-direction: column; border-radius: 12px; height: auto; padding: 0.5rem; gap: 0.5rem; }
+    .search-field { height: 48px; border: 1.5px solid #e5e7eb; border-radius: 8px; flex: none; width: 100%; padding: 0 0.875rem; }
+    .search-field--grow { border-bottom: 1.5px solid #e5e7eb; }
     .search-divider { display: none; }
-    .search-btn { height: 44px; width: 100%; }
+    .search-btn { height: 48px; width: 100%; border-radius: 8px; }
     .doctor-list { grid-template-columns: 1fr; }
+    .results-topbar { flex-direction: column; align-items: stretch; gap: 1rem; }
+    .topbar-actions { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+    .mobile-filter-btn { display: flex; align-items: center; gap: 0.5rem; background: #fff; border: 1.5px solid #d1d5db; padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.8125rem; font-weight: 700; color: #374151; }
   }
+
+  /* Filter Modal Styles */
+  .filter-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); z-index: 3000; display: flex; align-items: flex-end; }
+  .filter-modal-content { background: white; width: 100%; border-radius: 1.5rem 1.5rem 0 0; padding: 1.5rem; max-height: 80vh; overflow-y: auto; box-shadow: 0 -10px 25px -5px rgba(0,0,0,0.1); }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+  .modal-header h3 { font-size: 1.125rem; font-weight: 800; color: #111827; }
+  .modal-header .close-btn { width: 32px; height: 32px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; }
+  .apply-btn { width: 100%; padding: 1rem; border-radius: 0.75rem; color: #fff; font-weight: 700; font-size: 0.9375rem; margin-top: 1rem; }
+  .mobile-filter-btn { display: none; }
+  @media (max-width: 900px) { .mobile-filter-btn { display: flex; } }
 </style>

@@ -12,17 +12,119 @@
 
   let searchQuery = '';
   let selectedPharmacy: any = null;
+  
+  // City Filter Logic
+  $: cities = ['All', ...new Set(pharmacies.map((p: any) => p.city).filter(Boolean))];
+  let selectedCity = 'All';
+
+  onMount(() => {
+    if (city && cities.includes(city)) {
+      selectedCity = city;
+    }
+    // Also click out listener for suggestions
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (!(e.target as Element).closest('.search-container')) {
+        showSuggestions = false;
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  });
+
+  // Suggestion logic
+  let showSuggestions = false;
+  let drugSuggestions: any[] = [];
+  let pharmacySuggestions: any[] = [];
+  let isSearchingDrugs = false;
+  let searchTimeout: any;
+  let pharmacyIdsMatchingDrug: string[] = [];
+
+  function handleSearchInput() {
+    showSuggestions = searchQuery.length > 1;
+    pharmacyIdsMatchingDrug = [];
+
+    // Local pharmacy match
+    pharmacySuggestions = pharmacies.filter((p: any) => 
+      p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.address?.toLowerCase().includes(searchQuery.toLowerCase())
+    ).slice(0, 3);
+
+    // Remote drug match
+    clearTimeout(searchTimeout);
+    if (searchQuery.length > 2) {
+      isSearchingDrugs = true;
+      searchTimeout = setTimeout(async () => {
+        const validBranchIds = pharmacies.map((p: any) => p.branch_id).filter(Boolean);
+
+        const { data, error } = await supabase
+          .from('branch_inventory')
+          .select(`
+            branch_id,
+            products!inner(name, generic_name, manufacturer)
+          `)
+          .in('branch_id', validBranchIds.length ? validBranchIds : ['00000000-0000-0000-0000-000000000000'])
+          .or(`name.ilike.%${searchQuery}%,generic_name.ilike.%${searchQuery}%,manufacturer.ilike.%${searchQuery}%`, { foreignTable: 'products' })
+          .eq('products.is_active', true)
+          .gt('stock_quantity', 0)
+          .limit(15);
+        
+        if (!error && data) {
+           const grouped = new Map();
+           data.forEach(d => {
+             const prod = Array.isArray(d.products) ? d.products[0] : d.products;
+             if (!prod) return;
+             const key = (prod.generic_name || prod.name).toLowerCase();
+             if (!grouped.has(key)) {
+               grouped.set(key, { name: prod.generic_name || prod.name, branches: new Set([d.branch_id]) });
+             } else {
+               grouped.get(key).branches.add(d.branch_id);
+             }
+           });
+           drugSuggestions = Array.from(grouped.values()).slice(0, 4);
+        }
+        isSearchingDrugs = false;
+      }, 400);
+    } else {
+      drugSuggestions = [];
+      isSearchingDrugs = false;
+    }
+  }
+
+  function selectSuggestion(type: 'pharmacy' | 'drug', payload: any) {
+    if (type === 'pharmacy') {
+      searchQuery = ''; // Clear search when navigating
+      viewShop(payload);
+    } else if (type === 'drug') {
+      searchQuery = payload.name;
+      pharmacyIdsMatchingDrug = Array.from(payload.branches);
+    }
+    showSuggestions = false;
+  }
   let products: any[] = [];
   let productCategories: string[] = [];
   let selectedProductCategory = 'All';
   let isLoadingProducts = false;
   let productSearchQuery = '';
+  let currentPage = 1;
+  const itemsPerPage = 12;
 
   $: filteredPharmacies = pharmacies.filter((p: any) => {
-    return !searchQuery || 
+    const matchesCity = selectedCity === 'All' || p.city === selectedCity;
+    const qMatches = !searchQuery || 
       p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.address?.toLowerCase().includes(searchQuery.toLowerCase());
+      p.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.city?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    return matchesCity && (qMatches || pharmacyIdsMatchingDrug.includes(p.branch_id));
   });
+
+  $: {
+    // Reset to page 1 when search query or city changes
+    if (searchQuery || selectedCity) currentPage = 1;
+  }
+
+  $: totalPages = Math.ceil(filteredPharmacies.length / itemsPerPage);
+  $: paginatedPharmacies = filteredPharmacies.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   $: filteredProducts = products.filter(p => {
     const matchesSearch = !productSearchQuery || p.name?.toLowerCase().includes(productSearchQuery.toLowerCase());
@@ -30,7 +132,7 @@
     return matchesSearch && matchesCategory;
   });
 
-  async function viewShop(pharmacy) {
+  async function viewShop(pharmacy: any) {
     selectedPharmacy = pharmacy;
     isLoadingProducts = true;
     products = [];
@@ -86,14 +188,71 @@
 
       <div class="layout-container">
         <div class="toolbar">
-          <div class="search-bar">
-            <Search class="w-4 h-4 text-outline" />
-            <input type="text" bind:value={searchQuery} placeholder="Search pharmacies by name or city..." />
+          <div class="search-container">
+            <div class="search-bar" class:has-suggestions={showSuggestions}>
+              <Search class="w-4 h-4 text-outline" />
+              <input 
+                type="text" 
+                bind:value={searchQuery} 
+                on:input={handleSearchInput}
+                on:focus={() => { if(searchQuery.length > 1) showSuggestions = true; }}
+                placeholder="Search pharmacies or drugs (e.g. Paracetamol)..." 
+              />
+            </div>
+            
+            {#if showSuggestions}
+              <div class="suggestions-dropdown">
+                {#if pharmacySuggestions.length > 0}
+                  <div class="sugg-group">
+                    <h4>Pharmacies</h4>
+                    {#each pharmacySuggestions as sugg}
+                      <button class="sugg-item" on:click={() => selectSuggestion('pharmacy', sugg)}>
+                        <Building2 class="w-4 h-4 mr-2" style="color: var(--brand);" />
+                        <div class="span-text">
+                          <span class="main-text">{sugg.name}</span>
+                          <span class="sub-text">{sugg.address}</span>
+                        </div>
+                      </button>
+                    {/each}
+                  </div>
+                {/if}
+
+                {#if searchQuery.length > 2}
+                  <div class="sugg-group">
+                    <h4>Drugs & Medication</h4>
+                    {#if isSearchingDrugs}
+                      <div class="sugg-loading">Searching drugs...</div>
+                    {:else if drugSuggestions.length > 0}
+                      {#each drugSuggestions as sugg}
+                        <button class="sugg-item" on:click={() => selectSuggestion('drug', sugg)}>
+                          <FlaskConical class="w-4 h-4 mr-2" style="color: var(--brand);" />
+                          <div class="span-text">
+                            <span class="main-text">{sugg.name}</span>
+                            <span class="sub-text">Available at {sugg.branches.size} partner pharmacies</span>
+                          </div>
+                        </button>
+                      {/each}
+                    {:else}
+                       <div class="sugg-loading">No drug matches found.</div>
+                    {/if}
+                  </div>
+                {/if}
+              </div>
+            {/if}
+          </div>
+
+          <div class="city-filter-container">
+            <MapPin class="w-4 h-4 text-outline" />
+            <select class="city-select" bind:value={selectedCity}>
+              {#each cities as c}
+                <option value={c}>{c}</option>
+              {/each}
+            </select>
           </div>
         </div>
 
         <div class="results-grid">
-          {#each filteredPharmacies as pharmacy}
+          {#each paginatedPharmacies as pharmacy}
             <div class="pharmacy-card">
               <div class="card-top">
                 <div class="pharmacy-logo">
@@ -104,8 +263,8 @@
                   {/if}
                 </div>
                 <div class="pharmacy-main">
-                  <h3>{pharmacy.name}</h3>
-                  <p class="pharmacy-type">{pharmacy.display_type || 'Community Pharmacy'}</p>
+                  <h3>{pharmacy?.name}</h3>
+                  <p class="pharmacy-type">{pharmacy?.display_type || 'Community Pharmacy'}</p>
                 </div>
               </div>
 
@@ -133,6 +292,28 @@
             </div>
           {/each}
         </div>
+
+        {#if totalPages > 1}
+          <div class="pagination">
+            <button 
+              class="pag-btn" 
+              disabled={currentPage === 1} 
+              on:click={() => { currentPage--; window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            >
+              Previous
+            </button>
+            <div class="pag-info">
+              Page <strong>{currentPage}</strong> of {totalPages}
+            </div>
+            <button 
+              class="pag-btn" 
+              disabled={currentPage === totalPages} 
+              on:click={() => { currentPage++; window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            >
+              Next
+            </button>
+          </div>
+        {/if}
       </div>
     </div>
   {:else}
@@ -235,10 +416,27 @@
   .page-header h1 { font-family: var(--font-headline); font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; }
   .page-header p { font-size: 1.125rem; opacity: 0.9; max-width: 600px; margin: 0 auto; line-height: 1.6; }
 
-  .toolbar { max-width: 600px; margin: -2.5rem auto 3rem; padding: 0 1.5rem; position: relative; z-index: 10; }
+  .toolbar { max-width: 700px; margin: -2.5rem auto 3rem; padding: 0 1.5rem; position: relative; z-index: 10; display: flex; gap: 1rem; flex-direction: column; }
+  @media (min-width: 640px) { .toolbar { flex-direction: row; } }
   
-  .search-bar { display: flex; align-items: center; gap: 0.75rem; background: white; padding: 0 1.25rem; border-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); width: 100%; height: 56px; border: 1px solid var(--outline-variant); }
+  .search-container { position: relative; flex: 1; }
+  .search-bar { display: flex; align-items: center; gap: 0.75rem; background: white; padding: 0 1.25rem; border-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); width: 100%; height: 56px; border: 1px solid var(--outline-variant); transition: all 0.2s; }
+  .search-bar.has-suggestions { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; }
   .search-bar input { border: none; outline: none; flex: 1; font-size: 0.875rem; background: transparent; }
+
+  .suggestions-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--outline-variant); border-top: none; border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); overflow: hidden; z-index: 20; max-height: 400px; overflow-y: auto; }
+  .sugg-group { border-top: 1px solid var(--outline-variant); }
+  .sugg-group:first-child { border-top: none; }
+  .sugg-group h4 { font-size: 0.7rem; font-weight: 800; color: var(--on-surface-variant); text-transform: uppercase; letter-spacing: 0.05em; padding: 0.85rem 1.25rem 0.5rem; background: var(--surface-container-low); }
+  .sugg-item { display: flex; align-items: center; padding: 0.85rem 1.25rem; width: 100%; text-align: left; background: white; border: none; cursor: pointer; transition: background 0.2s; }
+  .sugg-item:hover { background: var(--surface-container-lowest); }
+  .span-text { display: flex; flex-direction: column; gap: 0.15rem; }
+  .main-text { font-size: 0.875rem; font-weight: 700; color: var(--on-surface); }
+  .sub-text { font-size: 0.7rem; font-weight: 500; color: var(--on-surface-variant); }
+  .sugg-loading { padding: 1rem 1.25rem; font-size: 0.8125rem; color: var(--on-surface-variant); font-style: italic; }
+
+  .city-filter-container { display: flex; align-items: center; gap: 0.5rem; background: white; padding: 0 1rem; border-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); height: 56px; border: 1px solid var(--outline-variant); min-width: 140px; flex-shrink: 0; }
+  .city-select { border: none; outline: none; background: transparent; font-size: 0.875rem; font-weight: 700; color: var(--on-surface); width: 100%; cursor: pointer; }
 
   .results-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
   @media (min-width: 640px) { .results-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -282,6 +480,7 @@
   .p-cat-btn.active { background: var(--brand); color: white; border-color: var(--brand); }
 
   .product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+  @media (max-width: 480px) { .product-grid { grid-template-columns: 1fr; } }
   @media (min-width: 768px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }
   @media (min-width: 1024px) { .product-grid { grid-template-columns: repeat(4, 1fr); } }
 
@@ -295,14 +494,15 @@
   .product-info { padding: 1rem; display: flex; flex-direction: column; flex: 1; }
   .p-cat { font-size: 0.6875rem; font-weight: 700; color: var(--brand); text-transform: uppercase; margin-bottom: 0.25rem; }
   .product-info h4 { font-size: 0.9375rem; font-weight: 700; color: var(--on-surface); margin-bottom: 0.25rem; line-height: 1.2; }
-  .p-desc { font-size: 0.75rem; color: var(--on-surface-variant); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 1rem; }
+  .p-desc { font-size: 0.75rem; color: var(--on-surface-variant); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 1rem; }
   .product-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
   .price { font-size: 1rem; font-weight: 800; color: var(--on-surface); }
   .add-to-cart { width: 36px; height: 36px; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; color: white; }
 
-  .loader, .empty-state { padding: 4rem 2rem; text-align: center; }
-  .spinner { width: 32px; height: 32px; border: 3px solid var(--outline-variant); border-top-color: var(--brand); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .empty-state h3 { font-weight: 700; margin-bottom: 0.5rem; }
-  .empty-state p { color: var(--on-surface-variant); font-size: 0.875rem; }
+  .pagination { display: flex; align-items: center; justify-content: center; gap: 1.5rem; margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--outline-variant); }
+  .pag-btn { padding: 0.625rem 1.25rem; border-radius: 0.75rem; border: 1.5px solid var(--outline-variant); background: white; font-weight: 700; font-size: 0.875rem; color: var(--on-surface); cursor: pointer; transition: all 0.2s; }
+  .pag-btn:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); transform: translateY(-1px); }
+  .pag-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .pag-info { font-size: 0.875rem; color: var(--on-surface-variant); }
+  .pag-info strong { color: var(--on-surface); }
 </style>

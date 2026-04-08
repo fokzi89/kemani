@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
   import { MapPin, Phone, Mail, Search, FlaskConical, ExternalLink, Microscope } from 'lucide-svelte';
   export let data;
   $: diagnostics = data.diagnostics || [];
@@ -7,11 +7,21 @@
   $: brandColor = provider?.brand_color || '#0ea5e9';
 
   let searchQuery = '';
+  let currentPage = 1;
+  const itemsPerPage = 12;
+
   $: filtered = diagnostics.filter((d: any) =>
     !searchQuery ||
     d.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     d.address?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  $: {
+    if (searchQuery) currentPage = 1;
+  }
+
+  $: totalPages = Math.ceil(filtered.length / itemsPerPage);
+  $: paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 </script>
 
 <svelte:head>
@@ -47,7 +57,7 @@
 
   <!-- Results -->
   <div class="content">
-    {#if filtered.length === 0}
+    {#if paginated.length === 0}
       <div class="empty">
         <FlaskConical class="empty-icon" />
         <h3 class="empty-title">
@@ -58,9 +68,9 @@
         </p>
       </div>
     {:else}
-      <p class="results-count">{filtered.length} centre{filtered.length === 1 ? '' : 's'} found{city ? ` in ${city}` : ''}</p>
+      <p class="results-count">Showing {paginated.length} of {filtered.length} centre{filtered.length === 1 ? '' : 's'}{city ? ` in ${city}` : ''}</p>
       <div class="grid">
-        {#each filtered as centre}
+        {#each paginated as centre}
           <div class="card">
             <div class="card-top">
               <div class="card-header">
@@ -113,6 +123,28 @@
           </div>
         {/each}
       </div>
+
+      {#if totalPages > 1}
+        <div class="pagination">
+          <button 
+            class="pag-btn" 
+            disabled={currentPage === 1} 
+            on:click={() => { currentPage--; window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+          >
+            Previous
+          </button>
+          <div class="pag-info">
+            Page <strong>{currentPage}</strong> of {totalPages}
+          </div>
+          <button 
+            class="pag-btn" 
+            disabled={currentPage === totalPages} 
+            on:click={() => { currentPage++; window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+          >
+            Next
+          </button>
+        </div>
+      {/if}
     {/if}
   </div>
 </div>
@@ -121,6 +153,10 @@
   .page { min-height: 80vh; font-family: 'Inter', sans-serif; }
 
   .page-header { padding: 3.5rem 2rem 5rem; text-align: center; }
+  @media (max-width: 640px) {
+    .page-header { padding: 2.5rem 1rem 4.5rem; }
+    .header-title { font-size: 1.5rem; }
+  }
   .header-inner { max-width: 600px; margin: 0 auto; }
   .header-icon { width: 56px; height: 56px; border-radius: 16px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; border: 1px solid rgba(255,255,255,0.15); }
   .header-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 2rem; font-weight: 800; color: white; margin: 0 0 8px; }
@@ -128,6 +164,9 @@
 
   .search-wrap { max-width: 600px; margin: -28px auto 2rem; padding: 0 1.5rem; position: relative; z-index: 10; }
   .search-box { display: flex; align-items: center; gap: 10px; background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px 18px; box-shadow: 0 4px 24px rgba(0,0,0,0.12); }
+  @media (max-width: 640px) {
+    .search-box { padding: 8px 14px; border-radius: 12px; }
+  }
   .search-box :global(.search-icon) { width: 18px; height: 18px; color: #94a3b8; flex-shrink: 0; }
   .search-input { flex: 1; border: none; outline: none; font-size: 14px; color: #0f172a; background: transparent; }
 
@@ -161,4 +200,11 @@
   .empty :global(.empty-icon) { width: 48px; height: 48px; color: #cbd5e1; margin: 0 auto 16px; }
   .empty-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; font-weight: 700; color: #0f172a; margin: 0 0 8px; }
   .empty-sub { font-size: 13px; color: #64748b; }
+
+  .pagination { display: flex; align-items: center; justify-content: center; gap: 1.5rem; margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #e2e8f0; }
+  .pag-btn { padding: 0.625rem 1.25rem; border-radius: 10px; border: 1.5px solid #e2e8f0; background: white; font-weight: 700; font-size: 13px; color: #0f172a; cursor: pointer; transition: all 0.2s; }
+  .pag-btn:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); transform: translateY(-1px); }
+  .pag-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .pag-info { font-size: 13px; color: #64748b; }
+  .pag-info strong { color: #0f172a; }
 </style>

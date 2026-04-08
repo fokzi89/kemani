@@ -6,18 +6,18 @@
   
   export let data;
   $: provider = data.provider;
-  $: medics = data.medics || [];
-  $: brandColor = provider?.brand_color || '#003f87';
-  $: reviews = data.reviews || [];
+  $: doctor = data.doctor;
+  $: brandColor = doctor?.brand_color || provider?.brand_color || '#003f87';
+  $: reviews = data.doctorReviews || [];
   $: schedule = data.schedule || [];
-  $: followUpDuration = data.followUpDuration || 24;
-  $: slotDuration = data.slotDuration || 30;
+  $: followUpDuration = doctor?.follow_up_duration || 24;
+  $: slotDuration = doctor?.slot_duration_minutes || 30;
 
   // Dynamic stats
   $: stats = [
-    { label: 'Experience', value: `${provider?.years_experience || 0}+ Years`, icon: TrendingUp },
-    { label: 'Reviews', value: provider?.total_reviews?.toLocaleString() || '0', icon: Users },
-    { label: 'Rating', value: provider?.average_rating?.toFixed(1) || '0.0', icon: Star }
+    { label: 'Experience', value: `${doctor?.experience || 0}+ Years`, icon: TrendingUp },
+    { label: 'Reviews', value: doctor?.reviews?.toLocaleString() || '0', icon: Users },
+    { label: 'Rating', value: doctor?.rating?.toFixed(1) || '0.0', icon: Star }
   ];
 
   let activeTab = 'about';
@@ -40,11 +40,11 @@
   });
 
   // Booking State
-  $: servicesOffered = provider?.services_offered || ['chat'];
-  let selectedService = data.provider?.services_offered?.[0] || 'chat';
+  $: servicesOffered = doctor?.services_offered || ['chat'];
+  let selectedService = doctor?.services_offered?.[0] || 'chat';
   
   // Try to use marked up fees, otherwise calculate minimum fee
-  $: selectedFee = provider?.fees?.[selectedService] || Math.min(...Object.values(provider?.fees || {chat: 15000}).map(v => Number(v))) || 15000;
+  $: selectedFee = (doctor?.fees as any)?.[selectedService] || Math.min(...Object.values(doctor?.fees || {chat: 15000}).map(v => Number(v))) || 15000;
 
   let selectedDate: string | null = null;
   let selectedTimes: string[] = [];
@@ -209,7 +209,7 @@
 
       // 1. Insert time slot
       const { error: slotError } = await supabase.from('provider_time_slots').insert({
-        provider_id: provider.hcp_id,
+        provider_id: doctor.doctor_id,
         date: selectedDate,
         start_time,
         end_time,
@@ -225,7 +225,7 @@
 
       // 2. Insert consultation
       const { data: consultData, error: consultError } = await supabase.from('consultations').insert({
-        provider_id: provider.hcp_id,
+        provider_id: doctor.doctor_id,
         patient_id: session.user.id,
         tenant_id: provider.id,
         type: selectedService,
@@ -233,8 +233,8 @@
         scheduled_time: `${selectedDate}T${start_time}Z`,
         slot_duration: totalDuration,
         referral_source: 'direct',
-        provider_name: provider.name,
-        provider_photo_url: provider.logo_url,
+        provider_name: doctor.display_name,
+        provider_photo_url: doctor.photo_url,
         consultation_fee: selectedFeeTotal,
         payment_status: 'pending'
       }).select('id').single();
@@ -275,8 +275,10 @@
 
 <!-- Sign-In Modal -->
 {#if showSignInModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div class="modal-backdrop" on:click={() => showSignInModal = false} role="presentation">
-    <div class="signin-modal" on:click|stopPropagation role="dialog" aria-modal="true" aria-labelledby="signin-title">
+    <div class="signin-modal" on:click|stopPropagation on:keydown|stopPropagation role="dialog" aria-modal="true" aria-labelledby="signin-title" tabindex="-1">
       <button class="modal-close" on:click={() => showSignInModal = false} aria-label="Close">✕</button>
 
       <div class="modal-logo" style="color: {brandColor};">
@@ -290,7 +292,7 @@
       </div>
 
       <h2 id="signin-title" class="modal-title">Sign in to book</h2>
-      <p class="modal-subtitle">You need an account to book a consultation with <strong>{provider?.name}</strong>.</p>
+      <p class="modal-subtitle">You need an account to book a consultation with <strong>{doctor?.display_name}</strong>.</p>
 
       <button class="google-btn" on:click={signInWithGoogle}>
         <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -316,28 +318,28 @@
         <section class="hero-card">
           <div class="hero-inner">
             <div class="profile-image-container">
-              {#if provider?.logo_url}
-                <img src={provider.logo_url} alt={provider.name} class="profile-img" />
+              {#if doctor?.photo_url}
+                <img src={doctor.photo_url} alt={doctor.display_name} class="profile-img" />
               {:else}
                 <div class="profile-img-placeholder" style="background: {brandColor}20; color: {brandColor};">
-                  {provider?.name?.charAt(0) || 'H'}
+                  {doctor?.display_name?.charAt(0) || 'D'}
                 </div>
               {/if}
-              <div class="status-badge">Available</div>
+              <span class="online-dot" title="Active"></span>
             </div>
 
             <div class="hero-info">
               <div class="name-row">
-                <h1>{provider?.name}</h1>
-                {#if provider?.is_verified}
+                <h1>{doctor?.display_name}</h1>
+                {#if doctor?.is_verified}
                   <CheckCircle2 class="w-6 h-6" style="color: {brandColor};" fill={brandColor} />
                 {/if}
               </div>
-              <p class="specialty-text" style="color: {brandColor};">{provider?.category || 'Healthcare Provider'}</p>
-              {#if provider?.address}
+              <p class="specialty-text" style="color: {brandColor};">{doctor?.specialization || 'Medical Specialist'}</p>
+              {#if doctor?.address}
                 <p class="location-text">
                   <MapPin class="w-4 h-4" />
-                  {provider.address} {provider.city ? `, ${provider.city}` : ''}
+                  {doctor.address} {doctor.city ? `, ${doctor.city}` : ''}
                 </p>
               {/if}
 
@@ -377,8 +379,8 @@
               <h2>Biography</h2>
               <div class="bio-container">
                 <p class="bio-text">
-                  {#if provider?.description}
-                    {provider.description}
+                  {#if doctor?.bio}
+                    {doctor.bio}
                   {:else}
                     No information found
                   {/if}
@@ -396,8 +398,8 @@
                 </div>
               </div>
               <div class="services-vertical-list">
-                {#if provider?.services_offered?.length}
-                  {#each provider.services_offered as service}
+                {#if doctor?.services_offered?.length}
+                  {#each doctor.services_offered as service}
                     <div class="service-row">
                       <div class="service-main-info">
                         <div class="service-icon-box" style="background: {brandColor}10;">
@@ -408,10 +410,10 @@
                           <span class="service-tag">Professional Session</span>
                         </div>
                       </div>
-                      {#if provider.fees && provider.fees[service]}
+                      {#if doctor.fees && (doctor.fees as any)[service]}
                         <div class="service-price">
                           <span class="currency">₦</span>
-                          <span class="amount">{Number(provider.fees[service]).toLocaleString()}</span>
+                          <span class="amount">{Number((doctor.fees as any)[service]).toLocaleString()}</span>
                           <span class="price-suffix">/ session</span>
                         </div>
                       {/if}
@@ -430,7 +432,7 @@
             <section class="content-section">
               <div class="flex-header">
                 <h2>Patient Reviews</h2>
-                <button class="link-btn" style="color: {brandColor};">View All {provider?.total_reviews || 0} Reviews</button>
+                <button class="link-btn" style="color: {brandColor};">View All {doctor?.reviews || 0} Reviews</button>
               </div>
               <div class="reviews-stack">
                 {#if reviews.length > 0}
@@ -582,31 +584,6 @@
 
           <p class="booking-note">Includes {followUpDuration}h follow-up duration window.</p>
         </div>
-
-        <!-- Team / Medics -->
-        {#if medics.length > 0}
-          <div class="team-section">
-            <h3 class="side-title">Medical Team</h3>
-            <div class="experts-stack">
-              {#each medics as medic}
-                <div class="expert-item">
-                  <div class="expert-avatar">
-                   {#if medic.photo_url}
-                      <img src={medic.photo_url} alt={medic.full_name} />
-                    {:else}
-                      <div class="avatar-ph">{medic.full_name.charAt(0)}</div>
-                    {/if}
-                  </div>
-                  <div class="expert-info">
-                    <p class="expert-name">{medic.full_name}</p>
-                    <p class="expert-role">{medic.specialty || 'Medical Specialist'}</p>
-                  </div>
-                  <ChevronRight class="w-4 h-4 text-outline" />
-                </div>
-              {/each}
-            </div>
-          </div>
-        {/if}
       </aside>
     </div>
   </div>
@@ -648,7 +625,7 @@
   .profile-image-container { position: relative; width: 110px; height: 110px; flex-shrink: 0; }
   .profile-img { width: 100%; height: 100%; border-radius: 1rem; object-fit: cover; }
   .profile-img-placeholder { width: 100%; height: 100%; border-radius: 1rem; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 800; font-family: var(--font-headline); }
-  .status-badge { position: absolute; bottom: -0.35rem; right: -0.35rem; background: var(--secondary-container); color: var(--on-secondary-container); padding: 0.3rem 0.65rem; border-radius: 99px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border: 2px solid var(--surface-container-lowest); }
+  .online-dot { position: absolute; bottom: -3px; right: -3px; width: 14px; height: 14px; background: #22c55e; border: 2.5px solid var(--surface-container-lowest); border-radius: 50%; }
 
   .hero-info { flex: 1; display: flex; flex-direction: column; }
   .name-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
@@ -775,18 +752,6 @@
   .book-btn-main { width: 100%; display: flex; align-items: center; justify-content: center; padding: 1rem; border-radius: 0.875rem; color: white; font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2); transition: all 0.2s; cursor: pointer; }
   .book-btn-main:hover { transform: translateY(-2px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); }
   .booking-note { text-align: center; font-size: 0.8125rem; color: var(--on-surface-variant); font-style: italic; margin-top: 1.5rem; }
-
-  .team-section { margin-top: 2rem; }
-  .side-title { font-size: 1.125rem; font-weight: 800; margin-bottom: 1rem; color: var(--on-surface); }
-  .experts-stack { display: flex; flex-direction: column; gap: 1rem; }
-  .expert-item { display: flex; align-items: center; gap: 0.85rem; background: var(--surface-container-lowest); padding: 0.85rem; border-radius: 1rem; cursor: pointer; transition: all 0.2s; border: 1px solid var(--outline-variant); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-  .expert-item:hover { background: var(--surface-bright); border-color: var(--brand); transform: translateX(4px); }
-  .expert-avatar { width: 52px; height: 52px; border-radius: 0.875rem; overflow: hidden; background: var(--surface-container-high); flex-shrink: 0; }
-  .expert-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .avatar-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; font-weight: 800; color: var(--on-surface-variant); background: var(--secondary-container); }
-  .expert-info { flex: 1; }
-  .expert-name { font-weight: 700; font-size: 0.875rem; color: var(--on-surface); }
-  .expert-role { font-size: 0.7rem; color: var(--on-surface-variant); margin-top: 0.1rem; }
 
   .flex-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
   .link-btn { font-size: 0.875rem; font-weight: 700; }

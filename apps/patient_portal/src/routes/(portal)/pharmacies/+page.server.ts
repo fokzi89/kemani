@@ -12,7 +12,7 @@ export async function load({ parent }) {
     .from('branches')
     .select('id, city, address, phone, business_type, tenant_id')
     .is('deleted_at', null)
-    .in('business_type', ['pharmacy', 'pharmacy_supermarket', 'supermarket']);
+    .in('business_type', ['pharmacy', 'pharmacy_supermarket']);
 
   if (fetchErr) {
     console.error('[Pharmacies Load] Branches fetch error:', fetchErr);

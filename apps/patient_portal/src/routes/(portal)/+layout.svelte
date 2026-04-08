@@ -17,8 +17,16 @@
   let isMobileMenuOpen = false;
   let isProfileMenuOpen = false;
 
-  function toggleMobileMenu() { isMobileMenuOpen = !isMobileMenuOpen; }
-  function toggleProfileMenu() { isProfileMenuOpen = !isProfileMenuOpen; }
+  function toggleMobileMenu() { isMobileMenuOpen = !isMobileMenuOpen; isProfileMenuOpen = false; }
+  function toggleProfileMenu() { isProfileMenuOpen = !isProfileMenuOpen; isMobileMenuOpen = false; }
+
+  function handleProfileClick() {
+    if (window.innerWidth < 768) {
+      toggleMobileMenu();
+    } else {
+      toggleProfileMenu();
+    }
+  }
 
   async function signInWithGoogle() {
     // Use base (non-subdomain) origin for OAuth redirectTo — it must be whitelisted
@@ -83,7 +91,7 @@
           
           {#if $isAuthenticated}
             <div class="profile-container">
-              <button class="profile-btn" on:click={toggleProfileMenu}>
+              <button class="profile-btn" on:click={handleProfileClick}>
                 {#if $currentUser?.user_metadata?.avatar_url}
                   <img src={$currentUser.user_metadata.avatar_url} alt="Profile" class="avatar" />
                 {:else}
@@ -91,13 +99,16 @@
                 {/if}
               </button>
 
-              {#if isProfileMenuOpen}
+              {#if isProfileMenuOpen && !isMobileMenuOpen}
                 <div class="profile-menu">
                   <div class="menu-header">
                     <p class="user-name">{$currentUser?.user_metadata?.full_name || 'Patient'}</p>
                     <p class="user-email">{$currentUser?.email}</p>
                   </div>
                   <hr />
+                  <a href="/appointments" class="menu-item" on:click={() => isProfileMenuOpen = false}>My Appointments</a>
+                  <a href="/prescriptions" class="menu-item" on:click={() => isProfileMenuOpen = false}>Prescriptions</a>
+                  <a href="/lab-tests" class="menu-item" on:click={() => isProfileMenuOpen = false}>Lab Tests</a>
                   <a href="/profile" class="menu-item" on:click={() => isProfileMenuOpen = false}>My Profile</a>
                   <hr />
                   <button class="menu-item text-error" on:click={handleSignOut}>Sign Out</button>
@@ -105,14 +116,10 @@
               {/if}
             </div>
           {:else}
-            <button class="icon-btn" on:click={signInWithGoogle}>
+            <button class="icon-btn" on:click={handleProfileClick}>
               <UserIcon class="w-5 h-5" />
             </button>
           {/if}
-
-          <button class="mobile-toggle" on:click={toggleMobileMenu}>
-            {#if isMobileMenuOpen}<X class="w-6 h-6" />{:else}<Menu class="w-6 h-6" />{/if}
-          </button>
         </div>
       </div>
     </div>
@@ -120,16 +127,28 @@
     <!-- Mobile Menu Overlay -->
     {#if isMobileMenuOpen}
       <div class="mobile-menu">
+        <div class="mobile-menu-header">
+           <button class="mobile-close" on:click={toggleMobileMenu}><X class="w-7 h-7" /></button>
+           {#if $isAuthenticated}
+             <div class="mobile-user-info">
+                <p class="m-user-name">{$currentUser?.user_metadata?.full_name || 'Patient'}</p>
+                <p class="m-user-email">{$currentUser?.email}</p>
+             </div>
+           {/if}
+        </div>
         <nav class="mobile-nav">
           <a href="/doctors" on:click={toggleMobileMenu}>Doctors list</a>
           <a href="/pharmacies" on:click={toggleMobileMenu}>Pharmacy shops</a>
           <a href="/diagnostics" on:click={toggleMobileMenu}>Diagnostic centre</a>
           <hr />
           {#if !$isAuthenticated}
-            <button on:click={signInWithGoogle}>Sign In</button>
+            <button class="m-auth-btn" on:click={signInWithGoogle}>Sign In</button>
           {:else}
+            <a href="/appointments" on:click={toggleMobileMenu}>Appointments</a>
+            <a href="/prescriptions" on:click={toggleMobileMenu}>Prescriptions</a>
+            <a href="/lab-tests" on:click={toggleMobileMenu}>Lab Tests</a>
             <a href="/profile" on:click={toggleMobileMenu}>Profile</a>
-            <button on:click={handleSignOut}>Sign Out</button>
+            <button class="m-auth-btn text-error" on:click={handleSignOut}>Sign Out</button>
           {/if}
         </nav>
       </div>
@@ -192,7 +211,7 @@
 <style>
   .app-layout { min-height: 100vh; display: flex; flex-direction: column; background: var(--surface); }
   
-  .navbar { background: var(--surface-container-lowest); border-bottom: 1px solid var(--outline-variant); position: sticky; top: 0; z-index: 1000; height: 64px; display: flex; align-items: center; }
+  .navbar { background: #ffffff; border-bottom: 1px solid var(--outline-variant); position: sticky; top: 0; z-index: 1000; height: 64px; display: flex; align-items: center; }
   .nav-inner { display: flex; align-items: center; justify-content: space-between; width: 100%; }
   
   .nav-left { display: flex; align-items: center; gap: 2.25rem; }
@@ -230,9 +249,17 @@
   .mobile-toggle { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; }
   @media (min-width: 768px) { .mobile-toggle { display: none; } }
   
-  .mobile-menu { position: fixed; top: 64px; left: 0; right: 0; bottom: 0; background: white; z-index: 999; padding: 2rem; }
-  .mobile-nav { display: flex; flex-direction: column; gap: 1.5rem; }
-  .mobile-nav a, .mobile-nav button { font-size: 1.25rem; font-weight: 700; text-align: left; font-family: var(--font-headline); color: var(--on-surface); }
+  .mobile-menu { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: white; z-index: 2000; padding: 1rem; display: flex; flex-direction: column; gap: 1.5rem; }
+  .mobile-menu-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--outline-variant); padding-bottom: 1rem; }
+  .mobile-close { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: var(--surface-container-low); border-radius: 50%; color: var(--on-surface); }
+  .mobile-user-info { text-align: right; }
+  .m-user-name { font-weight: 800; font-size: 1rem; color: var(--on-surface); line-height: 1.2; }
+  .m-user-email { font-size: 0.75rem; color: var(--on-surface-variant); }
+
+  .mobile-nav { display: flex; flex-direction: column; gap: 0.875rem; }
+  .mobile-nav a { font-size: 1.125rem; font-weight: 800; text-align: left; font-family: var(--font-headline); color: var(--on-surface); text-decoration: none; padding: 0.35rem 0; }
+  .m-auth-btn { background: var(--brand); color: white; padding: 0.875rem; border-radius: 0.875rem; font-size: 1rem; font-weight: 800; width: 100%; margin-top: 0.5rem; }
+  .m-auth-btn.text-error { background: #fef2f2; color: #ba1a1a; }
   
   .main-content { flex: 1; }
   
