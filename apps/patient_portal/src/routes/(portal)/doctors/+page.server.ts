@@ -41,7 +41,7 @@ export async function load({ parent }) {
     console.error('[Doctors Load] Error fetching aliases:', error);
   }
 
-  const doctors = (aliases || [])
+  let doctors = (aliases || [])
     .map(a => {
       const hp = Array.isArray(a.doctor) ? a.doctor[0] : a.doctor;
       if (!hp) return null;
@@ -61,6 +61,32 @@ export async function load({ parent }) {
       };
     })
     .filter(Boolean);
+
+  // If no partner doctors found, fall back to showing the primary doctor themselves
+  if (doctors.length === 0) {
+    const { data: primaryHcp } = await db
+      .from('healthcare_providers')
+      .select('id, full_name, specialization, sub_specialty, years_of_experience, average_rating, total_reviews, profile_photo_url, bio, is_verified')
+      .eq('id', primaryDoctorId)
+      .single();
+
+    if (primaryHcp) {
+      doctors = [{
+        alias_id: primaryHcp.id,
+        doctor_id: primaryHcp.id,
+        display_name: provider?.name || primaryHcp.full_name || 'Doctor',
+        clinic_alias: null,
+        specialization: primaryHcp.specialization || provider?.category || 'Medical Specialist',
+        sub_specialty: primaryHcp.sub_specialty,
+        experience: primaryHcp.years_of_experience,
+        rating: primaryHcp.average_rating,
+        reviews: primaryHcp.total_reviews,
+        photo_url: primaryHcp.profile_photo_url || provider?.logo_url,
+        bio: primaryHcp.bio,
+        is_verified: primaryHcp.is_verified
+      }];
+    }
+  }
 
   return { doctors };
 }

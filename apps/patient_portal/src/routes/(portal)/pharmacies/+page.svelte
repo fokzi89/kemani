@@ -235,11 +235,10 @@
   .page-header h1 { font-family: var(--font-headline); font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; }
   .page-header p { font-size: 1.125rem; opacity: 0.9; max-width: 600px; margin: 0 auto; line-height: 1.6; }
 
-  .toolbar { display: flex; flex-direction: column; gap: 1.5rem; margin-top: -2.5rem; margin-bottom: 3rem; }
-  @media (min-width: 768px) { .toolbar { flex-direction: row; align-items: center; justify-content: space-between; } }
+  .toolbar { max-width: 600px; margin: -2.5rem auto 3rem; padding: 0 1.5rem; position: relative; z-index: 10; }
   
-  .search-bar { display: flex; align-items: center; gap: 0.75rem; background: white; padding: 0 1.25rem; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); flex: 1; height: 56px; border: 1px solid var(--outline-variant); }
-  .search-bar input { border: none; outline: none; flex: 1; font-size: 0.875rem; }
+  .search-bar { display: flex; align-items: center; gap: 0.75rem; background: white; padding: 0 1.25rem; border-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); width: 100%; height: 56px; border: 1px solid var(--outline-variant); }
+  .search-bar input { border: none; outline: none; flex: 1; font-size: 0.875rem; background: transparent; }
 
   .results-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
   @media (min-width: 640px) { .results-grid { grid-template-columns: repeat(2, 1fr); } }

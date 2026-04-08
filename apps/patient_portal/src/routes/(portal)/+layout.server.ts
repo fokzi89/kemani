@@ -74,12 +74,26 @@ export async function load({ locals }) {
       phone: hcp?.phone || tenant?.phone || firstBranch?.phone,
       email: hcp?.email || tenant?.email,
       address: hcp?.clinic_address?.street || firstBranch?.address || '',
-      services_offered: hcp?.consultation_types || tenant?.services_offered || ['chat', 'audio', 'video'],
+      services_offered: hcp 
+        ? [
+            hcp.offerChat && 'chat',
+            hcp.offerAudio && 'audio',
+            hcp.offersVideo && 'video',
+            hcp.offerOfficeVisit && 'office_visit'
+          ].filter(Boolean)
+        : (tenant?.services_offered || ['chat', 'audio', 'video']),
       average_rating: hcp?.average_rating || 0.00,
       total_reviews: hcp?.total_reviews || 0,
       years_experience: hcp?.years_of_experience || 25,
       is_verified: hcp?.is_verified || false,
-      fees: hcp?.marked_up_fees || hcp?.fees || { chat: 5000, audio: 8000, video: 10000 },
+      fees: hcp 
+        ? {
+            chat: hcp.chatMarkUp || hcp.chatFee || 5000,
+            audio: hcp.audioMarkUp || hcp.audioFee || 8000,
+            video: hcp.videoMarkUp || hcp.videoFee || 10000,
+            office_visit: hcp.officeMarkUp || hcp.officeFee || 15000
+          }
+        : { chat: 5000, audio: 8000, video: 10000 },
       branches
     }
   };

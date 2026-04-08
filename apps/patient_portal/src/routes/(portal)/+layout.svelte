@@ -21,11 +21,15 @@
   function toggleProfileMenu() { isProfileMenuOpen = !isProfileMenuOpen; }
 
   async function signInWithGoogle() {
-    const next = window.location.href;
+    // Use base (non-subdomain) origin for OAuth redirectTo — it must be whitelisted
+    // in Supabase & Google Console. Pass the full current URL as `next` so
+    // the callback can bounce back to the subdomain after auth.
+    const baseOrigin = `http://localhost:5143`;
+    const returnTo = encodeURIComponent(window.location.href);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+        redirectTo: `${baseOrigin}/auth/callback?next=${returnTo}`
       }
     });
     if (error) console.error('Google sign-in error:', error);
