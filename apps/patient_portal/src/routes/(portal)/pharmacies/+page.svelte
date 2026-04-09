@@ -584,65 +584,73 @@
     align-items: center;
     justify-content: center;
     z-index: 1100;
-    padding: 1.5rem;
+    padding: 1rem;
   }
   .modal-content {
     background: white;
     width: 100%;
-    max-width: 800px;
-    border-radius: 2rem;
+    max-width: 760px;
+    height: 90vh;
+    border-radius: 1.5rem;
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
   .modal-close {
     position: absolute;
-    top: 1.5rem;
-    right: 1.5rem;
-    width: 40px;
-    height: 40px;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.12);
     z-index: 10;
+    flex-shrink: 0;
   }
   .modal-body {
     display: grid;
     grid-template-columns: 1fr;
+    flex: 1;
+    overflow: hidden;
+    height: 100%;
   }
   @media (min-width: 640px) {
     .modal-body { grid-template-columns: 1fr 1.2fr; }
   }
-  .modal-img { background: var(--surface-container-low); display: flex; align-items: center; justify-content: center; padding: 2rem; }
-  .modal-img img { width: 100%; max-height: 400px; object-fit: contain; }
+  .modal-img { background: var(--surface-container-low); display: flex; align-items: center; justify-content: center; padding: 1.25rem; min-height: 160px; max-height: 220px; }
+  @media (min-width: 640px) { .modal-img { max-height: 100%; } }
+  .modal-img img { width: 100%; max-height: 180px; object-fit: contain; }
   .m-ph { color: var(--on-surface-variant); opacity: 0.2; }
   
-  .modal-info { padding: 2.5rem; display: flex; flex-direction: column; }
-  .m-header { margin-bottom: 2rem; }
-  .m-cat { font-size: 0.75rem; font-weight: 800; color: var(--brand); text-transform: uppercase; letter-spacing: 0.1em; display: block; margin-bottom: 0.5rem; }
-  .m-header h2 { font-family: var(--font-headline); font-size: 2rem; font-weight: 800; color: var(--on-surface); line-height: 1.1; margin-bottom: 0.5rem; }
-  .m-generic { font-size: 0.875rem; color: var(--on-surface-variant); }
+  .modal-info { padding: 1.25rem 1.5rem; display: flex; flex-direction: column; overflow-y: auto; }
+  .m-header { margin-bottom: 0.875rem; }
+  .m-cat { font-size: 0.65rem; font-weight: 800; color: var(--brand); text-transform: uppercase; letter-spacing: 0.1em; display: block; margin-bottom: 0.25rem; }
+  .m-header h2 { font-family: var(--font-headline); font-size: 1.35rem; font-weight: 800; color: var(--on-surface); line-height: 1.15; margin-bottom: 0.25rem; }
+  .m-generic { font-size: 0.75rem; color: var(--on-surface-variant); }
 
-  .m-details { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; padding: 1.5rem; background: var(--surface-container-lowest); border-radius: 1.25rem; }
-  .m-detail { display: flex; flex-direction: column; gap: 0.25rem; }
-  .m-detail .label { font-size: 0.65rem; font-weight: 700; color: var(--on-surface-variant); text-transform: uppercase; }
-  .m-detail .val { font-size: 0.875rem; font-weight: 700; color: var(--on-surface); }
+  .m-details { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.875rem; padding: 0.875rem; background: var(--surface-container-lowest); border-radius: 0.875rem; }
+  .m-detail { display: flex; flex-direction: column; gap: 0.15rem; }
+  .m-detail .label { font-size: 0.6rem; font-weight: 700; color: var(--on-surface-variant); text-transform: uppercase; }
+  .m-detail .val { font-size: 0.8rem; font-weight: 700; color: var(--on-surface); }
 
-  .m-desc { font-size: 0.9375rem; color: var(--on-surface-variant); line-height: 1.6; margin-bottom: 2.5rem; flex: 1; }
+  .m-desc { font-size: 0.8125rem; color: var(--on-surface-variant); line-height: 1.55; margin-bottom: 1rem; flex: 1; }
 
-  .m-footer { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--outline-variant); }
-  .m-price-section { display: flex; flex-direction: column; min-width: 100px; }
-  .m-price { font-size: 1.5rem; font-weight: 900; color: var(--on-surface); }
-  .m-stock { font-size: 0.65rem; font-weight: 600; color: var(--on-surface-variant); }
+  .m-footer { display: flex; align-items: center; justify-content: space-between; gap: 0.875rem; padding-top: 0.875rem; border-top: 1px solid var(--outline-variant); flex-wrap: wrap; }
+  .m-price-section { display: flex; flex-direction: column; min-width: 80px; }
+  .m-price { font-size: 1.25rem; font-weight: 900; color: var(--on-surface); }
+  .m-stock { font-size: 0.6rem; font-weight: 600; color: var(--on-surface-variant); }
   
-  .m-qty-selector { display: flex; align-items: center; gap: 1rem; background: var(--surface-container-low); padding: 0.5rem; border-radius: 0.75rem; border: 1px solid var(--outline-variant); }
-  .m-qty-selector button { width: 32px; height: 32px; border-radius: 0.5rem; background: white; display: flex; align-items: center; justify-content: center; color: var(--on-surface); transition: all 0.2s; }
+  .m-qty-selector { display: flex; align-items: center; gap: 0.625rem; background: var(--surface-container-low); padding: 0.375rem; border-radius: 0.625rem; border: 1px solid var(--outline-variant); }
+  .m-qty-selector button { width: 28px; height: 28px; border-radius: 0.4rem; background: white; display: flex; align-items: center; justify-content: center; color: var(--on-surface); transition: all 0.2s; }
   .m-qty-selector button:hover { background: var(--brand); color: white; }
-  .m-qty-selector span { font-weight: 800; font-size: 1rem; min-width: 20px; text-align: center; }
+  .m-qty-selector span { font-weight: 800; font-size: 0.9rem; min-width: 18px; text-align: center; }
 
-  .m-add-btn { flex: 1; padding: 1rem; border-radius: 1rem; color: white; font-weight: 800; font-size: 0.9375rem; box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1); }
+  .m-add-btn { flex: 1; min-width: 120px; padding: 0.7rem 1rem; border-radius: 0.75rem; color: white; font-weight: 700; font-size: 0.875rem; box-shadow: 0 6px 15px -3px rgba(0,0,0,0.1); }
 
   .confirm-dialog { background: white; padding: 2.5rem; border-radius: 2rem; width: 100%; max-width: 400px; text-align: center; }
   .confirm-dialog h3 { font-family: var(--font-headline); font-size: 1.5rem; font-weight: 800; margin-bottom: 1rem; }
