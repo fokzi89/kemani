@@ -10,9 +10,9 @@ export async function load({ parent }) {
   // Step 1: Fetch pharmacy/supermarket branches
   const { data: pharmacyBranches, error: fetchErr } = await db
     .from('branches')
-    .select('id, city, address, phone, business_type, tenant_id')
+    .select('id, name, city, address, phone, business_type, tenant_id')
     .is('deleted_at', null)
-    .in('business_type', ['pharmacy', 'pharmacy_supermarket']);
+    .in('business_type', ['pharmacy', 'pharmacy_supermarket', 'supermarket', 'mini_mart']);
 
   if (fetchErr) {
     console.error('[Pharmacies Load] Branches fetch error:', fetchErr);
@@ -42,9 +42,18 @@ export async function load({ parent }) {
     .map((b: any) => {
       const t = tenantMap.get(b.tenant_id);
       if (!t) return null;
+      
+      // Combine tenant name and branch name if they differ significantly, 
+      // otherwise use the branch name as the primary identity
+      const displayName = b.name.toLowerCase().includes(t.name.toLowerCase()) 
+        ? b.name 
+        : `${t.name} - ${b.name}`;
+
       return {
         id: t.id,
-        name: t.name,
+        name: displayName,
+        company_name: t.name,
+        branch_name: b.name,
         slug: t.slug,
         logo_url: t.logo_url,
         brand_color: t.brand_color,

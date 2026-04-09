@@ -18,9 +18,8 @@
   let selectedCity = 'All';
 
   onMount(() => {
-    if (city && cities.includes(city)) {
-      selectedCity = city;
-    }
+    // We default to 'All' cities initially to ensure maximum visibility of branches
+    // but we can still suggest the provider's city if we want.
     
     // If arriving with a search query, initialize
     if (urlSearch) {
