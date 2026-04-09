@@ -1,19 +1,24 @@
-import { error } from '@sveltejs/kit';
-import { supabase } from '$lib/supabase';
 
-export async function load({ parent }) {
+export async function load({ locals, parent }) {
   const { provider, session } = await parent();
+  
+  const activeSession = session || locals.session;
 
-  if (!session) {
+  if (!activeSession) {
     return { consultations: [] };
   }
 
-  // Fetch consultations for this specific patient and this specific clinic (tenant)
-  const { data: consultations, error: fetchError } = await supabase
+  // Fetch consultations for this specific patient
+  let query = locals.supabase
     .from('consultations')
     .select('*')
-    .eq('patient_id', session.user.id)
-    .eq('tenant_id', provider.id)
+    .eq('patient_id', activeSession.user.id);
+
+  if (provider?.id) {
+    query = query.eq('tenant_id', provider.id);
+  }
+
+  const { data: consultations, error: fetchError } = await query
     .order('scheduled_time', { ascending: false });
 
   if (fetchError) {
@@ -22,7 +27,7 @@ export async function load({ parent }) {
   }
 
   return {
-    consultations,
+    consultations: consultations || [],
     provider
   };
 }

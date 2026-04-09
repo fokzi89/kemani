@@ -11,16 +11,20 @@ export async function load({ locals, parent }) {
         return { orders: [] };
     }
 
-    const { data: orders, error: ordersErr } = await locals.supabase
+    let query = locals.supabase
         .from('orders')
         .select(`
             *,
             branches(name, address, city),
             order_items(id, product_name, quantity, unit_price, subtotal)
         `)
-        .eq('customer_id', activeSession.user.id)
-        .eq('tenant_id', provider.id)
-        .order('created_at', { ascending: false });
+        .eq('customer_id', activeSession.user.id);
+
+    if (provider?.id) {
+        query = query.eq('tenant_id', provider.id);
+    }
+    
+    const { data: orders, error: ordersErr } = await query.order('created_at', { ascending: false });
 
     if (ordersErr) {
         console.error('Error fetching orders:', ordersErr);

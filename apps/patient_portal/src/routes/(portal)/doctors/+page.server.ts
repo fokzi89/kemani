@@ -1,15 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 
-const db = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
-
-export async function load({ parent }) {
+export async function load({ locals, parent }) {
   const { provider } = await parent();
   const primaryDoctorId = provider?.hcp_id;
 
   if (!primaryDoctorId) {
     // Global mode: fetch ALL healthcare providers
-    const { data: allHcp, error: allHcpErr } = await db
+    const { data: allHcp, error: allHcpErr } = await locals.supabase
       .from('healthcare_providers')
       .select('id, full_name, specialization, sub_specialty, years_of_experience, average_rating, total_reviews, profile_photo_url, bio, is_verified')
       .limit(50);
@@ -34,7 +30,7 @@ export async function load({ parent }) {
   }
 
   // Fetch doctors associated with this clinic from the doctor_aliases_with_details view
-  const { data: aliases, error } = await db
+  const { data: aliases, error } = await locals.supabase
     .from('doctor_aliases_with_details')
     .select('*')
     .eq('clinic_id', primaryDoctorId)
@@ -66,7 +62,7 @@ export async function load({ parent }) {
     .filter(Boolean);
 
   // Always include the primary doctor themselves, pulled from healthcare_providers
-  const { data: primaryHcp } = await db
+  const { data: primaryHcp } = await locals.supabase
     .from('healthcare_providers')
     .select('id, full_name, specialization, sub_specialty, years_of_experience, average_rating, total_reviews, profile_photo_url, bio, is_verified')
     .eq('id', primaryDoctorId)
@@ -74,7 +70,7 @@ export async function load({ parent }) {
 
   if (primaryHcp) {
     doctors.unshift({
-      alias_id: primaryHcp.id, // Use hcp id so detail page triggers fallback logic correctly
+      alias_id: primaryHcp.id,
       doctor_id: primaryHcp.id,
       display_name: primaryHcp.full_name || provider?.name || 'Doctor',
       clinic_alias: null,

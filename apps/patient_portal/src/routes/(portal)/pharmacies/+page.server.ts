@@ -1,14 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 
-const db = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
-
-export async function load({ parent }) {
+export async function load({ locals, parent }) {
   const { provider } = await parent();
   const providerCity = provider?.city || '';
 
   // Step 1: Build query for pharmacy/supermarket branches
-  let query = db
+  let query = locals.supabase
     .from('branches')
     .select('id, name, city, address, phone, business_type, tenant_id')
     .is('deleted_at', null)
@@ -30,10 +26,10 @@ export async function load({ parent }) {
     return { pharmacies: [], city: providerCity };
   }
 
-  // Step 2: Get tenant IDs from branches and fetch tenant details separately (avoids RLS issues on inner join)
+  // Step 2: Get tenant IDs from branches and fetch tenant details separately
   const tenantIds = [...new Set(pharmacyBranches.map((b: any) => b.tenant_id).filter(Boolean))];
   
-  const { data: tenants, error: tenantErr } = await db
+  const { data: tenants, error: tenantErr } = await locals.supabase
     .from('tenants')
     .select('id, name, slug, logo_url, brand_color, phone')
     .in('id', tenantIds)
@@ -50,8 +46,6 @@ export async function load({ parent }) {
       const t = tenantMap.get(b.tenant_id);
       if (!t) return null;
       
-      // Combine tenant name and branch name if they differ significantly, 
-      // otherwise use the branch name as the primary identity
       const displayName = b.name.toLowerCase().includes(t.name.toLowerCase()) 
         ? b.name 
         : `${t.name} - ${b.name}`;
@@ -75,4 +69,3 @@ export async function load({ parent }) {
 
   return { pharmacies, city: providerCity };
 }
-
