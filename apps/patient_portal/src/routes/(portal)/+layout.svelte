@@ -120,6 +120,7 @@
                   <a href="/appointments" class="menu-item" on:click={() => isProfileMenuOpen = false}>My Appointments</a>
                   <a href="/prescriptions" class="menu-item" on:click={() => isProfileMenuOpen = false}>Prescriptions</a>
                   <a href="/lab-tests" class="menu-item" on:click={() => isProfileMenuOpen = false}>Lab Tests</a>
+                  <a href="/orders" class="menu-item" on:click={() => isProfileMenuOpen = false}>Order History</a>
                   <a href="/profile" class="menu-item" on:click={() => isProfileMenuOpen = false}>My Profile</a>
                   <hr />
                   <button class="menu-item text-error" on:click={handleSignOut}>Sign Out</button>
@@ -158,6 +159,7 @@
             <a href="/appointments" on:click={toggleMobileMenu}>Appointments</a>
             <a href="/prescriptions" on:click={toggleMobileMenu}>Prescriptions</a>
             <a href="/lab-tests" on:click={toggleMobileMenu}>Lab Tests</a>
+            <a href="/orders" on:click={toggleMobileMenu}>Order History</a>
             <a href="/profile" on:click={toggleMobileMenu}>Profile</a>
             <button class="m-auth-btn text-error" on:click={handleSignOut}>Sign Out</button>
           {/if}
