@@ -83,7 +83,7 @@
             {provider ? 'Our Doctors' : 'Doctors list'}
           </a>
           <a href="/pharmacies" class="nav-link" class:active={$page.url.pathname === '/pharmacies'}>
-            {provider ? 'Visit Shop' : 'Pharmacy shops'}
+            Pharmacy Shops
           </a>
           <a href="/diagnostics" class="nav-link" class:active={$page.url.pathname === '/diagnostics'}>Diagnostic centre</a>
         </nav>
@@ -158,7 +158,7 @@
         </div>
         <nav class="mobile-nav">
           <a href="/doctors" on:click={toggleMobileMenu}>Doctors list</a>
-          <a href="/pharmacies" on:click={toggleMobileMenu}>Pharmacy shops</a>
+          <a href="/pharmacies" on:click={toggleMobileMenu}>Pharmacy Shops</a>
           <a href="/diagnostics" on:click={toggleMobileMenu}>Diagnostic centre</a>
           <hr />
           {#if !$isAuthenticated}

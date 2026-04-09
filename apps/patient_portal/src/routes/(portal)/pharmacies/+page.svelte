@@ -8,14 +8,15 @@
   export let data;
   $: pharmacies = data.pharmacies || [];
   $: city = data.city;
+  $: allCities = data.allCities || [];
   $: provider = data.provider;
   $: brandColor = provider?.brand_color || '#003f87';
 
   let searchQuery = '';
   let selectedPharmacy: any = null;
   
-  // City Filter Logic
-  $: cities = ['All', ...new Set(pharmacies.map((p: any) => p.city).filter(Boolean))];
+  // City filter — use server-supplied list + 'All' option
+  $: cities = ['All', ...allCities];
   let selectedCity = 'All';
 
   onMount(() => {
@@ -250,8 +251,8 @@
       <header class="page-header" style="background: linear-gradient(135deg, var(--brand) 0%, rgba(0,0,0,0.8) 100%);">
         <div class="layout-container header-inner">
           <div class="header-badge">HEALTHCARE NETWORK</div>
-          <h1>Visit Our Partner Pharmacies</h1>
-          <p>Access high-quality medication and pharmaceutical services across our community network.</p>
+          <h1>Pharmacy Shops</h1>
+          <p>Find high-quality medications and pharmaceutical products at pharmacies near you.</p>
         </div>
       </header>
 
