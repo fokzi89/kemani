@@ -32,7 +32,9 @@ async function lookupTenantBySubdomain(subdomain: string): Promise<string | null
     .from('tenants')
     .select('id')
     .eq('subdomain', subdomain)
-    .single();
+    .is('deleted_at', null)
+    .limit(1)
+    .maybeSingle();
   
   if (bySubdomain) return bySubdomain.id;
 
@@ -41,11 +43,32 @@ async function lookupTenantBySubdomain(subdomain: string): Promise<string | null
     .from('tenants')
     .select('id')
     .eq('slug', subdomain)
-    .single();
+    .is('deleted_at', null)
+    .limit(1)
+    .maybeSingle();
     
   return bySlug?.id || null;
 }
 
+// Creates the per-request Supabase client and attaches it to locals
+const supabaseHandle: Handle = async ({ event, resolve }) => {
+  event.locals.supabase = createServerClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+    cookies: {
+      get: (key) => event.cookies.get(key),
+      set: (key, value, options) => event.cookies.set(key, value, { ...options, path: '/' }),
+      remove: (key, options) => event.cookies.delete(key, { ...options, path: '/' })
+    }
+  });
+
+  const { data: { session } } = await event.locals.supabase.auth.getSession();
+  event.locals.session = session;
+
+  return resolve(event, {
+    filterSerializedResponseHeaders: (name) => name === 'content-range'
+  });
+};
+
+// Detects which tenant subdomain we're on and attaches the tenant ID to locals
 const tenantHandle: Handle = async ({ event, resolve }) => {
   event.locals.hostname = event.url.hostname;
   event.locals.referringTenantId = null;
@@ -62,5 +85,5 @@ const tenantHandle: Handle = async ({ event, resolve }) => {
   return resolve(event);
 };
 
+// tenantHandle runs first, then supabaseHandle to ensure auth is available
 export const handle: Handle = sequence(tenantHandle, supabaseHandle);
-

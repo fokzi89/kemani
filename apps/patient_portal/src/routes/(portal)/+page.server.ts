@@ -1,10 +1,22 @@
-import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 
-const db = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
-
-export async function load({ parent }) {
+export async function load({ locals, parent }) {
   const { provider } = await parent();
+
+  // If no provider (Global Mode), return an empty or summary state 
+  // to avoid crashing. In the future, this could show featured clinics/shops.
+  if (!provider) {
+    return {
+      medics: [],
+      bookedSlots: [],
+      reviews: [],
+      schedule: [],
+      followUpDuration: 24,
+      slotDuration: 30
+    };
+  }
+
+  // Use the request-local supabase client
+  const db = locals.supabase;
 
   // 1a. Fetch internal medics (doctors) for this provider (Tenant)
   const { data: internalMedics } = await db
@@ -34,17 +46,17 @@ export async function load({ parent }) {
     })),
     // Explicitly add the primary doctor
     {
-      id: provider.hcp_id, // Alias ID fallback
+      id: provider.hcp_id,
       full_name: provider.name || 'Primary Doctor',
       specialty: provider.category || 'Medical Specialist',
       photo_url: provider.logo_url,
       type: 'primary'
     },
     ...(aliases || [])
-      .filter(a => a.doctor_id !== provider.hcp_id) // Exclude if they mimic the primary doctor ID natively
+      .filter(a => a.doctor_id !== provider.hcp_id)
       .map(a => {
         return {
-          id: a.alias_id, // Use alias ID for linking instead of doctor_id
+          id: a.alias_id,
           full_name: a.display_name || a.actual_name || 'Specialist',
           specialty: a.specialization || 'Medical Specialist',
           photo_url: a.profile_photo_url,
@@ -53,7 +65,7 @@ export async function load({ parent }) {
       })
   ].filter(Boolean);
 
-  // 2. Fetch reviews for the Healthcare Provider (Professional Profiling)
+  // 2. Fetch reviews for the Healthcare Provider
   let reviews: any[] = [];
   if (provider.hcp_id) {
     const { data: fetchReviews } = await db
