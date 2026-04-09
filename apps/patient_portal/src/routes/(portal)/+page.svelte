@@ -732,7 +732,23 @@
   .dir-link { font-weight: 700; font-size: 0.875rem; text-align: left; }
 
   /* Sidebar */
-  .booking-widget { background: var(--surface-container-lowest); border: 1px solid var(--outline-variant); padding: 1.25rem; border-radius: 1rem; position: sticky; top: 100px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); width: 100%; max-width: 100%; box-sizing: border-box; }
+  .booking-widget { 
+    background: var(--surface-container-lowest, #ffffff); 
+    border: 1px solid var(--outline-variant, #e5e7eb); 
+    padding: 1.25rem; 
+    border-radius: 1rem; 
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); 
+    width: 100%; 
+    max-width: 100%; 
+    box-sizing: border-box; 
+    z-index: 10;
+  }
+  @media (min-width: 1024px) {
+    .booking-widget {
+      position: sticky;
+      top: 100px;
+    }
+  }
   @media (max-width: 640px) {
     .booking-widget { padding: 1rem; margin: 0 auto; }
   }

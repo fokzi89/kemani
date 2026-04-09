@@ -8,6 +8,32 @@
 @theme {
   --font-family-body: 'Inter', sans-serif;
   --font-family-headline: 'Manrope', sans-serif;
+
+  /* Surface & Container Tokens */
+  --surface: #f9fafb;
+  --surface-bright: #ffffff;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f3f4f6;
+  --surface-container: #e5e7eb;
+  --surface-container-high: #d1d5db;
+  --surface-container-highest: #9ca3af;
+
+  /* Outline & Variant Tokens */
+  --outline: #6b7280;
+  --outline-variant: #e5e7eb;
+
+  /* Content & Text Tokens */
+  --on-surface: #111827;
+  --on-surface-variant: #4b5563;
+
+  /* Accent Tokens */
+  --secondary-container: #e0f2fe;
+  --on-secondary-container: #0369a1;
+  --tertiary: #f59e0b;
+  --brand: #003f87;
+
+  /* Miscellaneous */
+  --radius-xl: 1rem;
 }
 
 /* ── Global resets ───────────────────────────────────────────────── */
