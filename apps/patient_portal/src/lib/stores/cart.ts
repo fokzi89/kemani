@@ -77,9 +77,13 @@ export const cartStore = {
     },
 
     updateQuantity: (productId: string, quantity: number) => {
+        if (quantity < 1) {
+            cartStore.removeItem(productId);
+            return;
+        }
         cart.update(state => {
             const newItems = state.items.map(item => 
-                item.id === productId ? { ...item, quantity: Math.max(1, quantity) } : item
+                item.id === productId ? { ...item, quantity } : item
             );
             return { ...state, items: newItems };
         });
