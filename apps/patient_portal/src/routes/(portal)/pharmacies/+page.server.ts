@@ -7,12 +7,19 @@ export async function load({ parent }) {
   const { provider } = await parent();
   const providerCity = provider?.city || '';
 
-  // Step 1: Fetch pharmacy/supermarket branches
-  const { data: pharmacyBranches, error: fetchErr } = await db
+  // Step 1: Build query for pharmacy/supermarket branches
+  let query = db
     .from('branches')
     .select('id, name, city, address, phone, business_type, tenant_id')
     .is('deleted_at', null)
     .in('business_type', ['pharmacy', 'pharmacy_supermarket', 'supermarket', 'mini_mart']);
+
+  // If we are on a subdomain (provider exists), narrow down to that tenant's branches
+  if (provider?.id) {
+    query = query.eq('tenant_id', provider.id);
+  }
+
+  const { data: pharmacyBranches, error: fetchErr } = await query;
 
   if (fetchErr) {
     console.error('[Pharmacies Load] Branches fetch error:', fetchErr);

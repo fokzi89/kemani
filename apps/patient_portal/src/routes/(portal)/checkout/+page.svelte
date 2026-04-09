@@ -46,8 +46,41 @@
         try {
             const tenantId = provider.id;
             const branchId = $cartStore.branchId;
+            const userId = $currentUser.id;
 
-            // 1. Create Order
+            // 1. Ensure customer record exists (required for FK)
+            const { data: customer, error: customerErr } = await supabase
+                .from('customers')
+                .upsert({
+                    id: userId,
+                    tenant_id: tenantId,
+                    email: $currentUser.email,
+                    full_name: $currentUser.user_metadata?.full_name || 'Patient',
+                    phone: $currentUser.phone || ''
+                })
+                .select()
+                .single();
+
+            if (customerErr) throw customerErr;
+
+            // 2. Handle Delivery Address
+            let deliveryAddressId = null;
+            if (fulfillmentType === 'delivery') {
+                const { data: address, error: addrErr } = await supabase
+                    .from('customer_addresses')
+                    .insert({
+                        customer_id: userId,
+                        address_line: deliveryAddress,
+                        label: 'Default Delivery'
+                    })
+                    .select()
+                    .single();
+                
+                if (addrErr) throw addrErr;
+                deliveryAddressId = address.id;
+            }
+
+            // 3. Create Order
             const orderNumber = `ORD-${Math.floor(Date.now() / 1000)}`;
             const { data: order, error: orderErr } = await supabase
                 .from('orders')
@@ -55,9 +88,10 @@
                     tenant_id: tenantId,
                     branch_id: branchId,
                     order_number: orderNumber,
-                    customer_id: $currentUser.id,
-                    order_type: 'online',
+                    customer_id: userId,
+                    order_type: 'marketplace',
                     fulfillment_type: fulfillmentType,
+                    delivery_address_id: deliveryAddressId,
                     subtotal: subtotal,
                     tax_amount: tax,
                     delivery_fee: deliveryFee,

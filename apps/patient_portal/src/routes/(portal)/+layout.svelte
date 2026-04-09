@@ -30,11 +30,15 @@
   }
 
   async function signInWithGoogle() {
-    // Use base (non-subdomain) origin for OAuth redirectTo — it must be whitelisted
-    // in Supabase & Google Console. Pass the full current URL as `next` so
-    // the callback can bounce back to the subdomain after auth.
-    const baseOrigin = `http://localhost:5143`;
-    const returnTo = encodeURIComponent(window.location.href);
+    // Determine the base origin for the auth callback. 
+    // This URL must be whitelisted in the Supabase/Google console.
+    const baseOrigin = $page.url.host.includes('localhost') 
+      ? `${$page.url.protocol}//localhost:5144` 
+      : `${$page.url.protocol}//kemani.com`;
+
+    // The current URL (including subdomain) to return to after auth
+    const returnTo = encodeURIComponent($page.url.href);
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -61,7 +65,7 @@
   <header class="navbar">
     <div class="layout-container nav-inner">
       <div class="nav-left">
-        <a href={provider?.subdomain ? `${$page.url.protocol}//${provider.subdomain}.${$page.url.host.includes('localhost') ? 'localhost:5143' : 'kemani.com'}/` : '/'} class="logo">
+        <a href="/" class="logo">
           <div class="logo-icon" style="color: {brandColor};">
             {#if provider?.logo_url}
               <img src={provider.logo_url} alt={provider?.name || 'Logo'} class="w-6 h-6 object-cover rounded" />
@@ -71,12 +75,16 @@
               </svg>
             {/if}
           </div>
-          <span class="logo-text">{provider?.name || 'Healthcare Portal'}</span>
+          <span class="logo-text">{provider?.name || 'Kemani Patient Portal'}</span>
         </a>
 
         <nav class="desktop-nav">
-          <a href="/doctors" class="nav-link" class:active={$page.url.pathname === '/doctors'}>Doctors list</a>
-          <a href="/pharmacies" class="nav-link" class:active={$page.url.pathname === '/pharmacies'}>Pharmacy shops</a>
+          <a href="/doctors" class="nav-link" class:active={$page.url.pathname === '/doctors'}>
+            {provider ? 'Our Doctors' : 'Doctors list'}
+          </a>
+          <a href="/pharmacies" class="nav-link" class:active={$page.url.pathname === '/pharmacies'}>
+            {provider ? 'Visit Shop' : 'Pharmacy shops'}
+          </a>
           <a href="/diagnostics" class="nav-link" class:active={$page.url.pathname === '/diagnostics'}>Diagnostic centre</a>
         </nav>
       </div>

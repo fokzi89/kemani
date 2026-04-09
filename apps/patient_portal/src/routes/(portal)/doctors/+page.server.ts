@@ -8,7 +8,29 @@ export async function load({ parent }) {
   const primaryDoctorId = provider?.hcp_id;
 
   if (!primaryDoctorId) {
-    return { doctors: [] };
+    // Global mode: fetch ALL healthcare providers
+    const { data: allHcp, error: allHcpErr } = await db
+      .from('healthcare_providers')
+      .select('id, full_name, specialization, sub_specialty, years_of_experience, average_rating, total_reviews, profile_photo_url, bio, is_verified')
+      .limit(50);
+    
+    if (allHcpErr) return { doctors: [] };
+
+    return {
+      doctors: (allHcp || []).map(h => ({
+        alias_id: h.id,
+        doctor_id: h.id,
+        display_name: h.full_name,
+        specialization: h.specialization,
+        sub_specialty: h.sub_specialty,
+        experience: h.years_of_experience,
+        rating: h.average_rating,
+        reviews: h.total_reviews,
+        photo_url: h.profile_photo_url,
+        bio: h.bio,
+        is_verified: h.is_verified
+      }))
+    };
   }
 
   // Fetch doctors associated with this clinic from the doctor_aliases_with_details view
