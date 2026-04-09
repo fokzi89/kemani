@@ -7,27 +7,18 @@ import { createClient } from '@supabase/supabase-js';
 const globalSupabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
 
 function extractSubdomain(hostname: string): string | null {
-  const host = hostname.split(':')[0]; // Remove port if any
+  const host = hostname.split(':')[0];
   const parts = host.split('.');
-  
-  // Local development handling
   if (host.includes('localhost')) {
-    if (parts.length > 1) return parts[0];
-    return null;
+    return parts.length > 1 ? parts[0] : null;
   }
-  
-  // Production handling (assuming kemani.com or similar)
-  if (parts.length >= 3) {
-    return parts[0];
-  }
-  
-  return null;
+  return parts.length >= 3 ? parts[0] : null;
 }
 
-async function lookupTenantBySubdomain(subdomain: string): Promise<string | null> {
-  if (!subdomain) return null;
+async function resolveSubdomain(subdomain: string): Promise<{ tenantId: string | null; hcpId: string | null }> {
+  if (!subdomain) return { tenantId: null, hcpId: null };
 
-  // Try subdomain column first
+  // 1. Try to find a tenant by subdomain column
   const { data: bySubdomain } = await globalSupabase
     .from('tenants')
     .select('id')
@@ -35,10 +26,9 @@ async function lookupTenantBySubdomain(subdomain: string): Promise<string | null
     .is('deleted_at', null)
     .limit(1)
     .maybeSingle();
-  
-  if (bySubdomain) return bySubdomain.id;
+  if (bySubdomain) return { tenantId: bySubdomain.id, hcpId: null };
 
-  // Fallback to slug if no explicit subdomain mapping exists
+  // 2. Try to find a tenant by slug
   const { data: bySlug } = await globalSupabase
     .from('tenants')
     .select('id')
@@ -46,8 +36,18 @@ async function lookupTenantBySubdomain(subdomain: string): Promise<string | null
     .is('deleted_at', null)
     .limit(1)
     .maybeSingle();
-    
-  return bySlug?.id || null;
+  if (bySlug) return { tenantId: bySlug.id, hcpId: null };
+
+  // 3. Fallback: try to find a healthcare_provider (medic) by slug
+  const { data: byHcp } = await globalSupabase
+    .from('healthcare_providers')
+    .select('id')
+    .eq('slug', subdomain)
+    .limit(1)
+    .maybeSingle();
+  if (byHcp) return { tenantId: null, hcpId: byHcp.id };
+
+  return { tenantId: null, hcpId: null };
 }
 
 // Creates the per-request Supabase client and attaches it to locals
@@ -59,31 +59,27 @@ const supabaseHandle: Handle = async ({ event, resolve }) => {
       remove: (key, options) => event.cookies.delete(key, { ...options, path: '/' })
     }
   });
-
   const { data: { session } } = await event.locals.supabase.auth.getSession();
   event.locals.session = session;
-
-  return resolve(event, {
-    filterSerializedResponseHeaders: (name) => name === 'content-range'
-  });
+  return resolve(event, { filterSerializedResponseHeaders: (name) => name === 'content-range' });
 };
 
-// Detects which tenant subdomain we're on and attaches the tenant ID to locals
+// Detects which tenant subdomain or HCP slug we're on
 const tenantHandle: Handle = async ({ event, resolve }) => {
   event.locals.hostname = event.url.hostname;
   event.locals.referringTenantId = null;
-  
+  event.locals.referringHcpId = null;
+  event.locals.subdomain = null;
+
   const subdomain = extractSubdomain(event.url.hostname);
   if (subdomain) {
-    const tenantId = await lookupTenantBySubdomain(subdomain);
-    if (tenantId) {
-      event.locals.referringTenantId = tenantId;
-      event.locals.subdomain = subdomain;
-    }
+    const { tenantId, hcpId } = await resolveSubdomain(subdomain);
+    event.locals.subdomain = subdomain;
+    event.locals.referringTenantId = tenantId;
+    event.locals.referringHcpId = hcpId;
   }
-  
+
   return resolve(event);
 };
 
-// tenantHandle runs first, then supabaseHandle to ensure auth is available
 export const handle: Handle = sequence(tenantHandle, supabaseHandle);
