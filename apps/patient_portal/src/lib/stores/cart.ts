@@ -40,7 +40,7 @@ if (browser) {
 export const cartStore = {
     subscribe: cart.subscribe,
     
-    addItem: (product: any, pharmacy: any) => {
+    addItem: (product: any, pharmacy: any, quantity: number = 1) => {
         cart.update(state => {
             // Check if adding from a different pharmacy
             if (state.branchId && state.branchId !== pharmacy.branch_id) {
@@ -52,7 +52,7 @@ export const cartStore = {
             const newItems = [...state.items];
 
             if (existingIndex > -1) {
-                newItems[existingIndex].quantity += 1;
+                newItems[existingIndex].quantity += quantity;
             } else {
                 newItems.push({
                     id: product.id,
@@ -61,7 +61,7 @@ export const cartStore = {
                     pharmacy_name: pharmacy.name,
                     name: product.name,
                     price: product.unit_price,
-                    quantity: 1,
+                    quantity: quantity,
                     image_url: product.image_url,
                     unit_of_measure: product.unit_of_measure
                 });

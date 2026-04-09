@@ -211,29 +211,31 @@
   let selectedProduct: any = null;
   let showConfirmClearCart = false;
   let pendingItem: any = null;
+  let itemQuantity = 1;
 
-  function handleAddToCart(product: any, e?: Event) {
+  function handleAddToCart(product: any, e?: Event, qty: number = 1) {
     if (e) e.stopPropagation();
     
     const cart = $cartStore;
     if (cart.branchId && cart.branchId !== selectedPharmacy.branch_id) {
-        pendingItem = product;
+        pendingItem = { ...product, requested_qty: qty };
         showConfirmClearCart = true;
         return;
     }
     
-    cartStore.addItem(product, selectedPharmacy);
+    cartStore.addItem(product, selectedPharmacy, qty);
   }
 
   function confirmClearAndAdd() {
     cartStore.clearCart();
-    cartStore.addItem(pendingItem, selectedPharmacy);
+    cartStore.addItem(pendingItem, selectedPharmacy, pendingItem.requested_qty || 1);
     showConfirmClearCart = false;
     pendingItem = null;
   }
 
   function openProductDetails(product: any) {
     selectedProduct = product;
+    itemQuantity = 1;
   }
 </script>
 
@@ -536,10 +538,16 @@
                             <span class="m-stock">In Stock: {selectedProduct.stock_quantity} {selectedProduct.unit_of_measure || 'units'}</span>
                         </div>
                         
+                        <div class="m-qty-selector">
+                            <button on:click={() => itemQuantity = Math.max(1, itemQuantity - 1)}><Minus class="w-4 h-4" /></button>
+                            <span>{itemQuantity}</span>
+                            <button on:click={() => itemQuantity = Math.min(selectedProduct.stock_quantity, itemQuantity + 1)}><Plus class="w-4 h-4" /></button>
+                        </div>
+                        
                         <button 
                             class="m-add-btn" 
                             style="background: {selectedPharmacy.brand_color || brandColor};"
-                            on:click={() => { handleAddToCart(selectedProduct); selectedProduct = null; }}
+                            on:click={() => { handleAddToCart(selectedProduct, undefined, itemQuantity); selectedProduct = null; }}
                         >
                             Add to Cart
                         </button>
@@ -623,11 +631,17 @@
 
   .m-desc { font-size: 0.9375rem; color: var(--on-surface-variant); line-height: 1.6; margin-bottom: 2.5rem; flex: 1; }
 
-  .m-footer { display: flex; align-items: center; justify-content: space-between; gap: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--outline-variant); }
-  .m-price-section { display: flex; flex-direction: column; }
-  .m-price { font-size: 1.75rem; font-weight: 900; color: var(--on-surface); }
-  .m-stock { font-size: 0.75rem; font-weight: 600; color: var(--on-surface-variant); }
-  .m-add-btn { flex: 1; padding: 1.25rem; border-radius: 1rem; color: white; font-weight: 800; font-size: 1rem; box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1); }
+  .m-footer { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--outline-variant); }
+  .m-price-section { display: flex; flex-direction: column; min-width: 100px; }
+  .m-price { font-size: 1.5rem; font-weight: 900; color: var(--on-surface); }
+  .m-stock { font-size: 0.65rem; font-weight: 600; color: var(--on-surface-variant); }
+  
+  .m-qty-selector { display: flex; align-items: center; gap: 1rem; background: var(--surface-container-low); padding: 0.5rem; border-radius: 0.75rem; border: 1px solid var(--outline-variant); }
+  .m-qty-selector button { width: 32px; height: 32px; border-radius: 0.5rem; background: white; display: flex; align-items: center; justify-content: center; color: var(--on-surface); transition: all 0.2s; }
+  .m-qty-selector button:hover { background: var(--brand); color: white; }
+  .m-qty-selector span { font-weight: 800; font-size: 1rem; min-width: 20px; text-align: center; }
+
+  .m-add-btn { flex: 1; padding: 1rem; border-radius: 1rem; color: white; font-weight: 800; font-size: 0.9375rem; box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1); }
 
   .confirm-dialog { background: white; padding: 2.5rem; border-radius: 2rem; width: 100%; max-width: 400px; text-align: center; }
   .confirm-dialog h3 { font-family: var(--font-headline); font-size: 1.5rem; font-weight: 800; margin-bottom: 1rem; }

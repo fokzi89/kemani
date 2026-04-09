@@ -8,7 +8,7 @@
     import { 
         ChevronLeft, ShoppingBag, MapPin, Truck, 
         Store, CreditCard, ArrowRight, X, Trash2,
-        ChevronRight, CheckCircle2, AlertCircle
+        ChevronRight, CheckCircle2, AlertCircle, Plus, Minus
     } from 'lucide-svelte';
 
     export let data;
@@ -231,7 +231,11 @@
                                             <span>₦{(item.price * item.quantity).toLocaleString()}</span>
                                         </div>
                                         <div class="item-bottom">
-                                            <span>Qty: {item.quantity}</span>
+                                            <div class="cart-qty-selector">
+                                                <button on:click={() => cartStore.updateQuantity(item.id, item.quantity - 1)}><Minus class="w-3 h-3" /></button>
+                                                <span>{item.quantity}</span>
+                                                <button on:click={() => cartStore.updateQuantity(item.id, item.quantity + 1)}><Plus class="w-3 h-3" /></button>
+                                            </div>
                                             <button class="remove-btn" on:click={() => cartStore.removeItem(item.id)}>
                                                 <Trash2 class="w-4 h-4" />
                                             </button>
@@ -345,7 +349,12 @@
     .item-top { display: flex; justify-content: space-between; align-items: center; }
     .item-top h4 { font-size: 0.875rem; font-weight: 700; }
     .item-top span { font-size: 0.875rem; font-weight: 800; color: var(--brand); }
-    .item-bottom { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--on-surface-variant); font-weight: 600; }
+    .item-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; }
+    
+    .cart-qty-selector { display: flex; align-items: center; gap: 0.75rem; background: white; padding: 0.25rem 0.5rem; border-radius: 0.5rem; border: 1px solid var(--outline-variant); }
+    .cart-qty-selector button { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: var(--on-surface-variant); }
+    .cart-qty-selector span { font-size: 0.8125rem; font-weight: 700; min-width: 15px; text-align: center; }
+
     .remove-btn { color: #ba1a1a; padding: 0.25rem; opacity: 0.6; transition: opacity 0.2s; }
     .remove-btn:hover { opacity: 1; }
 
