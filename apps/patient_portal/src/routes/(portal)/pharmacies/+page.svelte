@@ -144,19 +144,35 @@
         id, 
         stock_quantity,
         reserved_quantity,
-        products!inner(id, name, description, category, unit_price, image_url)
+        products!inner(
+          id, 
+          name, 
+          description, 
+          category, 
+          unit_price, 
+          image_url,
+          generic_name,
+          strength,
+          dosage_form,
+          manufacturer,
+          unit_of_measure,
+          product_type
+        )
       `)
       .eq('branch_id', pharmacy.branch_id)
       .eq('products.is_active', true)
+      .eq('is_active', true)
       .gt('stock_quantity', 0)
-      .limit(50);
+      .limit(100);
     
     if (error) {
       console.error('Error fetching inventory:', error);
     } else {
       products = (inventoryData || []).map(item => ({
         ...item.products,
-        stock_quantity: item.stock_quantity - (item.reserved_quantity || 0)
+        inventory_id: item.id,
+        stock_quantity: item.stock_quantity - (item.reserved_quantity || 0),
+        raw_stock: item.stock_quantity
       }));
       // Extract unique categories
       productCategories = ['All', ...new Set(products.map(p => p.category).filter(Boolean))];
@@ -390,6 +406,12 @@
                 <div class="product-info">
                   <p class="p-cat">{product.category}</p>
                   <h4>{product.name}</h4>
+                  {#if product.generic_name || product.strength}
+                    <p class="p-medical">
+                      {product.generic_name || ''} 
+                      {product.strength ? `• ${product.strength}` : ''}
+                    </p>
+                  {/if}
                   <p class="p-desc">{product.description || 'Verified pharmacy grade product.'}</p>
                   <div class="product-bottom">
                     <span class="price">₦{product.unit_price?.toLocaleString() || '0.00'}</span>
@@ -493,6 +515,7 @@
 
   .product-info { padding: 1rem; display: flex; flex-direction: column; flex: 1; }
   .p-cat { font-size: 0.6875rem; font-weight: 700; color: var(--brand); text-transform: uppercase; margin-bottom: 0.25rem; }
+  .p-medical { font-size: 0.75rem; font-weight: 600; color: var(--on-surface-variant); margin-bottom: 0.5rem; display: block; }
   .product-info h4 { font-size: 0.9375rem; font-weight: 700; color: var(--on-surface); margin-bottom: 0.25rem; line-height: 1.2; }
   .p-desc { font-size: 0.75rem; color: var(--on-surface-variant); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 1rem; }
   .product-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
