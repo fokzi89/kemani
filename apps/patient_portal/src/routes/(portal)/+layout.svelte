@@ -7,8 +7,9 @@
   import { supabase } from '$lib/supabase';
   import { 
     Menu, X, Bell, User as UserIcon, Search, 
-    Mail, Phone, Globe, Share2, HeartPulse 
+    Mail, Phone, Globe, Share2, HeartPulse, ShoppingCart 
   } from 'lucide-svelte';
+  import { cartStore, cartTotalItems } from '$lib/stores/cart';
 
   export let data;
   $: provider = data.provider;
@@ -216,9 +217,56 @@
       </div>
     </div>
   </footer>
+  <!-- Floating Cart Icon -->
+  {#if $cartTotalItems > 0}
+    <a 
+      href="/checkout" 
+      class="floating-cart" 
+      in:fade={{ duration: 200 }} 
+      out:fade={{ duration: 200 }}
+      style="background: {brandColor};"
+    >
+      <ShoppingCart class="w-6 h-6" />
+      <span class="cart-badge">{$cartTotalItems}</span>
+    </a>
+  {/if}
 </div>
 
 <style>
+  .floating-cart {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+    z-index: 999;
+    transition: transform 0.2s;
+    text-decoration: none;
+  }
+  .floating-cart:hover { transform: scale(1.1); }
+  .cart-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ff3e00;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 800;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+  }
+
   .app-layout { min-height: 100vh; display: flex; flex-direction: column; background: var(--surface); }
   
   .navbar { background: #ffffff; border-bottom: 1px solid var(--outline-variant); position: sticky; top: 0; z-index: 1000; height: 64px; display: flex; align-items: center; }

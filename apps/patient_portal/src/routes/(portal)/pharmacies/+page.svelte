@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { MapPin, Phone, Mail, Search, Building2, ExternalLink, ChevronLeft, ShoppingBag, FlaskConical, Heart, Baby, Package, Filter, X } from 'lucide-svelte';
+  import { MapPin, Phone, Mail, Search, Building2, ExternalLink, ChevronLeft, ShoppingBag, FlaskConical, Heart, Baby, Package, Filter, X, ShoppingCart, Info, Plus, Minus } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabase';
-  import { fade, slide } from 'svelte/transition';
+  import { fade, slide, scale } from 'svelte/transition';
+  import { cartStore } from '$lib/stores/cart';
 
   export let data;
   $: pharmacies = data.pharmacies || [];
@@ -66,7 +67,9 @@
           .from('branch_inventory')
           .select(`
             branch_id,
-            products!inner(name, generic_name, manufacturer)
+            selling_price,
+            unit_of_measure,
+            products!inner(name, generic_name, manufacturer, category, description, image_url, product_type)
           `)
           .in('branch_id', validBranchIds.length ? validBranchIds : ['00000000-0000-0000-0000-000000000000'])
           .or(`name.ilike.%${searchQuery}%,generic_name.ilike.%${searchQuery}%,manufacturer.ilike.%${searchQuery}%`, { foreignTable: 'products' })
@@ -156,18 +159,18 @@
         id, 
         stock_quantity,
         reserved_quantity,
+        selling_price,
+        unit_of_measure,
         products!inner(
           id, 
           name, 
           description, 
           category, 
-          unit_price, 
           image_url,
           generic_name,
           strength,
           dosage_form,
           manufacturer,
-          unit_of_measure,
           product_type
         )
       `)
@@ -181,12 +184,18 @@
     if (error) {
       console.error('Error fetching inventory:', error);
     } else {
-      products = (inventoryData || []).map(item => ({
-        ...item.products,
-        inventory_id: item.id,
-        stock_quantity: item.stock_quantity - (item.reserved_quantity || 0),
-        raw_stock: item.stock_quantity
-      }));
+      products = (inventoryData || []).map(item => {
+        const prod = Array.isArray(item.products) ? item.products[0] : item.products;
+        if (!prod) return null;
+        return {
+          ...prod,
+          unit_price: item.selling_price,
+          unit_of_measure: item.unit_of_measure,
+          inventory_id: item.id,
+          stock_quantity: item.stock_quantity - (item.reserved_quantity || 0),
+          raw_stock: item.stock_quantity
+        };
+      }).filter(Boolean);
       // Extract unique categories
       productCategories = ['All', ...new Set(products.map(p => p.category).filter(Boolean))];
     }
@@ -196,6 +205,35 @@
   function closePortal() {
     selectedPharmacy = null;
     products = [];
+  }
+
+  // Cart & Modal Logic
+  let selectedProduct: any = null;
+  let showConfirmClearCart = false;
+  let pendingItem: any = null;
+
+  function handleAddToCart(product: any, e?: Event) {
+    if (e) e.stopPropagation();
+    
+    const cart = $cartStore;
+    if (cart.branchId && cart.branchId !== selectedPharmacy.branch_id) {
+        pendingItem = product;
+        showConfirmClearCart = true;
+        return;
+    }
+    
+    cartStore.addItem(product, selectedPharmacy);
+  }
+
+  function confirmClearAndAdd() {
+    cartStore.clearCart();
+    cartStore.addItem(pendingItem, selectedPharmacy);
+    showConfirmClearCart = false;
+    pendingItem = null;
+  }
+
+  function openProductDetails(product: any) {
+    selectedProduct = product;
   }
 </script>
 
@@ -405,7 +443,7 @@
         {:else}
           <div class="product-grid">
             {#each filteredProducts as product}
-              <div class="product-card">
+              <div class="product-card" on:click={() => openProductDetails(product)}>
                 <div class="product-img">
                   {#if product.image_url}
                     <img src={product.image_url} alt={product.name} />
@@ -428,7 +466,11 @@
                   <p class="p-desc">{product.description || 'Verified pharmacy grade product.'}</p>
                   <div class="product-bottom">
                     <span class="price">₦{product.unit_price?.toLocaleString() || '0.00'}</span>
-                    <button class="add-to-cart" style="background: {selectedPharmacy.brand_color || brandColor};">
+                    <button 
+                      class="add-to-cart" 
+                      style="background: {selectedPharmacy.brand_color || brandColor};"
+                      on:click={(e) => handleAddToCart(product, e)}
+                    >
                       <ShoppingBag class="w-4 h-4" />
                     </button>
                   </div>
@@ -440,9 +482,160 @@
       </div>
     </div>
   {/if}
+
+  <!-- Product Detail Modal -->
+  {#if selectedProduct}
+    <div class="modal-backdrop" transition:fade on:click={() => selectedProduct = null}>
+        <div class="modal-content" transition:scale={{ start: 0.9, duration: 200 }} on:click|stopPropagation>
+            <button class="modal-close" on:click={() => selectedProduct = null}><X /></button>
+            
+            <div class="modal-body">
+                <div class="modal-img">
+                    {#if selectedProduct.image_url}
+                        <img src={selectedProduct.image_url} alt={selectedProduct.name} />
+                    {:else}
+                        <div class="m-ph"><Package class="w-16 h-16" /></div>
+                    {/if}
+                </div>
+                
+                <div class="modal-info">
+                    <div class="m-header">
+                        <span class="m-cat">{selectedProduct.category}</span>
+                        <h2>{selectedProduct.name}</h2>
+                        {#if selectedProduct.generic_name}
+                            <p class="m-generic">Generic: <strong>{selectedProduct.generic_name}</strong></p>
+                        {/if}
+                    </div>
+
+                    <div class="m-details">
+                        {#if selectedProduct.strength}
+                            <div class="m-detail">
+                                <span class="label">Strength</span>
+                                <span class="val">{selectedProduct.strength}</span>
+                            </div>
+                        {/if}
+                        {#if selectedProduct.dosage_form}
+                            <div class="m-detail">
+                                <span class="label">Form</span>
+                                <span class="val">{selectedProduct.dosage_form}</span>
+                            </div>
+                        {/if}
+                        {#if selectedProduct.manufacturer}
+                            <div class="m-detail">
+                                <span class="label">Manufacturer</span>
+                                <span class="val">{selectedProduct.manufacturer}</span>
+                            </div>
+                        {/if}
+                    </div>
+
+                    <p class="m-desc">{selectedProduct.description || 'No detailed description available for this medication.'}</p>
+
+                    <div class="m-footer">
+                        <div class="m-price-section">
+                            <span class="m-price">₦{selectedProduct.unit_price?.toLocaleString()}</span>
+                            <span class="m-stock">In Stock: {selectedProduct.stock_quantity} {selectedProduct.unit_of_measure || 'units'}</span>
+                        </div>
+                        
+                        <button 
+                            class="m-add-btn" 
+                            style="background: {selectedPharmacy.brand_color || brandColor};"
+                            on:click={() => { handleAddToCart(selectedProduct); selectedProduct = null; }}
+                        >
+                            Add to Cart
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+  {/if}
+
+  <!-- Confirm Clear Cart Dialog -->
+  {#if showConfirmClearCart}
+    <div class="modal-backdrop" transition:fade>
+        <div class="confirm-dialog" transition:scale>
+            <h3>Start new order?</h3>
+            <p>Your cart contains items from <strong>{$cartStore.pharmacyName}</strong>. Adding this will clear your current cart. Continue?</p>
+            <div class="confirm-actions">
+                <button class="c-cancel" on:click={() => { showConfirmClearCart = false; pendingItem = null; }}>Cancel</button>
+                <button class="c-confirm" on:click={confirmClearAndAdd}>Clear and Add</button>
+            </div>
+        </div>
+    </div>
+  {/if}
 </div>
 
 <style>
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1100;
+    padding: 1.5rem;
+  }
+  .modal-content {
+    background: white;
+    width: 100%;
+    max-width: 800px;
+    border-radius: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .modal-close {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    z-index: 10;
+  }
+  .modal-body {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 640px) {
+    .modal-body { grid-template-columns: 1fr 1.2fr; }
+  }
+  .modal-img { background: var(--surface-container-low); display: flex; align-items: center; justify-content: center; padding: 2rem; }
+  .modal-img img { width: 100%; max-height: 400px; object-fit: contain; }
+  .m-ph { color: var(--on-surface-variant); opacity: 0.2; }
+  
+  .modal-info { padding: 2.5rem; display: flex; flex-direction: column; }
+  .m-header { margin-bottom: 2rem; }
+  .m-cat { font-size: 0.75rem; font-weight: 800; color: var(--brand); text-transform: uppercase; letter-spacing: 0.1em; display: block; margin-bottom: 0.5rem; }
+  .m-header h2 { font-family: var(--font-headline); font-size: 2rem; font-weight: 800; color: var(--on-surface); line-height: 1.1; margin-bottom: 0.5rem; }
+  .m-generic { font-size: 0.875rem; color: var(--on-surface-variant); }
+
+  .m-details { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; padding: 1.5rem; background: var(--surface-container-lowest); border-radius: 1.25rem; }
+  .m-detail { display: flex; flex-direction: column; gap: 0.25rem; }
+  .m-detail .label { font-size: 0.65rem; font-weight: 700; color: var(--on-surface-variant); text-transform: uppercase; }
+  .m-detail .val { font-size: 0.875rem; font-weight: 700; color: var(--on-surface); }
+
+  .m-desc { font-size: 0.9375rem; color: var(--on-surface-variant); line-height: 1.6; margin-bottom: 2.5rem; flex: 1; }
+
+  .m-footer { display: flex; align-items: center; justify-content: space-between; gap: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--outline-variant); }
+  .m-price-section { display: flex; flex-direction: column; }
+  .m-price { font-size: 1.75rem; font-weight: 900; color: var(--on-surface); }
+  .m-stock { font-size: 0.75rem; font-weight: 600; color: var(--on-surface-variant); }
+  .m-add-btn { flex: 1; padding: 1.25rem; border-radius: 1rem; color: white; font-weight: 800; font-size: 1rem; box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1); }
+
+  .confirm-dialog { background: white; padding: 2.5rem; border-radius: 2rem; width: 100%; max-width: 400px; text-align: center; }
+  .confirm-dialog h3 { font-family: var(--font-headline); font-size: 1.5rem; font-weight: 800; margin-bottom: 1rem; }
+  .confirm-dialog p { font-size: 0.9375rem; color: var(--on-surface-variant); line-height: 1.5; margin-bottom: 2rem; }
+  .confirm-actions { display: flex; gap: 1rem; }
+  .c-cancel { flex: 1; padding: 1rem; border-radius: 1rem; border: 1.5px solid var(--outline-variant); font-weight: 700; }
+  .c-confirm { flex: 1; padding: 1rem; border-radius: 1rem; background: #ba1a1a; color: white; font-weight: 700; }
+
   .page { min-height: 100vh; background: var(--surface); padding-bottom: 5rem; }
 
   /* Pharmacy List Styles */
@@ -519,7 +712,7 @@
   @media (min-width: 768px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }
   @media (min-width: 1024px) { .product-grid { grid-template-columns: repeat(4, 1fr); } }
 
-  .product-card { background: white; border-radius: 1rem; border: 1px solid var(--outline-variant); overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s; }
+  .product-card { background: white; border-radius: 1rem; border: 1px solid var(--outline-variant); overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s; cursor: pointer; }
   .product-card:hover { transform: translateY(-4px); }
   .product-img { position: relative; height: 160px; background: var(--surface-container-low); display: flex; align-items: center; justify-content: center; }
   .product-img img { width: 100%; height: 100%; object-fit: cover; }
