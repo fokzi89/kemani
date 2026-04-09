@@ -116,7 +116,7 @@
              <button class="primary-btn" on:click={() => window.location.href = '/'}>
                 Back to Portal
              </button>
-             <button class="secondary-btn" on:click={() => window.location.href = '/dashboard'}>
+             <button class="secondary-btn" on:click={() => window.location.href = '/appointments'}>
                 View My Appointments
                 <ChevronRight class="w-4 h-4" />
              </button>

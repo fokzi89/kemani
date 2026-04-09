@@ -1,9 +1,24 @@
 <script lang="ts">
+  import { page } from '$app/stores';
+  
   export let data;
   $: rawDoctors = data.doctors || [];
   $: doctors = rawDoctors.filter((d: any) => d !== null);
   $: provider = data.provider;
   $: brandColor = provider?.brand_color || '#003f87';
+
+  let localSearch = '';
+  $: urlSearch = $page.url.searchParams.get('q') || '';
+  $: searchQuery = localSearch || urlSearch;
+
+  $: filteredDoctors = doctors.filter((d: any) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      d.display_name?.toLowerCase().includes(q) ||
+      d.specialization?.toLowerCase().includes(q)
+    );
+  });
 
   let isFilterModalOpen = false;
   function toggleFilters() { isFilterModalOpen = !isFilterModalOpen; }
@@ -33,10 +48,10 @@
           <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
           </svg>
-          <input type="text" placeholder="Doctor name or specialty..." class="search-input" />
+          <input type="text" placeholder="Doctor name or specialty..." class="search-input" bind:value={localSearch} />
         </div>
         <!-- Button -->
-        <button class="search-btn" style="background:{brandColor}">Search</button>
+        <button class="search-btn" style="background:{brandColor}" on:click={() => localSearch = localSearch}>Search</button>
       </div>
 
       <!-- Specialty pills -->
@@ -123,7 +138,7 @@
       <!-- Results topbar -->
       <div class="results-topbar">
         <div>
-          <h2 class="results-count">{doctors.length} doctor{doctors.length !== 1 ? 's' : ''} found</h2>
+          <h2 class="results-count">{filteredDoctors.length} doctor{filteredDoctors.length !== 1 ? 's' : ''} found</h2>
           <p class="results-sub">in {provider?.name || 'your network'}</p>
         </div>
         <div class="topbar-actions">
@@ -187,7 +202,7 @@
 
       <!-- Doctor cards grid -->
       <div class="doctor-list">
-        {#each doctors as doctor (doctor?.alias_id)}
+        {#each filteredDoctors as doctor (doctor?.alias_id)}
           {#if doctor}
             <article class="doctor-card">
               <!-- Card Header: Avatar + Verified -->
@@ -255,8 +270,9 @@
           {/if}
         {/each}
 
-        <!-- Empty state -->
-        {#if doctors.length === 0}
+
+      <!-- Empty state -->
+        {#if filteredDoctors.length === 0}
           <div class="empty-state">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" class="empty-icon">
               <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 0 0-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 0 1 5.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 0 1 9.288 0M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
@@ -268,7 +284,7 @@
       </div>
 
       <!-- Pagination -->
-      {#if doctors.length > 0}
+      {#if filteredDoctors.length > 0}
         <div class="pagination">
           <button class="page-btn page-btn--nav" aria-label="Previous Page">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">

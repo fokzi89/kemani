@@ -83,7 +83,15 @@
       <div class="nav-right">
         <div class="search-bar">
           <Search class="w-4 h-4 text-outline" />
-          <input type="text" placeholder="Find a doctor..." />
+          <input 
+            type="text" 
+            placeholder="Find a doctor..." 
+            on:keydown={(e) => {
+              if (e.key === 'Enter') {
+                goto(`/doctors?q=${encodeURIComponent(e.currentTarget.value)}`);
+              }
+            }}
+          />
         </div>
 
         <div class="nav-actions">
