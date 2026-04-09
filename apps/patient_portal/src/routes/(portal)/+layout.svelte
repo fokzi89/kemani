@@ -88,7 +88,9 @@
             placeholder="Find a doctor..." 
             on:keydown={(e) => {
               if (e.key === 'Enter') {
-                goto(`/doctors?q=${encodeURIComponent(e.currentTarget.value)}`);
+                const q = encodeURIComponent(e.currentTarget.value);
+                const path = $page.url.pathname.includes('/pharmacies') ? '/pharmacies' : '/doctors';
+                goto(`${path}?q=${q}`);
               }
             }}
           />

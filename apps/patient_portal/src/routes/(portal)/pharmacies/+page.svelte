@@ -21,6 +21,13 @@
     if (city && cities.includes(city)) {
       selectedCity = city;
     }
+    
+    // If arriving with a search query, initialize
+    if (urlSearch) {
+      searchQuery = urlSearch;
+      handleSearchInput();
+    }
+
     // Also click out listener for suggestions
     const handleOutsideClick = (e: MouseEvent) => {
       if (!(e.target as Element).closest('.search-container')) {
@@ -66,9 +73,12 @@
           .or(`name.ilike.%${searchQuery}%,generic_name.ilike.%${searchQuery}%,manufacturer.ilike.%${searchQuery}%`, { foreignTable: 'products' })
           .eq('products.is_active', true)
           .gt('stock_quantity', 0)
-          .limit(15);
+          .limit(100);
         
         if (!error && data) {
+           // Update matching branch IDs for filtering
+           pharmacyIdsMatchingDrug = [...new Set(data.map(d => d.branch_id))];
+
            const grouped = new Map();
            data.forEach(d => {
              const prod = Array.isArray(d.products) ? d.products[0] : d.products;
@@ -86,6 +96,7 @@
       }, 400);
     } else {
       drugSuggestions = [];
+      pharmacyIdsMatchingDrug = [];
       isSearchingDrugs = false;
     }
   }
