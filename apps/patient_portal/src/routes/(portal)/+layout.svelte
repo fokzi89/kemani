@@ -230,7 +230,7 @@
   <!-- Floating Cart Icon -->
   {#if $cartTotalItems > 0}
     <a 
-      href="/checkout" 
+      href="/cart" 
       class="floating-cart" 
       in:fade={{ duration: 200 }} 
       out:fade={{ duration: 200 }}

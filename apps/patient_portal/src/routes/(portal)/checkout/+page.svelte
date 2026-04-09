@@ -265,14 +265,7 @@
                                             <span>₦{(item.price * item.quantity).toLocaleString()}</span>
                                         </div>
                                         <div class="item-bottom">
-                                            <div class="cart-qty-selector">
-                                                <button on:click={() => cartStore.updateQuantity(item.id, item.quantity - 1)}><Minus class="w-3 h-3" /></button>
-                                                <span>{item.quantity}</span>
-                                                <button on:click={() => cartStore.updateQuantity(item.id, item.quantity + 1)}><Plus class="w-3 h-3" /></button>
-                                            </div>
-                                            <button class="remove-btn" on:click={() => cartStore.removeItem(item.id)}>
-                                                <Trash2 class="w-4 h-4" />
-                                            </button>
+                                            <span class="qty-label">Qty: {item.quantity}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -385,12 +378,7 @@
     .item-top span { font-size: 0.8125rem; font-weight: 800; color: var(--brand); flex-shrink: 0; }
     .item-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 0.375rem; }
     
-    .cart-qty-selector { display: flex; align-items: center; gap: 0.5rem; background: white; padding: 0.2rem 0.375rem; border-radius: 0.4rem; border: 1px solid var(--outline-variant); }
-    .cart-qty-selector button { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; color: var(--on-surface-variant); }
-    .cart-qty-selector span { font-size: 0.75rem; font-weight: 700; min-width: 14px; text-align: center; }
-
-    .remove-btn { color: #ba1a1a; padding: 0.25rem; opacity: 0.6; transition: opacity 0.2s; }
-    .remove-btn:hover { opacity: 1; }
+    .qty-label { font-size: 0.75rem; font-weight: 700; color: var(--on-surface-variant); background: var(--surface-container-high); padding: 0.15rem 0.5rem; border-radius: 0.25rem; }
 
     .checkout-sidebar { position: sticky; top: 80px; }
     .summary-card { background: white; border-radius: 1rem; border: 1px solid var(--outline-variant); padding: 1.25rem; box-shadow: 0 6px 20px -5px rgba(0,0,0,0.06); }
