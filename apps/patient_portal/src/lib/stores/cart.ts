@@ -101,5 +101,5 @@ export const cartStore = {
 };
 
 // Derived stores
-export const cartTotalItems = derived(cart, $cart => $cart.items.reduce((acc, item) => acc + item.quantity, 0));
+export const cartTotalItems = derived(cart, $cart => $cart.items.length);
 export const cartTotalPrice = derived(cart, $cart => $cart.items.reduce((acc, item) => acc + (item.price * item.quantity), 0));
