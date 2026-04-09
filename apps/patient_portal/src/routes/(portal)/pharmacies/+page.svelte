@@ -71,7 +71,9 @@
           `)
           .in('branch_id', validBranchIds.length ? validBranchIds : ['00000000-0000-0000-0000-000000000000'])
           .or(`name.ilike.%${searchQuery}%,generic_name.ilike.%${searchQuery}%,manufacturer.ilike.%${searchQuery}%`, { foreignTable: 'products' })
+          .ilike('products.product_type', 'Drug')
           .eq('products.is_active', true)
+          .eq('is_active', true)
           .gt('stock_quantity', 0)
           .limit(100);
         
@@ -171,6 +173,7 @@
         )
       `)
       .eq('branch_id', pharmacy.branch_id)
+      .ilike('products.product_type', 'Drug')
       .eq('products.is_active', true)
       .eq('is_active', true)
       .gt('stock_quantity', 0)
