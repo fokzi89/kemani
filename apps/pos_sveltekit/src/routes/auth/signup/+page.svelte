@@ -48,10 +48,10 @@
 </svelte:head>
 
 <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4">
-	<div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
-		<div class="text-center mb-8">
-			<div class="inline-flex items-center justify-center w-14 h-14 bg-indigo-600 rounded-2xl mb-4">
-				<Store class="h-7 w-7 text-white" />
+	<div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-6 sm:p-8">
+		<div class="text-center mb-6">
+			<div class="inline-flex items-center justify-center w-12 h-12 bg-indigo-600 rounded-xl mb-3">
+				<Store class="h-6 w-6 text-white" />
 			</div>
 			<h1 class="text-2xl font-bold text-gray-900">Create your account</h1>
 			<p class="text-gray-500 mt-1 text-sm">Set up your Kemani POS in minutes</p>
@@ -68,7 +68,7 @@
 				</p>
 				<a 
 					href="/auth/login" 
-					class="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all shadow-lg shadow-blue-100"
+					class="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all shadow-md shadow-blue-100"
 				>
 					Back to Login
 				</a>
@@ -141,7 +141,7 @@
 				</div>
 
 				<button type="submit" disabled={loading}
-					class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-blue-100 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-2">
+					class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow-md shadow-blue-100 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-2">
 					{loading ? 'Creating account...' : 'Create Account'}
 				</button>
 			</form>
