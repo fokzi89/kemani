@@ -24,57 +24,75 @@
 			return;
 		}
 
-		// Create auth account
-		const { data: authData, error: authError } = await supabase.auth.signUp({
-			email: formData.email,
-			password: formData.password
-		});
+		try {
+			// Create auth account
+			const { data: authData, error: authError } = await supabase.auth.signUp({
+				email: formData.email,
+				password: formData.password
+			});
 
-		if (authError) {
-			error = authError.message;
-			loading = false;
-			return;
-		}
-
-		if (authData.user) {
-			// Create minimal provider profile
-			const nameForSlug = formData.fullName || formData.email.split('@')[0];
-			const slug = nameForSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substr(2, 6);
-
-			const { data: providerData, error: profileError } = await supabase
-				.from('healthcare_providers')
-				.insert({
-					user_id: authData.user.id,
-					full_name: formData.fullName || formData.email.split('@')[0],
-					slug,
-					email: formData.email,
-					type: 'doctor',
-					specialization: 'General Practice',
-					country: 'Nigeria',
-					fees: {
-						chat: 5000,
-						video: 10000,
-						audio: 8000
-					},
-					is_verified: false,
-					is_active: true
-				})
-				.select()
-				.single();
-
-			if (profileError) {
-				console.error('Provider profile creation error:', profileError);
-				error = 'Failed to create provider profile: ' + profileError.message;
+			if (authError) {
+				error = authError.message;
 				loading = false;
 				return;
 			}
 
-			console.log('Provider profile created successfully:', providerData);
+			if (authData.user) {
+				// Is it a fake user ID? (Supabase email enumeration protection)
+				if (authData.user.identities && authData.user.identities.length === 0) {
+					error = 'An account with this email address already exists. Please sign in instead.';
+					loading = false;
+					return;
+				}
 
-			// Small delay to ensure the profile is committed to the database
-			await new Promise(resolve => setTimeout(resolve, 1000));
+				// Create minimal provider profile
+				const nameForSlug = formData.fullName || formData.email.split('@')[0];
+				const slug = nameForSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substr(2, 6);
 
-			goto('/onboarding');
+				const { data: providerData, error: profileError } = await supabase
+					.from('healthcare_providers')
+					.insert({
+						user_id: authData.user.id,
+						full_name: formData.fullName || formData.email.split('@')[0],
+						slug,
+						email: formData.email,
+						type: 'doctor',
+						specialization: 'General Practice',
+						country: 'Nigeria',
+						fees: {
+							chat: 5000,
+							video: 10000,
+							audio: 8000
+						},
+						is_verified: false,
+						is_active: true
+					})
+					.select()
+					.single();
+
+				if (profileError) {
+					// Check if it's a conflict, although unique checks are mostly on slug.
+					console.error('Provider profile creation error:', profileError);
+					error = 'Failed to create provider profile: ' + profileError.message;
+					loading = false;
+					return;
+				}
+
+				console.log('Provider profile created successfully:', providerData);
+
+				// Small delay to ensure the profile is committed to the database
+				await new Promise(resolve => setTimeout(resolve, 1000));
+
+				goto('/onboarding');
+			} else {
+				// If user is null (Email enumeration protection returned empty)
+				error = 'An account with this email address already exists. Please log in.';
+				loading = false;
+			}
+		} catch (err: any) {
+			console.error("Signup exception:", err);
+			error = err?.message || 'An unexpected error occurred during signup.';
+			loading = false;
 		}
 	}
 </script>
