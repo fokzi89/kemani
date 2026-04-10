@@ -90,7 +90,7 @@
 
 			const result = await supabase
 				.from('healthcare_providers')
-				.select('id, medic_subscription_id, phone, profile_photo_url, specialization, country, clinic_address, bio')
+				.select('id, medic_subscription_id, phone, profile_photo_url, specialization, country, clinic_address, bio, \"offerChat\", \"offerAudio\", \"offersVideo\", \"offerOfficeVisit\"')
 				.eq('user_id', userId)
 				.maybeSingle();
 
@@ -135,6 +135,15 @@
 			const addr = existingProvider.clinic_address as any;
 			if (addr.street) clinicAddress = addr.street;
 			if (addr.city) city = addr.city;
+		}
+
+		if (existingProvider) {
+			let existingTypes = [];
+			if (existingProvider.offerChat) existingTypes.push('chat');
+			if (existingProvider.offerAudio) existingTypes.push('audio');
+			if (existingProvider.offersVideo) existingTypes.push('video');
+			if (existingProvider.offerOfficeVisit) existingTypes.push('office_visit');
+			if (existingTypes.length > 0) consultationTypes = existingTypes;
 		}
 
 		pageLoading = false;
@@ -219,11 +228,13 @@
 						specialization: specialization || 'General Practice',
 						country: country || 'Nigeria',
 						phone: phone,
-						fees: {
-							chat: 5000,
-							video: 10000,
-							audio: 8000
-						},
+						offerChat: consultationTypes.includes('chat'),
+						offerAudio: consultationTypes.includes('audio'),
+						offersVideo: consultationTypes.includes('video'),
+						offerOfficeVisit: consultationTypes.includes('office_visit'),
+						chatFee: 5000,
+						videoFee: 10000,
+						audioFee: 8000,
 						is_verified: false,
 						is_active: true
 					})
@@ -312,7 +323,10 @@
 					bio,
 					credentials,
 					years_of_experience: yearsOfExperience ? parseInt(yearsOfExperience) : 0,
-					consultation_types: consultationTypes,
+					offerChat: consultationTypes.includes('chat'),
+					offerAudio: consultationTypes.includes('audio'),
+					offersVideo: consultationTypes.includes('video'),
+					offerOfficeVisit: consultationTypes.includes('office_visit'),
 					medic_subscription_id: medicSubscriptionId,
 					updated_at: new Date().toISOString()
 				})

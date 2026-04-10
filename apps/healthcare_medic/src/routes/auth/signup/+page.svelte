@@ -59,11 +59,13 @@
 						type: 'doctor',
 						specialization: 'General Practice',
 						country: 'Nigeria',
-						fees: {
-							chat: 5000,
-							video: 10000,
-							audio: 8000
-						},
+						offerChat: true,
+						offersVideo: true,
+						offerAudio: true,
+						offerOfficeVisit: false,
+						chatFee: 5000,
+						videoFee: 10000,
+						audioFee: 8000,
 						is_verified: false,
 						is_active: true
 					})
