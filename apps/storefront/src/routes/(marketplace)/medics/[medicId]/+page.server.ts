@@ -1,42 +1,159 @@
 import { error } from '@sveltejs/kit';
 import { supabase } from '$lib/supabase';
 
-export async function load({ params, locals }) {
-	const medicId = params.medicId;
-	const tenantId = locals.referringTenantId;
+export async function load({ params, parent }) {
+  const { storefront: provider } = await parent();
+  const aliasId = params.medicId;
 
-	if (!tenantId) {
-		throw error(404, 'Storefront context not found');
-	}
+  // 1. Fetch the doctor alias details from the view
+  const { data: alias, error: aliasErr } = await supabase
+    .from('doctor_aliases_with_details')
+    .select('*')
+    .eq('alias_id', aliasId)
+    .single();
 
-	// Fetch tenant details for branding
-	const { data: tenant, error: tenantError } = await supabase
-		.from('tenants')
-		.select('id, name, brand_color')
-		.eq('id', tenantId)
-		.single();
+  let doctorInfo = null;
+  let useFallback = false;
 
-	if (tenantError || !tenant) {
-		throw error(404, 'Storefront context not found');
-	}
+  if (aliasErr || !alias) {
+    useFallback = true;
+  } else {
+    doctorInfo = {
+      alias_id: alias.alias_id,
+      doctor_id: alias.doctor_id,
+      display_name: alias.display_name || alias.actual_name || 'Specialist',
+      clinic_alias: alias.clinic_name || null,
+      specialization: alias.specialization || 'Medical Specialist',
+      sub_specialty: alias.sub_specialty,
+      experience: alias.years_of_experience,
+      rating: alias.average_rating,
+      reviews: alias.total_reviews || 0,
+      photo_url: alias.profile_photo_url,
+      bio: alias.bio || null,
+      is_verified: alias.is_verified,
+      brand_color: alias.brand_color || provider?.brand_color || null,
+      address: provider?.branches?.[0]?.address || provider?.address || 'Online Clinic',
+      city: provider?.city || 'Virtual',
+      follow_up_duration: provider?.follow_up_duration || 24,
+      slot_duration_minutes: provider?.slot_duration_minutes || 30,
+      fees: {
+        chat: alias.chatMarkUp,
+        audio: alias.audioMarkUp,
+        video: alias.videoMarkUp,
+        office: alias.officeMarkUp
+      },
+      services_offered: [
+        alias.offerChat ? 'chat' : null,
+        alias.offerAudio ? 'audio' : null,
+        alias.offersVideo ? 'video' : null,
+        alias.offerOfficeVisit ? 'office' : null
+      ].filter(Boolean)
+    };
+  }
 
-	// Fetch specific medic
-	const { data: medic, error: medicError } = await supabase
-		.from('healthcare_providers')
-		.select('*')
-		.eq('id', medicId)
-		.single();
+  if (useFallback) {
+    // Maybe it's the primary provider
+    const { data: primaryHcp } = await supabase
+      .from('healthcare_providers')
+      .select('*')
+      .eq('id', aliasId)
+      .single();
 
-	if (medicError || !medic) {
-		throw error(404, 'Medic not found');
-	}
+    if (!primaryHcp) {
+      throw error(404, 'Medic not found');
+    }
+    doctorInfo = {
+      alias_id: primaryHcp.id,
+      doctor_id: primaryHcp.id,
+      display_name: provider?.name || primaryHcp.full_name || 'Doctor',
+      clinic_alias: null,
+      specialization: primaryHcp.specialization || provider?.category || 'Medical Specialist',
+      sub_specialty: primaryHcp.sub_specialty,
+      experience: primaryHcp.years_of_experience,
+      rating: primaryHcp.average_rating || 0,
+      reviews: primaryHcp.total_reviews || 0,
+      photo_url: primaryHcp.profile_photo_url || provider?.logo_url,
+      bio: primaryHcp.bio,
+      is_verified: primaryHcp.is_verified,
+      follow_up_duration: primaryHcp.follow_up_duration || provider?.follow_up_duration || 24,
+      slot_duration_minutes: primaryHcp.slot_duration_minutes || provider?.slot_duration_minutes || 30,
+      services_offered: [
+        primaryHcp.offerChat ? 'chat' : null,
+        primaryHcp.offerAudio ? 'audio' : null,
+        primaryHcp.offersVideo ? 'video' : null,
+        primaryHcp.offerOfficeVisit ? 'office' : null
+      ].filter(Boolean).length > 0 ? [
+        primaryHcp.offerChat ? 'chat' : null,
+        primaryHcp.offerAudio ? 'audio' : null,
+        primaryHcp.offersVideo ? 'video' : null,
+        primaryHcp.offerOfficeVisit ? 'office' : null
+      ].filter(Boolean) : provider?.services_offered?.map((s: string) => s === 'voice' ? 'audio' : (s === 'office_visit' ? 'office' : s)) || ['chat', 'audio', 'video'],
+      fees: { 
+        chat: primaryHcp.chatMarkUp || primaryHcp.chatFee || provider?.fees?.chat || 5000, 
+        audio: primaryHcp.audioMarkUp || primaryHcp.audioFee || provider?.fees?.audio || 8000, 
+        video: primaryHcp.videoMarkUp || primaryHcp.videoFee || provider?.fees?.video || 10000,
+        office: primaryHcp.officeMarkUp || primaryHcp.officeFee || provider?.fees?.office_visit || 15000
+      },
+      address: primaryHcp.address || provider?.branches?.[0]?.address || 'Online Clinic',
+      city: primaryHcp.city || provider?.city || 'Virtual',
+      brand_color: primaryHcp.brand_color || provider?.brand_color
+    };
+  }
 
-	// Additional metadata format
-	return {
-		tenant: {
-			name: tenant.name,
-			brand_color: tenant.brand_color || '#4f46e5'
-		},
-		medic
-	};
+  const finalDoctorId = doctorInfo?.doctor_id;
+
+  // 2. Fetch Reviews
+  let doctorReviews: any[] = [];
+  if (finalDoctorId) {
+    const { data: fetchReviews } = await supabase
+      .from('healthcare_reviews')
+      .select('id, rating, comment, created_at, patient:patient_id(full_name)')
+      .eq('provider_id', finalDoctorId)
+      .eq('is_verified', true)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    
+    if (fetchReviews) {
+      doctorReviews = fetchReviews.map((r: any) => ({
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        created_at: r.created_at,
+        reviewer_name: r.patient?.full_name || 'Anonymous'
+      }));
+    }
+  }
+
+  // 3. Fetch Schedule
+  let schedule: any[] = [];
+  let bookedSlots: any[] = [];
+  
+  if (finalDoctorId) {
+    const { data: availData } = await supabase
+      .from('provider_availability_templates')
+      .select('*')
+      .eq('provider_id', finalDoctorId)
+      .eq('is_closed', false)
+      .order('day_of_week', { ascending: true });
+    
+    if (availData) schedule = availData;
+
+    const todayDate = new Date().toISOString().split('T')[0];
+    const { data: bSlots } = await supabase
+      .from('provider_time_slots')
+      .select('date, start_time, end_time, status')
+      .eq('provider_id', finalDoctorId)
+      .gte('date', todayDate)
+      .in('status', ['booked', 'in_progress', 'held_for_payment']);
+      
+    if (bSlots) bookedSlots = bSlots;
+  }
+
+  return {
+    provider,
+    doctor: doctorInfo,
+    doctorReviews,
+    schedule,
+    bookedSlots
+  };
 }

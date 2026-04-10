@@ -1,297 +1,762 @@
 <script lang="ts">
-	import { 
-		Stethoscope, ShieldCheck, Star, Clock, MapPin, 
-		Award, Calendar, Video, ArrowLeft, Send, User, ArrowRight 
-	} from 'lucide-svelte';
-	import { goto } from '$app/navigation';
+  import { onMount, tick } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+  import { supabase } from '$lib/supabase';
+  import { Star, MapPin, CheckCircle2, School, Award, Calendar, MessageSquare, ChevronRight, TrendingUp, Users } from 'lucide-svelte';
+  
+  export let data;
+  $: provider = data.provider;
+  $: doctor = data.doctor;
+  $: brandColor = doctor?.brand_color || provider?.brand_color || '#4f46e5';
+  $: reviews = data.doctorReviews || [];
+  $: schedule = data.schedule || [];
+  $: followUpDuration = doctor?.follow_up_duration || 24;
+  $: slotDuration = doctor?.slot_duration_minutes || 30;
 
-	export let data;
-	$: medic = data.medic;
-	$: tenant = data.tenant;
+  // Dynamic stats
+  $: stats = [
+    { label: 'Experience', value: `${doctor?.experience || 0}+ Years`, icon: TrendingUp },
+    { label: 'Reviews', value: doctor?.reviews?.toLocaleString() || '0', icon: Users },
+    { label: 'Rating', value: doctor?.rating?.toFixed(1) || '0.0', icon: Star }
+  ];
 
-	// Booking state
-	let consultationType = 'general_checkup';
-	let preferredDate = '';
-	let preferredTime = '';
-	let isBooking = false;
+  let activeTab = 'about';
+  const tabs = [
+    { id: 'about', label: 'About' },
+    { id: 'services', label: 'Services' },
+    { id: 'reviews', label: 'Reviews' },
+    { id: 'locations', label: 'Locations' }
+  ];
 
-	const consultationTypes = [
-		{ value: 'general_checkup', label: 'General Checkup', duration: '30 min', price: '₦10,000' },
-		{ value: 'follow_up', label: 'Follow-up Consultation', duration: '15 min', price: '₦5,000' },
-		{ value: 'prescription_renewal', label: 'Prescription Renewal', duration: '10 min', price: '₦2,500' },
-		{ value: 'specialist_review', label: 'Specialist Review', duration: '45 min', price: '₦25,000' }
-	];
+  // Auth State
+  let session: any = null;
+  onMount(async () => {
+    const { data: { session: curSession } } = await supabase.auth.getSession();
+    session = curSession;
+    
+    supabase.auth.onAuthStateChange((_event, curSession) => {
+      session = curSession;
+    });
+  });
 
-	$: selectedConsultation = consultationTypes.find(t => t.value === consultationType);
+  // Booking State
+  $: servicesOffered = doctor?.services_offered || ['chat'];
+  let selectedService = doctor?.services_offered?.[0] || 'chat';
+  
+  // Try to use marked up fees, otherwise calculate minimum fee
+  $: selectedFee = (doctor?.fees as any)?.[selectedService] || Math.min(...Object.values(doctor?.fees || {chat: 15000}).map(v => Number(v))) || 15000;
 
-	async function bookConsultation() {
-		isBooking = true;
-		setTimeout(() => {
-			alert(`Consultation booked successfully with ${medic.full_name || 'Dr.'}.`);
-			isBooking = false;
-			goto('/medics');
-		}, 1500);
-	}
+  let selectedDate: string | null = null;
+  let selectedTimes: string[] = [];
+  let availableSlots: string[] = [];
+  let isBooking = false;
+
+  // Sign-in modal state
+  let showSignInModal = false;
+
+  async function signInWithGoogle() {
+    const returnTo = encodeURIComponent(window.location.href); 
+    const callbackUrl = `${$page.url.origin}/auth/callback?next=${returnTo}`;
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: callbackUrl,
+        queryParams: { access_type: 'offline', prompt: 'consent' }
+      }
+    });
+  }
+
+  $: bookedList = data.bookedSlots || [];
+
+  function isSlotBooked(slot: string, date: string | null) {
+    if (!bookedList || !date) return false;
+    const [hh, mm] = slot.split(':').map(Number);
+    const m1 = hh * 60 + mm;
+    for (let b of bookedList) {
+      if (b.date === date) {
+         const [sh, sm] = b.start_time.split(':').map(Number);
+         const [eh, em] = b.end_time.split(':').map(Number);
+         const bsMins = sh * 60 + sm;
+         const beMins = eh * 60 + em;
+         if (m1 >= bsMins && m1 < beMins) return true;
+      }
+    }
+    return false;
+  }
+
+  function generateSlots(startTime: string, endTime: string, slotMins: number) {
+    if (!startTime || !endTime) return [];
+    const parseTime = (t: string) => {
+      const parts = t.split(':');
+      return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+    };
+    const startMins = parseTime(startTime);
+    const endMins = parseTime(endTime);
+    let slots = [];
+    for (let m = startMins; m < endMins; m += slotMins) {
+      const hh = Math.floor(m / 60).toString().padStart(2, '0');
+      const mm = (m % 60).toString().padStart(2, '0');
+      slots.push(`${hh}:${mm}`);
+    }
+    return slots;
+  }
+
+  function handleDateSelect(dayItem: any) {
+    if (!dayItem.isAvailable) return;
+    selectedDate = dayItem.dateString;
+    if (dayItem.scheduleRecord) {
+      availableSlots = generateSlots(dayItem.scheduleRecord.start_time, dayItem.scheduleRecord.end_time, dayItem.scheduleRecord.slot_duration || slotDuration);
+    } else {
+      availableSlots = [];
+    }
+    selectedTimes = [];
+  }
+
+  function handleTimeSelect(slot: string) {
+    if (isSlotBooked(slot, selectedDate)) return;
+
+    const idx = selectedTimes.indexOf(slot);
+    if (idx !== -1) {
+      if (idx === 0 || idx === selectedTimes.length - 1) {
+        selectedTimes = selectedTimes.filter(t => t !== slot);
+      } else {
+        selectedTimes = [slot];
+      }
+      return;
+    }
+
+    if (selectedTimes.length === 0) {
+      selectedTimes = [slot];
+      return;
+    }
+
+    const slotIdx = availableSlots.indexOf(slot);
+    const sortedIndices = selectedTimes.map(t => availableSlots.indexOf(t)).sort((a,b)=>a-b);
+    
+    if (slotIdx === sortedIndices[0] - 1 || slotIdx === sortedIndices[sortedIndices.length - 1] + 1) {
+      let newSelected = [...selectedTimes, slot];
+      selectedTimes = newSelected.sort((a,b) => availableSlots.indexOf(a) - availableSlots.indexOf(b));
+    } else {
+      selectedTimes = [slot];
+    }
+  }
+
+  $: selectedFeeTotal = Number(selectedFee) * (selectedTimes.length || 1);
+
+  const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  function getNextDates() {
+    let dates = [];
+    let today = new Date();
+    for (let i = 0; i < 7; i++) {
+       let d = new Date(today);
+       d.setDate(today.getDate() + i);
+       let dayName = daysOfWeek[d.getDay()];
+       let isoDate = d.toISOString().split('T')[0];
+       let avail = schedule.find((a: any) => a.day_name === dayName);
+       dates.push({
+         dateString: isoDate,
+         dayName,
+         dayShort: dayName.substring(0,3),
+         num: d.getDate(),
+         isAvailable: !!avail,
+         scheduleRecord: avail
+       });
+    }
+    return dates;
+  }
+  
+  $: nextDates = getNextDates();
+
+  const handleBooking = async () => {
+    if (!selectedService || !selectedDate || selectedTimes.length === 0) {
+      alert("Please select a consultation type, date and time slots.");
+      return;
+    }
+    
+    if (!session) {
+      showSignInModal = true;
+      return;
+    }
+
+    if (selectedTimes.length > 1) {
+      const confirmed = confirm(`Are you sure you want to book ${selectedTimes.length} consecutive slots?\nTotal Fee: ₦${selectedFeeTotal.toLocaleString()}`);
+      if (!confirmed) return;
+    }
+    
+    isBooking = true;
+    try {
+      const firstSlot = selectedTimes[0];
+      const lastSlot = selectedTimes[selectedTimes.length - 1];
+
+      const [hh, mm] = firstSlot.split(':').map(Number);
+      const start_time = `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}:00`;
+      
+      let dayObj = nextDates.find(d => d.dateString === selectedDate);
+      let ds = dayObj?.scheduleRecord?.slot_duration || slotDuration;
+
+      const [l_hh, l_mm] = lastSlot.split(':').map(Number);
+      let eMins = l_hh * 60 + l_mm + ds;
+      let e_hh = Math.floor(eMins / 60);
+      let e_mm = eMins % 60;
+      let end_time = `${e_hh.toString().padStart(2, '0')}:${e_mm.toString().padStart(2, '0')}:00`;
+
+      let totalDuration = ds * selectedTimes.length;
+
+      // 1. Insert time slot
+      const { error: slotError } = await supabase.from('provider_time_slots').insert({
+        provider_id: doctor.doctor_id,
+        date: selectedDate,
+        start_time,
+        end_time,
+        slot_duration: totalDuration,
+        consultation_type: selectedService,
+        status: 'booked'
+      });
+
+      if (slotError && slotError.code !== '23505') {
+        alert("Failed to confirm time slot: " + slotError.message);
+        return;
+      }
+
+      // 2. Insert consultation
+      const { data: consultData, error: consultError } = await supabase.from('consultations').insert({
+        provider_id: doctor.doctor_id,
+        patient_id: session.user.id,
+        tenant_id: provider.id,
+        type: selectedService,
+        status: 'pending',
+        scheduled_time: `${selectedDate}T${start_time}Z`,
+        slot_duration: totalDuration,
+        referral_source: 'storefront',
+        provider_name: doctor.display_name,
+        provider_photo_url: doctor.photo_url,
+        consultation_fee: selectedFeeTotal,
+        payment_status: 'pending'
+      }).select('id').single();
+
+      if (consultError) {
+        alert("Failed to create appointment: " + consultError.message);
+        return;
+      }
+
+      bookedList = [...bookedList, {
+          date: selectedDate,
+          start_time,
+          end_time,
+          status: 'booked'
+      }];
+
+      // Redirect into the storefront consultations management page
+      goto(`/consultations`);
+      selectedTimes = []; // reset selection
+    } catch (e: any) {
+      console.error(e);
+      alert("An unexpected error occurred during booking. " + (e?.message || ''));
+    } finally {
+      isBooking = false;
+    }
+  };
+
 </script>
 
-<svelte:head>
-	<title>{medic?.full_name || 'Expert'} | {tenant?.name || 'Healthcare'}</title>
-</svelte:head>
+<!-- Sign-In Modal -->
+{#if showSignInModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <div class="modal-backdrop" on:click={() => showSignInModal = false} role="presentation">
+    <div class="signin-modal" on:click|stopPropagation on:keydown|stopPropagation role="dialog" aria-modal="true" aria-labelledby="signin-title" tabindex="-1">
+      <button class="modal-close" on:click={() => showSignInModal = false} aria-label="Close">✕</button>
 
-<div class="medic-detail-page">
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">
-		
-		<!-- Back Link (Minimalist) -->
-		<nav class="breadcrumb">
-			<a href="/medics" class="back-link"><ArrowLeft class="w-3 h-3" /> All Professionals</a>
-			<span class="sep">/</span>
-			<span class="current">{medic?.specialization || 'Expert Profile'}</span>
-		</nav>
+      <div class="modal-logo" style="color: {brandColor};">
+        {#if provider?.logo_url}
+          <img src={provider.logo_url} alt={provider?.name} class="modal-provider-logo" />
+        {:else}
+          <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" class="w-10 h-10">
+            <path clip-rule="evenodd" d="M47.2426 24L24 47.2426L0.757355 24L24 0.757355L47.2426 24ZM12.2426 21H35.7574L24 9.24264L12.2426 21Z" fill="currentColor" fill-rule="evenodd"></path>
+          </svg>
+        {/if}
+      </div>
 
-		{#if medic}
-			<div class="profile-layout">
-				
-				<!-- Left Column: Portrait & Biography -->
-				<div class="profile-main">
-					<div class="expert-header">
-						<div class="expert-portrait-wrap">
-							{#if medic.profile_photo_url}
-								<img src={medic.profile_photo_url} alt={medic.full_name} class="expert-portrait" />
-							{:else}
-								<div class="expert-placeholder">
-									<Stethoscope class="h-20 w-20" />
-								</div>
-							{/if}
-						</div>
+      <h2 id="signin-title" class="modal-title">Sign in to book</h2>
+      <p class="modal-subtitle">You need an account to book a consultation with <strong>{doctor?.display_name}</strong>.</p>
 
-						<div class="expert-meta">
-							<div class="badges">
-								{#if medic.type}
-									<span class="badge badge-type">{medic.type}</span>
-								{/if}
-								{#if medic.is_verified}
-									<span class="badge badge-verified"><ShieldCheck class="w-3 h-3" /> Verified Expert</span>
-								{/if}
-							</div>
-							
-							<h1 class="expert-name">{medic.full_name}</h1>
-							<p class="expert-specialty">{medic.specialization}</p>
+      <button class="google-btn" on:click={signInWithGoogle}>
+        <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Continue with Google
+      </button>
 
-							<div class="expert-stats">
-								{#if medic.average_rating}
-									<div class="stat">
-										<Star class="stat-icon star" />
-										<div class="stat-text">
-											<p class="stat-val">{medic.average_rating}</p>
-											<p class="stat-label">Rating</p>
-										</div>
-									</div>
-								{/if}
-								{#if medic.years_of_experience}
-									<div class="stat">
-										<Clock class="stat-icon" />
-										<div class="stat-text">
-											<p class="stat-val">{medic.years_of_experience}y</p>
-											<p class="stat-label">Experience</p>
-										</div>
-									</div>
-								{/if}
-							</div>
-						</div>
-					</div>
+      <p class="modal-terms">By continuing, you agree to our Terms of Service and Privacy Policy.</p>
+    </div>
+  </div>
+{/if}
 
-					<div class="expert-content">
-						<section class="bio-section">
-							<h3 class="section-label">The Professional Journey</h3>
-							<div class="bio-text">
-								{#if medic.bio}
-									<p>{medic.bio}</p>
-								{:else}
-									<p>A distinguished healthcare professional dedicated to delivering excellence in medical care and holistic patient medics.</p>
-								{/if}
-							</div>
-						</section>
+<div class="profile-page">
+  <div class="layout-container">
+    <div class="grid-layout">
+      <!-- MAIN CONTENT -->
+      <div class="main-column">
+        <!-- Hero Section -->
+        <section class="hero-card">
+          <div class="hero-inner">
+            <div class="profile-image-container">
+              {#if doctor?.photo_url}
+                <img src={doctor.photo_url} alt={doctor.display_name} class="profile-img" />
+              {:else}
+                <div class="profile-img-placeholder" style="background: {brandColor}20; color: {brandColor};">
+                  {doctor?.display_name?.charAt(0) || 'D'}
+                </div>
+              {/if}
+              <span class="online-dot" title="Active"></span>
+            </div>
 
-						<!-- Logistics Panel -->
-						<div class="logistics-grid">
-							<div class="logistics-card">
-								<MapPin class="logistics-icon" />
-								<div>
-									<p class="logi-label">Clinical Location</p>
-									<p class="logi-val">{medic.location_served || 'Lagos, Nigeria'}</p>
-								</div>
-							</div>
-							<div class="logistics-card">
-								<Award class="logistics-icon" />
-								<div>
-									<p class="logi-label">Accreditation</p>
-									<p class="logi-val">Medical Board Certified</p>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
+            <div class="hero-info">
+              <div class="name-row">
+                <h1>{doctor?.display_name}</h1>
+                {#if doctor?.is_verified}
+                  <CheckCircle2 class="w-6 h-6" style="color: {brandColor};" fill={brandColor} />
+                {/if}
+              </div>
+              <p class="specialty-text" style="color: {brandColor};">{doctor?.specialization || 'Medical Specialist'}</p>
+              {#if doctor?.address}
+                <p class="location-text">
+                  <MapPin class="w-4 h-4" />
+                  {doctor.address} {doctor.city ? `, ${doctor.city}` : ''}
+                </p>
+              {/if}
 
-				<!-- Right Column: Booking & Consulting -->
-				<aside class="booking-sidebar">
-					<div class="booking-box">
-						<h2 class="booking-title">Book Consultation</h2>
-						<p class="booking-sub">Choose your consultation type and preferred schedule.</p>
+              <div class="stats-row">
+                {#each stats as stat}
+                  <div class="stat-item">
+                    <span class="stat-label">{stat.label}</span>
+                    <div class="stat-value-row">
+                      <span class="stat-value">{stat.value}</span>
+                      {#if stat.label === 'Rating'}
+                        <Star class="w-4 h-4 text-tertiary" fill="currentColor" />
+                      {/if}
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            </div>
+          </div>
+        </section>
 
-						<div class="consultation-selector">
-							{#each consultationTypes as type}
-								<button 
-									on:click={() => consultationType = type.value}
-									class="consult-item {consultationType === type.value ? 'active' : ''}"
-								>
-									<div class="consult-info">
-										<p class="consult-name">{type.label}</p>
-										<p class="consult-dur">{type.duration}</p>
-									</div>
-									<p class="consult-price">{type.price}</p>
-								</button>
-							{/each}
-						</div>
+        <!-- Tabs -->
+        <nav class="tabs-nav">
+          {#each tabs as tab}
+            <button 
+              class="tab-btn" 
+              class:active={activeTab === tab.id}
+              on:click={() => activeTab = tab.id}
+            >
+              {tab.label}
+            </button>
+          {/each}
+        </nav>
 
-						<div class="schedule-form">
-							<div class="input-group">
-								<label for="date" class="input-label">Preferred Date</label>
-								<input type="date" id="date" bind:value={preferredDate} class="input-field" />
-							</div>
-							<div class="input-group">
-								<label for="time" class="input-label">Preferred Time</label>
-								<input type="time" id="time" bind:value={preferredTime} class="input-field" />
-							</div>
-						</div>
+        <div class="tab-content">
+          {#if activeTab === 'about'}
+            <section class="content-section">
+              <h2>Biography</h2>
+              <div class="bio-container">
+                <p class="bio-text">
+                  {#if doctor?.bio}
+                    {doctor.bio}
+                  {:else}
+                    No information found
+                  {/if}
+                </p>
+              </div>
+            </section>
+          {/if}
 
-						<button 
-							on:click={bookConsultation}
-							disabled={isBooking}
-							class="btn-primary"
-						>
-							{#if isBooking}
-								<div class="loader-dot"></div> Processing...
-							{:else}
-								Confirm Consultation <ArrowRight class="btn-icon" />
-							{/if}
-						</button>
+          {#if activeTab === 'services'}
+            <section class="content-section">
+              <div class="flex-header">
+                <h2>Services Offered</h2>
+                <div class="header-badge" style="background: {brandColor}15; color: {brandColor};">
+                  Professional Consultations
+                </div>
+              </div>
+              <div class="services-vertical-list">
+                {#if doctor?.services_offered?.length}
+                  {#each doctor.services_offered as service}
+                    <div class="service-row">
+                      <div class="service-main-info">
+                        <div class="service-icon-box" style="background: {brandColor}10;">
+                          <CheckCircle2 class="w-5 h-5" style="color: {brandColor};" />
+                        </div>
+                        <div class="name-meta">
+                          <span class="service-name">{service}</span>
+                          <span class="service-tag">Professional Session</span>
+                        </div>
+                      </div>
+                      {#if doctor.fees && (doctor.fees as any)[service]}
+                        <div class="service-price">
+                          <span class="currency">₦</span>
+                          <span class="amount">{Number((doctor.fees as any)[service]).toLocaleString()}</span>
+                          <span class="price-suffix">/ session</span>
+                        </div>
+                      {/if}
+                    </div>
+                  {/each}
+                {:else}
+                  <div class="empty-state">
+                    <p class="text-on-surface-variant">General consultation and healthcare services.</p>
+                  </div>
+                {/if}
+              </div>
+            </section>
+          {/if}
 
-						<div class="payment-note">
-							<ShieldCheck class="note-icon" />
-							<span>Pay online securely via Paystack integrated checkout.</span>
-						</div>
-					</div>
-				</aside>
-			</div>
-		{/if}
-	</div>
+          {#if activeTab === 'reviews'}
+            <section class="content-section">
+              <div class="flex-header">
+                <h2>Patient Reviews</h2>
+                <button class="link-btn" style="color: {brandColor};">View All {doctor?.reviews || 0} Reviews</button>
+              </div>
+              <div class="reviews-stack">
+                {#if reviews.length > 0}
+                  {#each reviews as review}
+                    <div class="review-card">
+                      <div class="review-header">
+                        <div class="reviewer-info">
+                          <div class="reviewer-avatar" style="background: {brandColor}15; color: {brandColor};">
+                            {review.reviewer_name?.charAt(0) || 'P'}
+                          </div>
+                          <div>
+                            <p class="reviewer-name">{review.reviewer_name}</p>
+                            <p class="review-date">{new Date(review.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</p>
+                          </div>
+                        </div>
+                        <div class="rating-stars">
+                          {#each Array(5) as _, i}
+                            <Star 
+                              class="w-4 h-4 {i < review.rating ? 'text-tertiary' : 'text-outline-variant opacity-30'}" 
+                              fill={i < review.rating ? 'currentColor' : 'none'} 
+                            />
+                          {/each}
+                        </div>
+                      </div>
+                      <p class="review-body">"{review.comment}"</p>
+                    </div>
+                  {/each}
+                {:else}
+                  <div class="empty-reviews text-center py-12">
+                    <MessageSquare class="w-12 h-12 text-outline-variant mx-auto mb-4 opacity-50" />
+                    <p class="text-on-surface-variant">No reviews yet. Be the first to share your experience!</p>
+                  </div>
+                {/if}
+              </div>
+            </section>
+          {/if}
+
+          {#if activeTab === 'locations'}
+            <section class="content-section">
+              <h2>Our Locations</h2>
+              <div class="locations-grid">
+                {#if provider?.branches?.length}
+                  {#each provider.branches as branch}
+                    <div class="location-card">
+                      <div class="location-header">
+                        <MapPin class="w-5 h-5 text-brand" />
+                        <span class="location-city">{branch.city || 'Main'}</span>
+                      </div>
+                      <p class="location-details">{branch.name}</p>
+                      <p class="location-address">{branch.address}</p>
+                      <button class="dir-link" style="color: {brandColor};">Get Directions</button>
+                    </div>
+                  {/each}
+                {:else if provider?.address}
+                   <div class="location-card">
+                    <div class="location-header">
+                      <MapPin class="w-5 h-5 text-brand" />
+                      <span class="location-city">{provider.city || 'Main'}</span>
+                    </div>
+                    <p class="location-details">Primary Clinic</p>
+                    <p class="location-address">{provider.address}</p>
+                    <button class="dir-link" style="color: {brandColor};">Get Directions</button>
+                  </div>
+                {:else}
+                  <div class="empty-state">
+                    <p class="text-on-surface-variant">No location information found.</p>
+                  </div>
+                {/if}
+              </div>
+            </section>
+          {/if}
+        </div>
+      </div>
+
+      <!-- SIDEBAR -->
+      <aside class="sidebar-column">
+        <!-- Booking Widget -->
+        <div class="booking-widget">
+          <h3>Book Appointment</h3>
+          
+          <div class="booking-section">
+            <p class="picker-label">SELECT CONSULTATION TYPE</p>
+            <select class="type-dropdown" bind:value={selectedService} style="border: 1px solid black;">
+              {#each servicesOffered as type}
+                <option value={type}>{type.replace('_', ' ').toUpperCase()}</option>
+              {/each}
+            </select>
+          </div>
+
+          <div class="fee-card">
+            <p class="fee-label">{selectedService.replace('_', ' ')} Fee {selectedTimes.length > 1 ? `x${selectedTimes.length}` : ''}</p>
+            <p class="fee-value">₦{selectedFeeTotal.toLocaleString()}.00</p>
+          </div>
+
+          <div class="date-picker">
+            <p class="picker-label">CHOOSE DATE</p>
+            <div class="dates-row">
+              {#each nextDates as day}
+                <button 
+                  class="date-btn {selectedDate === day.dateString ? 'active' : ''} {!day.isAvailable ? 'disabled' : ''}" 
+                  style="{selectedDate === day.dateString ? `background: ${brandColor}; color: white;` : ''}"
+                  on:click={() => handleDateSelect(day)}
+                  disabled={!day.isAvailable}
+                >
+                  <span class="day">{day.dayShort}</span>
+                  <span class="num">{day.num}</span>
+                </button>
+              {/each}
+            </div>
+          </div>
+
+          {#if selectedDate && availableSlots.length > 0}
+            <div class="time-picker">
+              <p class="picker-label">CHOOSE TIME</p>
+              <div class="times-grid">
+                {#each availableSlots as slot}
+                  {@const booked = isSlotBooked(slot, selectedDate)}
+                  <button 
+                    class="time-btn {selectedTimes.includes(slot) ? 'active' : ''} {booked ? 'booked' : ''}"
+                    style="{booked ? 'background: #fee2e2; color: #ef4444; border-color: transparent; text-decoration: line-through; opacity: 0.6;' : (selectedTimes.includes(slot) ? `background: ${brandColor}20; color: ${brandColor}; border-color: ${brandColor};` : '')}"
+                    on:click={() => handleTimeSelect(slot)}
+                    disabled={booked}
+                  >
+                    {slot}
+                  </button>
+                {/each}
+              </div>
+            </div>
+          {/if}
+
+          {#if selectedDate && availableSlots.length === 0}
+            <p class="text-sm text-on-surface-variant text-center mb-4">No slots available on this date.</p>
+          {/if}
+
+          <button class="book-btn-main cta-gradient" style="background: {brandColor};" on:click={handleBooking} disabled={isBooking}>
+            {#if !session}
+              Sign in to Book
+            {:else if isBooking}
+              Booking...
+            {:else}
+              Complete Booking
+            {/if}
+            {#if !isBooking}
+              <Calendar class="w-5 h-5 ml-2" />
+            {/if}
+          </button>
+          
+
+
+          <p class="booking-note">Includes {followUpDuration}h follow-up duration window.</p>
+        </div>
+      </aside>
+    </div>
+  </div>
 </div>
 
 <style>
-	/* ─── TOKENS ─── */
-	:root {
-		--font-display: 'Playfair Display', Georgia, serif;
-		--font-body: 'Inter', -apple-system, sans-serif;
-		--surface: #faf9f6;
-		--on-surface: #1a1c1a;
-		--on-surface-muted: #6b7280;
-		--border: #f0eeea;
-		--accent: #785a1a;
-		--radius: 8px;
-	}
+  /* Sign-in Modal */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 1rem; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-	.medic-detail-page {
-		background: var(--surface);
-		color: var(--on-surface);
-		font-family: var(--font-body);
-		min-height: 100vh;
-	}
+  .signin-modal { background: white; border-radius: 1.5rem; padding: 2.5rem 2rem; max-width: 400px; width: 100%; position: relative; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); animation: slideUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-	/* ─── BREADCRUMB ─── */
-	.breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--on-surface-muted); margin-bottom: 3rem; }
-	.back-link { display: flex; align-items: center; gap: 6px; color: var(--on-surface); }
-	.sep { opacity: 0.4; }
+  .modal-close { position: absolute; top: 1rem; right: 1rem; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-container-high); color: var(--on-surface-variant); font-size: 0.875rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+  .modal-close:hover { background: var(--outline-variant); }
 
-	/* ─── LAYOUT ─── */
-	.profile-layout {
-		display: grid;
-		grid-template-columns: 1fr;
-		gap: 4rem;
-	}
-	@media (min-width: 1024px) {
-		.profile-layout { grid-template-columns: 1fr 360px; gap: 6rem; }
-	}
+  .modal-logo { display: flex; justify-content: center; margin-bottom: 1.25rem; }
+  .modal-provider-logo { width: 56px; height: 56px; border-radius: 1rem; object-fit: cover; border: 1px solid var(--outline-variant); }
 
-	/* ─── MAIN COLUMN ─── */
-	.profile-main { display: flex; flex-direction: column; gap: 4rem; }
-	.expert-header { display: flex; flex-direction: column; gap: 2.5rem; }
-	@media (min-width: 768px) { .expert-header { flex-direction: row; align-items: center; } }
+  .modal-title { font-size: 1.375rem; font-weight: 800; color: var(--on-surface); margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+  .modal-subtitle { font-size: 0.9rem; color: var(--on-surface-variant); margin-bottom: 2rem; line-height: 1.5; }
+  .modal-subtitle strong { color: var(--on-surface); }
 
-	.expert-portrait-wrap { 
-		width: 180px; aspect-ratio: 3/4; border-radius: var(--radius); 
-		background: #fff; border: 1px solid var(--border); overflow: hidden;
-		flex-shrink: 0;
-	}
-	.expert-portrait { width: 100%; height: 100%; object-fit: cover; }
-	.expert-placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #f3f4f6; }
+  .google-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 0.875rem 1.5rem; border-radius: 0.875rem; border: 1.5px solid var(--outline-variant); background: white; font-weight: 700; font-size: 0.9375rem; color: var(--on-surface); transition: all 0.2s; cursor: pointer; margin-bottom: 1.25rem; }
+  .google-btn:hover { background: var(--surface-container-low); box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
+  .google-icon { width: 20px; height: 20px; flex-shrink: 0; }
 
-	.expert-meta { display: flex; flex-direction: column; gap: 1rem; }
-	.badges { display: flex; gap: 8px; }
-	.badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 12px; border-radius: 4px; }
-	.badge-type { background: var(--on-surface); color: #fff; }
-	.badge-verified { background: #fff; border: 1px solid var(--border); color: #059669; display: flex; align-items: center; gap: 4px; }
+  .modal-terms { font-size: 0.75rem; color: var(--on-surface-variant); line-height: 1.5; }
 
-	.expert-name { font-family: var(--font-display); font-size: 3rem; font-weight: 500; line-height: 1; }
-	.expert-specialty { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.25em; color: var(--accent); }
+  .profile-page { padding: 3rem 0 6rem; background-color: var(--surface); min-height: 100vh; }
+  .grid-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 3rem; width: 100%; box-sizing: border-box; }
+  @media (min-width: 1024px) { .grid-layout { grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); } }
 
-	.expert-stats { display: flex; gap: 2.5rem; margin-top: 1rem; }
-	.stat { display: flex; align-items: center; gap: 12px; }
-	.stat-icon { width: 20px; height: 20px; color: #d1d5db; }
-	.stat-icon.star { color: #f59e0b; fill: currentColor; }
-	.stat-val { font-size: 15px; font-weight: 700; line-height: 1; }
-	.stat-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--on-surface-muted); letter-spacing: 0.05em; }
+  /* Hero Card */
+  .hero-card { background: var(--surface-container-lowest); border-radius: 1.25rem; padding: 1.5rem; border: 1px solid var(--outline-variant); }
+  .hero-inner { display: flex; flex-direction: column; gap: 2rem; }
+  @media (min-width: 640px) { .hero-inner { flex-direction: row; align-items: flex-start; } }
+  
+  .profile-image-container { position: relative; width: 110px; height: 110px; flex-shrink: 0; }
+  .profile-img { width: 100%; height: 100%; border-radius: 1rem; object-fit: cover; }
+  .profile-img-placeholder { width: 100%; height: 100%; border-radius: 1rem; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 800; font-family: var(--font-headline); }
+  .online-dot { position: absolute; bottom: -3px; right: -3px; width: 14px; height: 14px; background: #22c55e; border: 2.5px solid var(--surface-container-lowest); border-radius: 50%; }
 
-	.section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: var(--on-surface-muted); margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-	.bio-text { font-size: 15px; line-height: 1.8; color: var(--on-surface-muted); max-width: 600px; font-weight: 300; }
+  .hero-info { flex: 1; display: flex; flex-direction: column; }
+  .name-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+  .name-row h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; color: var(--on-surface); }
+  
+  .specialty-text { font-size: 0.9375rem; font-weight: 600; margin-bottom: 0.25rem; }
+  .location-text { display: flex; align-items: center; gap: 0.4rem; color: var(--on-surface-variant); font-size: 0.8125rem; margin-bottom: 1.25rem; }
+  
+  .stats-row { display: flex; gap: 1.25rem; border-top: 1px solid var(--outline-variant); padding-top: 1.25rem; margin-top: auto; }
+  .stat-item { flex: 1; }
+  .stat-label { font-size: 0.65rem; font-weight: 700; color: var(--on-surface-variant); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.15rem; display: block; }
+  .stat-value-row { display: flex; align-items: center; gap: 0.3rem; }
+  .stat-value { font-size: 1rem; font-weight: 800; color: var(--on-surface); }
 
-	.logistics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-top: 2rem; }
-	.logistics-card { padding: 1.5rem; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); display: flex; align-items: center; gap: 1rem; }
-	.logistics-icon { width: 24px; height: 24px; color: var(--accent); opacity: 0.6; }
-	.logi-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--on-surface-muted); margin-bottom: 2px; }
-	.logi-val { font-size: 13px; font-weight: 600; }
+  /* Tabs Nav */
+  .tabs-nav { display: flex; gap: 2.25rem; border-bottom: 1px solid var(--outline-variant); margin: 2.5rem 0; overflow-x: auto; scrollbar-width: none; }
+  .tabs-nav::-webkit-scrollbar { display: none; }
+  .tab-btn { padding-bottom: 0.85rem; font-weight: 700; font-size: 0.8125rem; color: var(--on-surface-variant); text-transform: uppercase; letter-spacing: 0.075em; position: relative; white-space: nowrap; border-bottom: 3px solid transparent; }
+  .tab-btn.active { color: var(--on-surface); border-bottom-color: var(--brand); }
 
-	/* ─── BOOKING SIDEBAR ─── */
-	.booking-sidebar { display: flex; flex-direction: column; }
-	.booking-box { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 2.5rem; position: sticky; top: 120px; }
-	.booking-title { font-family: var(--font-display); font-size: 1.75rem; font-weight: 500; margin-bottom: 0.5rem; }
-	.booking-sub { font-size: 13px; color: var(--on-surface-muted); margin-bottom: 2.5rem; line-height: 1.5; }
+  /* Main Columns */
+  .content-section { margin-bottom: 2.5rem; }
+  .content-section h2 { font-size: 1.25rem; font-weight: 800; margin-bottom: 1rem; color: var(--on-surface); }
+  .bio-text { color: var(--on-surface-variant); line-height: 1.6; font-size: 0.9375rem; }
 
-	.consultation-selector { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2.5rem; }
-	.consult-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid var(--border); border-radius: 6px; background: transparent; cursor: pointer; transition: all 0.2s; text-align: left; }
-	.consult-item.active { border-color: var(--on-surface); background: rgba(0,0,0,0.01); }
-	.consult-name { font-size: 12px; font-weight: 700; color: var(--on-surface); }
-	.consult-dur { font-size: 10px; color: var(--on-surface-muted); text-transform: uppercase; }
-	.consult-price { font-size: 13px; font-weight: 700; color: var(--on-surface); }
+  .services-vertical-list { display: flex; flex-direction: column; gap: 1.25rem; }
+  .service-row { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    background: var(--surface-container-lowest); 
+    padding: 1.25rem 1.75rem; 
+    border-radius: 1.25rem; 
+    border: 1px solid var(--outline-variant); 
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+  }
+  .service-row:hover { 
+    background: var(--surface-container-low);
+    border-color: var(--brand); 
+    transform: translateX(6px);
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+  }
+  .service-main-info { display: flex; align-items: center; gap: 1.25rem; }
+  .service-icon-box { 
+    width: 44px; 
+    height: 44px; 
+    border-radius: 0.875rem; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+  }
+  .name-meta { display: flex; flex-direction: column; gap: 0.15rem; }
+  .service-name { font-weight: 800; font-size: 1.125rem; color: var(--on-surface); text-transform: capitalize; letter-spacing: -0.01em; }
+  .service-tag { font-size: 0.75rem; font-weight: 600; color: var(--on-surface-variant); opacity: 0.8; }
+  
+  .service-price { display: flex; align-items: baseline; gap: 0.2rem; color: var(--on-surface); }
+  .service-price .currency { font-size: 1rem; font-weight: 700; color: var(--on-surface-variant); }
+  .service-price .amount { font-size: 1.5rem; font-weight: 900; letter-spacing: -0.03em; color: var(--on-surface); }
+  .service-price .price-suffix { font-size: 0.8125rem; font-weight: 600; color: var(--on-surface-variant); opacity: 0.7; margin-left: 0.25rem; }
 
-	.schedule-form { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2.5rem; }
-	.input-group { display: flex; flex-direction: column; gap: 0.4rem; }
-	.input-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--on-surface-muted); }
-	.input-field { border: none; border-bottom: 1px solid var(--border); padding: 8px 0; font-size: 13px; font-weight: 600; background: transparent; outline: none; }
-	.input-field:focus { border-color: var(--on-surface); }
+  .header-badge { padding: 0.4rem 0.85rem; border-radius: 99px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
 
-	.btn-primary {
-		width: 100%; padding: 18px; border: none; border-radius: 6px;
-		background: var(--on-surface); color: #fff;
-		font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em;
-		display: flex; align-items: center; justify-content: center; gap: 8px;
-		cursor: pointer; transition: background 0.2s;
-	}
-	.btn-primary:hover { background: #000; }
-	.btn-primary:disabled { opacity: 0.5; }
+  .reviews-stack { display: flex; flex-direction: column; gap: 1.25rem; }
+  .review-card { background: var(--surface-container-lowest); border: 1px solid var(--outline-variant); padding: 2rem; border-radius: 1.25rem; }
+  .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
+  .reviewer-info { display: flex; align-items: center; gap: 1rem; }
+  .reviewer-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--secondary-container); color: var(--on-secondary-container); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; }
+  .reviewer-name { font-weight: 700; font-size: 1.0625rem; color: var(--on-surface); }
+  .review-date { font-size: 0.8125rem; color: var(--on-surface-variant); }
+  .rating-stars { display: flex; gap: 2px; }
+  .review-body { color: var(--on-surface-variant); line-height: 1.7; font-size: 1rem; }
 
-	.payment-note { margin-top: 1.5rem; display: flex; align-items: start; gap: 8px; font-size: 10px; color: var(--on-surface-muted); line-height: 1.4; font-weight: 500; }
-	.note-icon { width: 14px; height: 14px; flex-shrink: 0; color: #059669; }
+  .locations-grid { display: grid; grid-template-columns: 1fr; gap: 1.25rem; }
+  @media (min-width: 640px) { .locations-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); } }
+  .location-card { background: white; border: 1px solid var(--outline-variant); padding: 1.5rem; border-radius: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .location-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+  .location-city { font-weight: 700; color: var(--on-surface); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .location-details { font-weight: 700; color: var(--on-surface); font-size: 1rem; }
+  .location-address { font-size: 0.9375rem; color: var(--on-surface-variant); margin-bottom: 1rem; }
+  .dir-link { font-weight: 700; font-size: 0.875rem; text-align: left; }
 
-	.loader-dot { width: 8px; height: 8px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
-	@keyframes spin { to { transform: rotate(360deg); } }
+  /* Sidebar */
+  .booking-widget { 
+    background: var(--surface-container-lowest, #ffffff); 
+    border: 1px solid var(--outline-variant, #e5e7eb); 
+    padding: 1.25rem; 
+    border-radius: 1rem; 
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); 
+    width: 100%; 
+    max-width: 100%; 
+    box-sizing: border-box; 
+    z-index: 10;
+  }
+  @media (min-width: 1024px) {
+    .booking-widget {
+      position: sticky;
+      top: 100px;
+    }
+  }
+  @media (max-width: 640px) {
+    .booking-widget { padding: 1rem; margin: 0 auto; }
+  }
+  .booking-widget h3 { margin-bottom: 1rem; font-size: 1rem; font-weight: 800; color: var(--on-surface); }
+  
+  .fee-card { background: var(--surface-container-low); padding: 0.85rem; border-radius: 0.75rem; margin-bottom: 1.25rem; border: 1px solid rgba(0,0,0,0.03); }
+  .fee-label { font-size: 0.75rem; color: var(--on-surface-variant); margin-bottom: 0.15rem; font-weight: 500; }
+  .fee-value { font-size: 1.25rem; font-weight: 800; color: var(--on-surface); letter-spacing: -0.01em; }
+  
+  .picker-label { font-size: 0.75rem; font-weight: 700; color: var(--on-surface-variant); text-transform: uppercase; letter-spacing: 0.125em; margin-bottom: 0.75rem; }
+  .booking-section { margin-bottom: 1.25rem; }
+  .type-dropdown { width: 100%; padding: 0.75rem 1rem; border-radius: 0.75rem; border: 2px solid var(--outline-variant); background: var(--surface-container-high); color: var(--on-surface); font-weight: 700; font-size: 0.9375rem; outline: none; transition: all 0.2s; cursor: pointer; text-transform: capitalize; appearance: auto; -webkit-appearance: auto; }
+  .type-dropdown:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(0,0,0,0.05); }
+
+  .dates-row { display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.75rem; margin-bottom: 1.25rem; max-width: 100%; -webkit-overflow-scrolling: touch; }
+  @media (max-width: 480px) {
+    .dates-row { gap: 0.5rem; }
+  }
+  .dates-row::-webkit-scrollbar { height: 4px; }
+  .dates-row::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 4px; }
+  
+  .date-btn { min-width: 60px; height: 72px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--surface-container-high); border-radius: 1rem; border: 1px solid transparent; transition: all 0.2s; cursor: pointer; }
+  .date-btn:hover:not(.disabled) { background: var(--outline-variant); }
+  .date-btn.active { border-color: transparent; }
+  .date-btn.disabled { opacity: 0.4; cursor: not-allowed; background: var(--surface-container); }
+  .date-btn .day { font-size: 0.75rem; font-weight: 600; opacity: 0.8; }
+  .date-btn .num { font-size: 1.125rem; font-weight: 800; }
+
+  .time-picker { margin-bottom: 1.5rem; }
+  .times-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; max-height: 400px; overflow-y: auto; padding-right: 0.5rem; }
+  @media (max-width: 400px) {
+    .times-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  .times-grid::-webkit-scrollbar { width: 4px; }
+  .times-grid::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 4px; }
+  .time-btn { padding: 0.6rem; border-radius: 0.6rem; font-weight: 700; font-size: 0.875rem; background: var(--surface-container-high); color: var(--on-surface); border: 1px solid transparent; transition: all 0.2s; }
+  .time-btn:hover { background: var(--outline-variant); }
+  .time-btn.active { border: 1px solid var(--brand); }
+
+  .book-btn-main { width: 100%; display: flex; align-items: center; justify-content: center; padding: 1rem; border-radius: 0.875rem; color: white; font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2); transition: all 0.2s; cursor: pointer; }
+  .book-btn-main:hover { transform: translateY(-2px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); }
+  .booking-note { text-align: center; font-size: 0.8125rem; color: var(--on-surface-variant); font-style: italic; margin-top: 1.5rem; }
+
+  .flex-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+  .link-btn { font-size: 0.875rem; font-weight: 700; }
+  .link-btn:hover { text-decoration: underline; }
 </style>
