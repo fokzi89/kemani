@@ -220,13 +220,13 @@
 			<div class="flex border-b border-gray-200 bg-white rounded-t-2xl px-6 pt-2 overflow-x-auto whitespace-nowrap scrollbar-hide">
 				<button 
 					onclick={() => activeTab = 'patient'}
-					class="flex items-center gap-2 px-6 py-4 text-sm font-bold border-b-2 transition-all {activeTab === 'patient' ? 'border-purple-700 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-700'}"
+					class="flex items-center gap-2 px-6 py-4 text-sm font-bold border-b-2 transition-all {activeTab === 'patient' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}"
 				>
 					<UserPlus class="h-4 w-4" /> Patient Details
 				</button>
 				<button 
 					onclick={() => activeTab = 'request'}
-					class="flex items-center gap-2 px-6 py-4 text-sm font-bold border-b-2 transition-all {activeTab === 'request' ? 'border-purple-700 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-700'}"
+					class="flex items-center gap-2 px-6 py-4 text-sm font-bold border-b-2 transition-all {activeTab === 'request' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}"
 				>
 					<FlaskConical class="h-4 w-4" /> Request Test ({selectedTests.length})
 				</button>
@@ -302,7 +302,7 @@
 										<input type="tel" bind:value={newPatientForm.phone} placeholder="e.g. 08012345678" class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-purple-500" />
 									</div>
 									<div class="sm:col-span-2">
-										<button onclick={createNewPatient} disabled={isCreatingPatient} class="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white font-extrabold rounded-xl transition-all flex justify-center items-center gap-2 transform active:scale-[0.98]">
+										<button onclick={createNewPatient} disabled={isCreatingPatient} class="w-full py-4 bg-gray-900 hover:bg-black text-white font-extrabold rounded-xl transition-all flex justify-center items-center gap-2 transform active:scale-[0.98]">
 											{isCreatingPatient ? 'Creating Profile...' : 'Save Patient Profile'}
 										</button>
 									</div>
@@ -337,22 +337,15 @@
 							</div>
 						</section>
 
-						<div class="flex justify-end pt-4">
-							<button 
-								onclick={() => activeTab = 'request'}
-								class="px-8 py-4 bg-purple-600 text-white font-extrabold rounded-xl hover:bg-purple-700 transition-all flex items-center gap-2 shadow-lg shadow-purple-100"
-							>
-								Next: Select Tests <ArrowLeft class="h-4 w-4 rotate-180" />
-							</button>
-						</div>
+
 					</div>
 
 				{:else if activeTab === 'request'}
 					<div class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
 						<div class="flex items-center justify-between">
 							<h2 class="text-lg font-bold text-gray-900">Select Investigations</h2>
-							<button onclick={() => testModalOpen = true} class="px-5 py-2.5 bg-purple-100 text-purple-900 hover:bg-purple-200 font-extrabold rounded-xl transition-all flex items-center gap-2 text-sm shadow-sm">
-								<Plus class="h-4 w-4 text-purple-700" /> Browse Catalog
+							<button onclick={() => testModalOpen = true} class="px-5 py-2.5 bg-gray-100 text-gray-900 hover:bg-gray-200 font-extrabold rounded-xl transition-all flex items-center gap-2 text-sm shadow-sm">
+								<Plus class="h-4 w-4" /> Browse Catalog
 							</button>
 						</div>
 
@@ -384,26 +377,19 @@
 							{/if}
 						</div>
 
-						<div class="flex justify-between pt-4">
-							<button 
-								onclick={() => activeTab = 'patient'}
-								class="px-6 py-3 text-gray-600 font-bold rounded-xl hover:bg-gray-100 transition-all flex items-center gap-2"
-							>
-								<ArrowLeft class="h-4 w-4" /> Back to Patient
-							</button>
-						</div>
+
 					</div>
 				{/if}
 			</div>
 
 			<!-- Sticky Bottom Bar -->
-			<div class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t p-4 z-40 border-gray-200">
+			<div class="fixed bottom-0 left-0 lg:left-64 right-0 bg-white/90 backdrop-blur-md border-t p-4 z-40 border-gray-200">
 				<div class="max-w-4xl mx-auto flex flex-col sm:flex-row gap-3">
-					<button onclick={() => submitRequest('draft')} disabled={submitting} class="flex-1 px-6 py-4 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-2xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
-						<Save class="h-5 w-5" /> Save as Draft
+					<button onclick={() => submitRequest('draft')} disabled={submitting} class="flex-1 px-4 py-2.5 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm">
+						<Save class="h-4 w-4" /> Save as Draft
 					</button>
-					<button onclick={() => submitRequest('pending')} disabled={submitting} class="flex-[2] px-6 py-4 bg-purple-600 text-white font-extrabold rounded-2xl hover:bg-purple-700 transition-all shadow-xl shadow-purple-200 flex items-center justify-center gap-2 disabled:opacity-50">
-						<CheckCircle2 class="h-5 w-5" /> {submitting ? 'Processing Request...' : 'Finalize & Send Request'}
+					<button onclick={() => submitRequest('pending')} disabled={submitting} class="flex-[1.5] px-4 py-2.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 text-sm">
+						<CheckCircle2 class="h-4 w-4" /> {submitting ? 'Processing Request...' : 'Finalize & Send Request'}
 					</button>
 				</div>
 			</div>
@@ -471,7 +457,7 @@
 			</div>
 
 			<div class="p-6 border-t bg-gray-50 flex justify-end shrink-0">
-				<button onclick={() => testModalOpen = false} class="px-8 py-3 bg-purple-600 text-white font-extrabold rounded-2xl hover:bg-purple-700 shadow-lg shadow-purple-100 transition-all">
+				<button onclick={() => testModalOpen = false} class="px-8 py-3 bg-gray-900 text-white font-extrabold rounded-2xl hover:bg-black shadow-lg shadow-gray-200 transition-all">
 					Done Selecting
 				</button>
 			</div>

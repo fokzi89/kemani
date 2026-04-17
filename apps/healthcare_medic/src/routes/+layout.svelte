@@ -214,7 +214,7 @@
 			<p class="mt-4 text-gray-600">Loading...</p>
 		</div>
 	</div>
-{:else if user && provider && !$page.url.pathname.startsWith('/onboarding') && !$page.url.pathname.startsWith('/lab-requests/add') && !$page.url.pathname.startsWith('/lab-requests/edit')}
+{:else if user && provider && !$page.url.pathname.startsWith('/onboarding')}
 	<!-- Provider Dashboard Layout with Sidebar -->
 	<div class="min-h-screen bg-gray-50 flex">
 		<!-- Desktop Sidebar - Always visible on lg+ screens -->
