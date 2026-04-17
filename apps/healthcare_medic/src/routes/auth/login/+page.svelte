@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { supabase } from '$lib/supabase';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 	import { ArrowLeft, Moon, Mail, Lock, Eye, EyeOff } from 'lucide-svelte';
 
 	let email = $state('');
@@ -8,6 +10,12 @@
 	let loading = $state(false);
 	let error = $state('');
 	let showPassword = $state(false);
+
+	onMount(() => {
+		if ($page.url.searchParams.get('reason') === 'timeout') {
+			error = 'You were securely logged out due to inactivity. Please log back in to continue where you left off.';
+		}
+	});
 
 	async function handleLogin(e: Event) {
 		e.preventDefault();

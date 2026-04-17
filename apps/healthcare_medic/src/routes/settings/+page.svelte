@@ -52,6 +52,7 @@
 	// Time slot settings
 	let slotDuration = $state(30); // minutes
 	let bufferTime = $state(0); // minutes between appointments
+	let idleTimeoutMinutes = $state(30); // minutes for auto-logout
 	let followUpDuration = $state(24); // hours for follow-up after consultation
 	let slotSettings = $state({
 		duration: 30,
@@ -197,6 +198,7 @@
 			// Load time slot settings from new columns
 			slotDuration = provider?.slot_duration_minutes || 30;
 			bufferTime = provider?.buffer_time_minutes || 0;
+			idleTimeoutMinutes = provider?.idle_timeout_minutes || 30;
 
 			// Load follow up duration
 			followUpDuration = provider?.follow_up_duration || 24;
@@ -365,6 +367,7 @@
 			const updateData = {
 				slot_duration_minutes: Number(slotDuration),
 				buffer_time_minutes: Number(bufferTime),
+				idle_timeout_minutes: Number(idleTimeoutMinutes),
 				follow_up_duration: Number(followUpDuration)
 			};
 			
@@ -1213,6 +1216,33 @@
 								class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
 							/>
 							<p class="mt-1 text-xs text-gray-500">Hours allowed for patient follow-up after consultation (1-168 hours)</p>
+						</div>
+
+						<!-- Inactivity Timeout -->
+						<div class="mt-4">
+							<label for="idle-timeout" class="block text-sm font-medium text-gray-700 mb-2">
+								Inactivity Timeout (Minutes)
+							</label>
+							<div class="flex items-center gap-4">
+								<input
+									type="range"
+									id="idle-timeout-range"
+									bind:value={idleTimeoutMinutes}
+									min="1"
+									max="60"
+									step="1"
+									class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+								/>
+								<input
+									type="number"
+									id="idle-timeout"
+									bind:value={idleTimeoutMinutes}
+									min="1"
+									max="60"
+									class="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-center"
+								/>
+							</div>
+							<p class="mt-1 text-xs text-gray-500">Automatically logout after being inactive for this many minutes (1-60 mins)</p>
 						</div>
 					</div>
 

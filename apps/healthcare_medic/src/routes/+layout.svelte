@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, afterNavigate } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { supabase } from '$lib/supabase';
 	import {
@@ -28,6 +28,56 @@
 	let provider = $state<any>(null);
 	let loading = $state(true);
 	let mobileDrawerOpen = $state(false);
+
+	// Global Idle tracking
+	let globalIdleTimer: ReturnType<typeof setTimeout>;
+	let idleTimeoutMs = $state(30 * 60 * 1000); // 30 mins default
+
+	$effect(() => {
+		if (typeof window !== 'undefined') {
+			if (provider && provider.idle_timeout_minutes) {
+				idleTimeoutMs = provider.idle_timeout_minutes * 60 * 1000;
+				setupGlobalIdleTracking();
+			} else if (user) {
+				setupGlobalIdleTracking();
+			} else {
+				cleanupGlobalIdleTracking();
+			}
+		}
+		
+		return () => {
+			cleanupGlobalIdleTracking();
+		};
+	});
+
+	function resetGlobalIdleTimer() {
+		if ($page.url.pathname.startsWith('/auth')) return;
+		if (!user) return;
+
+		if (globalIdleTimer) clearTimeout(globalIdleTimer);
+		globalIdleTimer = setTimeout(async () => {
+			await supabase.auth.signOut();
+			goto('/auth/login?reason=timeout');
+		}, idleTimeoutMs);
+	}
+
+	function setupGlobalIdleTracking() {
+		cleanupGlobalIdleTracking();
+		resetGlobalIdleTimer();
+		
+		if (typeof window !== 'undefined') {
+			const events = ['mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+			events.forEach(evt => window.addEventListener(evt, resetGlobalIdleTimer));
+		}
+	}
+
+	function cleanupGlobalIdleTracking() {
+		if (globalIdleTimer) clearTimeout(globalIdleTimer);
+		if (typeof window !== 'undefined') {
+			const events = ['mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+			events.forEach(evt => window.removeEventListener(evt, resetGlobalIdleTimer));
+		}
+	}
 
 	// Full navigation for desktop sidebar and mobile drawer
 	const fullNavigation = [
@@ -135,6 +185,19 @@
 		});
 	});
 
+	afterNavigate(async ({ from }) => {
+		if (from?.url.pathname.startsWith('/onboarding') && user) {
+			const { data: providerData } = await supabase
+				.from('healthcare_providers')
+				.select('*')
+				.eq('user_id', user.id)
+				.single();
+			if (providerData) {
+				provider = providerData;
+			}
+		}
+	});
+
 	async function handleLogout() {
 		await supabase.auth.signOut();
 	}
@@ -210,7 +273,7 @@
 		</aside>
 
 		<!-- Main Content Area -->
-		<div class="flex-1 flex flex-col">
+		<div class="flex-1 flex flex-col min-w-0">
 			<!-- Mobile Header -->
 			<header class="lg:hidden bg-white border-b border-gray-200 h-16 flex items-center px-4 sticky top-0 z-40">
 				<button
@@ -227,7 +290,7 @@
 			</header>
 
 			<!-- Main Content -->
-			<main class="flex-1 overflow-y-auto pb-20 lg:pb-0">
+			<main class="flex-1 overflow-y-auto overflow-x-hidden pb-20 lg:pb-0 min-w-0">
 				<slot />
 			</main>
 

@@ -29,39 +29,431 @@
 	// Stage 3: Additional Settings
 	let credentials = $state('');
 	let yearsOfExperience = $state('');
+	let licenseNumber = $state('');
+	let licenseDocumentUrl = $state('');
+	let licenseDocumentFile = $state<File | null>(null);
+	let subSpecialty = $state('');
+	let languagesSpoken = $state('');
 	let consultationTypes = $state<string[]>(['chat']);
 
+	// Auto-save form draft to localStorage
+	$effect(() => {
+		if (typeof window !== 'undefined' && !pageLoading && userId) {
+			const draftState = {
+				currentStage, phone, specialization, country, clinicAddress, city, region, bio, credentials, yearsOfExperience, licenseNumber, subSpecialty, languagesSpoken, consultationTypes
+			};
+			localStorage.setItem(`onboarding_draft_${userId}`, JSON.stringify(draftState));
+		}
+	});
+
+	// Idle handling variables
+	let idleTimer: ReturnType<typeof setTimeout>;
+	const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+
+	function resetIdleTimer() {
+		if (idleTimer) clearTimeout(idleTimer);
+		idleTimer = setTimeout(async () => {
+			await supabase.auth.signOut();
+			goto('/auth/login?reason=timeout');
+		}, IDLE_TIMEOUT_MS);
+	}
+
+	function setupIdleTracking() {
+		resetIdleTimer();
+		const events = ['mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+		events.forEach(evt => window.addEventListener(evt, resetIdleTimer));
+		return () => {
+			events.forEach(evt => window.removeEventListener(evt, resetIdleTimer));
+			if (idleTimer) clearTimeout(idleTimer);
+		};
+	}
+
 	const specializations = [
-		'General Practice',
-		'Internal Medicine',
-		'Pediatrics',
-		'Obstetrics & Gynecology',
-		'Surgery',
-		'Cardiology',
-		'Dermatology',
-		'Psychiatry',
-		'Orthopedics',
-		'Ophthalmology',
-		'ENT (Ear, Nose & Throat)',
-		'Neurology',
-		'Urology',
-		'Radiology',
-		'Pharmacy',
-		'Laboratory Medicine',
-		'Other'
+		'Aboriginal and Torres Strait Islander health worker',
+		'Acupuncturist',
+		'Addiction medicine specialist',
+		'Anaesthetist',
+		'Anaesthetist and intensive care medicine specialist',
+		'Anatomic pathologist',
+		'Arts therapist',
+		'Audiologist',
+		'Cardiologist',
+		'Cardiothoracic surgeon',
+		'Child and adolescent psychiatrist',
+		'Chinese herbal dispenser',
+		'Chinese herbal medicine practitioner',
+		'Chinese medicine practitioner',
+		'Chiropractor',
+		'Clinical geneticist',
+		'Clinical haematologist',
+		'Clinical immunologist',
+		'Clinical pharmacologist',
+		'Clinical psychologist',
+		'Community health physician',
+		'Consultant gynaecology and obstetrics',
+		'Cytopathologist',
+		'Dental hygienist',
+		'Dental prosthetist',
+		'Dentist',
+		'Dermatologist',
+		'Diabetes educator',
+		'Diagnostic radiographer',
+		'Diagnostic radiologist',
+		'Ear, nose and throat surgeon',
+		'Educational psychologist',
+		'Emergency department physician',
+		'Endocrinologist',
+		'Endodontist',
+		'Enrolled nurse',
+		'Exercise physiologist',
+		'Forensic pathologist',
+		'Gastroenterologist and hepatologist',
+		'General pathologist',
+		'General physician',
+		'General practitioner',
+		'General surgeon',
+		'Geriatrics specialist',
+		'Gynaecologic oncologist',
+		'Haematologist',
+		'Histopathologist',
+		'Infectious disease specialist',
+		'Intensive care specialist',
+		'Massage Therapist',
+		'Maternal-fetal medicine specialist',
+		'Medical doctor',
+		'Medical microbiologist',
+		'Medical officer',
+		'Medical oncologist',
+		'Medical pathologist',
+		'Medical radiation practitioner',
+		'Medical radiographer',
+		'Mental health nurse',
+		'Music therapist',
+		'Myotherapist',
+		'Neonatologist',
+		'Nephrologist',
+		'Neurologist',
+		'Neurosurgeon',
+		'Nuclear medicine specialist',
+		'Nuclear medicine technologist',
+		'Obstetrician and gynaecologist',
+		'Occupation medicine specialist',
+		'Occupational and environmental physician',
+		'Occupational therapist',
+		'Ophthalmologist',
+		'Optometrist',
+		'Oral and maxillofacial radiologist',
+		'Oral and maxillofacial surgeon',
+		'Oral health therapist',
+		'Oral medicine specialist',
+		'Oral pathologist',
+		'Orthodontist',
+		'Orthopaedic surgeon',
+		'Orthoptist',
+		'Orthotist and prosthetist',
+		'Osteopath',
+		'Otorhinolaryngologist',
+		'Paediatric cardiologist',
+		'Paediatric clinical geneticist',
+		'Paediatric clinical pharmacologist',
+		'Paediatric dermatologist',
+		'Paediatric emergency medicine specialist',
+		'Paediatric endocrinologist',
+		'Paediatric gastroenterologist and hepatologist',
+		'Paediatric haematologist',
+		'Paediatric immunology and allergy specialist',
+		'Paediatric infectious disease physician',
+		'Paediatric intensive care specialist',
+		'Paediatric nephrologist',
+		'Paediatric neurologist',
+		'Paediatric nuclear medicine specialist',
+		'Paediatric oncologist',
+		'Paediatric palliative care physician',
+		'Paediatric rehabilitation physician',
+		'Paediatric respiratory and sleep specialist',
+		'Paediatric rheumatologist',
+		'Paediatric surgeon',
+		'Paediatrician',
+		'Paedodontist',
+		'Pain medicine physician',
+		'Palliative care physician',
+		'Periodontist',
+		'Pharmacist',
+		'Physiotherapist',
+		'Plastic surgeon',
+		'Podiatric surgeon',
+		'Podiatrist',
+		'Practice nurse',
+		'Professional counsellor',
+		'Professional midwife',
+		'Professional nurse',
+		'Prosthodontist',
+		'Psychiatrist',
+		'Psychologist',
+		'Psychotherapist',
+		'Public health dentist',
+		'Public health physician',
+		'Radiation oncologist',
+		'Radiation therapist',
+		'Radiologist',
+		'Registered midwife',
+		'Registered nurse',
+		'Rehabilitation physician',
+		'Respiratory and sleep physician',
+		'Rheumatologist',
+		'Social worker',
+		'Sonographer',
+		'Special needs dentist',
+		'Specialised physician',
+		'Speech pathologist',
+		'Sports physician',
+		'Thoracic physician',
+		'Urogynaecologist',
+		'Urologist'
 	];
 
 	const countries = [
-		'Nigeria',
-		'Ghana',
-		'Kenya',
-		'South Africa',
-		'Egypt',
-		'United States',
-		'United Kingdom',
-		'Canada',
+		'Afghanistan',
+		'Åland Islands',
+		'Albania',
+		'Algeria',
+		'American Samoa',
+		'Andorra',
+		'Angola',
+		'Anguilla',
+		'Antarctica',
+		'Antigua and Barbuda',
+		'Argentina',
+		'Armenia',
+		'Aruba',
 		'Australia',
-		'Other'
+		'Austria',
+		'Azerbaijan',
+		'Bahamas',
+		'Bahrain',
+		'Bangladesh',
+		'Belgium',
+		'Belize',
+		'Benin',
+		'Bermuda',
+		'Bhutan',
+		'Bolivia',
+		'Bosnia and Herzegovina',
+		'Botswana',
+		'Bouvet Island',
+		'Brazil',
+		'British Indian Ocean Territory',
+		'Brunei Darussalam',
+		'Bulgaria',
+		'Burkina Faso',
+		'Burundi',
+		'Cambodia',
+		'Cameroon',
+		'Canada',
+		'Cape Verde',
+		'Cayman Islands',
+		'Central African Republic',
+		'Chad',
+		'Chile',
+		'China',
+		'Christmas Island',
+		'Cocos (Keeling) Islands',
+		'Colombia',
+		'Comoros',
+		'Congo',
+		'Congo, The Democratic Republic of the',
+		'Cook Islands',
+		'Costa Rica',
+		'Cote D Ivoire',
+		'Croatia',
+		'Cuba',
+		'Cyprus',
+		'Czech Republic',
+		'Denmark',
+		'Djibouti',
+		'Dominica',
+		'Dominican Republic',
+		'Ecuador',
+		'Egypt',
+		'El Salvador',
+		'Equatorial Guinea',
+		'Eritrea',
+		'Estonia',
+		'Ethiopia',
+		'Falkland Islands (Malvinas)',
+		'Faroe Islands',
+		'Fiji',
+		'Finland',
+		'France',
+		'French Guiana',
+		'French Polynesia',
+		'French Southern Territories',
+		'Gabon',
+		'Gambia',
+		'Georgia',
+		'Germany',
+		'Ghana',
+		'Gibraltar',
+		'Greece',
+		'Greenland',
+		'Grenada',
+		'Guadeloupe',
+		'Guam',
+		'Guatemala',
+		'Guernsey',
+		'Guinea',
+		'Guinea-Bissau',
+		'Guyana',
+		'Haiti',
+		'Heard Island and Mcdonald Islands',
+		'Holy See (Vatican City State)',
+		'Honduras',
+		'Hong Kong',
+		'Hungary',
+		'Iceland',
+		'India',
+		'Indonesia',
+		'Iran, Islamic Republic Of',
+		'Iraq',
+		'Ireland',
+		'Isle of Man',
+		'Israel',
+		'Italy',
+		'Jamaica',
+		'Japan',
+		'Jersey',
+		'Jordan',
+		'Kazakhstan',
+		'Kenya',
+		'Kiribati',
+		'Korea, Democratic People Republic of',
+		'Korea, Republic of',
+		'Kuwait',
+		'Kyrgyzstan',
+		'Lao People Democratic Republic',
+		'Latvia',
+		'Lebanon',
+		'Lesotho',
+		'Liberia',
+		'Libyan Arab Jamahiriya',
+		'Liechtenstein',
+		'Lithuania',
+		'Luxembourg',
+		'Macao',
+		'Macedonia, The Former Yugoslav Republic of',
+		'Madagascar',
+		'Malawi',
+		'Malaysia',
+		'Maldives',
+		'Mali',
+		'Malta',
+		'Marshall Islands',
+		'Martinique',
+		'Mauritania',
+		'Mauritius',
+		'Mayotte',
+		'Mexico',
+		'Micronesia, Federated States of',
+		'Moldova, Republic of',
+		'Monaco',
+		'Mongolia',
+		'Montserrat',
+		'Morocco',
+		'Mozambique',
+		'Myanmar',
+		'Namibia',
+		'Nauru',
+		'Nepal',
+		'Netherlands',
+		'Netherlands Antilles',
+		'New Caledonia',
+		'New Zealand',
+		'Nicaragua',
+		'Niger',
+		'Nigeria',
+		'Niue',
+		'Norfolk Island',
+		'Northern Mariana Islands',
+		'Norway',
+		'Oman',
+		'Pakistan',
+		'Palau',
+		'Palestinian Territory, Occupied',
+		'Panama',
+		'Papua New Guinea',
+		'Paraguay',
+		'Peru',
+		'Philippines',
+		'Pitcairn',
+		'Poland',
+		'Portugal',
+		'Puerto Rico',
+		'Qatar',
+		'Reunion',
+		'Romania',
+		'Russian Federation',
+		'Rwanda',
+		'Saint Helena',
+		'Saint Kitts and Nevis',
+		'Saint Lucia',
+		'Saint Pierre and Miquelon',
+		'Saint Vincent and the Grenadines',
+		'Samoa',
+		'San Marino',
+		'Sao Tome and Principe',
+		'Saudi Arabia',
+		'Senegal',
+		'Serbia and Montenegro',
+		'Seychelles',
+		'Sierra Leone',
+		'Singapore',
+		'Slovakia',
+		'Slovenia',
+		'Solomon Islands',
+		'Somalia',
+		'South Africa',
+		'South Georgia and the South Sandwich Islands',
+		'Spain',
+		'Sri Lanka',
+		'Sudan',
+		'Suriname',
+		'Svalbard and Jan Mayen',
+		'Swaziland',
+		'Sweden',
+		'Switzerland',
+		'Syrian Arab Republic',
+		'Taiwan, Province of China',
+		'Tajikistan',
+		'Tanzania, United Republic of',
+		'Thailand',
+		'Timor-Leste',
+		'Togo',
+		'Tokelau',
+		'Tonga',
+		'Trinidad and Tobago',
+		'Tunisia',
+		'Turkey',
+		'Turkmenistan',
+		'Turks and Caicos Islands',
+		'Tuvalu',
+		'Uganda',
+		'Ukraine',
+		'United Arab Emirates',
+		'United Kingdom',
+		'United States',
+		'United States Minor Outlying Islands',
+		'Uruguay',
+		'Uzbekistan',
+		'Vanuatu',
+		'Venezuela',
+		'Viet Nam',
+		'Virgin Islands, British',
+		'Virgin Islands, U.S.',
+		'Wallis and Futuna',
+		'Western Sahara',
+		'Yemen',
+		'Zambia',
+		'Zimbabwe'
 	];
 
 	onMount(async () => {
@@ -78,34 +470,14 @@
 		// Add a small delay to ensure provider profile is created
 		await new Promise(resolve => setTimeout(resolve, 1000));
 
-		// Check if provider already exists with retries
-		let attempts = 0;
-		let existingProvider = null;
-		let providerError = null;
+		const result = await supabase
+			.from('healthcare_providers')
+			.select('id, medic_subscription_id, phone, profile_photo_url, specialization, sub_specialty, license_number, license_document_url, preferred_languages, country, clinic_address, bio, \"offerChat\", \"offerAudio\", \"offersVideo\", \"offerOfficeVisit\"')
+			.eq('user_id', userId)
+			.maybeSingle();
 
-		console.log('Checking for provider profile for user:', userId);
-
-		while (attempts < 5 && !existingProvider) {
-			console.log(`Attempt ${attempts + 1} to load provider profile...`);
-
-			const result = await supabase
-				.from('healthcare_providers')
-				.select('id, medic_subscription_id, phone, profile_photo_url, specialization, country, clinic_address, bio, \"offerChat\", \"offerAudio\", \"offersVideo\", \"offerOfficeVisit\"')
-				.eq('user_id', userId)
-				.maybeSingle();
-
-			existingProvider = result.data;
-			providerError = result.error;
-
-			console.log('Result:', { existingProvider, providerError });
-
-			if (!existingProvider && attempts < 4) {
-				// Wait before retrying
-				console.log('Provider not found, retrying in 1.5 seconds...');
-				await new Promise(resolve => setTimeout(resolve, 1500));
-			}
-			attempts++;
-		}
+		let existingProvider = result.data;
+		let providerError = result.error;
 
 		if (providerError) {
 			console.error('Database error:', providerError);
@@ -117,6 +489,31 @@
 		if (!existingProvider) {
 			console.log('No provider profile found. User will create one during onboarding.');
 			// We will create the provider record during handleSubmit
+
+			// Try to restore draft
+			const draftStr = localStorage.getItem(`onboarding_draft_${userId}`);
+			if (draftStr) {
+				try {
+					const draft = JSON.parse(draftStr);
+					if (draft.currentStage) currentStage = draft.currentStage;
+					if (draft.phone) phone = draft.phone;
+					if (draft.specialization) specialization = draft.specialization;
+					if (draft.country) country = draft.country;
+					if (draft.clinicAddress) clinicAddress = draft.clinicAddress;
+					if (draft.city) city = draft.city;
+					if (draft.region) region = draft.region;
+					if (draft.bio) bio = draft.bio;
+					if (draft.credentials) credentials = draft.credentials;
+					if (draft.yearsOfExperience) yearsOfExperience = draft.yearsOfExperience;
+					if (draft.licenseNumber) licenseNumber = draft.licenseNumber;
+					if (draft.subSpecialty) subSpecialty = draft.subSpecialty;
+					if (draft.languagesSpoken) languagesSpoken = draft.languagesSpoken;
+					if (draft.consultationTypes && Array.isArray(draft.consultationTypes)) consultationTypes = draft.consultationTypes;
+				} catch (e) {
+					console.error('Error parsing draft', e);
+				}
+			}
+
 			pageLoading = false;
 			return;
 		}
@@ -128,6 +525,12 @@
 		if (existingProvider.phone) phone = existingProvider.phone;
 		if (existingProvider.profile_photo_url) profilePicUrl = existingProvider.profile_photo_url;
 		if (existingProvider.specialization) specialization = existingProvider.specialization;
+		if (existingProvider.sub_specialty) subSpecialty = existingProvider.sub_specialty;
+		if (existingProvider.license_number) licenseNumber = existingProvider.license_number;
+		if (existingProvider.license_document_url) licenseDocumentUrl = existingProvider.license_document_url;
+		if (existingProvider.preferred_languages && Array.isArray(existingProvider.preferred_languages)) {
+			languagesSpoken = existingProvider.preferred_languages.join(', ');
+		}
 		if (existingProvider.country) country = existingProvider.country;
 		if (existingProvider.bio) bio = existingProvider.bio;
 
@@ -147,6 +550,9 @@
 		}
 
 		pageLoading = false;
+
+		const cleanupIdle = setupIdleTracking();
+		return () => cleanupIdle();
 	});
 
 	async function handleProfilePicUpload(e: Event) {
@@ -183,6 +589,43 @@
 			return data.publicUrl;
 		} catch (err) {
 			console.error('Profile pic upload failed:', err);
+			return null;
+		}
+	}
+
+	async function handleLicenseUpload(e: Event) {
+		const target = e.target as HTMLInputElement;
+		const file = target.files?.[0];
+		if (file) {
+			licenseDocumentFile = file;
+			licenseDocumentUrl = URL.createObjectURL(file);
+		}
+	}
+
+	async function uploadLicenseDoc(): Promise<string | null> {
+		if (!licenseDocumentFile) return licenseDocumentUrl || null;
+
+		try {
+			const fileExt = licenseDocumentFile.name.split('.').pop();
+			const fileName = `license-${userId}-${Date.now()}.${fileExt}`;
+			const filePath = `licenses/${fileName}`;
+
+			const { error: uploadError } = await supabase.storage
+				.from('healthcare-providers')
+				.upload(filePath, licenseDocumentFile);
+
+			if (uploadError) {
+				console.error('License upload error:', uploadError);
+				return null;
+			}
+
+			const { data } = supabase.storage
+				.from('healthcare-providers')
+				.getPublicUrl(filePath);
+
+			return data.publicUrl;
+		} catch (err) {
+			console.error('License upload failed:', err);
 			return null;
 		}
 	}
@@ -224,17 +667,18 @@
 						full_name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
 						slug,
 						email: currentUser.email,
-						type: 'doctor', // Default
+						type: specialization?.toLowerCase() === 'pharmacist' ? 'pharmacist' : 'doctor',
 						specialization: specialization || 'General Practice',
 						country: country || 'Nigeria',
 						phone: phone,
-						offerChat: consultationTypes.includes('chat'),
-						offerAudio: consultationTypes.includes('audio'),
-						offersVideo: consultationTypes.includes('video'),
-						offerOfficeVisit: consultationTypes.includes('office_visit'),
-						chatFee: 5000,
-						videoFee: 10000,
-						audioFee: 8000,
+						"offerChat": consultationTypes.includes('chat'),
+						"offerAudio": consultationTypes.includes('audio'),
+						"offersVideo": consultationTypes.includes('video'),
+						"offerOfficeVisit": consultationTypes.includes('office_visit'),
+						"chatFee": 0,
+						"videoFee": 0,
+						"audioFee": 0,
+						"officeFee": 0,
 						is_verified: false,
 						is_active: true
 					})
@@ -263,6 +707,7 @@
 				const now = new Date();
 				const billingCycleEnd = new Date(now);
 				billingCycleEnd.setMonth(billingCycleEnd.getMonth() + 1);
+				const trialEndsAt = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
 
 				const { data: newSubscription, error: subError } = await supabase
 					.from('medic_subscriptions')
@@ -273,7 +718,9 @@
 						monthly_fee: 0,
 						billing_cycle_start: now.toISOString(),
 						billing_cycle_end: billingCycleEnd.toISOString(),
-						status: 'active',
+						status: 'trial',
+						trial_period: 60,
+						trial_ends_at: trialEndsAt.toISOString(),
 						features: {
 							chat_consultations: true,
 							video_consultations: true,
@@ -305,6 +752,14 @@
 				medicSubscriptionId = newSubscription.id;
 			}
 
+			let uploadedLicenseUrl = licenseDocumentUrl;
+			if (licenseDocumentFile) {
+				const url = await uploadLicenseDoc();
+				if (url) uploadedLicenseUrl = url;
+			}
+
+			const languagesArray = languagesSpoken.split(',').map(l => l.trim()).filter(l => l.length > 0);
+
 			// Update healthcare provider with all data
 			const { error: updateError } = await supabase
 				.from('healthcare_providers')
@@ -312,6 +767,11 @@
 					phone,
 					profile_photo_url: uploadedPicUrl,
 					specialization,
+					sub_specialty: subSpecialty,
+					license_number: licenseNumber,
+					license_document_url: uploadedLicenseUrl,
+					preferred_languages: languagesArray,
+					type: specialization?.toLowerCase() === 'pharmacist' ? 'pharmacist' : 'doctor',
 					country,
 					region,
 					clinic_address: {
@@ -323,10 +783,14 @@
 					bio,
 					credentials,
 					years_of_experience: yearsOfExperience ? parseInt(yearsOfExperience) : 0,
-					offerChat: consultationTypes.includes('chat'),
-					offerAudio: consultationTypes.includes('audio'),
-					offersVideo: consultationTypes.includes('video'),
-					offerOfficeVisit: consultationTypes.includes('office_visit'),
+					"offerChat": consultationTypes.includes('chat'),
+					"offerAudio": consultationTypes.includes('audio'),
+					"offersVideo": consultationTypes.includes('video'),
+					"offerOfficeVisit": consultationTypes.includes('office_visit'),
+					"chatFee": 0,
+					"videoFee": 0,
+					"audioFee": 0,
+					"officeFee": 0,
 					medic_subscription_id: medicSubscriptionId,
 					updated_at: new Date().toISOString()
 				})
@@ -337,6 +801,9 @@
 				loading = false;
 				return;
 			}
+
+			// Clear draft after successful completion
+			localStorage.removeItem(`onboarding_draft_${userId}`);
 
 			// Redirect to dashboard
 			goto('/');
@@ -586,6 +1053,59 @@
 		<!-- Stage 3: Additional Settings -->
 		{#if currentStage === 3}
 			<div class="space-y-4">
+				<!-- License Number -->
+				<div class="relative group">
+					<input
+						type="text"
+						bind:value={licenseNumber}
+						placeholder="License Number (e.g. MDCN/PCN)"
+						class="w-full px-4 py-3.5 bg-white border border-[#b8e2c9] rounded-xl focus:outline-none focus:ring-[1.5px] focus:ring-[#1ea85b] focus:border-[#1ea85b] text-gray-800 placeholder-gray-400 transition-shadow text-[15px]"
+					/>
+				</div>
+
+				<!-- License Document Upload -->
+				<div class="relative group">
+					<label class="block text-sm font-medium text-[#4a6357] mb-2">Upload License Document</label>
+					<div class="flex items-center gap-4">
+						<label class="flex-1 flex justify-center w-full px-4 py-3.5 bg-white border border-dashed border-[#b8e2c9] rounded-xl cursor-pointer hover:border-[#1ea85b] transition-colors focus-within:ring-[1.5px] focus-within:ring-[#1ea85b]">
+							<span class="text-gray-500 text-[15px] truncate">
+								{licenseDocumentFile ? licenseDocumentFile.name : (licenseDocumentUrl ? 'Update License Document' : 'Choose a file...')}
+							</span>
+							<input
+								type="file"
+								accept="image/*,application/pdf"
+								onchange={handleLicenseUpload}
+								class="sr-only"
+							/>
+						</label>
+						{#if licenseDocumentUrl}
+							<div class="flex items-center gap-2">
+								<Check size={20} class="text-[#1ea85b]" />
+							</div>
+						{/if}
+					</div>
+				</div>
+
+				<!-- Sub-Specialty -->
+				<div class="relative group">
+					<input
+						type="text"
+						bind:value={subSpecialty}
+						placeholder="Sub-Specialty (Optional)"
+						class="w-full px-4 py-3.5 bg-white border border-[#b8e2c9] rounded-xl focus:outline-none focus:ring-[1.5px] focus:ring-[#1ea85b] focus:border-[#1ea85b] text-gray-800 placeholder-gray-400 transition-shadow text-[15px]"
+					/>
+				</div>
+
+				<!-- Languages Spoken -->
+				<div class="relative group">
+					<input
+						type="text"
+						bind:value={languagesSpoken}
+						placeholder="Languages Spoken (comma-separated, e.g. English, French)"
+						class="w-full px-4 py-3.5 bg-white border border-[#b8e2c9] rounded-xl focus:outline-none focus:ring-[1.5px] focus:ring-[#1ea85b] focus:border-[#1ea85b] text-gray-800 placeholder-gray-400 transition-shadow text-[15px]"
+					/>
+				</div>
+
 				<!-- Credentials -->
 				<div class="relative group">
 					<input

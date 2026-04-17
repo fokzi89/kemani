@@ -11,6 +11,12 @@
 	let loading = $state(true);
 	let searchQuery = $state('');
 
+	// Pagination state
+	let currentPage = $state(1);
+	let pageSize = 10;
+	let totalCount = $state(0);
+	let totalPages = $derived(Math.ceil(totalCount / pageSize));
+
 	// Modal states
 	let showAddModal = $state(false);
 	let showEditModal = $state(false);
@@ -33,13 +39,24 @@
 	let savingPatient = $state(false);
 	let deletingPatientId = $state<string | null>(null);
 
-	let filteredPatients = $derived(
-		patients.filter((p) =>
-			p.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			p.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			p.phone?.includes(searchQuery)
-		)
-	);
+	let searchTimeout: any;
+	$effect(() => {
+		// Debounce search and reset to page 1
+		if (searchQuery !== undefined) {
+			clearTimeout(searchTimeout);
+			searchTimeout = setTimeout(() => {
+				currentPage = 1;
+				if (provider) loadPatients(provider.id);
+			}, 400);
+		}
+	});
+
+	$effect(() => {
+		// Load when page changes
+		if (currentPage > 0 && provider) {
+			loadPatients(provider.id);
+		}
+	});
 
 	onMount(async () => {
 		const { data } = await supabase.auth.getSession();
@@ -66,46 +83,71 @@
 		loading = false;
 	});
 
-	async function loadPatients(providerId: string) {
-		// Get patients from the new patients table
-		const { data: patientsData, error } = await supabase
-			.from('patients')
-			.select('*')
-			.eq('healthcare_provider_id', providerId)
-			.eq('is_deleted', false)
-			.order('created_at', { ascending: false });
+	async function loadPatients(providerId: string, silent = false) {
+		if (!silent) loading = true;
 
-		if (error) {
-			console.error('Error loading patients:', error);
-			return;
+		try {
+			const start = (currentPage - 1) * pageSize;
+			const end = start + pageSize - 1;
+
+			// Build query
+			let query = supabase
+				.from('patients')
+				.select('*', { count: 'exact' })
+				.eq('healthcare_provider_id', providerId)
+				.eq('is_deleted', false);
+
+			if (searchQuery) {
+				query = query.or(
+					`full_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`
+				);
+			}
+
+			const { data: patientsData, count, error: fetchError } = await query
+				.order('created_at', { ascending: false })
+				.range(start, end);
+
+			if (fetchError) throw fetchError;
+
+			totalCount = count || 0;
+
+			// Get consultation counts for each patient
+			// We use Promise.all but catch individual errors to prevent the whole page from hanging
+			const patientsWithStats = await Promise.all(
+				(patientsData || []).map(async (patient) => {
+					try {
+						const { count: consultCount } = await supabase
+							.from('consultations')
+							.select('*', { count: 'exact', head: true })
+							.eq('healthcare_patient_id', patient.id);
+
+						const { data: lastConsult } = await supabase
+							.from('consultations')
+							.select('created_at, type')
+							.eq('healthcare_patient_id', patient.id)
+							.order('created_at', { ascending: false })
+							.limit(1)
+							.maybeSingle();
+
+						return {
+							...patient,
+							total_consultations: consultCount || 0,
+							last_consultation: lastConsult?.created_at,
+							last_consultation_type: lastConsult?.type
+						};
+					} catch (e) {
+						console.error(`Error loading stats for patient ${patient.id}:`, e);
+						return { ...patient, total_consultations: 0 };
+					}
+				})
+			);
+
+			patients = patientsWithStats;
+		} catch (err: any) {
+			console.error('Error in loadPatients:', err);
+		} finally {
+			loading = false;
 		}
-
-		// Get consultation counts for each patient
-		const patientsWithStats = await Promise.all(
-			(patientsData || []).map(async (patient) => {
-				const { count } = await supabase
-					.from('consultations')
-					.select('*', { count: 'exact', head: true })
-					.eq('healthcare_patient_id', patient.id);
-
-				const { data: lastConsult } = await supabase
-					.from('consultations')
-					.select('created_at, type')
-					.eq('healthcare_patient_id', patient.id)
-					.order('created_at', { ascending: false })
-					.limit(1)
-					.maybeSingle();
-
-				return {
-					...patient,
-					total_consultations: count || 0,
-					last_consultation: lastConsult?.created_at,
-					last_consultation_type: lastConsult?.type
-				};
-			})
-		);
-
-		patients = patientsWithStats;
 	}
 
 	function openAddModal() {
@@ -207,9 +249,9 @@
 			showAddModal = false;
 			profilePicFile = null;
 			alert('Patient added successfully!');
-		} catch (err) {
+		} catch (err: any) {
 			console.error('Detailed error saving patient:', err);
-			alert(`Failed to add patient: ${err.message} (Check console for details)`);
+			alert(`Failed to add patient: ${err.message}`);
 		} finally {
 			savingPatient = false;
 		}
@@ -218,6 +260,7 @@
 	async function updatePatient() {
 		if (!provider || !selectedPatient) return;
 
+		console.log('Updating patient:', selectedPatient.id);
 		savingPatient = true;
 
 		try {
@@ -225,7 +268,6 @@
 
 			// Upload new profile picture if selected
 			if (profilePicFile) {
-				// Delete old picture if exists
 				if (profilePhotoUrl) {
 					await deleteFileFromStorage(profilePhotoUrl);
 				}
@@ -233,7 +275,7 @@
 			}
 
 			// Update patient
-			const { error } = await supabase
+			const { error: updateError } = await supabase
 				.from('patients')
 				.update({
 					full_name: patientForm.full_name,
@@ -246,16 +288,21 @@
 				})
 				.eq('id', selectedPatient.id);
 
-			if (error) throw error;
+			if (updateError) throw updateError;
 
-			await loadPatients(provider.id);
+			// Close modal FIRST for better UI feel
 			showEditModal = false;
+			alert('Patient updated successfully!');
+			
+			// Refresh list in background
+			loadPatients(provider.id, true);
+			
 			selectedPatient = null;
 			profilePicFile = null;
-			alert('Patient updated successfully!');
-		} catch (err) {
-			console.error('Error updating patient:', err);
-			alert('Failed to update patient: ' + err.message);
+		} catch (err: any) {
+			console.error('Detailed error updating patient:', err);
+			const msg = err.message || err.details || 'Unknown error';
+			alert('Failed to update patient: ' + msg);
 		} finally {
 			savingPatient = false;
 		}
@@ -264,8 +311,7 @@
 	async function copyPatientInfo(patient: any) {
 		const info = `Name: ${patient.full_name}
 Email: ${patient.email || 'N/A'}
-Phone: ${patient.phone || 'N/A'}
-WhatsApp: ${patient.whatsapp_number || 'N/A'}`;
+Phone: ${patient.phone || 'N/A'}`;
 
 		try {
 			await navigator.clipboard.writeText(info);
@@ -281,11 +327,12 @@ WhatsApp: ${patient.whatsapp_number || 'N/A'}`;
 			return;
 		}
 
+		console.log('Deleting patient:', patientId);
 		deletingPatientId = patientId;
 
 		try {
 			// Soft delete: set is_deleted to true
-			const { error } = await supabase
+			const { error: deleteError } = await supabase
 				.from('patients')
 				.update({
 					is_deleted: true,
@@ -294,13 +341,16 @@ WhatsApp: ${patient.whatsapp_number || 'N/A'}`;
 				})
 				.eq('id', patientId);
 
-			if (error) throw error;
+			if (deleteError) throw deleteError;
 
-			await loadPatients(provider.id);
 			alert('Patient deleted successfully!');
-		} catch (err) {
-			console.error('Error deleting patient:', err);
-			alert('Failed to delete patient: ' + err.message);
+			
+			// Refresh list
+			await loadPatients(provider.id, true);
+		} catch (err: any) {
+			console.error('Detailed error deleting patient:', err);
+			const msg = err.message || err.details || 'Unknown error';
+			alert('Failed to delete patient: ' + msg);
 		} finally {
 			deletingPatientId = null;
 		}
@@ -316,22 +366,22 @@ WhatsApp: ${patient.whatsapp_number || 'N/A'}`;
 	}
 </script>
 
-<div class="min-h-screen p-6 lg:p-8">
-	<div class="max-w-7xl mx-auto space-y-6">
+<div class="min-h-screen p-4 lg:p-8 max-w-full overflow-hidden">
+	<div class="max-w-7xl mx-auto space-y-6 min-w-0">
 		<!-- Header -->
-		<div class="bg-white rounded-lg shadow p-6">
-			<div class="flex justify-between items-center">
-				<div>
-					<h2 class="text-2xl font-bold text-gray-900">My Patients</h2>
-					<p class="text-gray-600 mt-1">Manage your patient records and consultations</p>
+		<div class="bg-white rounded-lg shadow p-6 border border-gray-100">
+			<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+				<div class="min-w-0">
+					<h2 class="text-2xl font-bold text-gray-900 truncate">My Patients</h2>
+					<p class="text-gray-600 mt-1 line-clamp-1">Manage your patient records and consultations</p>
 				</div>
-				<button
-					onclick={openAddModal}
-					class="px-4 py-2 bg-gray-900 hover:bg-black text-white rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+				<a
+					href="/patients/add"
+					class="px-5 py-2.5 bg-gray-900 hover:bg-black text-white rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95 whitespace-nowrap shrink-0"
 				>
 					<Plus class="h-5 w-5" />
 					Add Patient
-				</button>
+				</a>
 			</div>
 		</div>
 
@@ -354,130 +404,197 @@ WhatsApp: ${patient.whatsapp_number || 'N/A'}`;
 				<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
 				<p class="mt-4 text-gray-600">Loading patients...</p>
 			</div>
-		{:else if filteredPatients.length === 0}
-			<div class="bg-white rounded-lg shadow p-12 text-center">
+		{:else if patients.length === 0}
+			<div class="bg-white rounded-lg shadow border border-gray-100 p-12 text-center">
 				<User class="h-16 w-16 text-gray-300 mx-auto mb-4" />
 				<h3 class="text-lg font-medium text-gray-900 mb-2">
 					{searchQuery ? 'No patients found' : 'No patients yet'}
 				</h3>
-				<p class="text-gray-600 mb-4">
+				<p class="text-gray-600 mb-6">
 					{searchQuery
 						? 'Try adjusting your search terms'
 						: 'Add your first patient to get started'}
 				</p>
 				{#if !searchQuery}
-					<button
-						onclick={openAddModal}
-						class="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors inline-flex items-center gap-2"
+					<a
+						href="/patients/add"
+						class="px-8 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all inline-flex items-center gap-2 shadow-md hover:shadow-lg active:scale-95"
 					>
 						<Plus class="h-5 w-5" />
 						Add First Patient
-					</button>
+					</a>
 				{/if}
 			</div>
 		{:else}
-			<div class="bg-white rounded-lg shadow overflow-hidden">
-				<div class="overflow-x-auto">
-					<table class="w-full">
-						<thead class="bg-gray-50 border-b border-gray-200">
-							<tr>
-								<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-									Patient
-								</th>
-								<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-									Contact
-								</th>
-								<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-									Consultations
-								</th>
-								<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-									Last Visit
-								</th>
-								<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-									Added On
-								</th>
-								<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-									Actions
-								</th>
-							</tr>
-						</thead>
-						<tbody class="bg-white divide-y divide-gray-200">
-							{#each filteredPatients as patient}
-								<tr class="hover:bg-gray-50">
-									<td class="px-6 py-4 whitespace-nowrap">
-										<div class="flex items-center gap-3">
-											{#if patient.profile_photo_url}
-												<img
-													src={patient.profile_photo_url}
-													alt={patient.full_name}
-													class="h-10 w-10 rounded-full object-cover"
-												/>
-											{:else}
-												<div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-													<User class="h-5 w-5 text-primary-600" />
-												</div>
-											{/if}
-											<div>
-												<div class="text-sm font-medium text-gray-900">{patient.full_name}</div>
-												{#if patient.gender}
-													<div class="text-xs text-gray-500 capitalize">{patient.gender}</div>
-												{/if}
-											</div>
-										</div>
-									</td>
-									<td class="px-6 py-4">
-										<div class="text-sm text-gray-900">{patient.phone || 'N/A'}</div>
-										<div class="text-sm text-gray-500">{patient.email || 'No email'}</div>
-									</td>
-									<td class="px-6 py-4 whitespace-nowrap">
-										<div class="flex items-center gap-2">
-											<Calendar class="h-4 w-4 text-gray-400" />
-											<span class="text-sm text-gray-900">{patient.total_consultations}</span>
-										</div>
-									</td>
-									<td class="px-6 py-4 whitespace-nowrap">
-										<div class="text-sm text-gray-900">{formatDate(patient.last_consultation)}</div>
-										{#if patient.last_consultation_type}
-											<div class="text-xs text-gray-500 capitalize">{patient.last_consultation_type}</div>
-										{/if}
-									</td>
-									<td class="px-6 py-4 whitespace-nowrap">
-										<div class="text-sm text-gray-900">{formatDate(patient.created_at)}</div>
-									</td>
-									<td class="px-6 py-4 whitespace-nowrap text-right">
-										<div class="flex items-center justify-end gap-2">
-											<button
-												onclick={() => openEditModal(patient)}
-												class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-												title="Edit patient"
-												type="button"
-											>
-												<Edit class="h-4 w-4" />
-											</button>
-											<button
-												onclick={() => copyPatientInfo(patient)}
-												class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-												title="Copy patient info"
-												type="button"
-											>
-												<Copy class="h-4 w-4" />
-											</button>
-											<button
-												onclick={() => deletePatient(patient.id)}
-												disabled={deletingPatientId === patient.id}
-												class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-												title="Delete patient"
-												type="button"
-											>
-												<Trash2 class="h-4 w-4" />
-											</button>
-										</div>
-									</td>
+			<div class="space-y-4">
+				<div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+					<div class="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300">
+						<table class="w-full min-w-[800px]">
+							<thead class="bg-gray-50 border-b border-gray-200">
+								<tr>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Patient
+									</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Contact
+									</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Consultations
+									</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Last Visit
+									</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Added On
+									</th>
+									<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Actions
+									</th>
 								</tr>
-							{/each}
-						</tbody>
-					</table>
+							</thead>
+							<tbody class="bg-white divide-y divide-gray-200">
+								{#each patients as patient}
+									<tr class="hover:bg-gray-50 transition-colors">
+										<td class="px-6 py-4 whitespace-nowrap">
+											<div class="flex items-center gap-3">
+												{#if patient.profile_photo_url}
+													<img
+														src={patient.profile_photo_url}
+														alt={patient.full_name}
+														class="h-10 w-10 rounded-full object-cover shadow-sm ring-2 ring-gray-50"
+													/>
+												{:else}
+													<div class="h-10 w-10 rounded-full bg-primary-50 flex items-center justify-center">
+														<User class="h-5 w-5 text-primary-600" />
+													</div>
+												{/if}
+												<div>
+													<div class="text-sm font-semibold text-gray-900">{patient.full_name}</div>
+													{#if patient.gender}
+														<div class="text-xs text-gray-500 capitalize">{patient.gender}</div>
+													{/if}
+												</div>
+											</div>
+										</td>
+										<td class="px-6 py-4">
+											<div class="text-sm text-gray-900 font-medium">{patient.phone || 'N/A'}</div>
+											<div class="text-sm text-gray-500">{patient.email || 'No email'}</div>
+										</td>
+										<td class="px-6 py-4 whitespace-nowrap text-center">
+											<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 font-medium text-xs">
+												<Calendar class="h-3 w-3" />
+												{patient.total_consultations}
+											</div>
+										</td>
+										<td class="px-6 py-4 whitespace-nowrap">
+											<div class="text-sm text-gray-900 font-medium">{formatDate(patient.last_consultation)}</div>
+											{#if patient.last_consultation_type}
+												<div class="text-xs text-gray-400 capitalize">{patient.last_consultation_type}</div>
+											{/if}
+										</td>
+										<td class="px-6 py-4 whitespace-nowrap">
+											<div class="text-sm text-gray-600 font-medium">{formatDate(patient.created_at)}</div>
+										</td>
+										<td class="px-6 py-4 whitespace-nowrap text-right">
+											<div class="flex items-center justify-end gap-1">
+												<button
+													onclick={() => openEditModal(patient)}
+													class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+													title="Edit patient"
+													type="button"
+												>
+													<Edit class="h-4 w-4" />
+												</button>
+												<button
+													onclick={() => copyPatientInfo(patient)}
+													class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+													title="Copy patient info"
+													type="button"
+												>
+													<Copy class="h-4 w-4" />
+												</button>
+												<button
+													onclick={() => deletePatient(patient.id)}
+													disabled={deletingPatientId === patient.id}
+													class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+													title="Delete patient"
+													type="button"
+												>
+													<Trash2 class="h-4 w-4" />
+												</button>
+											</div>
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
 				</div>
+
+				<!-- Pagination -->
+				{#if totalPages > 1}
+					<div class="bg-white px-4 py-3 flex items-center justify-between border border-gray-200 rounded-lg sm:px-6">
+						<div class="flex-1 flex justify-between sm:hidden">
+							<button
+								onclick={() => currentPage = Math.max(1, currentPage - 1)}
+								disabled={currentPage === 1}
+								class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+							>
+								Previous
+							</button>
+							<button
+								onclick={() => currentPage = Math.min(totalPages, currentPage + 1)}
+								disabled={currentPage === totalPages}
+								class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+							>
+								Next
+							</button>
+						</div>
+						<div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+							<div>
+								<p class="text-sm text-gray-700">
+									Showing
+									<span class="font-bold">{(currentPage - 1) * pageSize + 1}</span>
+									to
+									<span class="font-bold">{Math.min(currentPage * pageSize, totalCount)}</span>
+									of
+									<span class="font-bold">{totalCount}</span>
+									results
+								</p>
+							</div>
+							<div>
+								<nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+									<button
+										onclick={() => currentPage = Math.max(1, currentPage - 1)}
+										disabled={currentPage === 1}
+										class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+									>
+										<span class="sr-only">Previous</span>
+										<ArrowLeft class="h-5 w-5" />
+									</button>
+									
+									{#each Array(totalPages) as _, i}
+										<button
+											onclick={() => currentPage = i + 1}
+											class="relative inline-flex items-center px-4 py-2 border {currentPage === i + 1 ? 'z-10 bg-primary-50 border-primary-500 text-primary-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'} text-sm font-medium"
+										>
+											{i + 1}
+										</button>
+									{/each}
+
+									<button
+										onclick={() => currentPage = Math.min(totalPages, currentPage + 1)}
+										disabled={currentPage === totalPages}
+										class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+									>
+										<span class="sr-only">Next</span>
+										<ArrowLeft class="h-5 w-5 rotate-180" />
+									</button>
+								</nav>
+							</div>
+						</div>
+					</div>
+				{/if}
 			</div>
 		{/if}
 	</div>

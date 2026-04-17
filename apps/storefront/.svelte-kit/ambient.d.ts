@@ -56,8 +56,9 @@ declare module '$env/static/private' {
 	export const ComSpec: string;
 	export const DriverData: string;
 	export const EDITOR: string;
-	export const EFC_2040: string;
-	export const ELECTRON_RUN_AS_NODE: string;
+	export const EFC_18924: string;
+	export const FPS_BROWSER_APP_PROFILE_STRING: string;
+	export const FPS_BROWSER_USER_PROFILE_STRING: string;
 	export const HOME: string;
 	export const HOMEDRIVE: string;
 	export const HOMEPATH: string;
@@ -68,7 +69,6 @@ declare module '$env/static/private' {
 	export const NODE_ENV: string;
 	export const NODE_EXE: string;
 	export const NODE_PATH: string;
-	export const NO_PROXY: string;
 	export const NPM_CLI_JS: string;
 	export const npm_command: string;
 	export const npm_config_cache: string;
@@ -118,12 +118,8 @@ declare module '$env/static/private' {
 	export const USERNAME: string;
 	export const USERPROFILE: string;
 	export const VSCODE_CODE_CACHE_PATH: string;
-	export const VSCODE_CRASH_REPORTER_PROCESS_TYPE: string;
 	export const VSCODE_CWD: string;
-	export const VSCODE_ESM_ENTRYPOINT: string;
-	export const VSCODE_HANDLES_UNCAUGHT_ERRORS: string;
 	export const VSCODE_IPC_HOOK: string;
-	export const VSCODE_L10N_BUNDLE_LOCATION: string;
 	export const VSCODE_NLS_CONFIG: string;
 	export const VSCODE_PID: string;
 	export const windir: string;
@@ -236,8 +232,9 @@ declare module '$env/dynamic/private' {
 		ComSpec: string;
 		DriverData: string;
 		EDITOR: string;
-		EFC_2040: string;
-		ELECTRON_RUN_AS_NODE: string;
+		EFC_18924: string;
+		FPS_BROWSER_APP_PROFILE_STRING: string;
+		FPS_BROWSER_USER_PROFILE_STRING: string;
 		HOME: string;
 		HOMEDRIVE: string;
 		HOMEPATH: string;
@@ -248,7 +245,6 @@ declare module '$env/dynamic/private' {
 		NODE_ENV: string;
 		NODE_EXE: string;
 		NODE_PATH: string;
-		NO_PROXY: string;
 		NPM_CLI_JS: string;
 		npm_command: string;
 		npm_config_cache: string;
@@ -298,12 +294,8 @@ declare module '$env/dynamic/private' {
 		USERNAME: string;
 		USERPROFILE: string;
 		VSCODE_CODE_CACHE_PATH: string;
-		VSCODE_CRASH_REPORTER_PROCESS_TYPE: string;
 		VSCODE_CWD: string;
-		VSCODE_ESM_ENTRYPOINT: string;
-		VSCODE_HANDLES_UNCAUGHT_ERRORS: string;
 		VSCODE_IPC_HOOK: string;
-		VSCODE_L10N_BUNDLE_LOCATION: string;
 		VSCODE_NLS_CONFIG: string;
 		VSCODE_PID: string;
 		windir: string;

@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS prescribed_drugs (
     dispense_as TEXT,             -- e.g., "pack", "bottle", "unit"
     dispense_quantity INT,        -- Total amount to give
     dosage TEXT,                  -- e.g., "500mg"
-    frequency TEXT,               -- e.g., "Twice daily (BD)"
+    frequency TEXT,  
+    drug_pic_url TEXT,            -- e.g., "Twice daily (BD)"
     duration TEXT,                -- e.g., "5 days"
     special_instructions TEXT,    -- e.g., "Take after meals"
     substitution_allowed BOOLEAN DEFAULT true, -- Allows generic swapping
