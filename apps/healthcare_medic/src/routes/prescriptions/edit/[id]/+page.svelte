@@ -36,8 +36,11 @@
 	let drugForm = $state({
 		name: '', dosage: '', frequency: '', duration: '',
 		dispense_quantity: '', dispense_as: '', special_instructions: '',
-		drug_pic_url: ''
+		drug_pic_url: '', product_id: null as string | null, generic_name: null as string | null
 	});
+
+	let drugSuggestions = $state<any[]>([]);
+	let isSearchingDrugs = $state(false);
 
 	// Submitting State
 	let submitting = $state(false);
@@ -109,14 +112,47 @@
 			editingDrugIndex = null;
 			drugForm = {
 				name: '', dosage: '', frequency: '', duration: '',
-				dispense_quantity: '', dispense_as: '', special_instructions: '', drug_pic_url: ''
+				dispense_quantity: '', dispense_as: '', special_instructions: '', drug_pic_url: '',
+				product_id: null, generic_name: null
 			};
 		}
+		drugSuggestions = [];
 		drugModalOpen = true;
 	}
 
+	let drugSearchQuery = $state('');
+
+	async function fetchDrugSuggestions() {
+		if (drugSearchQuery.length < 2) {
+			drugSuggestions = [];
+			return;
+		}
+		isSearchingDrugs = true;
+		try {
+			const { data } = await supabase
+				.from('products')
+				.select('id, name, generic_name, dosage_form, strength')
+				.eq('product_type', 'drug')
+				.ilike('name', `%${drugSearchQuery}%`)
+				.limit(10);
+			drugSuggestions = data || [];
+		} catch (err) {
+			console.error('Drug search failed:', err);
+		} finally {
+			isSearchingDrugs = false;
+		}
+	}
+
+	function selectDrugSuggestion(suggestion: any) {
+		drugForm.name = suggestion.name;
+		drugForm.generic_name = suggestion.generic_name;
+		drugForm.product_id = suggestion.id;
+		if (suggestion.strength) drugForm.dosage = suggestion.strength;
+		drugSuggestions = [];
+	}
+
 	function saveDrug() {
-		if (!drugForm.name) return alert('Drug name is required');
+		if (!drugForm.product_id) return alert('Please select a valid medication from the list');
 		
 		if (editingDrugIndex !== null) {
 			drugs[editingDrugIndex] = { ...drugForm };
@@ -149,13 +185,9 @@
 
 			if (presErr) throw presErr;
 
-			// 2. Sync drugs
-			const { error: delErr } = await supabase
-				.from('prescribed_drugs')
-				.delete()
-				.eq('prescription_id', prescriptionId);
-
-			if (delErr) throw delErr;
+			// 2. Clear old drugs and re-insert (Clean sync)
+			const { error: clearErr } = await supabase.from('prescribed_drugs').delete().eq('prescription_id', prescriptionId);
+			if (clearErr) throw clearErr;
 
 			// 3. Insert drugs
 			for (let i = 0; i < drugs.length; i++) {
@@ -164,14 +196,17 @@
 				
 				const { error: drugErr } = await supabase.from('prescribed_drugs').insert({
 					prescription_id: prescriptionId,
+					product_id: d.product_id,
 					name: d.name,
+					generic_name: d.generic_name,
 					dispense_as: d.dispense_as,
 					dispense_quantity: d.dispense_quantity ? parseInt(d.dispense_quantity.toString()) : null,
 					dosage: d.dosage,
 					frequency: d.frequency,
 					duration: d.duration,
 					special_instructions: d.special_instructions,
-					drug_pic_url: d.drug_pic_url
+					drug_pic_url: d.drug_pic_url,
+					status: d.status || 'pending'
 				});
 
 				const newProg = [...submitProgress];
@@ -187,8 +222,12 @@
 
 			if (submitProgress.some(p => p.status === 'error')) {
 				alert('Prescription updated, but some drugs failed to upload.');
+				submitting = false;
 			} else {
-				setTimeout(() => { goto('/prescriptions'); }, 1500);
+				setTimeout(() => { 
+					submitting = false;
+					goto('/prescriptions'); 
+				}, 1500);
 			}
 
 		} catch (err: any) {
@@ -237,32 +276,17 @@
 							<h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
 								<Stethoscope class="h-5 w-5 text-primary-600" /> Patient Selection
 							</h2>
-							{#if !selectedPatient}
-								<div class="relative">
-									<Search class="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-									<input type="text" bind:value={searchPatientQuery} placeholder="Search patient..." class="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none" />
-								</div>
-								<div class="max-h-60 overflow-y-auto mt-2 bg-white border border-gray-100 rounded-xl shadow-sm divide-y divide-gray-50">
-									{#each filteredPatients as pt}
-										<button onclick={() => selectedPatient = pt} class="w-full flex items-center gap-4 p-3 hover:bg-gray-50 transition-colors text-left text-gray-900">
-											<div class="h-10 w-10 bg-primary-100 rounded-full flex items-center justify-center font-bold text-primary-700 shrink-0 uppercase">{pt.full_name[0]}</div>
-											<div>
-												<p class="font-semibold">{pt.full_name}</p>
-												<p class="text-xs text-gray-500">{pt.phone}</p>
-											</div>
-										</button>
-									{/each}
-								</div>
-							{:else}
-								<div class="flex items-center justify-between p-4 bg-green-50/50 border border-green-100 rounded-xl">
+							{#if selectedPatient}
+								<div class="flex items-center justify-between p-4 bg-gray-50 border border-gray-100 rounded-xl">
 									<div class="flex items-center gap-4">
-										<CheckCircle2 class="h-10 w-10 text-green-600" />
+										<div class="h-10 w-10 bg-primary-100 rounded-full flex items-center justify-center font-bold text-primary-700 shrink-0 uppercase">
+											{selectedPatient.full_name[0]}
+										</div>
 										<div>
 											<p class="font-bold text-gray-900 text-lg uppercase">{selectedPatient.full_name}</p>
 											<p class="text-sm text-gray-600">{selectedPatient.phone}</p>
 										</div>
 									</div>
-									<button onclick={() => selectedPatient = null} class="text-sm font-medium text-red-600 hover:text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50">Change</button>
 								</div>
 							{/if}
 						</section>
@@ -283,9 +307,6 @@
 							</div>
 						</section>
 
-						<div class="flex justify-end pt-4 pb-24 lg:pb-32">
-							<button onclick={() => activeTab = 'drugs'} class="px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition-all flex items-center gap-2">Next: Medications <ArrowLeft class="h-4 w-4 rotate-180" /></button>
-						</div>
 					</div>
 				{:else if activeTab === 'drugs'}
 					<div class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -307,24 +328,51 @@
 								</div>
 							{/each}
 						</div>
-						<div class="flex justify-between pt-4 pb-24 lg:pb-32">
-							<button onclick={() => activeTab = 'details'} class="px-6 py-3 text-gray-600 font-bold rounded-xl hover:bg-gray-100 flex items-center gap-2"><ArrowLeft class="h-4 w-4" /> Back</button>
-						</div>
 					</div>
 				{/if}
 			</div>
 
-			<div class="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t p-4 z-40 border-gray-200">
+			<div class="fixed bottom-0 left-0 lg:left-64 right-0 bg-white/80 backdrop-blur-md border-t p-4 z-40 border-gray-200">
 				<div class="max-w-4xl mx-auto flex gap-3">
-					<button onclick={() => submitPrescription('draft')} disabled={submitting} class="flex-1 px-6 py-4 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-2xl hover:bg-gray-50 disabled:opacity-50">Save Draft</button>
-					<button onclick={() => submitPrescription('active')} disabled={submitting} class="flex-[2] px-6 py-4 bg-primary-500 text-black font-extrabold rounded-2xl hover:bg-primary-600 shadow-lg disabled:opacity-50 flex items-center justify-center gap-2">
-						<CheckCircle2 class="h-5 w-5" /> {submitting ? 'Updating...' : 'Update & Sign Prescription'}
+					<button onclick={() => submitPrescription('draft')} disabled={submitting} class="flex-1 px-4 py-2.5 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 disabled:opacity-50 text-sm">Save Draft</button>
+					<button onclick={() => submitPrescription('active')} disabled={submitting} class="flex-[1.5] px-4 py-2.5 bg-primary-500 text-black font-bold rounded-xl hover:bg-primary-600 shadow-md disabled:opacity-50 flex items-center justify-center gap-2 text-sm">
+						<CheckCircle2 class="h-4 w-4" /> {submitting ? 'Updating...' : 'Update & Sign Order'}
 					</button>
 				</div>
 			</div>
 		{/if}
 	</div>
 </div>
+
+<!-- Upload Progress Overlay -->
+{#if submitting}
+	<div class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in">
+		<div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 space-y-6 animate-in zoom-in-95">
+			<div class="text-center">
+				<div class="h-20 w-20 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-4">
+					<UploadCloud class="h-10 w-10 text-primary-600 animate-pulse" />
+				</div>
+				<h3 class="font-bold text-gray-900 text-2xl">Updating Order</h3>
+				<p class="text-sm text-gray-500 mt-1">Please wait while we update your prescription record.</p>
+			</div>
+
+			<div class="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+				{#each submitProgress as p}
+					<div class="flex items-center justify-between p-4 rounded-2xl border {p.status === 'error' ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}">
+						<span class="font-bold text-sm text-gray-800 truncate pr-4">{p.name}</span>
+						{#if p.status === 'uploading'}
+							<div class="h-5 w-5 rounded-full border-2 border-primary-500 border-t-transparent animate-spin shrink-0"></div>
+						{:else if p.status === 'success'}
+							<CheckCircle2 class="h-5 w-5 text-green-500 shrink-0" />
+						{:else if p.status === 'error'}
+							<XCircle class="h-5 w-5 text-red-500 shrink-0" />
+						{/if}
+					</div>
+				{/each}
+			</div>
+		</div>
+	</div>
+{/if}
 
 <style>
 	.custom-scrollbar::-webkit-scrollbar { width: 6px; }
@@ -341,43 +389,106 @@
 				<button onclick={() => drugModalOpen = false} class="p-2 bg-gray-100 hover:bg-gray-200 rounded-full"><X class="h-5 w-5"/></button>
 			</div>
 			<div class="p-8 space-y-6">
-				<div class="space-y-2">
-					<label class="block text-sm font-bold text-gray-700">Drug Name *</label>
-					<input type="text" bind:value={drugForm.name} class="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-primary-600" />
-				</div>
-				<div class="grid grid-cols-2 gap-4">
-					<div class="space-y-2">
-						<label class="block text-sm font-bold text-gray-700">Quantity</label>
-						<input type="number" bind:value={drugForm.dispense_quantity} class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl" />
+				{#if !drugForm.product_id}
+					<div class="space-y-4 relative">
+						<label class="block text-sm font-bold text-gray-700">Search Medication <span class="text-red-500">*</span></label>
+						<div class="relative">
+							<Search class="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+							<input 
+								type="text" 
+								bind:value={drugSearchQuery} 
+								oninput={fetchDrugSuggestions}
+								placeholder="Start typing medication name..." 
+								class="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-primary-600 focus:bg-white transition-all font-medium outline-none" 
+							/>
+							{#if isSearchingDrugs}
+								<div class="absolute right-4 top-1/2 -translate-y-1/2">
+									<div class="h-4 w-4 border-2 border-primary-500 border-t-transparent animate-spin rounded-full"></div>
+								</div>
+							{/if}
+						</div>
+
+						{#if drugSuggestions.length > 0}
+							<div class="border border-gray-200 rounded-2xl shadow-xl divide-y divide-gray-50 overflow-hidden bg-white max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2">
+								{#each drugSuggestions as suggestion}
+									<button 
+										onclick={() => selectDrugSuggestion(suggestion)}
+										class="w-full px-5 py-4 text-left hover:bg-primary-50 transition-colors flex flex-col"
+									>
+										<span class="font-bold text-gray-900 leading-tight">{suggestion.name}</span>
+										<span class="text-xs text-gray-500 mt-0.5">{suggestion.generic_name || 'No generic name'} • {suggestion.dosage_form || ''}</span>
+									</button>
+								{/each}
+							</div>
+						{:else if drugSearchQuery.length >= 2 && !isSearchingDrugs}
+							<div class="p-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200 animate-in zoom-in-95">
+								<Pill class="h-8 w-8 text-gray-300 mx-auto mb-2" />
+								<p class="text-sm text-gray-500 font-medium">No medical products found matching "{drugSearchQuery}"</p>
+							</div>
+						{/if}
 					</div>
-					<div class="space-y-2">
-						<label class="block text-sm font-bold text-gray-700">Type</label>
-						<input type="text" bind:value={drugForm.dispense_as} class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl" />
+				{:else}
+					<div class="p-5 bg-primary-50 border border-primary-100 rounded-2xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
+						<div class="flex items-center gap-4">
+							<div class="h-12 w-12 bg-white rounded-xl shadow-sm flex items-center justify-center border border-primary-100">
+								<Pill class="h-6 w-6 text-primary-600" />
+							</div>
+							<div class="flex-1 overflow-hidden">
+								<h4 class="font-bold text-gray-900 leading-tight truncate">{drugForm.name}</h4>
+								<p class="text-xs text-primary-700 font-medium truncate">{drugForm.generic_name || 'No generic name'}</p>
+							</div>
+						</div>
+						<button 
+							onclick={() => { drugForm.product_id = null; drugSearchQuery = drugForm.name; }} 
+							class="px-4 py-2 bg-white text-primary-700 text-xs font-bold rounded-lg border border-primary-200 shadow-sm hover:bg-primary-100 transition-colors shrink-0"
+						>
+							Change
+						</button>
 					</div>
-				</div>
-				<div class="grid grid-cols-2 gap-4">
-					<div class="space-y-2">
-						<label class="block text-sm font-bold text-gray-700">Dosage</label>
-						<input type="text" bind:value={drugForm.dosage} class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl" />
+
+					<div class="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+						<div class="space-y-2">
+							<label class="block text-sm font-bold text-gray-700">Dosage</label>
+							<input type="text" bind:value={drugForm.dosage} placeholder="e.g. 500mg" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-600 focus:bg-white" />
+						</div>
+						<div class="space-y-2">
+							<label class="block text-sm font-bold text-gray-700">Frequency</label>
+							<input type="text" bind:value={drugForm.frequency} placeholder="e.g. BID (2x Daily)" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-600 focus:bg-white" />
+						</div>
+						<div class="space-y-2">
+							<label class="block text-sm font-bold text-gray-700">Duration</label>
+							<input type="text" bind:value={drugForm.duration} placeholder="e.g. 5 Days" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-600 focus:bg-white" />
+						</div>
+						<div class="space-y-2">
+							<label class="block text-sm font-bold text-gray-700">Total Quantity</label>
+							<div class="flex gap-2">
+								<input type="number" bind:value={drugForm.dispense_quantity} placeholder="Qty" class="w-20 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-600 focus:bg-white" />
+								<input type="text" bind:value={drugForm.dispense_as} placeholder="Unit (Packs)" class="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-600 focus:bg-white" />
+							</div>
+						</div>
 					</div>
-					<div class="space-y-2">
-						<label class="block text-sm font-bold text-gray-700">Frequency</label>
-						<input type="text" bind:value={drugForm.frequency} class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl" />
+
+					<div class="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
+						<label class="block text-sm font-bold text-gray-700">Instructions (Optional)</label>
+						<textarea bind:value={drugForm.special_instructions} rows="3" placeholder="Take after meals..." class="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-primary-600 focus:bg-white transition-all resize-none outline-none"></textarea>
 					</div>
-				</div>
-				<div class="space-y-2">
-					<label class="block text-sm font-bold text-gray-700">Duration</label>
-					<input type="text" bind:value={drugForm.duration} class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl" />
-				</div>
-				<div class="space-y-2">
-					<label class="block text-sm font-bold text-gray-700">Special Instructions</label>
-					<textarea bind:value={drugForm.special_instructions} rows="3" class="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl resize-none"></textarea>
-				</div>
+
+					<div class="flex pt-4 animate-in fade-in slide-in-from-bottom-2 duration-700">
+						<button onclick={saveDrug} class="w-full py-4 bg-gray-900 hover:bg-black text-white font-extrabold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2">
+							<CheckCircle2 class="h-5 w-5" />
+							{editingDrugIndex !== null ? 'Update Medication Details' : 'Add Medication to Order'}
+						</button>
+					</div>
+				{/if}
 			</div>
-			<div class="sticky bottom-0 bg-gray-50 border-t px-8 py-6 flex gap-3 z-10">
-				<button onclick={() => drugModalOpen = false} class="flex-1 px-8 py-3 bg-white border border-gray-300 rounded-2xl">Cancel</button>
-				<button onclick={saveDrug} class="flex-[2] px-8 py-3 bg-primary-500 text-black font-extrabold rounded-2xl">{editingDrugIndex !== null ? 'Update' : 'Add'}</button>
-			</div>
+
+			{#if !drugForm.product_id}
+				<div class="sticky bottom-0 bg-gray-50 border-t px-8 py-6 flex flex-col-reverse sm:flex-row gap-3 z-10">
+					<button onclick={() => drugModalOpen = false} class="w-full sm:w-auto px-8 py-3 bg-white border border-gray-300 text-gray-700 font-bold rounded-2xl hover:bg-gray-100 transition-all">
+						Cancel
+					</button>
+				</div>
+			{/if}
 		</div>
 	</div>
 {/if}
