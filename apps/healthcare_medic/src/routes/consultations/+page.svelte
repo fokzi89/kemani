@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { supabase } from '$lib/supabase';
 	import { Calendar, Video, MessageSquare, Phone, CheckCircle, Clock, XCircle } from 'lucide-svelte';
@@ -9,6 +9,7 @@
 	let loading = $state(true);
 	let filter = $state('all'); // all, pending, in_progress, completed
 
+	let startingConsultationId = $state<string | null>(null);
 	let showNotTimePopup = $state(false);
 	let showReschedulePopup = $state(false);
 	let selectedConsultation = $state<any>(null);
@@ -145,20 +146,24 @@
 	}
 
 	async function startConsultation(consultation: any) {
+		console.log('Starting consultation initiation for:', consultation.id);
+		
 		if (consultation.scheduled_time) {
 			const now = new Date();
 			const scheduledDate = new Date(consultation.scheduled_time);
 			const timeDiffMins = (scheduledDate.getTime() - now.getTime()) / (1000 * 60);
 
 			if (timeDiffMins > 5) {
+				console.log('Too early to start:', timeDiffMins, 'mins left');
 				showNotTimePopup = true;
 				return;
 			}
 		}
 
-		loading = true;
+		startingConsultationId = consultation.id;
 		
 		try {
+			console.log('Updating status to in_progress...');
 			// 1. Update status if pending
 			if (consultation.status === 'pending') {
 				const { error: statusError } = await supabase
@@ -166,55 +171,80 @@
 					.update({ status: 'in_progress' })
 					.eq('id', consultation.id);
 				
-				if (statusError) throw statusError;
-			}
-
-			// 2. Pre-initialize Chat Conversation if it's a chat type
-			if (consultation.type === 'chat') {
-				const { data: existing } = await supabase
-					.from('chat_conversations')
-					.select('*')
-					.eq('consultation_id', consultation.id)
-					.single();
-
-				if (!existing) {
-					const { error: chatError } = await supabase
-						.from('chat_conversations')
-						.insert({
-							consultation_id: consultation.id,
-							tenant_id: consultation.tenant_id,
-							branch_id: provider.id,
-							customer_id: consultation.patient_id,
-							status: 'active'
-						});
-					
-					if (chatError) throw chatError;
+				if (statusError) {
+					console.error('Status update failed:', statusError.message);
+				} else {
+					console.log('Status updated successfully.');
 				}
 			}
 
-			// 3. Navigate smoothly
+			// 2. Pre-initialize Chat Conversation
+			console.log('Checking for chat_conversations record...');
+			try {
+				const { data: existing, error: fetchError } = await supabase
+					.from('chat_conversations')
+					.select('id')
+					.eq('consultation_id', consultation.id)
+					.maybeSingle();
+
+				if (fetchError) console.error('Error checking chat:', fetchError.message);
+
+				if (!existing) {
+					console.log('Creating new chat_conversations record...');
+					// Only pass consultation_id and status - all other columns FK into retail
+					// tables (tenants, branches, customers) which are separate from the 
+					// healthcare schema. The migration to make them nullable is pending.
+					const chatData: any = {
+						consultation_id: consultation.id,
+						status: 'active'
+					};
+
+					const { error: insertError } = await supabase
+						.from('chat_conversations')
+						.insert(chatData);
+
+					if (insertError) console.error('Chat record creation failed:', insertError.message);
+					else console.log('Chat record created.');
+				} else {
+					console.log('Existing chat record found:', existing.id);
+				}
+			} catch (chatInitErr) {
+				console.warn('Chat auto-init failed, will retry on chat page:', chatInitErr);
+			}
+
+			// 3. Final Step: Navigate
+			console.log('Navigating to interaction hub...');
+			await tick(); // Allow DOM/State to stabilize
 			navigateToInteraction(consultation);
-		} catch (err) {
-			console.error('Error starting consultation:', err);
+
+		} catch (err: any) {
+			console.error('CRITICAL ERROR starting consultation:', err);
+			alert('Critical Error: ' + (err.message || 'Unknown error during startup.'));
 		} finally {
-			loading = false;
+			startingConsultationId = null;
 		}
 	}
 
-	function navigateToInteraction(consultation: any) {
+	async function navigateToInteraction(consultation: any) {
 		const id = consultation.id;
-		switch (consultation.type) {
-			case 'chat':
-				goto(`/chats/${id}`);
-				break;
-			case 'video':
-				goto(`/consultations/video/${id}`);
-				break;
-			case 'audio':
-				goto(`/consultations/audio/${id}`);
-				break;
-			default:
-				goto(`/consultations/${id}`);
+		const targetUrl = `/chats/${id}`;
+		console.log('Attempting navigation to:', targetUrl);
+		
+		try {
+			// SvelteKit Navigation
+			const success = await goto(targetUrl);
+			console.log('SvelteKit goto result:', success === false ? 'Navigation aborted' : 'Navigation sequence started');
+			
+			// Fallback if goto returns false or doesn't move after 500ms
+			setTimeout(() => {
+				if (window.location.pathname !== targetUrl) {
+					console.warn('SvelteKit navigation might have stalled. Forcing window.location.href...');
+					window.location.href = targetUrl;
+				}
+			}, 1000);
+		} catch (navErr) {
+			console.error('Navigation error, forcing fallback:', navErr);
+			window.location.href = targetUrl;
 		}
 	}
 
@@ -270,25 +300,25 @@
 		<div class="flex flex-wrap gap-2">
 			<button
 				onclick={() => handleFilterChange('all')}
-				class="px-4 py-2 rounded-md transition-colors {filter === 'all' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+				class="px-4 py-2 rounded-md transition-colors {filter === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
 			>
 				All
 			</button>
 			<button
 				onclick={() => handleFilterChange('pending')}
-				class="px-4 py-2 rounded-md transition-colors {filter === 'pending' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+				class="px-4 py-2 rounded-md transition-colors {filter === 'pending' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
 			>
 				Pending
 			</button>
 			<button
 				onclick={() => handleFilterChange('in_progress')}
-				class="px-4 py-2 rounded-md transition-colors {filter === 'in_progress' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+				class="px-4 py-2 rounded-md transition-colors {filter === 'in_progress' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
 			>
 				In Progress
 			</button>
 			<button
 				onclick={() => handleFilterChange('completed')}
-				class="px-4 py-2 rounded-md transition-colors {filter === 'completed' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+				class="px-4 py-2 rounded-md transition-colors {filter === 'completed' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
 			>
 				Completed
 			</button>
@@ -377,15 +407,22 @@
 									{@const schedTime = consultation.scheduled_time ? new Date(consultation.scheduled_time).getTime() : nowTime}
 									
 									<button
+										type="button"
 										onclick={() => startConsultation(consultation)}
-										class="px-4 py-2 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-black transition-all flex items-center justify-center gap-2 shadow-md shadow-gray-200"
+										disabled={startingConsultationId === consultation.id}
+										class="px-4 py-2 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-black transition-all flex items-center justify-center gap-2 shadow-md shadow-gray-200 disabled:opacity-50"
 									>
-										<Clock class="h-4 w-4" />
+										{#if startingConsultationId === consultation.id}
+											<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+										{:else}
+											<Clock class="h-4 w-4" />
+										{/if}
 										Start
 									</button>
 
 									{#if nowTime > schedTime}
 										<button
+											type="button"
 											onclick={() => openReschedule(consultation)}
 											class="px-4 py-2 border-2 border-gray-900 text-gray-900 text-sm font-bold rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
 										>
