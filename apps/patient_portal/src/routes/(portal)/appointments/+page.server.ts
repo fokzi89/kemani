@@ -15,7 +15,14 @@ export async function load({ locals, parent }) {
     .eq('patient_id', activeSession.user.id);
 
   if (provider?.id) {
-    query = query.eq('tenant_id', provider.id);
+    let orFilter = `tenant_id.eq.${provider.id}`;
+    if (provider.hcp_id && provider.hcp_id !== provider.id) {
+      orFilter += `,provider_id.eq.${provider.hcp_id}`;
+    } else if (provider.hcp_id === provider.id) {
+      // In Mode B, provider.id IS the hcp_id, and tenant_id might be empty/null for direct HCPs
+      orFilter += `,provider_id.eq.${provider.id}`;
+    }
+    query = query.or(orFilter);
   }
 
   const { data: consultations, error: fetchError } = await query

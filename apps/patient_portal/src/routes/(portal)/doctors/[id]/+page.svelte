@@ -110,7 +110,19 @@
     if (!dayItem.isAvailable) return;
     selectedDate = dayItem.dateString;
     if (dayItem.scheduleRecord) {
-      availableSlots = generateSlots(dayItem.scheduleRecord.start_time, dayItem.scheduleRecord.end_time, dayItem.scheduleRecord.slot_duration || slotDuration);
+      let slots = generateSlots(dayItem.scheduleRecord.start_time, dayItem.scheduleRecord.end_time, dayItem.scheduleRecord.slot_duration || slotDuration);
+      
+      const todayString = new Date().toISOString().split('T')[0];
+      if (selectedDate === todayString) {
+        const today = new Date();
+        const currentMins = today.getHours() * 60 + today.getMinutes();
+        slots = slots.filter(slot => {
+           const [hh, mm] = slot.split(':').map(Number);
+           const slotMins = hh * 60 + mm;
+           return slotMins > currentMins;
+        });
+      }
+      availableSlots = slots;
     } else {
       availableSlots = [];
     }
