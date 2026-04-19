@@ -55,7 +55,8 @@
 					.from('users')
 					.select(`
 						*, 
-						tenants:tenants!users_tenant_id_fkey(*)
+						tenants:tenants!users_tenant_id_fkey(*),
+						branches:branches!users_branch_id_fkey(*)
 					`)
 					.eq('id', session.user.id)
 					.maybeSingle();

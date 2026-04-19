@@ -242,7 +242,7 @@
         tenant_id: provider.id,
         type: selectedService,
         status: 'pending',
-        scheduled_time: `${selectedDate}T${start_time}Z`,
+        scheduled_time: new Date(`${selectedDate}T${start_time}`).toISOString(),
         slot_duration: totalDuration,
         referral_source: 'direct',
         provider_name: provider.name,
@@ -264,7 +264,7 @@
       }];
 
       // Calculate time difference
-      const scheduledDateObj = new Date(`${selectedDate}T${start_time}Z`);
+      const scheduledDateObj = new Date(`${selectedDate}T${start_time}`);
       const now = new Date();
       const diffMins = (scheduledDateObj.getTime() - now.getTime()) / (1000 * 60);
 

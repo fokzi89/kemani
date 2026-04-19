@@ -1,0 +1,227 @@
+
+> healthcare-medic@0.0.1 dev
+> vite dev --port 5174
+
+
+  [32m[1mVITE[22m v6.4.1[39m  [2mready in [0m[1m3171[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5174[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+6:59:55 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:658:4 Buttons and links should either contain text or have an `aria-label`, `aria-labelledby` or `title` attribute
+https://svelte.dev/e/a11y_consider_explicit_label
+6:59:55 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:706:4 `<video>` elements must have a `<track kind="captions">`
+https://svelte.dev/e/a11y_media_has_caption
+6:59:55 PM [vite-plugin-svelte] src/routes/+layout.svelte:294:4 Using `<slot>` to render parent content is deprecated. Use `{@render ...}` tags instead
+https://svelte.dev/e/slot_element_deprecated
+6:59:55 PM [vite-plugin-svelte] src/routes/+layout.svelte:317:3 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+6:59:55 PM [vite-plugin-svelte] src/routes/+layout.svelte:317:3 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+6:59:55 PM [vite-plugin-svelte] src/routes/+layout.svelte:384:1 Using `<slot>` to render parent content is deprecated. Use `{@render ...}` tags instead
+https://svelte.dev/e/slot_element_deprecated
+
+Google Chrome is requesting /.well-known/appspecific/com.chrome.devtools.json to automatically configure devtools project settings. To learn why, and how to prevent this message, see https://svelte.dev/docs/cli/devtools-json
+
+7:00:20 PM [vite-plugin-svelte] src/routes/+layout.svelte:294:4 Using `<slot>` to render parent content is deprecated. Use `{@render ...}` tags instead
+https://svelte.dev/e/slot_element_deprecated
+7:00:20 PM [vite-plugin-svelte] src/routes/+layout.svelte:317:3 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+7:00:20 PM [vite-plugin-svelte] src/routes/+layout.svelte:317:3 `<div>` with a click handler must have an ARIA role
+https://svelte.dev/e/a11y_no_static_element_interactions
+7:00:20 PM [vite-plugin-svelte] src/routes/+layout.svelte:384:1 Using `<slot>` to render parent content is deprecated. Use `{@render ...}` tags instead
+https://svelte.dev/e/slot_element_deprecated
+7:00:21 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:658:4 Buttons and links should either contain text or have an `aria-label`, `aria-labelledby` or `title` attribute
+https://svelte.dev/e/a11y_consider_explicit_label
+7:00:21 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:706:4 `<video>` elements must have a `<track kind="captions">`
+https://svelte.dev/e/a11y_media_has_caption
+[2m7:06:39 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/routes/chats/[id]/+page.svelte, /src/app.css[22m
+[2m7:06:39 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/routes/chats/[id]/+page.svelte[22m
+[2m7:06:39 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/routes/chats/[id]/+page.svelte, /src/app.css[22m
+[2m7:06:39 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/routes/chats/[id]/+page.svelte[22m
+7:06:39 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:658:4 Buttons and links should either contain text or have an `aria-label`, `aria-labelledby` or `title` attribute
+https://svelte.dev/e/a11y_consider_explicit_label
+7:06:39 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:706:4 `<video>` elements must have a `<track kind="captions">`
+https://svelte.dev/e/a11y_media_has_caption
+7:08:48 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:658:4 Buttons and links should either contain text or have an `aria-label`, `aria-labelledby` or `title` attribute
+https://svelte.dev/e/a11y_consider_explicit_label
+7:08:48 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:706:4 `<video>` elements must have a `<track kind="captions">`
+https://svelte.dev/e/a11y_media_has_caption
+[2m7:19:16 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/routes/chats/[id]/+page.svelte, /src/app.css[22m
+[2m7:19:16 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/routes/chats/[id]/+page.svelte[22m
+[2m7:19:16 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/routes/chats/[id]/+page.svelte, /src/app.css[22m
+[2m7:19:16 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/routes/chats/[id]/+page.svelte[22m
+7:19:17 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:671:4 Buttons and links should either contain text or have an `aria-label`, `aria-labelledby` or `title` attribute
+https://svelte.dev/e/a11y_consider_explicit_label
+7:19:17 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:719:4 `<video>` elements must have a `<track kind="captions">`
+https://svelte.dev/e/a11y_media_has_caption
+7:23:48 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:671:4 Buttons and links should either contain text or have an `aria-label`, `aria-labelledby` or `title` attribute
+https://svelte.dev/e/a11y_consider_explicit_label
+7:23:48 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:719:4 `<video>` elements must have a `<track kind="captions">`
+https://svelte.dev/e/a11y_media_has_caption
+[2m7:47:48 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/routes/chats/[id]/+page.svelte, /src/app.css[22m
+[2m7:47:48 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/routes/chats/[id]/+page.svelte[22m
+7:47:49 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:671:4 Buttons and links should either contain text or have an `aria-label`, `aria-labelledby` or `title` attribute
+https://svelte.dev/e/a11y_consider_explicit_label
+7:47:49 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:719:4 `<video>` elements must have a `<track kind="captions">`
+https://svelte.dev/e/a11y_media_has_caption
+7:48:51 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:671:4 Buttons and links should either contain text or have an `aria-label`, `aria-labelledby` or `title` attribute
+https://svelte.dev/e/a11y_consider_explicit_label
+7:48:51 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:719:4 `<video>` elements must have a `<track kind="captions">`
+https://svelte.dev/e/a11y_media_has_caption
+[2m8:55:11 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/routes/chats/[id]/+page.svelte, /src/app.css[22m
+[2m8:55:11 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/routes/chats/[id]/+page.svelte[22m
+8:55:12 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:674:4 Buttons and links should either contain text or have an `aria-label`, `aria-labelledby` or `title` attribute
+https://svelte.dev/e/a11y_consider_explicit_label
+8:55:12 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:722:4 `<video>` elements must have a `<track kind="captions">`
+https://svelte.dev/e/a11y_media_has_caption
+[2m8:55:55 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/routes/chats/[id]/+page.svelte, /src/app.css[22m
+[2m8:55:55 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/routes/chats/[id]/+page.svelte[22m
+8:55:55 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:694:4 Buttons and links should either contain text or have an `aria-label`, `aria-labelledby` or `title` attribute
+https://svelte.dev/e/a11y_consider_explicit_label
+8:55:55 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:742:4 `<video>` elements must have a `<track kind="captions">`
+https://svelte.dev/e/a11y_media_has_caption
+8:57:10 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:694:4 Buttons and links should either contain text or have an `aria-label`, `aria-labelledby` or `title` attribute
+https://svelte.dev/e/a11y_consider_explicit_label
+8:57:10 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:742:4 `<video>` elements must have a `<track kind="captions">`
+https://svelte.dev/e/a11y_media_has_caption
+[2m9:00:33 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/routes/chats/[id]/+page.svelte, /src/app.css, /src/routes/chats/[id]/+page.svelte?svelte&type=style&lang.css[22m
+[2m9:00:33 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/routes/chats/[id]/+page.svelte[22m
+[2m9:00:34 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Invalid declaration: `onMount`[39m
+  Plugin: [35m@tailwindcss/vite:generate:serve[39m
+  File: [36mC:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/src/routes/chats/[id]/+page.svelte?svelte&type=style&lang.css[39m
+      at Se (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/tailwindcss/dist/chunk-F4544Y4M.mjs:1:3315)
+      at yf (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/tailwindcss/dist/chunk-F4544Y4M.mjs:38:1384)
+      at uu (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/node/dist/index.mjs:10:3463)
+      at B.generate (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/vite/dist/index.mjs:1:5242)
+      at TransformPluginContext.handler (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/vite/dist/index.mjs:1:2726)
+      at EnvironmentPluginContainer.transform (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:42324:19)
+      at loadAndTransform (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:35739:49)
+      at async viteTransformMiddleware (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:37254:24)
+[2m9:00:34 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Invalid declaration: `onMount`[39m
+  Plugin: [35m@tailwindcss/vite:generate:serve[39m
+  File: [36mC:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/src/routes/chats/[id]/+page.svelte?svelte&type=style&lang.css[39m
+      at Se (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/tailwindcss/dist/chunk-F4544Y4M.mjs:1:3315)
+      at yf (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/tailwindcss/dist/chunk-F4544Y4M.mjs:38:1384)
+      at uu (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/node/dist/index.mjs:10:3463)
+      at B.generate (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/vite/dist/index.mjs:1:5242)
+      at TransformPluginContext.handler (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/vite/dist/index.mjs:1:2726)
+      at EnvironmentPluginContainer.transform (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:42324:19)
+      at loadAndTransform (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:35739:49)
+      at async viteTransformMiddleware (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:37254:24)
+[2m9:00:34 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Invalid declaration: `onMount`[39m
+  Plugin: [35m@tailwindcss/vite:generate:serve[39m
+  File: [36mC:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/src/routes/chats/[id]/+page.svelte?svelte&type=style&lang.css[39m
+      at Se (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/tailwindcss/dist/chunk-F4544Y4M.mjs:1:3315)
+      at yf (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/tailwindcss/dist/chunk-F4544Y4M.mjs:38:1384)
+      at uu (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/node/dist/index.mjs:10:3463)
+      at B.generate (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/vite/dist/index.mjs:1:5242)
+      at TransformPluginContext.handler (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/vite/dist/index.mjs:1:2726)
+      at EnvironmentPluginContainer.transform (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:42324:19)
+      at loadAndTransform (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:35739:49)
+      at async viteTransformMiddleware (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:37254:24)
+[2m9:00:34 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Invalid declaration: `onMount`[39m
+  Plugin: [35m@tailwindcss/vite:generate:serve[39m
+  File: [36mC:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/src/routes/chats/[id]/+page.svelte?svelte&type=style&lang.css[39m
+      at Se (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/tailwindcss/dist/chunk-F4544Y4M.mjs:1:3315)
+      at yf (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/tailwindcss/dist/chunk-F4544Y4M.mjs:38:1384)
+      at uu (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/node/dist/index.mjs:10:3463)
+      at B.generate (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/vite/dist/index.mjs:1:5242)
+      at TransformPluginContext.handler (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/vite/dist/index.mjs:1:2726)
+      at EnvironmentPluginContainer.transform (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:42324:19)
+      at loadAndTransform (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:35739:49)
+      at async viteTransformMiddleware (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:37254:24)
+[2m9:00:34 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Invalid declaration: `onMount`[39m
+  Plugin: [35m@tailwindcss/vite:generate:serve[39m
+  File: [36mC:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/src/routes/chats/[id]/+page.svelte?svelte&type=style&lang.css[39m
+      at Se (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/tailwindcss/dist/chunk-F4544Y4M.mjs:1:3315)
+      at yf (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/tailwindcss/dist/chunk-F4544Y4M.mjs:38:1384)
+      at uu (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/node/dist/index.mjs:10:3463)
+      at B.generate (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/vite/dist/index.mjs:1:5242)
+      at TransformPluginContext.handler (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/vite/dist/index.mjs:1:2726)
+      at EnvironmentPluginContainer.transform (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:42324:19)
+      at loadAndTransform (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:35739:49)
+      at async viteTransformMiddleware (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:37254:24)
+[2m9:00:34 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Invalid declaration: `onMount`[39m
+  Plugin: [35m@tailwindcss/vite:generate:serve[39m
+  File: [36mC:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/src/routes/chats/[id]/+page.svelte?svelte&type=style&lang.css[39m
+      at Se (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/tailwindcss/dist/chunk-F4544Y4M.mjs:1:3315)
+      at yf (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/tailwindcss/dist/chunk-F4544Y4M.mjs:38:1384)
+      at uu (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/node/dist/index.mjs:10:3463)
+      at B.generate (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/vite/dist/index.mjs:1:5242)
+      at TransformPluginContext.handler (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/vite/dist/index.mjs:1:2726)
+      at EnvironmentPluginContainer.transform (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:42324:19)
+      at loadAndTransform (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:35739:49)
+      at async viteTransformMiddleware (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:37254:24)
+[2m9:00:34 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Invalid declaration: `onMount`[39m
+  Plugin: [35m@tailwindcss/vite:generate:serve[39m
+  File: [36mC:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/src/routes/chats/[id]/+page.svelte?svelte&type=style&lang.css[39m
+      at Se (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/tailwindcss/dist/chunk-F4544Y4M.mjs:1:3315)
+      at yf (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/tailwindcss/dist/chunk-F4544Y4M.mjs:38:1384)
+      at uu (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/node/dist/index.mjs:10:3463)
+      at B.generate (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/vite/dist/index.mjs:1:5242)
+      at TransformPluginContext.handler (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/@tailwindcss/vite/dist/index.mjs:1:2726)
+      at EnvironmentPluginContainer.transform (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:42324:19)
+      at loadAndTransform (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:35739:49)
+      at async viteTransformMiddleware (file:///C:/Users/afokeoghene.akpomiem/kemani/apps/healthcare_medic/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:37254:24)
+[2m9:01:51 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/routes/chats/[id]/+page.svelte, /src/app.css[22m
+[2m9:01:51 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/routes/chats/[id]/+page.svelte[22m
+[2m9:01:51 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/routes/chats/[id]/+page.svelte, /src/app.css[22m
+[2m9:01:51 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/routes/chats/[id]/+page.svelte[22m
+[2m9:05:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/routes/chats/[id]/+page.svelte, /src/app.css[22m
+[2m9:05:10 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/routes/chats/[id]/+page.svelte[22m
+[2m9:10:37 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/routes/chats/[id]/+page.svelte, /src/app.css, /src/routes/chats/[id]/+page.svelte?svelte&type=style&lang.css[22m
+[2m9:10:37 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/routes/chats/[id]/+page.svelte[22m
+[2m9:10:37 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/routes/chats/[id]/+page.svelte, /src/app.css, /src/routes/chats/[id]/+page.svelte?svelte&type=style&lang.css[22m
+[2m9:10:37 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/routes/chats/[id]/+page.svelte[22m
+9:10:39 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:335:11 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+9:10:39 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:335:11 Non-interactive element `<img>` should not be assigned mouse or keyboard event listeners
+https://svelte.dev/e/a11y_no_noninteractive_element_interactions
+9:10:39 PM [vite-plugin-svelte] src/routes/chats/[id]/+page.svelte:408:3 Buttons and links should either contain text or have an `aria-label`, `aria-labelledby` or `title` attribute
+https://svelte.dev/e/a11y_consider_explicit_label
+9:16:07 PM [vite-plugin-svelte] src/routes/chats/+page.svelte:197:7 `<svelte:component>` is deprecated in runes mode — components are dynamic by default
+https://svelte.dev/e/svelte_component_deprecated
+9:19:40 PM [vite-plugin-svelte] src/lib/components/FileUpload.svelte:62:1 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+9:19:40 PM [vite-plugin-svelte] src/lib/components/FileUpload.svelte:65:2 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+9:19:40 PM [vite-plugin-svelte] src/lib/components/FileUpload.svelte:26:5 `fileInput` is updated, but is not declared with `$state(...)`. Changing its value will not correctly trigger updates
+https://svelte.dev/e/non_reactive_update
+9:19:40 PM [vite-plugin-svelte] src/lib/components/Modal.svelte:30:1 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events
+9:20:57 PM [vite-plugin-svelte] src/routes/settings/+page.svelte:857:7 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+9:20:57 PM [vite-plugin-svelte] src/routes/settings/+page.svelte:861:7 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+9:20:57 PM [vite-plugin-svelte] src/routes/settings/+page.svelte:865:7 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+9:20:57 PM [vite-plugin-svelte] src/routes/settings/+page.svelte:869:7 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+9:20:57 PM [vite-plugin-svelte] src/routes/settings/+page.svelte:873:7 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+9:20:57 PM [vite-plugin-svelte] src/routes/settings/+page.svelte:877:7 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+9:20:57 PM [vite-plugin-svelte] src/routes/settings/+page.svelte:908:8 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+9:20:57 PM [vite-plugin-svelte] src/routes/settings/+page.svelte:912:8 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+9:20:57 PM [vite-plugin-svelte] src/routes/settings/+page.svelte:916:8 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+9:20:57 PM [vite-plugin-svelte] src/routes/settings/+page.svelte:927:8 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+9:20:57 PM [vite-plugin-svelte] src/routes/settings/+page.svelte:1105:9 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+9:20:57 PM [vite-plugin-svelte] src/routes/settings/+page.svelte:1114:11 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+9:20:57 PM [vite-plugin-svelte] src/routes/settings/+page.svelte:1123:11 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+9:20:57 PM [vite-plugin-svelte] src/routes/settings/+page.svelte:1302:6 Buttons and links should either contain text or have an `aria-label`, `aria-labelledby` or `title` attribute
+https://svelte.dev/e/a11y_consider_explicit_label
+9:23:08 PM [vite-plugin-svelte] src/routes/commissions/+page.svelte:312:4 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+9:23:08 PM [vite-plugin-svelte] src/routes/commissions/+page.svelte:328:4 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control
+9:23:08 PM [vite-plugin-svelte] src/routes/commissions/+page.svelte:425:10 `<svelte:component>` is deprecated in runes mode — components are dynamic by default
+https://svelte.dev/e/svelte_component_deprecated
+9:23:11 PM [vite-plugin-svelte] src/routes/reviews/+page.svelte:367:5 A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control

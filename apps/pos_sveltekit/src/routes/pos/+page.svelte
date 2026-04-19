@@ -99,7 +99,7 @@
 				...row.products,
 				product_id:    row.product_id,
 				stock_quantity: bmap[row.product_id].reduce((s, b) => s + b.stock_quantity, 0),
-				price:         fifo.unit_cost || 0,
+				price:         fifo.selling_price || 0,
 				expiry_date:   fifo.expiry_date,
 				near_expiry:   isNearExpiry(fifo.expiry_date)
 			});
@@ -136,7 +136,7 @@
 		} else {
 			tab.items = [...tab.items, {
 				product_id: product.product_id, name: product.name,
-				price: parseFloat(String(fifo.unit_cost || 0)), qty: 1,
+				price: parseFloat(String(fifo.selling_price || 0)), qty: 1,
 				batch_id: fifo.id, batch_stock: fifo.stock_quantity,
 				batch_expiry: fifo.expiry_date, image_url: product.image_url,
 				near_expiry: product.near_expiry
@@ -170,8 +170,6 @@
 			const { data: { session } } = await supabase.auth.getSession();
 			const sale_number = `SALE-${Date.now().toString().slice(-6)}`;
 			const now = new Date();
-			const sale_date = now.toISOString().split('T')[0];
-			const sale_time = now.toTimeString().split(' ')[0];
 
 			const { data: sale, error: saleErr } = await supabase.from('sales').insert({
 				tenant_id: tenantId, 
@@ -179,22 +177,26 @@
 				cashier_id: session?.user.id,
 				sale_number, 
 				subtotal, 
+				tax_amount: 0,
 				discount_amount: discountAmt, 
 				total_amount: total,
 				payment_method: paymentMethod, 
 				cash_received: parseFloat(cashReceived) || null,
-				change_given: change || null, 
-				customer_name: tab.customerName || null, 
+				change_given: change || null,
+				customer_name: tab.customerName || null,
 				sale_status: 'completed',
-				sale_date,
-				sale_time
+				sale_date: now.toISOString().split('T')[0],
+				sale_time: now.toTimeString().split(' ')[0]
 			}).select().single();
 			if (saleErr) throw saleErr;
 
-			await supabase.from('sale_items').insert(
+			const { error: itemsErr } = await supabase.from('sale_items').insert(
 				tab.items.map(i => ({
 					sale_id: sale.id,
 					tenant_id: tenantId,
+					branch_id: userBranchId,
+					cashier_id: session?.user.id,
+					inventory_id: i.batch_id,
 					product_id: i.product_id,
 					product_name: i.name,
 					quantity: i.qty,
@@ -204,6 +206,8 @@
 					discount_percent: 0
 				}))
 			);
+			if (itemsErr) throw itemsErr;
+
 			for (const item of tab.items) {
 				await supabase.from('branch_inventory')
 					.update({ stock_quantity: Math.max(0, item.batch_stock - item.qty), updated_at: new Date().toISOString() })

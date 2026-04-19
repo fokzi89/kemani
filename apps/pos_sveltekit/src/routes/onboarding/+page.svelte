@@ -167,7 +167,18 @@
 					email: currentUser.email,
 					phone: form.phone,
 					role: 'tenant_admin',
-					onboarding_done: true
+					onboarding_done: true,
+					// Grant all privileges to the tenant owner
+					canManagePOS: true,
+					canManageProducts: true,
+					canManageCustomers: true,
+					canManageOrders: true,
+					canManageStaff: true,
+					canManageInventory: true,
+					canManageTransfer: true,
+					canManageBranches: true,
+					canManageRoles: true,
+					canManageScrap: true
 				}, { onConflict: 'id' });
 
 			if (userErr) throw userErr;

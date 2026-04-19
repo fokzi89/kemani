@@ -35,16 +35,17 @@
 		});
 		const dailySales = Object.entries(dailyMap).sort().map(([date, amount]) => ({ date, amount }));
 
-		// Top products
+		// Top products — query sale_items directly using the tenant index
 		const { data: topItems } = await supabase.from('sale_items')
-			.select('product_name, quantity, total_price')
-			.in('sale_id', (sales || []).map(s => s.id));
+			.select('product_name, quantity, subtotal')
+			.eq('tenant_id', tenantId)
+			.gte('created_at', since);
 
 		const productMap: Record<string, { qty: number; revenue: number }> = {};
 		(topItems || []).forEach(i => {
 			if (!productMap[i.product_name]) productMap[i.product_name] = { qty: 0, revenue: 0 };
 			productMap[i.product_name].qty += i.quantity;
-			productMap[i.product_name].revenue += parseFloat(i.total_price);
+			productMap[i.product_name].revenue += parseFloat(i.subtotal);
 		});
 		const topProducts = Object.entries(productMap)
 			.map(([name, d]) => ({ name, ...d }))

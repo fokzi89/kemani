@@ -64,7 +64,7 @@
 			products = (biData || []).map(bi => ({
 				...bi.products,
 				stock_quantity: bi.stock_quantity,
-				unit_cost: bi.unit_cost,
+				selling_price: bi.selling_price,
 				cost_price: bi.cost_price,
 				low_stock_threshold: bi.low_stock_threshold,
 				expiry_date: bi.expiry_date,
@@ -83,7 +83,7 @@
 
 			for (const p of products) {
 				const cost = p.cost_price || 0;
-				const price = p.unit_cost || 0;
+				const price = p.selling_price || 0;
 				const qty = p.stock_quantity || 0;
 				
 				totalValue += cost * qty;

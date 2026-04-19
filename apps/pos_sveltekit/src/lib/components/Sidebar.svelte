@@ -12,7 +12,7 @@
 		{ name: 'Dashboard', href: '/', icon: LayoutDashboard, visible: true },
 		{ name: 'POS', href: '/pos', icon: Store, visible: userData?.canManagePOS ?? false },
 		{ name: 'Products', href: '/products', icon: Package, visible: userData?.canManageProducts ?? false },
-		{ name: 'Lab Tests', href: '/lab-tests', icon: FlaskConical, visible: userData?.canManageProducts ?? false },
+		{ name: 'Lab Tests', href: '/lab-tests', icon: FlaskConical, visible: (userData?.canManageProducts ?? false) && (Array.isArray(userData?.branches) ? userData.branches[0]?.business_type === 'diagnostic_centre' : userData?.branches?.business_type === 'diagnostic_centre') },
 		{ name: 'Suppliers', href: '/suppliers', icon: Truck, visible: userData?.canManageProducts ?? false },
 		{ name: 'Medics', href: '/medics', icon: Stethoscope, visible: true },
 		{ name: 'Customers', href: '/customers', icon: Users, visible: userData?.['canManage Customers'] ?? false },

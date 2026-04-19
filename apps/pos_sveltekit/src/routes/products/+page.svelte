@@ -196,7 +196,7 @@
 					batch_no: product.provisioning?.batch || '',
 					expiry_date: product.provisioning?.expiry || null,
 					cost_price: product.provisioning?.cost || 0,
-					unit_cost: product.provisioning?.selling || 0,
+					selling_price: product.provisioning?.selling || 0,
 					supplier_id: product.provisioning?.supplier_id || null,
 					product_type: product.product_type || null,
 					barcode: product.barcode || null,
@@ -403,7 +403,7 @@
 											{/if}
 										</div>
 										<div>
-											<p class="font-semibold text-gray-900 leading-tight">{product.name}</p>
+											<p class="font-semibold text-gray-900 leading-tight">{product.name}{product.strength ? ` – ${product.strength}` : ''}</p>
 											<p class="text-xs text-gray-400 mt-0.5">{product.category || 'No Category'}</p>
 										</div>
 									</div>

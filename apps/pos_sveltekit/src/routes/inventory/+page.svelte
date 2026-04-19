@@ -4,9 +4,10 @@
 	import { 
 		Search, MapPin, Package, Check, 
 		X, MoreHorizontal, ArrowRightLeft, 
-		Edit, Save, ChevronLeft, ChevronRight,
-		ArrowRight, Building, AlertTriangle, Plus
+		ArrowRight, Building, AlertTriangle, Plus,
+		Eye
 	} from 'lucide-svelte';
+	import ProductDetailModal from '$lib/components/ProductDetailModal.svelte';
 
 	let inventory = $state<any[]>([]);
 	let branches = $state<any[]>([]);
@@ -27,6 +28,9 @@
 	let showTransferModal = $state(false);
 	let targetBranchId = $state('');
 	let transferLoading = $state(false);
+
+	// Detail Modal State
+	let selectedForDetail = $state<{id: string, branchId: string, name: string} | null>(null);
 
 	// Derived lists
 	let filtered = $derived(
@@ -83,7 +87,7 @@
 				sku,
 				image_url,
 				cost_price,
-				unit_cost,
+				selling_price,
 				expiry_date,
 				updated_at
 			`)
@@ -118,7 +122,7 @@
 				batch_no: row.batch_no,
 				name: row.product_name,
 				sku: row.sku,
-				unit_price: row.unit_cost,
+				unit_price: row.selling_price,
 				cost_price: row.cost_price,
 				image_url: row.image_url,
 				is_expiring_soon: soon
@@ -175,10 +179,10 @@
 				if (biErr) throw biErr;
 
 				// 2. We skip updating products directly since unit price is mapped to unit_cost in branch_inventory
-				// or we just update the branch_inventory unit_cost here
+				// or we just update the branch_inventory selling_price here
 				const { error: biErr2 } = await supabase.from('branch_inventory')
 					.update({
-						unit_cost: vals.unit_price,
+						selling_price: vals.unit_price,
 						cost_price: vals.cost_price,
 						updated_at: new Date().toISOString()
 					})
@@ -281,7 +285,7 @@
 						product_name: item.name,
 						sku: item.sku,
 						cost_price: item.cost_price,
-						unit_cost: item.cost_price || 0
+						selling_price: item.unit_price || 0
 					});
 				}
 
@@ -420,9 +424,10 @@
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Product Information</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Location</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">In Stock</th>
-							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l">Unit Price</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l">Selling Price</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost Price</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l">Expiry</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-gray-100">
@@ -527,6 +532,15 @@
 										</div>
 									{/if}
 								</td>
+								<td class="px-4 py-3 text-right">
+									<button 
+										onclick={() => selectedForDetail = {id: item.product_id, branchId: item.branch_id, name: item.name}}
+										class="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+										title="View Audit Detail"
+									>
+										<Eye class="h-4 w-4" />
+									</button>
+								</td>
 							</tr>
 						{/each}
 					</tbody>
@@ -562,6 +576,14 @@
 		{/if}
 	</div>
 </div>
+
+<ProductDetailModal 
+	isOpen={!!selectedForDetail} 
+	onClose={() => selectedForDetail = null} 
+	productId={selectedForDetail?.id || ''}
+	branchId={selectedForDetail?.branchId || ''}
+	productName={selectedForDetail?.name || ''}
+/>
 
 <!-- Transfer Modal -->
 {#if showTransferModal}

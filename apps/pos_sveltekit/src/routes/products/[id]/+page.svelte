@@ -26,7 +26,7 @@
 			if (currentBranchId) {
 				const { data: invData } = await supabase
 					.from('branch_inventory')
-					.select('stock_quantity, unit_cost')
+					.select('stock_quantity, selling_price')
 					.eq('product_id', productId)
 					.eq('branch_id', currentBranchId)
 					.limit(1)
@@ -114,7 +114,7 @@
 							</div>
 							<div class="bg-white p-3 rounded-lg border border-indigo-50">
 								<p class="text-xs text-indigo-400 font-medium uppercase tracking-wider mb-1">Product Price</p>
-								<p class="text-xl font-bold text-indigo-900">₦{(branchInventory.unit_cost || 0).toLocaleString()}</p>
+								<p class="text-xl font-bold text-indigo-900">₦{(branchInventory.selling_price || 0).toLocaleString()}</p>
 							</div>
 						</div>
 					</div>
