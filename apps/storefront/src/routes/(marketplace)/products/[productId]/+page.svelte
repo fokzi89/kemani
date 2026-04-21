@@ -3,8 +3,10 @@
 	import { goto } from '$app/navigation';
 	import { 
 		ShoppingCart, Heart, Share2, Plus, Minus, ArrowLeft, 
-		ShieldCheck, Clock, Truck, Star, CheckCircle2, ChevronRight, Tag, ArrowRight
+		ShieldCheck, Clock, Truck, Star, CheckCircle2, ChevronRight, Tag, ArrowRight, Stethoscope
 	} from 'lucide-svelte';
+	import { isAuthenticated } from '$lib/stores/auth';
+	import { isAuthModalOpen } from '$lib/stores/ui';
 
 	export let data;
 
@@ -36,7 +38,17 @@
 		}
 
 		localStorage.setItem('cart', JSON.stringify(cart));
+		window.dispatchEvent(new Event('cart-updated'));
 		goto(`/cart`);
+	}
+
+	function handleRxChat() {
+		if (!$isAuthenticated) {
+			localStorage.setItem('pending_chat_redirect', '/chat');
+			isAuthModalOpen.set(true);
+			return;
+		}
+		goto('/chat');
 	}
 </script>
 
@@ -163,10 +175,14 @@
 							</div>
 
 							<div class="action-buttons">
-								<button on:click={addToCart} class="btn-primary">
+								<button onclick={addToCart} class="btn-primary">
 									Add to Bag <ArrowRight class="btn-icon" />
 								</button>
-								<button on:click={addToCart} class="btn-secondary">
+								<button onclick={handleRxChat} class="btn-consult">
+									<Stethoscope class="btn-icon" />
+									Consult with Pharmacist
+								</button>
+								<button onclick={addToCart} class="btn-secondary">
 									Buy It Now
 								</button>
 							</div>
@@ -360,13 +376,16 @@
 	.btn-primary:hover { background: #000; transform: translateY(-1px); }
 	.btn-icon { width: 14px; height: 14px; }
 	
-	.btn-secondary {
-		width: 100%; padding: 16px; border: 1px solid var(--border); border-radius: 6px;
-		background: #fff; color: var(--on-surface);
-		font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.15em;
-		cursor: pointer; transition: border-color 0.2s;
-	}
 	.btn-secondary:hover { border-color: var(--on-surface); }
+
+	.btn-consult {
+		width: 100%; padding: 16px; border: 1px solid #059669; border-radius: 6px;
+		background: #ecfdf5; color: #059669;
+		font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em;
+		display: flex; align-items: center; justify-content: center; gap: 8px;
+		cursor: pointer; transition: background 0.2s;
+	}
+	.btn-consult:hover { background: #d1fae5; }
 
 	.unavailable-status { text-align: center; font-size: 12px; font-weight: 600; color: #ef4444; text-transform: uppercase; padding: 1rem; border: 1px dashed #ef4444; border-radius: 8px; }
 

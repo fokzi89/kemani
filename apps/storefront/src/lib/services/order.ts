@@ -39,7 +39,7 @@ export class OrderService {
       const inventoryCheck = await this.checkInventory(request.items);
       const unavailableItems = inventoryCheck.filter(item => !item.is_available);
 
-      if (unavailable Items.length > 0) {
+      if (unavailableItems.length > 0) {
         return {
           error: `Items out of stock: ${unavailableItems.map(i => i.product_id).join(', ')}`
         };

@@ -3,6 +3,7 @@ import { writable } from 'svelte/store';
 export const isAuthModalOpen = writable(false);
 export const isChatOpen = writable(false);
 export const chatProduct = writable<any>(null);
+export const authRedirect = writable<string | null>(null);
 
 export function openAuthModal() {
     isAuthModalOpen.set(true);

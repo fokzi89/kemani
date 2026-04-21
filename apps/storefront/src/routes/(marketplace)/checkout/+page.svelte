@@ -59,7 +59,7 @@
 				p_tenant_id: storefront.id,
 				p_branch_id: orderData.branch_id || storefront.branches?.[0]?.id, // ensure branch_id is present
 				p_customer_id: $currentUser?.id,
-				p_order_type: orderData.order_type === 'delivery' ? 'delivery' : 'instore', // Default to instore if fallback
+				p_order_type: 'marketplace',
 				p_fulfillment_type: orderData.order_type === 'delivery' ? 'delivery' : 'pickup',
 				p_subtotal: orderData.subtotal,
 				p_delivery_fee: orderData.delivery_fee,

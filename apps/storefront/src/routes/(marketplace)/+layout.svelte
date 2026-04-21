@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ShoppingCart, Search, User, Menu, X, ArrowRight, Instagram, Twitter, Facebook, MessageCircle, Send, ChevronDown, ShieldCheck } from 'lucide-svelte';
+	import { ShoppingCart, Search, User, Menu, X, ArrowRight, Instagram, Twitter, Facebook, MessageCircle, Send, ChevronDown, ShieldCheck, Globe, Share2, Mail, Phone } from 'lucide-svelte';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -8,6 +8,7 @@
 	import { supabase } from '$lib/supabase';
 	import { AuthService } from '$lib/services/auth';
 	import { PUBLIC_APP_URL } from '$env/static/public';
+	import AuthModal from '$lib/components/AuthModal.svelte';
 
 	export let data;
 
@@ -22,12 +23,11 @@
 
 	function toggleChat() { 
 		if (!$isAuthenticated) {
-			const next = window.location.href;
-			const portalUrl = `${PUBLIC_APP_URL}/auth/portal?next=${encodeURIComponent(next)}`;
-			window.location.href = portalUrl;
+			localStorage.setItem('pending_chat_redirect', '/chat');
+			isAuthModalOpen.set(true);
 			return;
 		}
-		isChatOpen.update(v => !v); 
+		goto('/chat');
 	}
 	function toggleAccountMenu() { isAccountOpen = !isAccountOpen; }
 
@@ -58,13 +58,12 @@
 				if (access_token && refresh_token) {
 					const { error } = await supabase.auth.setSession({ access_token, refresh_token });
 					if (!error) {
-						// Clear the hash without reloading
 						window.history.replaceState(null, '', window.location.pathname + window.location.search);
 					}
 				}
 			}
 
-			authStore.initialize();
+			await authStore.initialize();
 		})();
 
 		const handleScroll = () => { isScrolled = window.scrollY > 20; };
@@ -77,21 +76,32 @@
 			} catch { cartCount = 0; }
 		};
 
-		// Sync customer record when user is authenticated
+		// Sync customer record AND handle pending chat redirect whenever auth changes
 		const unsubscribe = currentUser.subscribe(async (user) => {
-			if (user && storefront?.id) {
-				// We can pull the last seen branch from localStorage if needed
-				const lastBranch = localStorage.getItem('last_branch_id') || undefined;
-				await AuthService.ensureCustomerRecord(user, storefront.id, lastBranch);
+			if (user) {
+				// Ensure customer record exists
+				if (storefront?.id) {
+					const lastBranch = localStorage.getItem('last_branch_id') || undefined;
+					await AuthService.ensureCustomerRecord(user, storefront.id, lastBranch);
+				}
+				// Fire pending chat redirect if set
+				const pendingChat = localStorage.getItem('pending_chat_redirect');
+				if (pendingChat) {
+					localStorage.removeItem('pending_chat_redirect');
+					isAuthModalOpen.set(false);
+					goto(pendingChat);
+				}
 			}
 		});
 
 		updateCart();
 		window.addEventListener('storage', updateCart);
+		window.addEventListener('cart-updated', updateCart);
 
 		return () => {
 			window.removeEventListener('scroll', handleScroll);
 			window.removeEventListener('storage', updateCart);
+			window.removeEventListener('cart-updated', updateCart);
 			unsubscribe();
 		};
 	});
@@ -112,7 +122,7 @@
 	style="--brand: {brandColor};"
 >
 	<!-- Navigation -->
-	{#if $page.url.pathname !== '/profile'}
+	{#if $page.url.pathname !== '/profile' && !$page.url.pathname.startsWith('/chat')}
 		<nav 
 			class="sticky top-0 z-50 transition-all duration-500 {isScrolled ? 'bg-white/80 backdrop-blur-md border-b border-gray-100 py-3' : 'bg-transparent py-6'}"
 		>
@@ -146,7 +156,7 @@
 						<!-- Account -->
 						<div class="relative">
 							{#if $isAuthenticated}
-								<button on:click={toggleAccountMenu} class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-gray-600 hover:text-gray-900 transition-colors">
+								<button onclick={toggleAccountMenu} class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-gray-600 hover:text-gray-900 transition-colors">
 									<span class="max-w-[80px] truncate">{$currentUser?.user_metadata?.full_name?.split(' ')[0] || 'Account'}</span>
 									<ChevronDown class="h-3 w-3 opacity-40" />
 								</button>
@@ -155,11 +165,11 @@
 										<a href="/profile" class="block px-4 py-2 text-gray-700 hover:bg-gray-50 uppercase tracking-widest font-semibold text-[9px]">Profile</a>
 										<a href="/orders" class="block px-4 py-2 text-gray-700 hover:bg-gray-50 uppercase tracking-widest font-semibold text-[9px]">Orders</a>
 										<div class="border-t border-gray-100 my-1"></div>
-										<button on:click={handleSignOut} class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 uppercase tracking-widest font-semibold text-[9px]">Sign out</button>
+										<button onclick={handleSignOut} class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 uppercase tracking-widest font-semibold text-[9px]">Sign out</button>
 									</div>
 								{/if}
 							{:else}
-								<button on:click={signInWithGoogle} class="text-gray-600 hover:text-gray-900">
+								<button onclick={() => isAuthModalOpen.set(true)} class="text-gray-600 hover:text-gray-900">
 									<User class="h-4 w-4" />
 								</button>
 							{/if}
@@ -174,7 +184,7 @@
 							{/if}
 						</a>
 
-						<button on:click={toggleMenu} class="md:hidden text-gray-600 hover:text-gray-900">
+						<button onclick={toggleMenu} class="md:hidden text-gray-600 hover:text-gray-900">
 							<Menu class="h-4 w-4" />
 						</button>
 					</div>
@@ -190,57 +200,55 @@
 	</main>
 
 	<!-- Footer -->
-	{#if $page.url.pathname !== '/profile'}
-		<footer class="bg-[#faf9f6]/50 border-t border-gray-100 pt-20 pb-12 mt-20">
-			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-				<div class="grid grid-cols-1 md:grid-cols-4 gap-12 pb-16">
-					<div class="space-y-6 md:col-span-2">
-						<h4 class="font-display text-2xl tracking-widest text-gray-900 uppercase font-light">{storefront?.name}</h4>
-						<p class="text-gray-500 text-sm leading-relaxed max-w-sm font-light">
-							{storefront?.description || 'Curated releases, artisan stories, and specialized healthcare solutions.'}
-						</p>
-						<div class="flex gap-6">
-							<a href="#" class="text-gray-400 hover:text-gray-900 transition-colors"><Instagram class="h-5 w-5" /></a>
-							<a href="#" class="text-gray-400 hover:text-gray-900 transition-colors"><Twitter class="h-5 w-5" /></a>
-							<a href="#" class="text-gray-400 hover:text-gray-900 transition-colors"><Facebook class="h-5 w-5" /></a>
-						</div>
-					</div>
-					
-					<div class="grid grid-cols-2 gap-8 md:col-span-2">
-						<div class="space-y-6">
-							<h4 class="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Discover</h4>
-							<ul class="space-y-4 text-xs font-semibold uppercase tracking-widest">
-								<li><a href="/" class="text-gray-600 hover:text-gray-900 transition-colors">Products</a></li>
-								<li><a href="/medics" class="text-gray-600 hover:text-gray-900 transition-colors">Medics</a></li>
-								<li><a href="/cart" class="text-gray-600 hover:text-gray-900 transition-colors">Bag</a></li>
-							</ul>
-						</div>
-						<div class="space-y-6">
-							<h4 class="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Newsletter</h4>
-							<div class="relative">
-								<input type="email" placeholder="Your email address" class="w-full bg-transparent border-b border-gray-200 py-2 text-xs outline-none focus:border-gray-900 transition-colors" />
-								<button class="absolute right-0 bottom-2 text-gray-400 hover:text-gray-900 transition-colors">
-									<ArrowRight class="h-4 w-4" />
-								</button>
-							</div>
-						</div>
-					</div>
-				</div>
-				
-				<div class="pt-12 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300">
-					<p>© {new Date().getFullYear()} {storefront?.name}. All rights reserved.</p>
-					<div class="flex gap-8">
-						<a href="#" class="hover:text-gray-600 transition-colors">Privacy</a>
-						<a href="#" class="hover:text-gray-600 transition-colors">Terms</a>
-					</div>
-				</div>
+	{#if $page.url.pathname !== '/profile' && !$page.url.pathname.startsWith('/chat')}
+	  <footer class="footer">
+		<div class="layout-container" style="max-width: 1280px; margin: 0 auto; padding: 0 1.5rem;">
+		  <div class="footer-top">
+			<div class="footer-info">
+			  <div class="footer-logo">
+				<h4 class="font-display text-2xl tracking-widest uppercase font-bold" style="color: {brandColor};">{storefront?.name || 'Storefront'}</h4>
+			  </div>
+			  <p class="footer-desc">
+				{storefront?.description || 'Connecting patients with the worlds leading medical specialists. Quality healthcare, just a click away.'}
+			  </p>
 			</div>
-		</footer>
+
+			<div class="footer-links-grid">
+			  <div class="footer-col">
+				<h4>Company</h4>
+				<a href="#">About Us</a>
+				<a href="#">Careers</a>
+				<a href="#">Press</a>
+			  </div>
+			  <div class="footer-col">
+				<h4>Support</h4>
+				<a href="#">Help Center</a>
+				<a href="#">Privacy Policy</a>
+				<a href="#">Terms of Service</a>
+			  </div>
+			  <div class="footer-col">
+				<h4>Contact</h4>
+				<div class="contact-item"><Mail class="w-4 h-4" /> <span>{storefront?.email || 'support@kemani.com'}</span></div>
+				<div class="contact-item"><Phone class="w-4 h-4" /> <span>{storefront?.phone || '+1 (555) 000-1234'}</span></div>
+			  </div>
+			</div>
+		  </div>
+
+		  <div class="footer-bottom">
+			<p>© {new Date().getFullYear()} {storefront?.name || 'Healthcare Portal'} Inc. All rights reserved.</p>
+			<div class="footer-actions">
+			  <Globe class="w-4 h-4 cursor-pointer" />
+			  <Share2 class="w-4 h-4 cursor-pointer" />
+			</div>
+		  </div>
+		</div>
+	  </footer>
 	{/if}
 
 	<!-- Floating Chat Icon -->
+	{#if !$page.url.pathname.startsWith('/chat')}
 	<button 
-		on:click={toggleChat}
+		onclick={toggleChat}
 		class="fixed bottom-8 right-8 z-[60] w-14 h-14 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 group"
 	>
 		<MessageCircle class="h-6 w-6 group-hover:rotate-12 transition-transform" />
@@ -260,7 +268,7 @@
 						<p class="text-[8px] opacity-60 mt-1 uppercase tracking-tighter">Response time: <span class="text-emerald-400">Under 1 min</span></p>
 					</div>
 				</div>
-				<button on:click={toggleChat} class="hover:opacity-70 transition-opacity"><X class="h-4 w-4" /></button>
+				<button onclick={toggleChat} class="hover:opacity-70 transition-opacity"><X class="h-4 w-4" /></button>
 			</div>
 			<!-- Chat Body -->
 			<div class="h-64 p-6 bg-gray-50/50 flex flex-col justify-end items-center gap-2 text-center">
@@ -285,6 +293,10 @@
 			</div>
 		</div>
 	{/if}
+
+	{/if}
+ 
+	<AuthModal />
 </div>
 
 <style>
@@ -298,4 +310,20 @@
     :global(a, button) { transition: all 0.2s ease-in-out; }
 
 	.font-body { font-family: 'Inter', sans-serif; }
+
+	.footer { background: #f8fafc; border-top: 1px solid #f1f5f9; padding: 3rem 0 2rem; margin-top: auto; }
+	.footer-top { display: flex; flex-direction: column; gap: 2.5rem; margin-bottom: 2.5rem; }
+	@media (min-width: 768px) { .footer-top { flex-direction: row; justify-content: space-between; } }
+	.footer-info { max-width: 300px; }
+	.footer-logo { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem; }
+	.footer-desc { font-size: 0.8125rem; color: #475569; line-height: 1.6; }
+	
+	.footer-links-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+	@media (min-width: 640px) { .footer-links-grid { grid-template-columns: repeat(3, 1fr); } }
+	.footer-col h4 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1.25rem; color: #0f172a; font-weight: 800; }
+	.footer-col a, .contact-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: #475569; margin-bottom: 0.75rem; transition: color 0.2s; font-weight: 500; text-decoration: none; }
+	.footer-col a:hover { color: var(--brand, #4f46e5); }
+	
+	.footer-bottom { border-top: 1px solid #f1f5f9; padding-top: 2rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: #475569; }
+	.footer-actions { display: flex; gap: 1.25rem; }
 </style>

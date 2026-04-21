@@ -37,6 +37,56 @@ export class MarketplaceService {
   }
 
   /**
+   * Get marketplace product by ID (unfiltered/clinical context)
+   */
+  async getMarketplaceProductById(
+    productId: string,
+    tenantId: string
+  ): Promise<{ product?: MarketplaceProduct; error?: string }> {
+    try {
+      const resolvedTenantId = await this.resolveTenantSlug(tenantId);
+      if (!resolvedTenantId) return { error: 'Invalid tenant.' };
+
+      const { data, error } = await this.supabase
+        .from('branch_inventory')
+        .select(`
+          *,
+          products (
+            generic_name, strength, dosage_form, product_details
+          )
+        `)
+        .eq('product_id', productId)
+        .eq('tenant_id', resolvedTenantId)
+        .order('stock_quantity', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error || !data) return { error: 'Product not found' };
+
+      const finalPrice = (data.sale_price && data.sale_price > 0) ? data.sale_price : data.selling_price;
+      
+      return {
+        product: {
+          id: data.product_id,
+          inventory_id: data.id,
+          tenant_id: data.tenant_id,
+          branch_id: data.branch_id,
+          name: data.product_name || 'Unnamed Product',
+          description: data.product_description || 'Clinically recommended product',
+          sku: data.sku || '',
+          category: data.product_type || 'General',
+          price: finalPrice,
+          image_url: data.image_url,
+          stock_quantity: (data.stock_quantity || 0) - (data.reserved_quantity || 0),
+          isPOM: data.isPOM
+        }
+      };
+    } catch (error: any) {
+      return { error: error.message || 'Failed to fetch product context' };
+    }
+  }
+
+  /**
    * Get tenant's marketplace products (public-facing)
    * Fetches directly from branch_inventory to ensure total independence from other tables
    */
@@ -60,6 +110,7 @@ export class MarketplaceService {
         .from('branch_inventory')
         .select('*', { count: 'exact' })
         .eq('tenant_id', resolvedTenantId)
+        .eq('isPOM', false)
         .not('is_active', 'is', false)
         .eq('_sync_is_deleted', false);
 
@@ -183,6 +234,7 @@ export class MarketplaceService {
         `)
         .eq('product_id', productId)
         .eq('tenant_id', resolvedTenantId)
+        .eq('isPOM', false)
         .not('is_active', 'is', false)
         .order('stock_quantity', { ascending: false })
         .limit(1)
@@ -241,6 +293,7 @@ export class MarketplaceService {
         .from('branch_inventory')
         .select('product_type')
         .eq('tenant_id', resolvedTenantId)
+        .eq('isPOM', false)
         .not('is_active', 'is', false)
         .eq('_sync_is_deleted', false);
 

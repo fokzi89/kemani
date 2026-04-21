@@ -5,23 +5,37 @@
   onMount(() => {
     // Supabase Implicit Flow appends tokens to the hash
     const hash = window.location.hash;
-    const nextUrlParams = $page.url.searchParams.get('next');
-    
-    // Default to the profile page on the root domain if no next exists
-    const nextPath = nextUrlParams || '/profile';
-    
+
+    // Prefer the `next` query param, then fall back to the storefront URL saved before login
+    const nextUrlParam = $page.url.searchParams.get('next');
+    const storedReturn = localStorage.getItem('storefront_return_url');
+
+    // Default profile page only as last resort
+    const nextPath = nextUrlParam || storedReturn || '/profile';
+
+    // Clean up stored return URL
+    localStorage.removeItem('storefront_return_url');
+
     if (hash && hash.includes('access_token')) {
-        // We have implicit flow tokens!
-        // We redirect to the target domain, appending the hash so the target layout can handle it
-        const targetUrl = new URL(nextPath, window.location.origin);
+        let targetUrl: URL;
+
+        try {
+            // If nextPath is already a full URL (e.g. http://lanre-pharmacy-yapqx.localhost:5174/)
+            // use it directly — new URL(full, base) ignores base when full is absolute
+            targetUrl = new URL(nextPath);
+        } catch {
+            // nextPath is a relative path — resolve against current origin
+            targetUrl = new URL(nextPath, window.location.origin);
+        }
+
+        // Append the hash so the target layout can exchange tokens
         targetUrl.hash = hash;
         window.location.replace(targetUrl.toString());
     } else {
-        // If there is a code, we can let another mechanism handle it or fallback
-        // Since we removed +server.ts, we need to handle it or error out
-        // Wait, if no hash, redirect to error page
         console.warn('No access token found in hash during OAuth callback.');
-        window.location.replace('/auth/error');
+        // Try to go back to storefront even on error
+        const fallback = storedReturn || '/';
+        window.location.replace(fallback);
     }
   });
 </script>

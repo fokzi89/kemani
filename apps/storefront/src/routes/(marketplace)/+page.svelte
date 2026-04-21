@@ -3,12 +3,14 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import type { MarketplaceProduct } from '$lib/types/ecommerce';
+	import { fade, scale } from 'svelte/transition';
 	import {
 		Search, ShoppingCart, ChevronRight, Star,
-		Clock, ShieldCheck, Tag, ArrowRight, Plus, ArrowLeft, MessageSquare
+		Clock, ShieldCheck, Tag, ArrowRight, Plus, ArrowLeft, MessageSquare, Stethoscope, CheckCircle2, Minus, X
 	} from 'lucide-svelte';
 	import { isAuthenticated } from '$lib/stores/auth';
-	import { isAuthModalOpen, isChatOpen, chatProduct } from '$lib/stores/ui';
+	import { isAuthModalOpen, isChatOpen, chatProduct, authRedirect } from '$lib/stores/ui';
+	import { PUBLIC_APP_URL } from '$env/static/public';
 
 	$: storefront = data.storefront;
 	$: brandColor      = storefront?.brand_color || '#4f46e5';
@@ -31,6 +33,13 @@
 	let currentPage      = 1;
 	let totalPages       = 1;
 	let cartItemCount    = 0;
+
+	let showToast        = false;
+	let toastProduct     = '';
+	let toastTimeout: ReturnType<typeof setTimeout> | null = null;
+    
+	let selectedProduct: MarketplaceProduct | null = null;
+	let itemQuantity = 1;
 
 	onMount(async () => {
 		await Promise.all([loadCategories(), loadProducts()]);
@@ -83,23 +92,44 @@
 		cartItemCount = cart.items.reduce((s: number, i: any) => s + i.quantity, 0);
 	}
 
-	function addToCart(product: MarketplaceProduct) {
+	function addToCart(product: MarketplaceProduct, qty: number = 1) {
 		const cart = JSON.parse(localStorage.getItem('cart') || '{"items":[]}');
 		const found = cart.items.find((i: any) => i.product_id === product.id);
 		if (found) {
-			found.quantity += 1;
+			found.quantity += qty;
 		} else {
 			cart.items.push({
 				product_id:     product.id,
 				product_name:   product.name,
 				product_image:  product.image_url,
 				price:          product.price,
-				quantity:       1,
+				quantity:       qty,
 				stock_available: product.stock_quantity
 			});
 		}
 		localStorage.setItem('cart', JSON.stringify(cart));
 		updateCartCount();
+
+		// Notify the layout navbar to refresh its cart count (storage events only fire cross-tab)
+		window.dispatchEvent(new Event('cart-updated'));
+
+		// Show toast feedback
+		toastProduct = product.name;
+		showToast = true;
+		if (toastTimeout) clearTimeout(toastTimeout);
+		toastTimeout = setTimeout(() => { showToast = false; }, 2500);
+	}
+
+	function handleRxChat(e?: Event, onBeforeOpen?: () => void) {
+		e?.stopPropagation();
+		if (!$isAuthenticated) {
+			// Run any pre-action (e.g. close product modal) before opening auth modal
+			if (onBeforeOpen) onBeforeOpen();
+			localStorage.setItem('pending_chat_redirect', '/chat');
+			isAuthModalOpen.set(true);
+			return;
+		}
+		goto('/chat');
 	}
 
 	function handleSearch()                { currentPage = 1; loadProducts(); }
@@ -107,8 +137,11 @@
 	function handleBranchClick(id: string) { selectedBranch = id; currentPage = 1; loadProducts(); }
 	function handlePageChange(p: number)   { currentPage = p; loadProducts(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
-	function handleProductChat(product: any) {
+	function handleProductChat(product: any, e?: Event) {
+		e?.stopPropagation();
+		e?.preventDefault();
 		if (!$isAuthenticated) {
+			localStorage.setItem('pending_chat_redirect', '/chat');
 			isAuthModalOpen.set(true);
 			return;
 		}
@@ -127,14 +160,7 @@
 	{#if storefront}
 
 		<!-- ═══════════ HERO SECTION ═══════════ -->
-		<section class="hero-section">
-			<img
-				src={storefront.banner_url || 'https://images.unsplash.com/photo-1576091160550-217359f51f8c?q=80&w=2000&auto=format&fit=crop'}
-				alt="Banner"
-				class="hero-bg"
-			/>
-			<div class="hero-overlay"></div>
-			<div class="hero-gradient"></div>
+		<section class="hero-section" style="background-color: #0b1a30;">
 			<div class="hero-content">
 				<span class="hero-label">
 					<Tag class="label-icon" /> {storefront.name}
@@ -160,7 +186,7 @@
 					<h3 class="sidebar-heading">Categories</h3>
 					<div class="sidebar-list">
 						<button
-							on:click={() => handleCategoryClick('')}
+							onclick={() => handleCategoryClick('')}
 							class="sidebar-item"
 							class:sidebar-item-active={selectedCategory === ''}
 						>
@@ -169,7 +195,7 @@
 						</button>
 						{#each categories as cat}
 							<button
-								on:click={() => handleCategoryClick(cat.name)}
+								onclick={() => handleCategoryClick(cat.name)}
 								class="sidebar-item"
 								class:sidebar-item-active={selectedCategory === cat.name}
 							>
@@ -193,13 +219,13 @@
 							<input type="number" bind:value={maxPrice} placeholder="Max" class="price-input" />
 						</div>
 					</div>
-					<button on:click={() => loadProducts()} class="apply-btn">Apply</button>
+					<button onclick={() => loadProducts()} class="apply-btn">Apply</button>
 				</div>
 
 				<!-- Stock Filter -->
 				<div class="sidebar-block">
 					<label class="stock-toggle">
-						<input type="checkbox" bind:checked={inStockOnly} on:change={() => loadProducts()} class="stock-checkbox" />
+						<input type="checkbox" bind:checked={inStockOnly} onchange={() => loadProducts()} class="stock-checkbox" />
 						<span>In-stock only</span>
 					</label>
 				</div>
@@ -214,12 +240,12 @@
 						<input
 							type="search"
 							bind:value={searchQuery}
-							on:keydown={(e) => e.key === 'Enter' && handleSearch()}
+							onkeydown={(e) => e.key === 'Enter' && handleSearch()}
 							placeholder="Search products..."
 							class="search-input"
 						/>
 					</div>
-					<select bind:value={sortBy} on:change={() => loadProducts()} class="sort-select">
+					<select bind:value={sortBy} onchange={() => loadProducts()} class="sort-select">
 						<option value="newest">Featured</option>
 						<option value="price_asc">Price: Low → High</option>
 						<option value="price_desc">Price: High → Low</option>
@@ -230,9 +256,9 @@
 				<!-- Branch Chips -->
 				{#if storefront.branches?.length > 0}
 					<div class="branch-chips">
-						<button on:click={() => handleBranchClick('')} class="chip chip-sm" class:chip-active={selectedBranch === ''}>All Branches</button>
+						<button onclick={() => handleBranchClick('')} class="chip chip-sm" class:chip-active={selectedBranch === ''}>All Branches</button>
 						{#each storefront.branches as branch}
-							<button on:click={() => handleBranchClick(branch.id)} class="chip chip-sm" class:chip-active={selectedBranch === branch.id}>{branch.name}</button>
+							<button onclick={() => handleBranchClick(branch.id)} class="chip chip-sm" class:chip-active={selectedBranch === branch.id}>{branch.name}</button>
 						{/each}
 					</div>
 				{/if}
@@ -255,7 +281,7 @@
 					<h3 class="empty-title">No products found</h3>
 					<p class="empty-sub">Try adjusting your filters or clear your search.</p>
 					<button
-						on:click={() => { searchQuery=''; selectedCategory=''; selectedBranch=''; loadProducts(); }}
+						onclick={() => { searchQuery=''; selectedCategory=''; selectedBranch=''; loadProducts(); }}
 						class="empty-cta"
 					>Browse All</button>
 				</div>
@@ -263,7 +289,7 @@
 				<div class="product-grid">
 					{#each products as product}
 						<div class="product-card">
-							<a href={`/products/${product.id}`} class="product-img-wrap">
+							<button class="product-img-wrap border-none outline-none text-left w-full cursor-pointer p-0 bg-transparent block" onclick={(e) => { e.preventDefault(); selectedProduct = product; itemQuantity = 1; }}>
 								{#if product.image_url}
 									<img src={product.image_url} alt={product.name} class="product-img" />
 								{:else}
@@ -272,56 +298,52 @@
 								{#if product.percentage_discount && product.percentage_discount > 0}
 									<span class="badge badge-discount">{product.percentage_discount}% Off</span>
 								{/if}
-								{#if product.stock_quantity > 0 && product.stock_quantity < 10}
-									<span class="badge badge-low">Only {product.stock_quantity} left</span>
-								{/if}
-								
-								<button 
-									class="product-chat-btn" 
-									on:click|preventDefault|stopPropagation={() => handleProductChat(product)}
-									title="Ask a curator about this item"
-								>
-									<MessageSquare class="w-4 h-4" />
-								</button>
 
 								{#if !product.is_available || product.stock_quantity === 0}
 									<div class="product-sold-out">
 										<span>Sold Out</span>
 									</div>
 								{/if}
-							</a>
+							</button>
 							<div class="product-info">
-								<div class="product-rating">
-									{#each Array(5) as _, i}
-										<Star class="star {i < Math.floor((product as any).rating ?? 4.5) ? 'star-filled' : ''}" />
-									{/each}
+								<div class="product-category">
+									{product.category?.name || (product as any).category_name || 'VERIFIED PRODUCT'}
 								</div>
-								<a href={`/products/${product.id}`} class="product-name">{product.name}</a>
+								<button class="product-name border-none bg-transparent outline-none p-0 text-left w-full cursor-pointer" onclick={(e) => { e.preventDefault(); selectedProduct = product; itemQuantity = 1; }}>{product.name}</button>
+								<div class="product-generic">
+									{(product as any).generic_name || product.name} {#if (product as any).dosage}• {(product as any).dosage}{/if}
+								</div>
 								{#if product.description}
 									<p class="product-desc">{product.description}</p>
 								{/if}
-								<div class="product-price-row">
-									<div class="product-price">
+								<div class="product-bottom-row">
+									<div class="product-price flex items-baseline gap-1">
 										{#if product.sale_price && product.sale_price > 0}
-											<span class="price-old">₦{product.selling_price?.toLocaleString()}</span>
-											<span class="price-current">₦{product.sale_price.toLocaleString()}</span>
+											<span class="price-current font-black text-lg">₦{product.sale_price.toLocaleString()}</span>
 										{:else}
-											<span class="price-current">₦{product.price.toLocaleString()}</span>
+											<span class="price-current font-black text-lg">₦{product.price.toLocaleString()}</span>
+										{/if}
+									</div>
+									<div class="product-actions-flex">
+										<button 
+											class="action-icon-btn action-rx" 
+											onclick={handleRxChat}
+											title="RX Chat"
+										>
+											<MessageSquare class="w-4 h-4" />
+										</button>
+										{#if product.is_available && product.stock_quantity > 0}
+										<button 
+											class="action-icon-btn action-bag" 
+											onclick={(e) => { e.stopPropagation(); e.preventDefault(); addToCart(product); }}
+											title="Add to Bag"
+										>
+											<ShoppingCart class="w-4 h-4" />
+										</button>
 										{/if}
 									</div>
 								</div>
 							</div>
-							{#if product.is_available && product.stock_quantity > 0}
-								<button
-									on:click|stopPropagation={() => addToCart(product)}
-									class="add-to-bag"
-								>
-									Add to Bag
-									<ArrowRight class="bag-arrow" />
-								</button>
-							{:else}
-								<div class="unavailable-label">Currently Unavailable</div>
-							{/if}
 						</div>
 					{/each}
 				</div>
@@ -329,17 +351,112 @@
 				<!-- Pagination -->
 				{#if totalPages > 1}
 					<div class="pagination">
-						<button on:click={() => handlePageChange(currentPage-1)} disabled={currentPage===1} class="page-btn"><ArrowLeft class="page-arrow" /></button>
+						<button onclick={() => handlePageChange(currentPage-1)} disabled={currentPage===1} class="page-btn"><ArrowLeft class="page-arrow" /></button>
 						{#each Array(totalPages) as _, i}
-							<button on:click={() => handlePageChange(i+1)} class="page-btn" class:page-active={currentPage===i+1}>{i+1}</button>
+							<button onclick={() => handlePageChange(i+1)} class="page-btn" class:page-active={currentPage===i+1}>{i+1}</button>
 						{/each}
-						<button on:click={() => handlePageChange(currentPage+1)} disabled={currentPage===totalPages} class="page-btn"><ChevronRight class="page-arrow" /></button>
+						<button onclick={() => handlePageChange(currentPage+1)} disabled={currentPage===totalPages} class="page-btn"><ChevronRight class="page-arrow" /></button>
 					</div>
 				{/if}
 			{/if}
 			</section>
 			</main>
 		</div>
+		<!-- ═══════════ PRODUCT DETAIL MODAL ═══════════ -->
+		{#if selectedProduct}
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div class="modal-backdrop" transition:fade onclick={() => selectedProduct = null}>
+				<div class="modal-content" transition:scale={{ start: 0.9, duration: 200 }} onclick={(e) => e.stopPropagation()}>
+					<button class="modal-close" onclick={() => selectedProduct = null}><X /></button>
+					
+					<div class="modal-body">
+						<div class="modal-img">
+							{#if selectedProduct.image_url}
+								<img src={selectedProduct.image_url} alt={selectedProduct.name} />
+							{:else}
+								<div class="m-ph"><ShoppingCart class="w-16 h-16" /></div>
+							{/if}
+						</div>
+						
+						<div class="modal-info">
+							<div class="m-header">
+								<span class="m-cat">{selectedProduct.category?.name || (selectedProduct as any).category_name || 'VERIFIED PRODUCT'}</span>
+								<h2>{selectedProduct.name}</h2>
+								{#if (selectedProduct as any).generic_name}
+									<p class="m-generic">Generic: <strong>{(selectedProduct as any).generic_name}</strong></p>
+								{/if}
+							</div>
+
+							<div class="m-details">
+								{#if (selectedProduct as any).strength || (selectedProduct as any).dosage}
+									<div class="m-detail">
+										<span class="label">Strength / Dosage</span>
+										<span class="val">{(selectedProduct as any).strength || (selectedProduct as any).dosage}</span>
+									</div>
+								{/if}
+								{#if (selectedProduct as any).dosage_form}
+									<div class="m-detail">
+										<span class="label">Form</span>
+										<span class="val">{(selectedProduct as any).dosage_form}</span>
+									</div>
+								{/if}
+								{#if (selectedProduct as any).manufacturer}
+									<div class="m-detail">
+										<span class="label">Manufacturer</span>
+										<span class="val">{(selectedProduct as any).manufacturer}</span>
+									</div>
+								{/if}
+							</div>
+
+							<p class="m-desc">{selectedProduct.description || 'No detailed description available for this product.'}</p>
+
+							<div class="m-footer">
+								<div class="m-price-section">
+									<span class="m-price">
+										{#if selectedProduct.sale_price && selectedProduct.sale_price > 0}
+											₦{selectedProduct.sale_price.toLocaleString()}
+										{:else}
+											₦{selectedProduct.price.toLocaleString()}
+										{/if}
+									</span>
+									<span class="m-stock">In Stock: {selectedProduct.stock_quantity} units</span>
+								</div>
+								
+								{#if selectedProduct.is_available && selectedProduct.stock_quantity > 0}
+								<div class="m-qty-selector">
+									<button onclick={() => itemQuantity = Math.max(1, itemQuantity - 1)}><Minus class="w-4 h-4" /></button>
+									<span>{itemQuantity}</span>
+									<button onclick={() => itemQuantity = Math.min(selectedProduct!.stock_quantity, itemQuantity + 1)}><Plus class="w-4 h-4" /></button>
+								</div>
+								
+								<button 
+									class="m-add-btn" 
+									style="background: #e2e8f0; color: #0f172a;"
+									onclick={(e) => handleRxChat(e, () => { selectedProduct = null; })}
+								>
+									<MessageSquare class="w-4 h-4 mr-2 inline" /> RX Chat
+								</button>
+								
+								<button 
+									class="m-add-btn" 
+									style="background: #0b2559;"
+									onclick={() => { 
+										addToCart(selectedProduct!, itemQuantity); 
+										selectedProduct = null; 
+									}}
+								>
+									<ShoppingCart class="w-4 h-4 mr-2 inline" /> Add to Cart
+								</button>
+								{:else}
+									<div class="m-add-btn flex text-center justify-center items-center" style="background: #ef4444; opacity: 0.8; cursor: not-allowed;">Out of Stock</div>
+								{/if}
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		{/if}
 
 		<!-- ═══════════ TRUST BADGES ═══════════ -->
 		<section class="trust-section">
@@ -374,6 +491,18 @@
 	{/if}
 </div>
 
+<!-- Toast Notification -->
+{#if showToast}
+	<div class="cart-toast">
+		<CheckCircle2 class="toast-check" />
+		<div class="toast-text">
+			<span class="toast-title">Added to Bag</span>
+			<span class="toast-product">{toastProduct}</span>
+		</div>
+		<a href="/cart" class="toast-link">View Bag</a>
+	</div>
+{/if}
+
 <style>
 	/* ─── TOKENS ─── */
 	:root {
@@ -398,14 +527,14 @@
 	/* ─── HERO ─── */
 	.hero-section {
 		position: relative;
-		height: 420px;
+		height: 400px;
 		display: flex;
 		flex-direction: column;
-		justify-content: flex-end;
+		justify-content: center;
 		padding: 2rem;
 		overflow: hidden;
 	}
-	@media (min-width: 768px) { .hero-section { height: 520px; padding: 3rem; } }
+	@media (min-width: 768px) { .hero-section { height: 400px; padding: 4rem; } }
 
 	.hero-bg {
 		position: absolute; inset: 0;
@@ -597,27 +726,28 @@
 
 	/* Product Card */
 	.product-card {
-		display: flex; flex-direction: column; gap: 0;
+		display: flex; flex-direction: column; 
+		border: 1px solid #f1f5f9; border-radius: 16px;
+		background: #fff; overflow: hidden;
+		transition: transform 0.2s, box-shadow 0.2s;
 	}
+	.product-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.06); }
 
 	.product-img-wrap {
-		position: relative;
-		aspect-ratio: 3 / 4;
-		overflow: hidden;
-		background: var(--surface-dim);
-		border-radius: 8px;
+		position: relative; height: 200px; width: 100%;
+		background: #f8fafc;
 		display: block;
 	}
 	.product-img {
 		width: 100%; height: 100%; object-fit: cover;
 		transition: transform 0.5s ease;
 	}
-	.product-card:hover .product-img { transform: scale(1.04); }
+	.product-card:hover .product-img { transform: scale(1.02); }
 
 	.product-img-placeholder {
 		width: 100%; height: 100%;
 		display: flex; align-items: center; justify-content: center;
-		color: #d1d5db;
+		color: #cbd5e1;
 	}
 	.product-img-placeholder :global(svg) { width: 40px; height: 40px; }
 
@@ -628,95 +758,83 @@
 		z-index: 5;
 	}
 	.badge-discount { top: 1rem; left: 1rem; background: var(--brand); color: #fff; }
-	.badge-low { top: 2.75rem; left: 1rem; background: #fff; color: #ef4444; border: 1px solid #fee2e2; }
-	
-	.product-chat-btn {
-		position: absolute;
-		top: 1rem;
-		right: 1rem;
-		width: 32px;
-		height: 32px;
-		background: #fff;
-		border-radius: 50%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--on-surface);
-		box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-		opacity: 0;
-		transform: translateY(10px);
-		transition: all 0.3s ease;
-		z-index: 10;
-		border: 1px solid var(--border);
-	}
-	.product-card:hover .product-chat-btn {
-		opacity: 1;
-		transform: translateY(0);
-	}
-	.product-chat-btn:hover {
-		background: var(--on-surface);
-		color: #fff;
-	}
 
 	.product-sold-out { 
 		position: absolute; inset: 0; background: rgba(255,255,255,0.8); 
 		display: flex; align-items: center; justify-content: center; z-index: 20;
 	}
 	.product-sold-out span {
-		background: var(--on-surface); color: #fff;
+		background: #0f172a; color: #fff;
 		padding: 6px 16px; border-radius: 8px;
 		font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
 	}
 
 	/* Product Info */
-	.product-info { padding: 12px 0 8px; flex: 1; }
+	.product-info { padding: 16px; flex: 1; display: flex; flex-direction: column; }
 
-	.product-rating {
-		display: flex; align-items: center; gap: 1px; margin-bottom: 4px;
+	.product-category { 
+		font-size: 10px; font-weight: 800; color: #1d4ed8; text-transform: uppercase; 
+		letter-spacing: 0.05em; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
 	}
-	.product-rating :global(.star) { width: 12px; height: 12px; color: #d1d5db; }
-	.product-rating :global(.star-filled) { color: #f59e0b; fill: #f59e0b; }
 
 	.product-name {
-		font-family: var(--font-display);
-		font-size: 15px; font-weight: 500;
-		color: var(--on-surface); line-height: 1.3;
-		text-decoration: none;
+		font-size: 16px; font-weight: 700; color: #0f172a; text-decoration: none; 
 		display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+		margin-bottom: 2px;
 	}
 	.product-name:hover { text-decoration: underline; }
 
-	.product-desc {
-		font-size: 11px; color: var(--on-surface-muted);
-		margin-top: 2px;
+	.product-generic { 
+		font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px; 
 		display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
 	}
 
-	.product-price-row { margin-top: 6px; }
-	.product-price { display: flex; align-items: baseline; gap: 6px; }
-	.price-old { font-size: 11px; color: var(--on-surface-muted); text-decoration: line-through; }
-	.price-current { font-size: 15px; font-weight: 600; color: var(--on-surface); }
-
-	/* Add to Bag Button */
-	.add-to-bag {
-		width: 100%;
-		border: none; border-top: 1px solid var(--border-light);
-		background: none;
-		padding: 10px 0;
-		font-size: 10px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase;
-		color: var(--accent);
-		cursor: pointer;
-		display: flex; align-items: center; justify-content: space-between;
-		transition: color 0.15s;
+	.product-desc {
+		font-size: 11px; color: #64748b; margin-bottom: 16px; line-height: 1.4; 
+		display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 	}
-	.add-to-bag:hover { color: var(--on-surface); }
-	.add-to-bag :global(.bag-arrow) { width: 12px; height: 12px; transition: transform 0.2s; }
-	.add-to-bag:hover :global(.bag-arrow) { transform: translateX(3px); }
 
-	.unavailable-label {
-		padding: 10px 0; border-top: 1px solid var(--border-light);
-		font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
-		color: #ef4444;
+	.product-bottom-row { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+	.product-price { color: #0f172a; }
+	
+	.product-actions-flex { display: flex; gap: 8px; }
+	.action-icon-btn { 
+		width: 36px; height: 36px; border-radius: 8px; border: none; cursor: pointer; 
+		display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+	}
+	.action-rx { background: #eff6ff; color: #1d4ed8; }
+	.action-rx:hover { background: #dbeafe; }
+	.action-bag { background: #0b2559; color: #ffffff; }
+	.action-bag:hover { background: #0f357f; }
+
+	/* Toast */
+	.cart-toast {
+		position: fixed;
+		bottom: 2rem; left: 50%; transform: translateX(-50%);
+		z-index: 200;
+		display: flex; align-items: center; gap: 12px;
+		background: var(--on-surface); color: #fff;
+		padding: 14px 24px; border-radius: 12px;
+		box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+		animation: toastIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+		font-size: 12px;
+	}
+	.cart-toast :global(.toast-check) { width: 18px; height: 18px; color: #34d399; flex-shrink: 0; }
+	.toast-text { display: flex; flex-direction: column; gap: 1px; }
+	.toast-title { font-weight: 700; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; }
+	.toast-product { font-size: 10px; opacity: 0.7; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.toast-link {
+		margin-left: 8px; padding: 6px 14px; border-radius: 6px;
+		background: rgba(255,255,255,0.15); color: #fff;
+		font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+		text-decoration: none; white-space: nowrap;
+		transition: background 0.15s;
+	}
+	.toast-link:hover { background: rgba(255,255,255,0.25); }
+
+	@keyframes toastIn {
+		from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+		to { opacity: 1; transform: translateX(-50%) translateY(0); }
 	}
 
 	/* ─── EMPTY / LOADING ─── */
@@ -796,6 +914,54 @@
 		font-size: 11px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase;
 		color: var(--accent); cursor: pointer;
 	}
+
+	/* ─── MODAL STYLES ─── */
+	.modal-backdrop {
+		position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+		display: flex; align-items: center; justify-content: center; z-index: 1100; padding: 1rem;
+	}
+	.modal-content {
+		background: white; width: 100%; max-width: 760px; height: 90vh; border-radius: 1.5rem;
+		position: relative; overflow: hidden; display: flex; flex-direction: column; text-align: left;
+	}
+	.modal-close {
+		position: absolute; top: 0.75rem; right: 0.75rem; width: 32px; height: 32px;
+		border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center;
+		box-shadow: 0 4px 10px rgba(0,0,0,0.12); z-index: 10; flex-shrink: 0; border: none; cursor: pointer; color: var(--on-surface);
+	}
+	.modal-body { display: grid; grid-template-columns: 1fr; flex: 1; overflow: hidden; height: 100%; }
+	@media (min-width: 640px) { .modal-body { grid-template-columns: 1fr 1.2fr; } }
+	
+	.modal-img { background: #f8fafc; display: flex; align-items: center; justify-content: center; padding: 1.25rem; min-height: 160px; max-height: 220px; }
+	@media (min-width: 640px) { .modal-img { max-height: 100%; } }
+	.modal-img img { width: 100%; max-height: 300px; object-fit: contain; }
+	.m-ph { color: #cbd5e1; opacity: 0.5; }
+	
+	.modal-info { padding: 1.25rem 1.75rem; display: flex; flex-direction: column; overflow-y: auto; }
+	.m-header { margin-bottom: 0.875rem; }
+	.m-cat { font-size: 0.65rem; font-weight: 800; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.1em; display: block; margin-bottom: 0.25rem; }
+	.m-header h2 { font-family: var(--font-display); font-size: 1.35rem; font-weight: 800; color: #0f172a; line-height: 1.2; margin-bottom: 0.25rem; }
+	.m-generic { font-size: 0.75rem; color: #475569; }
+
+	.m-details { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.875rem; padding: 0.875rem; background: #f8fafc; border-radius: 0.875rem; }
+	.m-detail { display: flex; flex-direction: column; gap: 0.15rem; }
+	.m-detail .label { font-size: 0.6rem; font-weight: 700; color: #64748b; text-transform: uppercase; }
+	.m-detail .val { font-size: 0.8rem; font-weight: 700; color: #0f172a; }
+
+	.m-desc { font-size: 0.8125rem; color: #475569; line-height: 1.55; margin-bottom: 1rem; flex: 1; }
+
+	.m-footer { display: flex; align-items: center; justify-content: space-between; gap: 0.875rem; padding-top: 0.875rem; border-top: 1px solid var(--border); flex-wrap: wrap; }
+	.m-price-section { display: flex; flex-direction: column; min-width: 80px; }
+	.m-price { font-size: 1.25rem; font-weight: 900; color: #0f172a; }
+	.m-stock { font-size: 0.6rem; font-weight: 600; color: #64748b; }
+	
+	.m-qty-selector { display: flex; align-items: center; gap: 0.625rem; background: #f8fafc; padding: 0.375rem; border-radius: 0.625rem; border: 1px solid var(--border); }
+	.m-qty-selector button { width: 28px; height: 28px; border-radius: 0.4rem; background: white; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: #0f172a; transition: all 0.2s; cursor: pointer; }
+	.m-qty-selector button:hover { background: #0b1a30; color: white; }
+	.m-qty-selector span { font-weight: 800; font-size: 0.9rem; min-width: 18px; text-align: center; }
+
+	.m-add-btn { flex: 1; min-width: 120px; padding: 0.7rem 1rem; border-radius: 0.75rem; color: white; font-weight: 700; font-size: 0.875rem; border: none; cursor: pointer; box-shadow: 0 6px 15px -3px rgba(0,0,0,0.1); transition: opacity 0.2s; }
+	.m-add-btn:hover { opacity: 0.9; }
 
 	/* ─── ANIMATIONS ─── */
 	@keyframes heroZoom { from { transform: scale(1); } to { transform: scale(1.08); } }
