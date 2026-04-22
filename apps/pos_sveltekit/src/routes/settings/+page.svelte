@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { supabase } from '$lib/supabase';
-	import { Save, AlertCircle, CheckCircle, Store, Globe, DollarSign, Bell } from 'lucide-svelte';
+	import { Save, AlertCircle, CheckCircle, Store, Globe, DollarSign, Bell, Stethoscope } from 'lucide-svelte';
 
 	let loading = $state(true);
 	let saving = $state(false);
@@ -14,6 +14,7 @@
 		receipt_footer: '', low_stock_threshold: '10',
 		tax_rate: '0', tax_name: 'VAT'
 	});
+	let allowPartnership = $state(true);
 
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
@@ -36,6 +37,7 @@
 					tax_rate: (tenant.tax_rate || 0).toString(),
 					tax_name: tenant.tax_name || 'VAT'
 				};
+				allowPartnership = tenant.allowDoctorPartnerShip ?? true;
 			}
 		}
 		loading = false;
@@ -56,7 +58,8 @@
 				receipt_footer: settings.receipt_footer || null,
 				low_stock_threshold: parseInt(settings.low_stock_threshold),
 				tax_rate: parseFloat(settings.tax_rate),
-				tax_name: settings.tax_name || null
+				tax_name: settings.tax_name || null,
+				allowDoctorPartnerShip: allowPartnership
 			}).eq('id', tenantId);
 			if (dbErr) throw dbErr;
 			success = true;
@@ -141,7 +144,7 @@
 
 			<!-- Tax + Inventory -->
 			<div class="bg-white rounded-xl border p-5 space-y-4">
-				<h2 class="font-semibold text-gray-900 flex items-center gap-2"><DollarSign class="h-4 w-4 text-indigo-500" /> Tax & Inventory</h2>
+				<h2 class="font-semibold text-gray-900 flex items-center gap-2"><DollarSign class="h-4 w-4 text-indigo-500" /> Tax &amp; Inventory</h2>
 				<div class="grid grid-cols-3 gap-4">
 					<div>
 						<label class="block text-sm font-medium text-gray-700 mb-1">Tax Name</label>
@@ -165,6 +168,31 @@
 					<label class="block text-sm font-medium text-gray-700 mb-1">Receipt Footer Message</label>
 					<textarea bind:value={settings.receipt_footer} rows="2" placeholder="Thank you for shopping with us!" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm resize-none"></textarea>
 				</div>
+			</div>
+
+			<!-- Partnerships -->
+			<div class="bg-white rounded-xl border p-5">
+				<h2 class="font-semibold text-gray-900 flex items-center gap-2 mb-1">
+					<Stethoscope class="h-4 w-4 text-indigo-500" /> Medic Partnerships
+				</h2>
+				<p class="text-sm text-gray-500 mb-4">Allow healthcare providers to partner with your pharmacy. Enabling this shows the <strong>Medic Partners</strong> module in the sidebar.</p>
+				<label class="flex items-center justify-between cursor-pointer select-none">
+					<div>
+						<p class="text-sm font-medium text-gray-800">Allow Doctor Partnerships</p>
+						<p class="text-xs text-gray-500 mt-0.5">Doctors you invite can accept requests and appear on your storefront.</p>
+					</div>
+					<button
+						type="button"
+						role="switch"
+						aria-checked={allowPartnership}
+						onclick={() => allowPartnership = !allowPartnership}
+						class="relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 {allowPartnership ? 'bg-indigo-600' : 'bg-gray-200'}"
+					>
+						<span
+							class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {allowPartnership ? 'translate-x-5' : 'translate-x-0'}"
+						></span>
+					</button>
+				</label>
 			</div>
 
 			<button type="submit" disabled={saving} class="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-3 rounded-xl transition-colors disabled:opacity-50">
