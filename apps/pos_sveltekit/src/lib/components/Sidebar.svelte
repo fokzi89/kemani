@@ -3,7 +3,7 @@
 	import {
 		LayoutDashboard, Package, Users, ShoppingCart, BarChart3, Settings, 
 		Store, LogOut, MessageSquare, Briefcase, Building, ClipboardList,
-		FlaskConical, Truck, Stethoscope, Coins
+		FlaskConical, Truck, Stethoscope, Coins, RotateCcw
 	} from 'lucide-svelte';
 
 	let { tenant, userData, email, handleLogout, onnavclick = (e: any) => {} } = $props<any>();
@@ -17,6 +17,7 @@
 		{ name: 'Medic Partners', href: '/medics', icon: Stethoscope, visible: tenant?.allowDoctorPartnerShip ?? true },
 		{ name: 'Customers', href: '/customers', icon: Users, visible: userData?.['canManage Customers'] ?? false },
 		{ name: 'Orders', href: '/orders', icon: ShoppingCart, visible: userData?.canManageOrders ?? false },
+		{ name: 'Returns', href: '/returns', icon: RotateCcw, visible: userData?.canReturnProducts ?? false },
 		{ name: 'Inventory', href: '/inventory', icon: ClipboardList, visible: userData?.canManageInventory ?? false },
 		{ name: 'Staffs', href: '/staffs', icon: Briefcase, visible: userData?.canMangeStaff ?? false },
 		{ name: 'Messages', href: '/messages', icon: MessageSquare, visible: true },
