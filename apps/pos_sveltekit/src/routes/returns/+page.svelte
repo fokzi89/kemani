@@ -21,11 +21,15 @@
 		if (!session) return;
 		
 		const { data: user } = await supabase.from('users')
-			.select('tenant_id, branch_id')
+			.select('tenant_id, branch_id, canReturnProducts')
 			.eq('id', session.user.id)
 			.single();
 			
 		if (user) {
+			if (!user.canReturnProducts) {
+				goto('/');
+				return;
+			}
 			currentTenantId = user.tenant_id;
 			branchId = user.branch_id || '';
 			await loadSales();

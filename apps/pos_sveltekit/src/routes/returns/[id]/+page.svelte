@@ -22,6 +22,16 @@
 		if (!session) return;
 		staffId = session.user.id;
 		
+		const { data: user } = await supabase.from('users')
+			.select('canReturnProducts')
+			.eq('id', staffId)
+			.single();
+			
+		if (!user?.canReturnProducts) {
+			goto('/');
+			return;
+		}
+		
 		await loadSaleData();
 	});
 
