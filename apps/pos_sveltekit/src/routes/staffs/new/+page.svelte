@@ -34,9 +34,11 @@
 		canManageTransfer: false,
 		canManageBranches: false,
 		canManageRoles: false,
-		canManageScrap: false,
 		canTransferProduct: false,
-		canReturnProducts: false
+		canReturnProducts: false,
+		canCreatePrescription: false,
+		canApplyDiscount: false,
+		canReferDoctor: true
 	});
 
 	const roles = ['manager', 'cashier', 'pharmacist', 'tenant_admin'];
@@ -53,9 +55,11 @@
 		{ key: 'canManageTransfer', label: 'Transfer Inventory', description: 'Can manage transfer' },
 		{ key: 'canManageBranches', label: 'Branches', description: 'Can manage branches' },
 		{ key: 'canManageRoles', label: 'Roles', description: 'Can manage roles' },
-		{ key: 'canManageScrap', label: 'Scrap', description: 'Can manage scrap' },
 		{ key: 'canTransferProduct', label: 'Transfer Products', description: 'Can transfer products' },
-		{ key: 'canReturnProducts', label: 'Returns', description: 'Can process returns' }
+		{ key: 'canReturnProducts', label: 'Returns', description: 'Can process returns' },
+		{ key: 'canCreatePrescription', label: 'Prescribe', description: 'Can create prescriptions' },
+		{ key: 'canApplyDiscount', label: 'Discounts', description: 'Can apply manual discounts' },
+		{ key: 'canReferDoctor', label: 'Doctor Referrals', description: 'Can refer patients to doctors' }
 	];
 
 	onMount(async () => {
@@ -102,9 +106,11 @@
 				canManageTransfer: form.canManageTransfer,
 				canManageBranches: form.canManageBranches,
 				canManageRoles: form.canManageRoles,
-				canManageScrap: form.canManageScrap,
 				canTransferProduct: form.canTransferProduct,
-				canReturnProducts: form.canReturnProducts
+				canReturnProducts: form.canReturnProducts,
+				canCreatePrescription: form.canCreatePrescription,
+				canApplyDiscount: form.canApplyDiscount,
+				canReferDoctor: form.canReferDoctor
 			});
 
 			if (insertError) throw insertError;

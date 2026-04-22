@@ -5,9 +5,9 @@
 		Search, MapPin, Package, Check, 
 		X, MoreHorizontal, ArrowRightLeft, 
 		ArrowRight, Building, AlertTriangle, Plus,
-		Eye
+		Eye, Save, ChevronLeft, ChevronRight
 	} from 'lucide-svelte';
-	import ProductDetailModal from '$lib/components/ProductDetailModal.svelte';
+
 
 	let inventory = $state<any[]>([]);
 	let branches = $state<any[]>([]);
@@ -29,8 +29,7 @@
 	let targetBranchId = $state('');
 	let transferLoading = $state(false);
 
-	// Detail Modal State
-	let selectedForDetail = $state<{id: string, branchId: string, name: string} | null>(null);
+
 
 	// Derived lists
 	let filtered = $derived(
@@ -533,13 +532,13 @@
 									{/if}
 								</td>
 								<td class="px-4 py-3 text-right">
-									<button 
-										onclick={() => selectedForDetail = {id: item.product_id, branchId: item.branch_id, name: item.name}}
-										class="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+									<a 
+										href="/inventory/{item.product_id}?branchId={item.branch_id}"
+										class="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all inline-block"
 										title="View Audit Detail"
 									>
 										<Eye class="h-4 w-4" />
-									</button>
+									</a>
 								</td>
 							</tr>
 						{/each}
@@ -577,13 +576,7 @@
 	</div>
 </div>
 
-<ProductDetailModal 
-	isOpen={!!selectedForDetail} 
-	onClose={() => selectedForDetail = null} 
-	productId={selectedForDetail?.id || ''}
-	branchId={selectedForDetail?.branchId || ''}
-	productName={selectedForDetail?.name || ''}
-/>
+
 
 <!-- Transfer Modal -->
 {#if showTransferModal}

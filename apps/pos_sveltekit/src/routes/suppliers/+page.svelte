@@ -113,43 +113,92 @@
 			<button onclick={openAddModal} class="mt-3 text-sm text-indigo-600 hover:underline">Register your first supplier</button>
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-			{#each filtered as supplier}
-				<div class="bg-white rounded-xl border p-5 hover:shadow-md transition-all group relative">
-					<div class="flex items-start justify-between mb-4">
-						<div class="h-12 w-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-							<Truck class="h-6 w-6" />
-						</div>
-						<div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-							<button onclick={() => openEditModal(supplier)} class="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-indigo-600"><Edit class="h-4 w-4" /></button>
-							<button onclick={() => handleDelete(supplier.id)} class="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-600"><Trash2 class="h-4 w-4" /></button>
-						</div>
-					</div>
-					
-					<h3 class="font-bold text-gray-900 text-lg mb-1">{supplier.name}</h3>
-					{#if supplier.contact_person}
-						<p class="text-sm text-indigo-600 font-medium mb-4">{supplier.contact_person}</p>
-					{/if}
+		<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+			<div class="overflow-x-auto">
+				<table class="w-full text-left whitespace-nowrap min-w-[800px]">
+					<thead class="bg-gray-50/80 border-b border-gray-100">
+						<tr>
+							<th class="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier Name</th>
+							<th class="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact Details</th>
+							<th class="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[200px]">Address</th>
+							<th class="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-gray-100">
+						{#each filtered as supplier}
+							<tr class="hover:bg-indigo-50/30 transition-colors group">
+								<!-- Supplier Name & Contact Person -->
+								<td class="px-6 py-4">
+									<div class="flex items-center gap-3">
+										<div class="h-10 w-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shrink-0">
+											<Truck class="h-4 w-4" />
+										</div>
+										<div>
+											<p class="font-bold text-gray-900 text-sm">{supplier.name}</p>
+											{#if supplier.contact_person}
+												<p class="text-[11px] text-gray-500 font-medium uppercase mt-0.5 tracking-wider">{supplier.contact_person}</p>
+											{/if}
+										</div>
+									</div>
+								</td>
 
-					<div class="space-y-2.5">
-						{#if supplier.phone}
-							<div class="flex items-center gap-2 text-sm text-gray-500">
-								<Phone class="h-3.5 w-3.5" /> {supplier.phone}
-							</div>
-						{/if}
-						{#if supplier.email}
-							<div class="flex items-center gap-2 text-sm text-gray-500">
-								<Mail class="h-3.5 w-3.5" /> {supplier.email}
-							</div>
-						{/if}
-						{#if supplier.address}
-							<div class="flex items-start gap-2 text-sm text-gray-500 pt-1 border-t border-gray-50">
-								<MapPin class="h-3.5 w-3.5 mt-0.5" /> <span class="line-clamp-2">{supplier.address}</span>
-							</div>
-						{/if}
-					</div>
-				</div>
-			{/each}
+								<!-- Phone & Email -->
+								<td class="px-6 py-4">
+									<div class="space-y-1">
+										{#if supplier.email}
+											<div class="flex items-center gap-1.5 text-xs text-gray-600">
+												<Mail class="h-3 w-3 text-gray-400 shrink-0" />
+												<span class="truncate">{supplier.email}</span>
+											</div>
+										{/if}
+										{#if supplier.phone}
+											<div class="flex items-center gap-1.5 text-xs text-gray-500">
+												<Phone class="h-3 w-3 text-gray-400 shrink-0" />
+												<span>{supplier.phone}</span>
+											</div>
+										{/if}
+										{#if !supplier.email && !supplier.phone}
+											<span class="text-xs text-gray-400 italic">No contact details</span>
+										{/if}
+									</div>
+								</td>
+
+								<!-- Address -->
+								<td class="px-6 py-4 align-top whitespace-normal">
+									{#if supplier.address}
+										<div class="flex items-start gap-1.5 text-xs text-gray-600 max-w-sm">
+											<MapPin class="h-3.5 w-3.5 mt-0.5 text-gray-400 shrink-0" />
+											<span class="line-clamp-2">{supplier.address}</span>
+										</div>
+									{:else}
+										<span class="text-xs text-gray-400 italic">No address provided</span>
+									{/if}
+								</td>
+
+								<!-- Actions -->
+								<td class="px-6 py-4 text-right">
+									<div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+										<button 
+											onclick={() => openEditModal(supplier)} 
+											class="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+											title="Edit Supplier"
+										>
+											<Edit class="h-4 w-4" />
+										</button>
+										<button 
+											onclick={() => handleDelete(supplier.id)} 
+											class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+											title="Delete Supplier"
+										>
+											<Trash2 class="h-4 w-4" />
+										</button>
+									</div>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
 		</div>
 	{/if}
 </div>

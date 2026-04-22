@@ -104,9 +104,11 @@
 						canManageTransfer: invitation.canManageTransfer,
 						canManageBranches: invitation.canManageBranches,
 						canManageRoles: invitation.canManageRoles,
-						canManageScrap: invitation.canManageScrap,
 						canTransferProduct: invitation.canTransferProduct,
 						canReturnProducts: invitation.canReturnProducts,
+						canCreatePrescription: invitation.canCreatePrescription,
+						canApplyDiscount: invitation.canApplyDiscount,
+						canReferToDoctor: invitation.canReferDoctor,
 						updated_at: new Date().toISOString()
 					})
 					.eq('email', invEmail);
@@ -135,9 +137,11 @@
 						canManageTransfer: invitation.canManageTransfer,
 						canManageBranches: invitation.canManageBranches,
 						canManageRoles: invitation.canManageRoles,
-						canManageScrap: invitation.canManageScrap,
 						canTransferProduct: invitation.canTransferProduct,
-						canReturnProducts: invitation.canReturnProducts
+						canReturnProducts: invitation.canReturnProducts,
+						canCreatePrescription: invitation.canCreatePrescription,
+						canApplyDiscount: invitation.canApplyDiscount,
+						canReferToDoctor: invitation.canReferDoctor
 					});
 
 				if (insertErr) throw insertErr;

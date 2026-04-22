@@ -31,9 +31,11 @@
 		{ key: 'canManageTransfer', label: 'Transfer Inventory', description: 'Can manage transfer' },
 		{ key: 'canManageBranches', label: 'Branches', description: 'Can manage branches' },
 		{ key: 'canManageRoles', label: 'Roles', description: 'Can manage roles' },
-		{ key: 'canManageScrap', label: 'Scrap', description: 'Can manage scrap' },
 		{ key: 'canTransferProduct', label: 'Transfer Products', description: 'Can transfer products' },
-		{ key: 'canReturnProducts', label: 'Returns', description: 'Can process returns' }
+		{ key: 'canReturnProducts', label: 'Returns', description: 'Can process returns' },
+		{ key: 'canCreatePrescription', label: 'Prescribe', description: 'Can create prescriptions' },
+		{ key: 'canApplyDiscount', label: 'Discounts', description: 'Can apply manual discounts' },
+		{ key: 'canReferToDoctor', label: 'Doctor Referrals', description: 'Can refer patients to doctors' }
 	];
 
 	let filteredStaff = $derived(
@@ -99,9 +101,11 @@
 			canManageTransfer: person.canManageTransfer ?? false,
 			canManageBranches: person.canManageBranches ?? false,
 			canManageRoles: person.canManageRoles ?? false,
-			canManageScrap: person.canManageScrap ?? false,
 			canTransferProduct: person.canTransferProduct ?? false,
-			canReturnProducts: person.canReturnProducts ?? false
+			canReturnProducts: person.canReturnProducts ?? false,
+			canCreatePrescription: person.canCreatePrescription ?? false,
+			canApplyDiscount: person.canApplyDiscount ?? false,
+			canReferToDoctor: person.canReferToDoctor ?? true
 		};
 		showPrivilegesModal = true;
 		activeDropdown = null;
@@ -137,8 +141,10 @@
 					canViewMessages: false, canViewAnalytics: false,
 					canManageStaff: false, canManageInventory: false,
 					canManageTransfer: false, canManageBranches: false,
-					canManageRoles: false, canManageScrap: false,
+					canManageRoles: false,
 					canTransferProduct: false, canReturnProducts: false,
+					canCreatePrescription: false, canApplyDiscount: false,
+					canReferToDoctor: false,
 					deleted_at: new Date().toISOString()
 				})
 				.eq('id', person.id);
