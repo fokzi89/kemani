@@ -41,9 +41,9 @@
 			}
 			sale = saleData;
 
-			// Fetch items
+			// Fetch items natively
 			const { data: itemsData } = await supabase.from('sale_items')
-				.select('*, products(name, sku)')
+				.select('*')
 				.eq('sale_id', saleId);
 			
 			items = itemsData || [];
@@ -135,7 +135,7 @@
 			<ArrowLeft class="h-6 w-6" />
 		</a>
 		<div>
-			<h1 class="text-2xl font-black text-gray-900 flex items-center gap-2">
+			<h1 class="text-lg sm:text-xl font-black text-gray-900 flex items-center gap-2">
 				Modify / Return Items
 			</h1>
 			<p class="text-xs text-gray-500 font-bold uppercase tracking-widest mt-0.5">
@@ -181,8 +181,8 @@
 							
 							<div class="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center {curReturn > 0 ? 'bg-indigo-50/30' : ''} {maxAmt === 0 ? 'opacity-50 grayscale pointer-events-none' : ''}">
 								<div class="flex-1">
-									<p class="font-bold text-gray-900 text-sm">{item.products?.name || 'Unknown Product'}</p>
-									<p class="text-[10px] text-gray-400 font-bold uppercase mt-0.5">{item.products?.sku || 'NO SKU'}</p>
+									<p class="font-bold text-gray-900 text-sm">{item.product_name || 'Unknown Product'}</p>
+									<p class="text-[10px] text-gray-400 font-bold uppercase mt-0.5">{item.product_sku || 'NO SKU'}</p>
 									<p class="text-xs font-bold text-emerald-600 mt-1">{formatCurrency(item.unit_price)} <span class="text-gray-400 font-medium">ea</span></p>
 								</div>
 
