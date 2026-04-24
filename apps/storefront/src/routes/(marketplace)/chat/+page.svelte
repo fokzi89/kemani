@@ -18,6 +18,7 @@
 	import ProductSelectionModal from '$lib/components/ProductSelectionModal.svelte';
 	import ChatCartFlyout from '$lib/components/ChatCartFlyout.svelte';
 	import SuggestedProductCard from '$lib/components/SuggestedProductCard.svelte';
+	import { MarketplaceService } from '$lib/services/marketplace';
 
 	// 1. Core State
 	let conversation = $state<any>(null);
@@ -163,12 +164,11 @@
 			const productId = urlProductId || metaProductId;
 
 			if (productId) {
-				const { data: pData } = await supabase
-					.from('products')
-					.select('*')
-					.eq('id', productId)
-					.single();
-				productInquiry = pData;
+				const marketplaceService = new MarketplaceService(supabase);
+				const { product, error: pError } = await marketplaceService.getMarketplaceProductById(productId, tenantId);
+				if (!pError) {
+					productInquiry = product;
+				}
 			}
 
 			const { data: msgData, error: msgError } = await supabase
@@ -204,9 +204,11 @@
 				filter: `conversation_id=eq.${conversation.id}`
 			}, (payload) => {
 				// Only display if it's not a pharmacist-only activity message
-				if (!payload.new.metadata?.pharmacist_only) {
-					messages = [...messages, payload.new];
-					scrollToBottom();
+				if (payload.eventType === 'INSERT' && !payload.new.metadata?.pharmacist_only) {
+					if (!messages.find(m => m.id === payload.new.id)) {
+						messages = [...messages, payload.new];
+						scrollToBottom();
+					}
 				}
 			})
 			.subscribe();
@@ -770,6 +772,7 @@
 		position: relative;
 	}
 	.me .msg-bubble { background: black; color: white; border: none; border-bottom-right-radius: 0.25rem; }
+	.me .msg-bubble p { color: white !important; }
 	.them .msg-bubble { border-bottom-left-radius: 0.25rem; }
 
 	.msg-time { display: block; font-size: 8px; font-weight: 700; opacity: 0.4; margin-top: 6px; text-transform: uppercase; }
