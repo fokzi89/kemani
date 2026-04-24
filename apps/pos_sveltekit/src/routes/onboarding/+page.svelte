@@ -100,6 +100,7 @@
 	}
 
 	async function completeOnboarding() {
+		if (loading) return; // prevent double-click
 		loading = true;
 		error = '';
 		

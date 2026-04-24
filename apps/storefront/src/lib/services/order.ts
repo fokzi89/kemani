@@ -18,13 +18,9 @@ import type {
   InventoryCheckResult,
   OrderFulfillmentResult
 } from '../types/ecommerce';
-import { LoyaltyService } from './loyalty';
 
 export class OrderService {
-  private loyaltyService: LoyaltyService;
-
   constructor(private supabase: SupabaseClient) {
-    this.loyaltyService = new LoyaltyService(supabase);
   }
 
   /**
@@ -62,23 +58,7 @@ export class OrderService {
         deliveryFee = 1000; // Flat rate for now
       }
 
-      // Apply loyalty points discount
-      let loyaltyDiscount = 0;
-      if (request.loyalty_points_to_redeem && request.loyalty_points_to_redeem > 0) {
-        const validation = await this.loyaltyService.validateRedemption(
-          request.customer_id,
-          request.loyalty_points_to_redeem,
-          subtotal + tax + deliveryFee
-        );
-
-        if (!validation.valid) {
-          return { error: validation.error };
-        }
-
-        loyaltyDiscount = validation.discount_amount || 0;
-      }
-
-      const totalAmount = subtotal + tax + deliveryFee - loyaltyDiscount;
+      const totalAmount = subtotal + tax + deliveryFee;
 
       // 3. Generate order number
       const orderNumber = await this.generateOrderNumber(request.tenant_id);
@@ -94,7 +74,6 @@ export class OrderService {
         subtotal,
         tax,
         delivery_fee: deliveryFee,
-        loyalty_points_discount: loyaltyDiscount,
         total_amount: totalAmount,
         payment_method: request.payment_method,
         payment_status: 'pending',
@@ -131,17 +110,7 @@ export class OrderService {
         return { error: itemsError.message };
       }
 
-      // 6. Redeem loyalty points if applicable
-      if (request.loyalty_points_to_redeem && request.loyalty_points_to_redeem > 0) {
-        await this.loyaltyService.redeemPoints(
-          request.customer_id,
-          request.loyalty_points_to_redeem,
-          order.id
-        );
-      }
 
-      // 7. Calculate loyalty points earned
-      const pointsCalculation = this.loyaltyService.calculatePointsEarned(subtotal);
 
       // 8. Generate tracking URL
       const trackingUrl = `/track/${order.id}`;
@@ -158,8 +127,7 @@ export class OrderService {
         order_number: orderNumber,
         total_amount: totalAmount,
         payment_url: paymentUrl,
-        tracking_url: trackingUrl,
-        loyalty_points_earned: pointsCalculation.points_earned
+        tracking_url: trackingUrl
       };
 
       return { order: response };
@@ -227,10 +195,6 @@ export class OrderService {
         note: request.note
       });
 
-      // If order is delivered, award loyalty points
-      if (request.status === 'delivered') {
-        await this.awardLoyaltyPointsForOrder(orderId);
-      }
 
       return { order };
     } catch (error: any) {
@@ -364,11 +328,6 @@ export class OrderService {
       // Restore inventory if already deducted
       await this.restoreInventory(orderId);
 
-      // Refund loyalty points if redeemed
-      if (order.loyalty_points_discount && order.loyalty_points_discount > 0) {
-        const pointsRedeemed = Math.floor(order.loyalty_points_discount / 100); // Reverse calculation
-        await this.loyaltyService.awardPoints(order.customer_id, pointsRedeemed, orderId);
-      }
 
       return { success: true };
     } catch (error: any) {
@@ -430,31 +389,6 @@ export class OrderService {
     return estimatedDate.toISOString();
   }
 
-  /**
-   * Award loyalty points for completed order
-   */
-  private async awardLoyaltyPointsForOrder(orderId: string): Promise<void> {
-    try {
-      const { order } = await this.getOrder(orderId);
-      if (!order) return;
-
-      const pointsCalculation = this.loyaltyService.calculatePointsEarned(order.subtotal);
-
-      await this.loyaltyService.awardPoints(
-        order.customer_id,
-        pointsCalculation.points_earned,
-        orderId
-      );
-
-      // Update customer total_spent
-      await this.supabase.rpc('increment_customer_total_spent', {
-        p_customer_id: order.customer_id,
-        p_amount: order.total_amount
-      });
-    } catch (error) {
-      console.error('Failed to award loyalty points:', error);
-    }
-  }
 
   /**
    * Restore inventory for cancelled order

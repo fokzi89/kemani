@@ -31,8 +31,7 @@ export class CustomerService {
         full_name: data.full_name,
         email: data.email,
         phone: data.phone,
-        loyalty_points: 0,
-        total_spent: 0
+        total_purchases: 0
       };
 
       const { data: customer, error } = await this.supabase
@@ -189,7 +188,7 @@ export class CustomerService {
       const customerWithStats: CustomerWithStats = {
         ...customer,
         total_orders: stats?.length || 0,
-        total_spent: stats?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0,
+        total_purchases: stats?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0,
         last_order_date: stats && stats.length > 0 ? stats[0].created_at : undefined,
         addresses: addresses || []
       };

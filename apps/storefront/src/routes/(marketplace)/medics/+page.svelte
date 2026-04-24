@@ -18,8 +18,8 @@
 		if (!searchQuery) return true;
 		const q = searchQuery.toLowerCase();
 		return (
-			d.full_name?.toLowerCase().includes(q) ||
-			d.specialization?.toLowerCase().includes(q)
+			(d.doctor_name || d.alias || '').toLowerCase().includes(q) ||
+			(d.specialization || '').toLowerCase().includes(q)
 		);
 	});
 
@@ -33,6 +33,16 @@
 </svelte:head>
 
 <div class="page-wrap">
+	{#if !(storefront?.allowDoctorPartnerShip ?? true)}
+		<div class="max-w-xl mx-auto py-20 text-center">
+			<div class="h-20 w-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-400">
+				<Stethoscope class="w-10 h-10" />
+			</div>
+			<h2 class="text-2xl font-bold text-gray-900 mb-2">Medics Directory Unavailable</h2>
+			<p class="text-gray-500 mb-8">This store does not currently offer doctor partnership services.</p>
+			<a href="/" class="btn btn--primary inline-flex px-8" style="background:{brandColor}">Return to Shop</a>
+		</div>
+	{:else}
 	<!-- ════════════════════════════
 		 HERO / SEARCH
 	════════════════════════════ -->
@@ -216,10 +226,10 @@
 							<div class="card-header">
 								<div class="card-avatar-wrap">
 									{#if medic.profile_photo_url}
-										<img src={medic.profile_photo_url} alt={medic.full_name} class="card-avatar" />
+										<img src={medic.profile_photo_url} alt={medic.doctor_name || medic.alias} class="card-avatar" />
 									{:else}
 										<div class="card-avatar card-avatar--placeholder">
-											{(medic.full_name || 'H').charAt(0).toUpperCase()}
+											{(medic.doctor_name || medic.alias || 'H').charAt(0).toUpperCase()}
 										</div>
 									{/if}
 									<span class="online-dot" title="Active"></span>
@@ -236,7 +246,7 @@
 
 							<!-- Card Body -->
 							<div class="card-body">
-								<h3 class="card-name">{medic.full_name}</h3>
+								<h3 class="card-name">{medic.doctor_name || medic.alias}</h3>
 								<p class="card-specialty" style="color:{brandColor}">{medic.specialization || 'Healthcare Provider'}</p>
 
 								<div class="card-meta">
@@ -314,6 +324,7 @@
 
 		</section>
 	</div>
+	{/if}
 </div>
 
 <style>

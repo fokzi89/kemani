@@ -37,6 +37,9 @@ BEGIN
             v_sale_item RECORD;
             v_previous_stock INTEGER;
             v_new_stock INTEGER;
+            v_new_item_qty INTEGER;
+            v_new_item_discount DECIMAL;
+            v_new_item_subtotal DECIMAL;
         BEGIN
             -- Fetch sale_item
             SELECT * INTO v_sale_item FROM sale_items 
@@ -50,13 +53,26 @@ BEGIN
                 RAISE EXCEPTION 'Return quantity exceeds purchased quantity';
             END IF;
 
-            -- Accumulate value for the receipt totals modification
+            -- Calculate proportional refund value (before item update)
             v_return_value := v_return_value + (v_sale_item.unit_price * v_item.return_qty);
 
-            -- Update sale_item decrementing the quantity kept by the customer
-            UPDATE sale_items 
-            SET quantity = quantity - v_item.return_qty,
-                updated_at = NOW()
+            -- Recalculate item fields to satisfy CHECK constraints
+            v_new_item_qty := v_sale_item.quantity - v_item.return_qty;
+            
+            -- Proportional discount reduction
+            IF v_sale_item.quantity > 0 THEN
+                v_new_item_discount := (v_sale_item.discount_amount * v_new_item_qty) / v_sale_item.quantity;
+            ELSE
+                v_new_item_discount := 0;
+            END IF;
+            
+            v_new_item_subtotal := (v_sale_item.unit_price * v_new_item_qty) - v_new_item_discount;
+
+            -- Update sale_item with consistent values
+            UPDATE public.sale_items 
+            SET quantity = v_new_item_qty,
+                discount_amount = v_new_item_discount,
+                subtotal = v_new_item_subtotal
             WHERE id = v_item.sale_item_id;
 
             -- Find latest active batch assigned to this branch to restore inventory
@@ -67,10 +83,9 @@ BEGIN
 
             -- Increment inventory and Log
             IF v_batch_id IS NOT NULL THEN
-                
                 -- Capture stock before incrementing
                 SELECT stock_quantity INTO v_previous_stock FROM branch_inventory WHERE id = v_batch_id;
-                v_new_stock := v_previous_stock + v_item.return_qty;
+                v_new_stock := COALESCE(v_previous_stock, 0) + v_item.return_qty;
 
                 UPDATE branch_inventory
                 SET stock_quantity = v_new_stock,
@@ -87,29 +102,26 @@ BEGIN
                     p_staff_id, 'Item returned by customer and restored to inventory'
                 );
             END IF;
-
         END;
     END LOOP;
 
     -- 3. Adjust Sale master totals
-    v_new_subtotal := v_sale.subtotal - v_return_value;
+    v_new_subtotal := GREATEST(0, v_sale.subtotal - v_return_value);
     
-    -- Adjust total_amount identically, preserving prior proportional tax/discounts
-    v_new_total := v_sale.total_amount - v_return_value;
+    -- Adjust total_amount identically
+    v_new_total := GREATEST(0, v_sale.total_amount - v_return_value);
 
     IF v_new_subtotal <= 0 THEN
-        v_new_subtotal := 0;
-        v_new_total := GREATEST(0, v_sale.total_amount - v_sale.subtotal); -- Preserve any static fees if any, but mostly 0
         UPDATE sales 
-        SET subtotal = v_new_subtotal, 
-            total_amount = v_new_total, 
+        SET subtotal = 0, 
+            total_amount = GREATEST(0, v_sale.total_amount - v_sale.subtotal), -- Keep tax if any? Or just 0
             sale_status = 'refunded',
             updated_at = NOW()
         WHERE id = p_sale_id;
     ELSE
         UPDATE sales 
         SET subtotal = v_new_subtotal, 
-            total_amount = GREATEST(0, v_new_total),
+            total_amount = v_new_total,
             updated_at = NOW()
         WHERE id = p_sale_id;
     END IF;

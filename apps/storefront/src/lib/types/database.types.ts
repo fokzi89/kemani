@@ -1000,7 +1000,6 @@ export type Database = {
           full_name: string
           id: string
           last_purchase_at: string | null
-          loyalty_points: number
           phone: string
           purchase_count: number | null
           tenant_id: string
@@ -1019,7 +1018,6 @@ export type Database = {
           full_name: string
           id?: string
           last_purchase_at?: string | null
-          loyalty_points?: number
           phone: string
           purchase_count?: number | null
           tenant_id: string
@@ -1038,7 +1036,6 @@ export type Database = {
           full_name?: string
           id?: string
           last_purchase_at?: string | null
-          loyalty_points?: number
           phone?: string
           purchase_count?: number | null
           tenant_id?: string

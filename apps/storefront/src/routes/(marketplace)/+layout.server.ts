@@ -40,6 +40,7 @@ export async function load({ locals, params }) {
 			id, name, slug, logo_url, brand_color,
 			ecommerce_enabled, subdomain, custom_domain,
 			ecommerce_settings, services_offered,
+			allowDoctorPartnerShip,
 			branches!tenant_id(id, name, address)
 		`)
 		.eq('id', tenantId)
@@ -60,6 +61,7 @@ export async function load({ locals, params }) {
 			subdomain: tenant.subdomain,
 			services_offered: tenant.services_offered || [],
 			ecommerce_settings: tenant.ecommerce_settings || {},
+			allowDoctorPartnerShip: tenant.allowDoctorPartnerShip ?? true,
 			banner_url: (tenant.ecommerce_settings as any)?.banner_url || null,
 			description: (tenant.ecommerce_settings as any)?.description || 'Your neighborhood store.',
 			branches: ((tenant.branches as any[]) || []).map((b: any) => ({

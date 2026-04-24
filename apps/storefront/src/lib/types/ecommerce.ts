@@ -47,8 +47,6 @@ export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'mobile_money';
 
 export type AddressType = 'home' | 'work' | 'other';
 
-export const LOYALTY_POINTS_PER_NAIRA = 0.01; // 1 point per ₦100 spent
-export const LOYALTY_POINTS_MULTIPLIER = 100; // ₦100 = 1 point
 
 // ============================================================================
 // Extended Types (with relationships and computed fields)
@@ -59,7 +57,7 @@ export const LOYALTY_POINTS_MULTIPLIER = 100; // ₦100 = 1 point
  */
 export interface CustomerWithStats extends Customer {
   total_orders?: number;
-  total_spent?: number;
+  total_purchases?: number;
   last_order_date?: string;
   addresses?: CustomerAddress[];
 }
@@ -132,9 +130,7 @@ export interface Cart {
   subtotal: number;
   tax: number;
   delivery_fee: number;
-  loyalty_points_discount: number;
   total: number;
-  loyalty_points_earned: number;
 }
 
 /**
@@ -146,7 +142,6 @@ export interface PurchaseHistoryItem {
   total_amount: number;
   items_count: number;
   status: OrderStatus;
-  loyalty_points_earned: number;
 }
 
 // ============================================================================
@@ -238,7 +233,6 @@ export interface CreateOrderRequest {
   order_type: OrderType;
   delivery_address_id?: string; // Required for delivery orders
   payment_method: PaymentMethod;
-  loyalty_points_to_redeem?: number;
   notes?: string;
 }
 
@@ -251,7 +245,6 @@ export interface CreateOrderResponse {
   total_amount: number;
   payment_url?: string; // For card/online payments
   tracking_url: string;
-  loyalty_points_earned: number;
 }
 
 /**
@@ -276,40 +269,11 @@ export interface UpdateOrderStatusRequest {
   note?: string;
 }
 
-/**
- * Loyalty points response
- */
-export interface LoyaltyPointsResponse {
-  customer_id: string;
-  points_balance: number;
-  points_value_naira: number; // How much the points are worth
-  lifetime_points: number;
-  points_expiring_soon?: Array<{
-    points: number;
-    expires_at: string;
-  }>;
-}
-
-/**
- * Redeem loyalty points request
- */
-export interface RedeemPointsRequest {
-  order_id: string;
-  points_to_redeem: number;
-}
 
 // ============================================================================
 // Service Types
 // ============================================================================
 
-/**
- * Loyalty points calculation result
- */
-export interface LoyaltyCalculation {
-  points_earned: number;
-  order_amount: number;
-  multiplier: number;
-}
 
 /**
  * Inventory check result
@@ -354,8 +318,7 @@ export type EcommerceErrorCode =
   | 'INVALID_ADDRESS'
   | 'INVALID_PAYMENT_METHOD'
   | 'ORDER_NOT_FOUND'
-  | 'INSUFFICIENT_LOYALTY_POINTS'
-  | 'LOYALTY_POINTS_EXPIRED'
+  | 'ORDER_NOT_FOUND'
   | 'CART_EMPTY'
   | 'TENANT_NOT_FOUND'
   | 'UNAUTHORIZED'
@@ -383,7 +346,6 @@ export interface CheckoutState {
   selected_address?: CustomerAddress;
   selected_payment_method?: PaymentMethod;
   order_type: OrderType;
-  loyalty_points_to_use: number;
   is_submitting: boolean;
   error?: string;
 }

@@ -5,7 +5,7 @@
 	import { 
 		ArrowLeft, Plus, Search, UserPlus, Save, CheckCircle2, 
 		XCircle, Pill, Trash2, Edit, X, Calendar, Activity, UploadCloud,
-		Stethoscope, ClipboardList
+		Stethoscope, ClipboardList, Loader2, MessageSquare
 	} from 'lucide-svelte';
 
 	let provider = $state<any>(null);
@@ -259,6 +259,45 @@
 			submitting = false;
 		}
 	}
+	let isPushingToChat = $state('');
+
+	async function pushDrugToChat(drug: any) {
+		if (!drug.product_id) return alert('Cannot push custom drug. It must be linked to a store product.');
+		
+		isPushingToChat = drug.name;
+		try {
+			// Find the most recent active chat connection
+			const { data: conv, error: convErr } = await supabase
+				.from('chat_conversations')
+				.select('id')
+				.eq('status', 'active')
+				.order('created_at', { ascending: false })
+				.limit(1)
+				.single();
+
+			if (convErr || !conv) throw new Error('No active clinical chat sessions found to push to.');
+
+			// Insert recommendation message
+			const { error: msgErr } = await supabase
+				.from('chat_messages')
+				.insert({
+					conversation_id: conv.id,
+					sender_id: provider?.user_id || provider?.id,
+					sender_type: "medic",
+					message_text: `I recommend incorporating ${drug.name} into your routine based on our consultation.`,
+					metadata: { 
+						suggested_product: drug.product_id 
+					}
+				});
+
+			if (msgErr) throw msgErr;
+			alert(`Successfully bypassed catalog and pushed ${drug.name} directly to the active clinical chat!`);
+		} catch (err: any) {
+			alert('Failed to push to chat: ' + err.message);
+		} finally {
+			isPushingToChat = '';
+		}
+	}
 </script>
 
 <svelte:head>
@@ -450,6 +489,15 @@
 										</div>
 										
 										<div class="flex items-center gap-2 shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-100">
+											{#if drug.product_id}
+												<button onclick={() => pushDrugToChat(drug)} disabled={isPushingToChat === drug.name} class="px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors flex items-center gap-1 disabled:opacity-50 border border-emerald-200">
+													{#if isPushingToChat === drug.name}
+														<Loader2 class="h-3 w-3 animate-spin"/> Pushing...
+													{:else}
+														<MessageSquare class="h-3 w-3"/> Push to Chat
+													{/if}
+												</button>
+											{/if}
 											<button onclick={() => openDrugModal(index)} class="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="Edit"><Edit class="h-5 w-5"/></button>
 											<button onclick={() => deleteDrug(index)} class="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors" title="Remove"><Trash2 class="h-5 w-5"/></button>
 										</div>

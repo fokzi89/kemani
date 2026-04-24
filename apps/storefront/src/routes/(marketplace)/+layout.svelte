@@ -7,6 +7,8 @@
 	import { isAuthModalOpen, isChatOpen, chatProduct } from '$lib/stores/ui';
 	import { supabase } from '$lib/supabase';
 	import { AuthService } from '$lib/services/auth';
+	import { activeConversationId, setActiveConversation } from '$lib/stores/chat.store';
+	import { get } from 'svelte/store';
 	import { PUBLIC_APP_URL } from '$env/static/public';
 	import AuthModal from '$lib/components/AuthModal.svelte';
 
@@ -21,13 +23,51 @@
 	let cartCount = 0;
 	let isAccountOpen = false;
 
-	function toggleChat() { 
+	async function toggleChat(type: 'Customer Support' | 'Consultation' = 'Customer Support') { 
 		if (!$isAuthenticated) {
-			localStorage.setItem('pending_chat_redirect', '/chat');
+			const productId = get(chatProduct)?.id;
+			const redirectUrl = productId ? `/chat?productId=${productId}&type=${type}` : `/chat?type=${type}`;
+			localStorage.setItem('pending_chat_redirect', redirectUrl);
 			isAuthModalOpen.set(true);
 			return;
 		}
-		goto('/chat');
+
+		const productId = get(chatProduct)?.id;
+		const chatUrl = productId ? `/chat?productId=${productId}&type=${type}` : `/chat?type=${type}`;
+
+		// Check for existing active conversation in global store
+		const existingId = get(activeConversationId);
+		if (existingId) {
+			goto(`${chatUrl}${chatUrl.includes('?') ? '&' : '?'}id=${existingId}`);
+			return;
+		}
+
+		// Create new chat
+		try {
+			const { data: created, error } = await supabase
+				.from('chat_conversations')
+				.insert({
+					customer_id: $currentUser.id,
+					tenant_id: storefront?.id,
+					chatType: type,
+					status: 'active',
+					metadata: { 
+						origin: type === 'Consultation' ? 'storefront_header' : 'storefront_floating',
+						productId: productId
+					}
+				})
+				.select().single();
+
+			if (error) throw error;
+			if (created) {
+				setActiveConversation(created.id);
+				goto(`${chatUrl}${chatUrl.includes('?') ? '&' : '?'}id=${created.id}`);
+			}
+		} catch (err) {
+			console.error('Failed to initiate chat:', err);
+			// Fallback to chat page which has its own init logic
+			goto(chatUrl);
+		}
 	}
 	function toggleAccountMenu() { isAccountOpen = !isAccountOpen; }
 
@@ -143,8 +183,17 @@
 					<!-- Desktop Menu -->
 					<div class="hidden md:flex items-center gap-8">
 						<a href="/" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 {$page.url.pathname === '/' ? 'text-gray-900' : 'text-gray-500'}">Products</a>
-						<a href="/medics" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 {$page.url.pathname === '/medics' ? 'text-gray-900' : 'text-gray-500'}">Medics</a>
+						{#if storefront?.allowDoctorPartnerShip ?? true}
+							<a href="/medics" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 {$page.url.pathname === '/medics' ? 'text-gray-900' : 'text-gray-500'}">Medics</a>
+						{/if}
 						<a href="/tracking" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 text-gray-500">Track Order</a>
+						<button 
+							onclick={() => toggleChat('Consultation')}
+							title="Pharmacist on duty"
+							class="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-600 hover:text-emerald-700 flex items-center gap-1.5"
+						>
+							<MessageCircle class="w-3.5 h-3.5" /> Rx Chat
+						</button>
 					</div>
 
 					<!-- Actions -->
@@ -248,7 +297,7 @@
 	<!-- Floating Chat Icon -->
 	{#if !$page.url.pathname.startsWith('/chat')}
 	<button 
-		onclick={toggleChat}
+		onclick={() => toggleChat('Customer Support')}
 		class="fixed bottom-8 right-8 z-[60] w-14 h-14 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 group"
 	>
 		<MessageCircle class="h-6 w-6 group-hover:rotate-12 transition-transform" />

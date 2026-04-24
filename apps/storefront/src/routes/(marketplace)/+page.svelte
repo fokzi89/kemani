@@ -8,8 +8,11 @@
 		Search, ShoppingCart, ChevronRight, Star,
 		Clock, ShieldCheck, Tag, ArrowRight, Plus, ArrowLeft, MessageSquare, Stethoscope, CheckCircle2, Minus, X
 	} from 'lucide-svelte';
-	import { isAuthenticated } from '$lib/stores/auth';
+	import { isAuthenticated, currentUser } from '$lib/stores/auth';
 	import { isAuthModalOpen, isChatOpen, chatProduct, authRedirect } from '$lib/stores/ui';
+	import { supabase } from '$lib/supabase';
+	import { activeConversationId, setActiveConversation } from '$lib/stores/chat.store';
+	import { get } from 'svelte/store';
 	import { PUBLIC_APP_URL } from '$env/static/public';
 
 	$: storefront = data.storefront;
@@ -120,16 +123,51 @@
 		toastTimeout = setTimeout(() => { showToast = false; }, 2500);
 	}
 
-	function handleRxChat(e?: Event, onBeforeOpen?: () => void) {
+	async function handleRxChat(e?: Event, onBeforeOpen?: () => void, productId?: string) {
 		e?.stopPropagation();
 		if (!$isAuthenticated) {
 			// Run any pre-action (e.g. close product modal) before opening auth modal
 			if (onBeforeOpen) onBeforeOpen();
-			localStorage.setItem('pending_chat_redirect', '/chat');
+			const redirectUrl = productId ? `/chat?productId=${productId}&type=Consultation` : '/chat?type=Consultation';
+			localStorage.setItem('pending_chat_redirect', redirectUrl);
 			isAuthModalOpen.set(true);
 			return;
 		}
-		goto('/chat');
+
+		const chatUrl = productId ? `/chat?productId=${productId}&type=Consultation` : '/chat?type=Consultation';
+
+		// Check for existing active conversation
+		const existingId = get(activeConversationId);
+		if (existingId) {
+			goto(`${chatUrl}${chatUrl.includes('?') ? '&' : '?'}id=${existingId}`);
+			return;
+		}
+
+		// Create new "Consultation" chat
+		try {
+			const { data: created, error } = await supabase
+				.from('chat_conversations')
+				.insert({
+					customer_id: $currentUser.id,
+					tenant_id: storefront?.id,
+					chatType: 'Consultation',
+					status: 'active',
+					metadata: { 
+						origin: 'storefront_rx',
+						productId: productId
+					}
+				})
+				.select().single();
+
+			if (error) throw error;
+			if (created) {
+				setActiveConversation(created.id);
+				goto(`${chatUrl}${chatUrl.includes('?') ? '&' : '?'}id=${created.id}`);
+			}
+		} catch (err) {
+			console.error('Failed to initiate consultation chat:', err);
+			goto(chatUrl);
+		}
 	}
 
 	function handleSearch()                { currentPage = 1; loadProducts(); }
@@ -166,7 +204,11 @@
 					<Tag class="label-icon" /> {storefront.name}
 				</span>
 				<h2 class="hero-title">
-					Discover Medics,<br/>Delivered to You
+					{#if storefront?.allowDoctorPartnerShip ?? true}
+						Discover Medics,<br/>Delivered to You
+					{:else}
+						Premium Health,<br/>Delivered to You
+					{/if}
 				</h2>
 				<p class="hero-subtitle">
 					{(storefront?.ecommerce_settings as any)?.description || 'Curated healthcare products — quality you can trust, prices you can afford.'}
@@ -327,7 +369,7 @@
 									<div class="product-actions-flex">
 										<button 
 											class="action-icon-btn action-rx" 
-											onclick={handleRxChat}
+											onclick={(e) => handleRxChat(e, undefined, product.id)}
 											title="RX Chat"
 										>
 											<MessageSquare class="w-4 h-4" />
@@ -433,7 +475,7 @@
 								<button 
 									class="m-add-btn" 
 									style="background: #e2e8f0; color: #0f172a;"
-									onclick={(e) => handleRxChat(e, () => { selectedProduct = null; })}
+									onclick={(e) => handleRxChat(e, () => { selectedProduct = null; }, selectedProduct?.id)}
 								>
 									<MessageSquare class="w-4 h-4 mr-2 inline" /> RX Chat
 								</button>

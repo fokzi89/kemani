@@ -7,157 +7,131 @@
 	import { Menu, X } from 'lucide-svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 
+	// Core state
 	let user = $state(null);
 	let tenant = $state(null);
 	let loading = $state(true);
 	let redirecting = $state(false);
 	let mobileMenuOpen = $state(false);
-
-
-
-	// Store the path to avoid unnecessary repeat fetches
-	let lastCheckedPath = $state('');
-
-	// Reactively check access whenever the route changes
-	$effect(() => {
-		const currentPath = $page.url.pathname;
-		if (lastCheckedPath !== currentPath) {
-			lastCheckedPath = currentPath;
-			supabase.auth.getSession().then(({ data: { session } }) => {
-				checkUserAccess(session, currentPath);
-			});
-		}
-	});
-
 	let userDataCache = $state(null);
 	let initialCheckDone = $state(false);
 	let realtimeChannel = $state(null);
+	let lastProcessedId = $state('');
+	let lastSyncTime = 0; // Throttle fetches
 
-	async function checkUserAccess(session: any, currentPath: string) {
-		const isAuthPath = currentPath.startsWith('/auth');
-		if (!initialCheckDone) {
-			loading = true;
+	// Atomic check to prevent race conditions
+	let isSyncing = false;
+
+	async function syncAuthState(session: any, currentPath: string) {
+		const now = Date.now();
+		const userId = session?.user?.id;
+		
+		// If we're already syncing, or if we synced THIS user less than 30s ago, skip the heavy fetch
+		if (isSyncing) return;
+		if (userId && lastProcessedId === userId && (now - lastSyncTime < 30000)) {
+			console.log('[Layout] Sync throttled (synced recently)');
+			loading = false;
+			initialCheckDone = true;
+			return;
 		}
 
-		if (!session && !isAuthPath) {
-			console.log('[Layout] No session, redirecting to login');
-			redirecting = true;
-			goto('/auth/login');
-			return; // The next route change will clear loading
-		}
+		isSyncing = true;
+		try {
+			const isAuthPath = currentPath.startsWith('/auth');
+			const isOnboardingPath = currentPath.startsWith('/onboarding');
 
-		if (session) {
-			user = session.user;
-			if (!initialCheckDone || !userDataCache || userDataCache.id !== session.user.id) {
-				console.log('[Layout] Auth valid. Fetching profile for:', user.email);
-
-				const { data: userData, error: userError } = await supabase
-					.from('users')
-					.select(`
-						*, 
-						tenants:tenants!users_tenant_id_fkey(*),
-						branches:branches!users_branch_id_fkey(*)
-					`)
-					.eq('id', session.user.id)
-					.maybeSingle();
+			// 1. Handle No Session
+			if (!session) {
+				user = null;
+				tenant = null;
+				userDataCache = null;
+				lastProcessedId = '';
+				lastSyncTime = 0;
 				
-				if (userError) {
-					console.error('[Layout] Profile fetch error:', userError);
+				if (!isAuthPath) {
+					console.log('[Layout] No session, redirecting to login');
+					redirecting = true;
+					goto('/auth/login');
+				} else {
+					loading = false;
 				}
+				initialCheckDone = true;
+				return;
+			}
 
-				userDataCache = userData;
+			// 2. Handle Existing Session
+			user = session.user;
+			console.log('[Layout] Syncing profile for:', user.email);
+			
+			const { data, error } = await supabase
+				.from('users')
+				.select('*, tenants:tenants!users_tenant_id_fkey(*), branches:branches!users_branch_id_fkey(*)')
+				.eq('id', userId)
+				.maybeSingle();
 
-				// Subscribe to permissions dynamically
-				if (!realtimeChannel) {
-					realtimeChannel = supabase.channel('user-permissions')
-						.on('postgres_changes', {
-							event: 'UPDATE',
-							schema: 'public',
-							table: 'users',
-							filter: `id=eq.${user.id}`
+			if (error) {
+				console.error('[Layout] Profile error:', error);
+			} else {
+				userDataCache = data;
+				lastProcessedId = userId;
+				lastSyncTime = Date.now();
+				
+				// Setup Realtime if not present
+				if (!realtimeChannel && data) {
+					realtimeChannel = supabase.channel(`user-${userId}`)
+						.on('postgres_changes', { 
+							event: 'UPDATE', 
+							schema: 'public', 
+							table: 'users', 
+							filter: `id=eq.${userId}` 
 						}, (payload) => {
-							console.log('Realtime updated permissions:', payload);
-							if (userDataCache) {
-								userDataCache = { ...userDataCache, ...payload.new };
-							}
+							if (userDataCache) userDataCache = { ...userDataCache, ...payload.new };
 						}).subscribe();
 				}
 			}
 
+			// 3. Routing Logic
 			if (userDataCache?.onboarding_done) {
-				console.log('[Layout] Full access granted.');
-				// The payload returns "tenants" key when aliased this way if using aliases, 
-				// but when using exclamation mark notation, it replaces the key as "tenants" or "tenants_users_tenant_id_fkey"? 
-				// Supabase JS maps the exclamation mark notation directly to the top level name if it matches the table!
 				tenant = Array.isArray(userDataCache.tenants) ? userDataCache.tenants[0] : userDataCache.tenants;
 				redirecting = false;
 				
-				// Re-route from auth or onboarding to dashboard if already logged in fully
-				if (currentPath.startsWith('/auth') || currentPath.startsWith('/onboarding')) {
+				if (isAuthPath || isOnboardingPath) {
 					redirecting = true;
-				    goto('/');
-					return;
+					if (window.location.pathname !== '/') goto('/');
 				}
-			} else {
-				console.log('[Layout] Setup incomplete.');
+			} else if (userDataCache) {
 				tenant = null;
-				
-				const isAuthPath = currentPath.startsWith('/auth');
-				const isOnboardingPath = currentPath.startsWith('/onboarding');
-				
-				// Re-route them from dashboard/app to onboarding if not done
 				if (!isAuthPath && !isOnboardingPath) {
-					console.log('[Layout] Redirecting to onboarding.');
 					redirecting = true;
-					goto('/onboarding');
-					return; // The next route change will clear loading
-				} else if (isAuthPath) {
-					// Pushing from auth page to onboarding if incomplete
-					if (currentPath === '/auth/signup' || currentPath === '/auth/login') {
-						console.log('[Layout] Have session, moving from auth to onboarding.');
-						redirecting = true;
-						goto('/onboarding');
-						return; // The next route change will clear loading
-					} else {
-						redirecting = false;
-					}
-				} else {
-					// We are on /onboarding
-					redirecting = false;
+					if (window.location.pathname !== '/onboarding') goto('/onboarding');
 				}
 			}
-		} else {
-			user = null;
-			tenant = null;
-			userDataCache = null;
-			redirecting = false;
+		} finally {
+			isSyncing = false;
+			initialCheckDone = true;
+			loading = false;
 		}
-		
-		
-		initialCheckDone = true;
-		loading = false;
 	}
 
 	onMount(() => {
-		// Initial check
+		// Initial sync
 		supabase.auth.getSession().then(({ data: { session } }) => {
-			checkUserAccess(session, window.location.pathname);
+			syncAuthState(session, window.location.pathname);
 		});
 
-		// Listen for sign-in, sign-out, or token refreshes dynamically
+		// Listen for auth changes
 		const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
 			console.log('[Layout] Auth Event:', event);
-			if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-				checkUserAccess(session, window.location.pathname);
+			// Only sync on major events or if the userId changed
+			const userId = session?.user?.id;
+			if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && userId !== lastProcessedId)) {
+				syncAuthState(session, window.location.pathname);
 			}
 		});
 
 		return () => {
 			subscription.unsubscribe();
-			if (realtimeChannel) {
-				supabase.removeChannel(realtimeChannel);
-				realtimeChannel = null;
-			}
+			if (realtimeChannel) supabase.removeChannel(realtimeChannel);
 		};
 	});
 

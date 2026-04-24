@@ -243,8 +243,7 @@ async function ensureCustomerRecordForTenant(
 				tenant_id: tenantId,
 				email: email,
 				full_name: fullName,
-				phone: phone,
-				loyalty_points: 0
+				phone: phone
 			});
 
 		if (insertError && insertError.code !== '23505') {

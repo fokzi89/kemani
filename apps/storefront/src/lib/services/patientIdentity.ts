@@ -318,7 +318,6 @@ export class PatientIdentityService {
 	 */
 	static async getTotalLifetimeValue(customerId: string): Promise<{
 		total_spent: number;
-		total_points: number;
 		total_accounts: number;
 	} | null> {
 		try {
@@ -333,7 +332,7 @@ export class PatientIdentityService {
 			// Get all customer records
 			const { data: customers, error } = await supabase
 				.from('customers')
-				.select('total_purchases, loyalty_points')
+				.select('total_purchases')
 				.in('id', customerIds);
 
 			if (error) {
@@ -342,11 +341,8 @@ export class PatientIdentityService {
 			}
 
 			const totalSpent = customers?.reduce((sum, c) => sum + (c.total_purchases || 0), 0) || 0;
-			const totalPoints = customers?.reduce((sum, c) => sum + (c.loyalty_points || 0), 0) || 0;
-
 			return {
 				total_spent: totalSpent,
-				total_points: totalPoints,
 				total_accounts: linkedAccounts.length
 			};
 		} catch (err) {

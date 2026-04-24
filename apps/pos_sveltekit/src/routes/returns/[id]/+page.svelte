@@ -9,6 +9,7 @@
 	
 	let loading = $state(true);
 	let processing = $state(false);
+	let showConfirmModal = $state(false);
 	
 	let sale = $state<any>(null);
 	let items = $state<any[]>([]);
@@ -79,52 +80,73 @@
 	}
 
 	// Dynamic calculation to preview how the refund affects totals
+	// We should subtract the proportional discount from the refund preview for accuracy
 	let totalRefundPreview = $derived(
 		items.reduce((acc, item) => {
-			const returning = returnQuantities[item.id] || 0;
-			return acc + (returning * item.unit_price); // Tax/Discount proportional impact intentionally stripped for simplicity
+			const returning = Number(returnQuantities[item.id] || 0);
+			if (returning <= 0) return acc;
+			
+			const proportionalDiscount = item.quantity > 0 
+				? (item.discount_amount * returning) / item.quantity 
+				: 0;
+			
+			return acc + (returning * item.unit_price) - proportionalDiscount;
 		}, 0)
 	);
 
-	let hasActionableReturns = $derived(Object.values(returnQuantities).some(q => q > 0));
+	let hasActionableReturns = $derived(Object.values(returnQuantities).some(q => Number(q) > 0));
 
 	async function processReturns() {
 		if (!hasActionableReturns || processing) return;
-		
-		const confirmed = confirm(`You are about to process a refund of ${formatCurrency(totalRefundPreview)}. Returned inventory will automatically restock. \n\nContinue?`);
-		if (!confirmed) return;
+		showConfirmModal = true;
+	}
 
+	async function confirmAndProcess() {
+		showConfirmModal = false;
 		processing = true;
 		try {
+			// Ensure we have a staff ID
+			if (!staffId) {
+				const { data: { session } } = await supabase.auth.getSession();
+				if (session) staffId = session.user.id;
+				else throw new Error("Authentication session lost. Please log in again.");
+			}
+
 			// Build the payload for the RPC
 			const returnPayload = Object.entries(returnQuantities)
-				.filter(([_, qty]) => qty > 0)
+				.filter(([_, qty]) => Number(qty) > 0)
 				.map(([saleItemId, returnQty]) => {
 					const product = items.find(i => i.id === saleItemId);
 					return {
 						sale_item_id: saleItemId,
 						product_id: product?.product_id,
-						return_qty: returnQty
+						return_qty: Number(returnQty)
 					};
 				});
 
-			if (returnPayload.length === 0) throw new Error("No items selected");
+			if (returnPayload.length === 0) throw new Error("No items selected for return.");
+
+			console.log('[Returns] Processing payload:', { saleId, returnPayload, staffId });
 
 			// Call custom Postgres function
-			const { error } = await supabase.rpc('process_sale_return', {
+			const { data, error } = await supabase.rpc('process_sale_return', {
 				p_sale_id: saleId,
 				p_items: returnPayload,
 				p_staff_id: staffId
 			});
 
-			if (error) throw error;
+			if (error) {
+				console.error('[Returns] RPC Error:', error);
+				throw new Error(error.message || "Database execution failed");
+			}
 
-			alert('Return successfully processed! Inventory has been adjusted.');
+			alert('Return successfully processed! Inventory has been restored and sale totals updated.');
 			goto('/returns');
 			
 		} catch (err: any) {
-			console.error('RPC Error processing returns:', err);
-			alert(`Failed to process return: ${err.message}`);
+			console.error('[Returns] Process failed:', err);
+			alert(`Failed to process return: ${err.message || 'Unknown error'}`);
+		} finally {
 			processing = false;
 		}
 	}
@@ -308,3 +330,49 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Confirmation Modal -->
+{#if showConfirmModal}
+	<div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+		<div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+			<div class="p-6 border-b flex justify-between items-center bg-rose-600 text-white">
+				<div>
+					<h2 class="text-lg font-extrabold italic tracking-tight">Confirm Refund</h2>
+					<p class="text-xs text-rose-100 mt-0.5">Sale Reference: {sale?.sale_number}</p>
+				</div>
+				<button onclick={() => showConfirmModal = false} class="p-2 hover:bg-white/10 rounded-lg transition-colors">
+					<RotateCcw class="h-5 w-5 rotate-45" />
+				</button>
+			</div>
+			
+			<div class="p-6 space-y-5">
+				<div class="text-center space-y-2">
+					<p class="text-sm text-gray-500 font-medium">You are about to issue a total refund of</p>
+					<p class="text-4xl font-black text-rose-600 tracking-tighter">{formatCurrency(totalRefundPreview)}</p>
+				</div>
+
+				<div class="p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-start gap-3">
+					<AlertCircle class="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+					<p class="text-[11px] text-amber-800 font-medium leading-relaxed italic">
+						This action will irreversibly restore the returned items to the branch's latest active inventory batch and update sales records.
+					</p>
+				</div>
+			</div>
+
+			<div class="p-6 bg-gray-50 border-t flex gap-3">
+				<button 
+					onclick={() => showConfirmModal = false}
+					class="flex-1 py-3 text-sm font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
+				>
+					Cancel
+				</button>
+				<button 
+					onclick={confirmAndProcess}
+					class="flex-1 py-3 text-sm font-bold text-white bg-rose-600 rounded-xl hover:bg-rose-700 shadow-lg shadow-rose-100 transition-all"
+				>
+					Process Refund
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}

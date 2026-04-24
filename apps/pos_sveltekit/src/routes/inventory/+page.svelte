@@ -426,7 +426,6 @@
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l">Selling Price</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost Price</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l">Expiry</th>
-							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-gray-100">
@@ -530,15 +529,6 @@
 											{/if}
 										</div>
 									{/if}
-								</td>
-								<td class="px-4 py-3 text-right">
-									<a 
-										href="/inventory/{item.product_id}?branchId={item.branch_id}"
-										class="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all inline-block"
-										title="View Audit Detail"
-									>
-										<Eye class="h-4 w-4" />
-									</a>
 								</td>
 							</tr>
 						{/each}

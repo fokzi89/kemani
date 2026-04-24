@@ -1,120 +1,48 @@
 <script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
+	import { page } from '$app/stores';
+	import { supabase } from '$lib/supabase';
 	import {
-		FileAudio, FileText, Package, X, ShoppingCart, Trash2, Video, Smile,
-		Stethoscope, UserRound, ChevronRight
+		ArrowLeft, Building2, ChevronDown, ChevronRight, Image, FileAudio, FileText,
+		MessageSquare, Mic, Package, Paperclip, RefreshCw, Search, Send,
+		ShoppingCart, Smile, Stethoscope, UserRound, Video, X
 	} from 'lucide-svelte';
 
-	// ── Dummy data ─────────────────────────────────────────────────────────────
-	const DUMMY_BRANCHES = [
-		{ id: 'b1', name: 'Ikeja Branch' },
-		{ id: 'b2', name: 'Lekki Branch' },
-		{ id: 'b3', name: 'Surulere Branch' },
-	];
-
-	const DUMMY_CONVS = [
-		{
-			id: 'c1', status: 'active', branch_id: 'b1',
-			customer_name: 'Amara Okafor', customer_pic: null,
-			consultation_code: 'RX-7742',
-			started_at: new Date(Date.now() - 4 * 60000).toISOString(),
-			branches: { name: 'Ikeja Branch' },
-			lastMsg: { content: 'Is the Amoxicillin in stock?', sender_type: 'customer', created_at: new Date(Date.now() - 4 * 60000).toISOString() }
-		},
-		{
-			id: 'c2', status: 'active', branch_id: 'b1',
-			customer_name: 'Tunde Adeyemi', customer_pic: null,
-			consultation_code: null,
-			started_at: new Date(Date.now() - 22 * 60000).toISOString(),
-			branches: { name: 'Ikeja Branch' },
-			lastMsg: { content: 'I need a refill for my prescription', sender_type: 'customer', created_at: new Date(Date.now() - 22 * 60000).toISOString() }
-		},
-		{
-			id: 'c3', status: 'active', branch_id: 'b2',
-			customer_name: 'Ngozi Eze', customer_pic: null,
-			consultation_code: 'RX-5581',
-			started_at: new Date(Date.now() - 2 * 3600000).toISOString(),
-			branches: { name: 'Lekki Branch' },
-			lastMsg: { content: 'Thank you, noted!', sender_type: 'staff', created_at: new Date(Date.now() - 2 * 3600000).toISOString() }
-		},
-		{
-			id: 'c4', status: 'closed', branch_id: 'b1',
-			customer_name: 'Chidi Nwosu', customer_pic: null,
-			consultation_code: 'RX-3301',
-			started_at: new Date(Date.now() - 24 * 3600000).toISOString(),
-			branches: { name: 'Ikeja Branch' },
-			lastMsg: { content: 'Your order has been dispatched', sender_type: 'staff', created_at: new Date(Date.now() - 24 * 3600000).toISOString() }
-		},
-		{
-			id: 'c5', status: 'active', branch_id: 'b3',
-			customer_name: 'Fatima Bello', customer_pic: null,
-			consultation_code: null,
-			started_at: new Date(Date.now() - 3 * 24 * 3600000).toISOString(),
-			branches: { name: 'Surulere Branch' },
-			lastMsg: { content: 'Do you have Vitamin D supplements?', sender_type: 'customer', created_at: new Date(Date.now() - 3 * 24 * 3600000).toISOString() }
-		},
-		{
-			id: 'c6', status: 'closed', branch_id: 'b2',
-			customer_name: 'Emeka Obi', customer_pic: null,
-			consultation_code: 'RX-9910',
-			started_at: new Date(Date.now() - 5 * 24 * 3600000).toISOString(),
-			branches: { name: 'Lekki Branch' },
-			lastMsg: null
-		},
-	];
-
-	const DUMMY_MESSAGES: Record<string, any[]> = {
-		c1: [
-			{ id: 'm1', sender_type: 'customer', content: 'Hello, good afternoon', created_at: new Date(Date.now() - 18 * 60000).toISOString() },
-			{ id: 'm2', sender_type: 'staff',    content: 'Good afternoon! How can we help you today?', created_at: new Date(Date.now() - 17 * 60000).toISOString() },
-			{ id: 'm3', sender_type: 'customer', content: 'I received a prescription from my doctor and I need to know if you have Amoxicillin 500mg in stock', created_at: new Date(Date.now() - 15 * 60000).toISOString() },
-			{ id: 'm4', sender_type: 'staff',    content: 'Let me check our inventory for you right away.', created_at: new Date(Date.now() - 13 * 60000).toISOString() },
-			{ id: 'm5', sender_type: 'staff',    content: 'Yes, we have Amoxicillin 500mg available. We have the generic brand. Which would you prefer?', created_at: new Date(Date.now() - 11 * 60000).toISOString() },
-			{ id: 'm6', sender_type: 'customer', content: 'The generic is fine. How much is a pack of 30 tablets?', created_at: new Date(Date.now() - 8 * 60000).toISOString() },
-			{ id: 'm7', sender_type: 'staff',    content: 'The generic Amoxicillin 500mg (30 tabs) is ₦3,200. Would you like to place an order?', created_at: new Date(Date.now() - 6 * 60000).toISOString() },
-			{ id: 'm8', sender_type: 'customer', content: 'Is the Amoxicillin in stock?', created_at: new Date(Date.now() - 4 * 60000).toISOString() },
-		],
-		c2: [
-			{ id: 'm9',  sender_type: 'customer', content: 'Hi, I need a refill for my prescription', created_at: new Date(Date.now() - 25 * 60000).toISOString() },
-			{ id: 'm10', sender_type: 'staff',    content: 'Hi! Sure, could you share your prescription details or the order number from your last purchase?', created_at: new Date(Date.now() - 23 * 60000).toISOString() },
-		],
-		c3: [
-			{ id: 'm11', sender_type: 'customer', content: 'Good morning. Can I pick up my medication today?', created_at: new Date(Date.now() - 3 * 3600000).toISOString() },
-			{ id: 'm12', sender_type: 'staff',    content: 'Good morning Ngozi! Your medication (Ref: RX-5581) is ready for pickup. Opening hours are 8am–8pm.', created_at: new Date(Date.now() - 2.5 * 3600000).toISOString() },
-			{ id: 'm13', sender_type: 'customer', content: 'Thank you, noted!', created_at: new Date(Date.now() - 2 * 3600000).toISOString() },
-		],
-		c4: [
-			{ id: 'm14', sender_type: 'customer', content: 'When will my order arrive?', created_at: new Date(Date.now() - 25 * 3600000).toISOString() },
-			{ id: 'm15', sender_type: 'staff',    content: 'Your order has been dispatched and should arrive within 2–3 hours.', created_at: new Date(Date.now() - 24.5 * 3600000).toISOString() },
-			{ id: 'm16', sender_type: 'staff',    content: 'Your order has been dispatched', created_at: new Date(Date.now() - 24 * 3600000).toISOString() },
-		],
-		c5: [
-			{ id: 'm17', sender_type: 'customer', content: 'Do you have Vitamin D supplements?', created_at: new Date(Date.now() - 3 * 24 * 3600000).toISOString() },
-		],
-		c6: [],
-	};
+	// ── Real Data State ───────────────────────────────────────────────────────
+	let branches: any[] = $state([]);
+	let conversations: any[] = $state([]);
+	let liveMessages: any[] = $state([]);
+	let products: any[] = $state([]);
+	let doctors: any[] = $state([]);
+	
+	let staffId: string = $state('');
+	let tenantId: string = $state('');
+	let currentBranchId: string = $state('');
+	
+	let loading: boolean = $state(true);
+	let messageSubscription: any = null;
 
 	// ── UI state ───────────────────────────────────────────────────────────────
-	let selectedBranchId = $state('all');
-	let statusFilter     = $state<'all'|'active'|'closed'>('all');
-	let searchQuery      = $state('');
-	let activeConvId     = $state<string | null>(null);
-	let messageText      = $state('');
-	let sending          = $state(false);
-	let liveMessages     = $state<any[]>([]);
+	let selectedBranchId: string = $state('all');
+	let statusFilter: 'all'|'active'|'closed' = $state('all');
+	let searchQuery: string = $state('');
+	let activeConvId: string | null = $state(null);
+	let messageText: string = $state('');
+	let sending: boolean = $state(false);
 
 	// Mobile: 'list' | 'chat'
-	let mobileView = $state<'list'|'chat'>('list');
+	let mobileView: 'list'|'chat' = $state('list');
 
 	let messagesEndEl: HTMLElement;
 
 	// ── Rich composer state ────────────────────────────────────────────────────
-	let showAttachTray   = $state(false);
-	let showEmojiPicker  = $state(false);
-	let emojiCategory    = $state(0);
-	let isRecording      = $state(false);
-	let recordSeconds    = $state(0);
+	let showAttachTray: boolean = $state(false);
+	let showEmojiPicker: boolean = $state(false);
+	let emojiCategory: number = $state(0);
+	let isRecording: boolean = $state(false);
+	let recordSeconds: number = $state(0);
 	let recordInterval: ReturnType<typeof setInterval> | null = null;
-	let pendingFiles     = $state<Array<{ type: 'image'|'audio'|'pdf'|'video', name: string, url: string }>>([]);
+	let pendingFiles: Array<{ type: 'image'|'audio'|'pdf'|'video', name: string, url: string }> = $state([]);
 	let msgInputEl: HTMLTextAreaElement;
 
 	const EMOJI_CATEGORIES = [
@@ -140,53 +68,123 @@
 		}, 0);
 	}
 
-	// ── User privileges (dummy — replace with real session data) ──────────────
-	// canPrescribe     → DB column "canCreatePrescription" — shows POM products in picker
-	// canApplyDiscount → DB column "canApplyDiscount"       — shows discount input per product
-	// canReferToDoctor → DB column "canReferToDoctor"      — allows referring to medics
-	let canPrescribe      = $state(false);
-	let canApplyDiscount  = $state(true);
-	let canReferToDoctor  = $state(true);
+	// Lifecycle
+	onMount(async () => {
+		const { data: { session } } = await supabase.auth.getSession();
+		if (!session) return;
+		
+		staffId = session.user.id;
+		
+		// Load user context (tenant/branch)
+		const { data: userData } = await supabase.from('users')
+			.select('tenant_id, branch_id, canCreatePrescription, canApplyDiscount, canReferToDoctor')
+			.eq('id', staffId)
+			.single();
+			
+		if (userData) {
+			tenantId = userData.tenant_id;
+			currentBranchId = userData.branch_id;
+			canPrescribe = userData.canCreatePrescription;
+			canApplyDiscount = userData.canApplyDiscount;
+			canReferToDoctor = userData.canReferToDoctor;
+		}
+
+		if (tenantId) {
+			await Promise.all([
+				loadBranches(),
+				loadConversations(),
+				loadProducts(),
+				loadDoctors()
+			]);
+		}
+		
+		loading = false;
+	});
+
+	onDestroy(() => {
+		if (messageSubscription) messageSubscription.unsubscribe();
+	});
+
+	async function loadBranches() {
+		if (!tenantId) return;
+		const { data } = await supabase.from('branches').select('id, name').eq('tenant_id', tenantId);
+		branches = data || [];
+	}
+
+	async function loadConversations() {
+		if (!tenantId) return;
+		const { data } = await supabase.from('chat_conversations')
+			.select('*, branches(name)')
+			.eq('tenant_id', tenantId)
+			.order('started_at', { ascending: false });
+		
+		conversations = (data || []).map(c => ({
+			...c,
+			customer_name: c.customer_name || 'Anonymous',
+			branch_name: c.branches?.name || 'Unknown'
+		}));
+	}
+
+	async function loadProducts() {
+		if (!tenantId) return;
+		// Use branch_inventory which has everything pre-joined for POS
+		const { data } = await supabase.from('branch_inventory')
+			.select('id, product_id, product_name, category_name, selling_price, stock_quantity, sku')
+			.eq('tenant_id', tenantId)
+			.gt('stock_quantity', 0);
+		
+		products = (data || []).map(row => ({
+			id: row.product_id,
+			name: row.product_name,
+			category: row.category_name || 'General',
+			unit_price: row.selling_price || 0,
+			stock_quantity: row.stock_quantity || 0,
+			sku: row.sku,
+			isPOM: false // Simplified, could join with products if needed
+		}));
+	}
+
+	async function loadDoctors() {
+		if (!tenantId) return;
+		const { data } = await supabase.from('healthcare_providers')
+			.select('id, full_name, specialization, profile_photo_url')
+			.order('full_name');
+		
+		doctors = (data || []).map(d => ({
+			id: d.id,
+			name: d.full_name || 'Dr. Unknown',
+			specialization: d.specialization || 'General',
+			avatar: d.profile_photo_url
+		}));
+	}
+
+	// ── Rich composer state ────────────────────────────────────────────────────
+	let canPrescribe: boolean = $state(false);
+	let canApplyDiscount: boolean = $state(true);
+	let canReferToDoctor: boolean = $state(true);
 
 	// Product picker
-	let showProductPicker = $state(false);
-	let productSearch     = $state('');
-	let pendingDiscounts  = $state<Record<string, number>>({});
+	let showProductPicker: boolean = $state(false);
+	let productSearch: string = $state('');
+	let pendingDiscounts: Record<string, number> = $state({});
 
 	// Doctor Referral
-	let showDoctorPicker  = $state(false);
-	let doctorSearchQuery = $state('');
-
-	const DUMMY_DOCTOR_ALIASES = [
-		{ id: 'da1', name: 'Dr. Sarah Johnson', specialization: 'Cardiology', clinic_name: 'Metro Heart Center', avatar: null },
-		{ id: 'da2', name: 'Dr. Michael Chen',  specialization: 'Dermatology', clinic_name: 'Skin & Laser Clinic', avatar: null },
-		{ id: 'da3', name: 'Dr. Amina Yusuf',   specialization: 'Pediatrics',  clinic_name: 'Children First Hospital', avatar: null },
-	];
+	let showDoctorPicker: boolean = $state(false);
+	let doctorSearchQuery: string = $state('');
 
 	let filteredDoctors = $derived(
 		doctorSearchQuery
-			? DUMMY_DOCTOR_ALIASES.filter(d => 
+			? doctors.filter(d => 
 				d.name.toLowerCase().includes(doctorSearchQuery.toLowerCase()) || 
 				d.specialization.toLowerCase().includes(doctorSearchQuery.toLowerCase()))
-			: DUMMY_DOCTOR_ALIASES
+			: doctors
 	);
-
-	const DUMMY_PRODUCTS = [
-		{ id: 'p1', name: 'Amoxicillin 500mg (30 tabs)', price: 3200, category: 'Antibiotics', stock: 48, isPOM: true },
-		{ id: 'p2', name: 'Paracetamol 500mg (24 tabs)', price: 450,  category: 'Analgesics',  stock: 120, isPOM: false },
-		{ id: 'p3', name: 'Metformin 500mg (60 tabs)',   price: 2800, category: 'Diabetes',    stock: 35,  isPOM: true },
-		{ id: 'p4', name: 'Vitamin D3 2000IU (90 caps)', price: 5500, category: 'Vitamins',    stock: 22,  isPOM: false },
-		{ id: 'p5', name: 'Ibuprofen 400mg (24 tabs)',   price: 600,  category: 'Analgesics',  stock: 80,  isPOM: false },
-		{ id: 'p6', name: 'Omeprazole 20mg (14 caps)',   price: 1800, category: 'GI',          stock: 60,  isPOM: true },
-		{ id: 'p7', name: 'Lisinopril 10mg (30 tabs)',   price: 2200, category: 'Cardio',      stock: 15,  isPOM: true },
-		{ id: 'p8', name: 'Zinc + Vitamin C Effervescent', price: 1200, category: 'Vitamins', stock: 44,  isPOM: false },
-	];
 
 	// Filter by POM access AND search query
 	let visibleProducts = $derived(
 		canPrescribe
-			? DUMMY_PRODUCTS       // show all including POM
-			: DUMMY_PRODUCTS.filter(p => !p.isPOM)  // hide POM products
+			? products       // show all including POM
+			: products.filter(p => !p.isPOM)  // hide POM products
 	);
 	let filteredProducts = $derived(
 		productSearch
@@ -201,7 +199,7 @@
 	}
 
 	// ── Derived ────────────────────────────────────────────────────────────────
-	let filteredConvs = $derived(DUMMY_CONVS.filter(c => {
+	let filteredConvs = $derived(conversations.filter(c => {
 		const matchBranch  = selectedBranchId === 'all' || c.branch_id === selectedBranchId;
 		const matchStatus  = statusFilter === 'all' || c.status === statusFilter;
 		const q            = searchQuery.toLowerCase();
@@ -211,13 +209,39 @@
 		return matchBranch && matchStatus && matchSearch;
 	}));
 
-	let activeConv = $derived(DUMMY_CONVS.find(c => c.id === activeConvId) ?? null);
+	let activeConv = $derived(conversations.find(c => c.id === activeConvId) ?? null);
 
 	// ── Actions ────────────────────────────────────────────────────────────────
-	function selectConv(id: string) {
+	async function selectConv(id: string) {
 		activeConvId  = id;
-		liveMessages  = [...(DUMMY_MESSAGES[id] || [])];
-		mobileView    = 'chat';          // on mobile, navigate to chat view
+		mobileView    = 'chat';
+		
+		// Fetch message history
+		const { data } = await supabase.from('chat_messages')
+			.select('*')
+			.eq('conversation_id', id)
+			.order('created_at', { ascending: true });
+			
+		liveMessages = data || [];
+		
+		// Subscribe to real-time updates
+		if (messageSubscription) messageSubscription.unsubscribe();
+		
+		messageSubscription = supabase.channel(`conv-${id}`)
+			.on('postgres_changes', { 
+				event: 'INSERT', 
+				schema: 'public', 
+				table: 'chat_messages', 
+				filter: `conversation_id=eq.${id}` 
+			}, payload => {
+				// Avoid duplicate if we just sent it
+				if (!liveMessages.find(m => m.id === payload.new.id)) {
+					liveMessages = [...liveMessages, payload.new];
+					scrollToBottom();
+				}
+			})
+			.subscribe();
+			
 		scrollToBottom();
 	}
 
@@ -226,39 +250,42 @@
 		activeConvId = null;
 	}
 
-	function sendMessage() {
+	async function sendMessage(meta: any = null) {
 		const text = messageText.trim();
 		const hasFiles = pendingFiles.length > 0;
-		if (!text && !hasFiles || sending) return;
+		if (!text && !hasFiles && !meta || sending || !activeConvId) return;
 		sending = true;
 
-		// Push file bubbles
-		for (const f of pendingFiles) {
-			liveMessages = [...liveMessages, {
-				id: `tmp-file-${Date.now()}-${Math.random()}`,
+		try {
+			const payload: any = {
+				conversation_id: activeConvId,
 				sender_type: 'staff',
-				content: null,
-				attachment_type: f.type,
-				attachment_name: f.name,
-				attachment_url: f.url,
-				created_at: new Date().toISOString()
-			}];
-		}
-		pendingFiles = [];
+				sender_id: staffId,
+				message_text: text || (meta?.doctor ? 'Doctor Referral' : meta?.product ? 'Product Recommendation' : '')
+			};
 
-		// Push text bubble
-		if (text) {
-			liveMessages = [...liveMessages, {
-				id: `tmp-${Date.now()}`,
-				sender_type: 'staff',
-				content: text,
-				created_at: new Date().toISOString()
-			}];
-			messageText = '';
+			if (meta) {
+				payload.metadata = meta;
+			}
+			
+			const { data, error } = await supabase.from('chat_messages')
+				.insert(payload)
+				.select().single();
+			
+			if (error) throw error;
+			
+			// Optimistic update if not already there
+			if (!liveMessages.find(m => m.id === data.id)) {
+				liveMessages = [...liveMessages, data];
+			}
+			
+			if (!meta) messageText = ''; // only clear text if it wasn't a meta-only message
+			scrollToBottom();
+		} catch (err) {
+			console.error('Failed to send message:', err);
+		} finally {
+			sending = false;
 		}
-
-		scrollToBottom();
-		setTimeout(() => { sending = false; }, 300);
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -266,17 +293,9 @@
 	}
 
 	function referDoctor(doc: any) {
-		liveMessages = [...liveMessages, {
-			id: `tmp-ref-${Date.now()}`,
-			sender_type: 'staff',
-			content: null,
-			attachment_type: 'referral',
-			doctor: { ...doc },
-			created_at: new Date().toISOString()
-		}];
+		sendMessage({ doctor: { ...doc } });
 		showDoctorPicker = false;
 		doctorSearchQuery = '';
-		scrollToBottom();
 	}
 
 	// ── Voice recording ────────────────────────────────────────────────────────
@@ -349,7 +368,7 @@
 	// ── Product picker ─────────────────────────────────────────────────────────
 	function shareProduct(product: any) {
 		const discPct = pendingDiscounts[product.id] ?? 0;
-		const finalPrice = discPct > 0 ? discountedPrice(product.price, discPct) : product.price;
+		const finalPrice = discPct > 0 ? discountedPrice(product.unit_price, discPct) : product.unit_price;
 		liveMessages = [...liveMessages, {
 			id: `tmp-prod-${Date.now()}`,
 			sender_type: 'staff',
@@ -408,6 +427,12 @@
 -->
 
 <div class="messages-root">
+	{#if loading}
+		<div class="loading-overlay">
+			<RefreshCw class="h-8 w-8 animate-spin text-indigo-600" />
+			<p class="mt-4 text-sm font-medium text-gray-500">Loading messages…</p>
+		</div>
+	{/if}
 
 	<!-- ══════════════════════════════════════════════════════════
 		 PANEL A — Conversation List
@@ -420,7 +445,7 @@
 				<h1 class="conv-title">
 					<MessageSquare class="h-5 w-5 text-indigo-600" />
 					Messages
-					<span class="conv-badge">{DUMMY_CONVS.filter(c => c.status === 'active').length}</span>
+					<span class="conv-badge">{conversations.filter(c => c.status === 'active').length}</span>
 				</h1>
 				<button class="icon-btn" title="Refresh"><RefreshCw class="h-4 w-4" /></button>
 			</div>
@@ -437,7 +462,7 @@
 					<Building2 class="branch-icon" />
 					<select bind:value={selectedBranchId} class="branch-select">
 						<option value="all">All Branches</option>
-						{#each DUMMY_BRANCHES as b}
+						{#each branches as b}
 							<option value={b.id}>{b.name}</option>
 						{/each}
 					</select>
@@ -484,7 +509,7 @@
 								<span class="conv-time">{relativeTime(conv.lastMsg?.created_at || conv.started_at)}</span>
 							</div>
 							<div class="conv-meta">
-								<span>{conv.branches.name}</span>
+								<span>{conv.branch_name}</span>
 								{#if conv.consultation_code}<span>· {conv.consultation_code}</span>{/if}
 							</div>
 							<p class="conv-preview">
@@ -532,7 +557,7 @@
 										</div>
 										<div class="product-row-body">
 											<p class="product-row-name">{doc.name}</p>
-											<p class="product-row-meta">{doc.specialization} · {doc.clinic_name}</p>
+											<p class="product-row-meta">{doc.specialization}</p>
 										</div>
 										<ChevronRight class="h-4 w-4 text-gray-300" />
 									</div>
@@ -549,7 +574,7 @@
 
 		<!-- Footer -->
 		<div class="conv-footer">
-			<span><strong>{DUMMY_CONVS.filter(c => c.status === 'active').length}</strong> active</span>
+			<span><strong>{conversations.filter(c => c.status === 'active').length}</strong> active</span>
 			<span>·</span>
 			<span><strong>{filteredConvs.length}</strong> shown</span>
 		</div>
@@ -584,7 +609,7 @@
 				<div class="chat-header-info">
 					<p class="chat-header-name">{activeConv.customer_name}</p>
 					<div class="chat-header-meta">
-						<Building2 class="h-3 w-3" /> {activeConv.branches.name}
+						<Building2 class="h-3 w-3" /> {activeConv.branch_name}
 						{#if activeConv.consultation_code}
 							<span class="text-indigo-500 font-mono">· #{activeConv.consultation_code}</span>
 						{/if}
@@ -666,11 +691,11 @@
 											<p class="product-card-cat">{msg.product.category}</p>
 											<div class="product-card-pricing">
 												{#if msg.product.discountPct > 0}
-													<span class="product-original-price">₦{msg.product.price.toLocaleString()}</span>
+													<span class="product-original-price">₦{msg.product.unit_price.toLocaleString()}</span>
 													<span class="product-card-price">₦{msg.product.sharedPrice.toLocaleString()}</span>
 													<span class="product-disc-badge">{msg.product.discountPct}% OFF</span>
 												{:else}
-													<p class="product-card-price">₦{msg.product.price.toLocaleString()}</p>
+													<p class="product-card-price">₦{msg.product.unit_price.toLocaleString()}</p>
 												{/if}
 											</div>
 										</div>
@@ -696,7 +721,6 @@
 											<div class="ref-info">
 												<p class="ref-name">{msg.doctor.name}</p>
 												<p class="ref-spec">{msg.doctor.specialization}</p>
-												<p class="ref-clinic">{msg.doctor.clinic_name}</p>
 											</div>
 										</div>
 										<button class="ref-action-btn">
@@ -707,7 +731,7 @@
 								</div>
 							<!-- Plain text -->
 							{:else}
-								<div class="bubble {isStaff ? 'bubble--staff' : 'bubble--customer'}">{msg.content}</div>
+								<div class="bubble {isStaff ? 'bubble--staff' : 'bubble--customer'}">{msg.message_text}</div>
 							{/if}
 							<span class="bubble-time">{new Date(msg.created_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}</span>
 						</div>
@@ -991,6 +1015,12 @@
 	background: #f9fafb; appearance: none; color: #374151; outline: none;
 }
 .branch-select:focus { border-color: #6366f1; }
+
+.loading-overlay {
+	position: absolute; inset: 0; background: rgba(255,255,255,0.8);
+	backdrop-filter: blur(4px); z-index: 50;
+	display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
 
 .status-pills { display: flex; gap: 0.2rem; }
 .status-pill {

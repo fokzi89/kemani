@@ -286,8 +286,7 @@ export class AuthService {
 				tenant_id: tenantId,
 				full_name: data.full_name,
 				email: data.email,
-				phone: data.phone,
-				loyalty_points: 0
+				phone: data.phone
 			});
 
 			if (customerError) {
@@ -390,8 +389,7 @@ export class AuthService {
 				branch_id: branchId,
 				full_name: fullName,
 				email: user.email,
-				phone: phone,
-				loyalty_points: 0
+				phone: phone
 			});
 
 			if (customerError && customerError.code !== '23505') {

@@ -15,24 +15,33 @@
 		loading = true;
 		try {
 			let query = supabase
-				.from('products')
+				.from('branch_inventory')
 				.select(`
-					id, name, description, image_url, unit_price, 
-					stock_quantity, product_type, category
+					id, product_id, product_name, product_description, 
+					image_url, selling_price, stock_quantity, product_type, isPOM
 				`)
 				.eq('tenant_id', tenantId)
-				.eq('is_active', true)
 				.eq('isPOM', false) // Filter out prescription-only medications for customers
-				.is('deleted_at', null)
-				.order('name');
+				.gt('stock_quantity', 0)
+				.order('product_name');
 
 			if (searchQuery) {
-				query = query.ilike('name', `%${searchQuery}%`);
+				query = query.ilike('product_name', `%${searchQuery}%`);
 			}
 
 			const { data, error } = await query.limit(20);
 			if (error) throw error;
-			products = data || [];
+			
+			products = (data || []).map(row => ({
+				id: row.product_id,
+				inventory_id: row.id,
+				name: row.product_name,
+				description: row.product_description,
+				image_url: row.image_url,
+				unit_price: row.selling_price,
+				stock_quantity: row.stock_quantity,
+				category: row.product_type
+			}));
 		} catch (err) {
 			console.error('Failed to load products:', err);
 		} finally {

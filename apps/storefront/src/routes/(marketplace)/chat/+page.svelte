@@ -5,11 +5,16 @@
 		Send, MessageCircle, ShieldCheck, ArrowLeft, 
 		Loader2, User, Phone, Video, Paperclip, Smile,
 		Mic, X, Image as ImageIcon, FileText, ShoppingCart,
-		Plus, CheckCircle2, ChevronRight, Package, Download, Play, Pause
+		Plus, CheckCircle2, ChevronRight, Package, Download, Play, Pause,
+		Stethoscope
 	} from 'lucide-svelte';
 	import { supabase } from '$lib/supabase';
 	import { authStore, currentUser } from '$lib/stores/auth';
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
+	import { activeConversationId, clearActiveConversation, setActiveConversation } from '$lib/stores/chat.store';
+	import { get } from 'svelte/store';
+	import { isAuthModalOpen } from '$lib/stores/ui';
 	import ProductSelectionModal from '$lib/components/ProductSelectionModal.svelte';
 	import ChatCartFlyout from '$lib/components/ChatCartFlyout.svelte';
 	import SuggestedProductCard from '$lib/components/SuggestedProductCard.svelte';
@@ -21,6 +26,7 @@
 	let loading = $state(true);
 	let sending = $state(false);
 	let messagesContainer = $state<HTMLElement | null>(null);
+	let productInquiry = $state<any>(null);
 
 	// 2. Navigation & Context
 	const tenantId = $derived($page.data.storefront?.id);
@@ -36,6 +42,11 @@
 	let audioChunks: Blob[] = [];
 	let recordingTime = $state(0);
 	let recordingInterval: any = null;
+
+	// 5. Typing Indicator State
+	let isTyping = $state(false);
+	let typingTimeout: any = null;
+	let othersTyping = $state<string[]>([]);
 
 	// 5. Activity Tracking
 	async function logActivity(action: string) {
@@ -62,8 +73,20 @@
 	}
 
 	onMount(async () => {
-		if (!$currentUser) return;
-		await initChat();
+		// Wait for auth store to initialize
+		const checkAuth = () => {
+			if ($authStore.initialized) {
+				if (!$currentUser) {
+					loading = false; // Show login required state
+					isAuthModalOpen.set(true); // Automatically open the standard login modal
+				} else {
+					initChat();
+				}
+			} else {
+				setTimeout(checkAuth, 100);
+			}
+		};
+		checkAuth();
 	});
 
 	onDestroy(() => {
@@ -74,28 +97,78 @@
 	async function initChat() {
 		loading = true;
 		try {
-			const { data: existing } = await supabase
-				.from('chat_conversations')
-				.select('*')
-				.eq('customer_id', $currentUser.id)
-				.eq('tenant_id', tenantId)
-				.is('consultation_id', null)
-				.maybeSingle();
+			// 1. Check for ID in URL
+			let targetId = $page.url.searchParams.get('id');
 
-			if (existing) {
-				conversation = existing;
-			} else {
-				const { data: created, error: createError } = await supabase
+			// 2. Fallback to global store
+			if (!targetId) {
+				targetId = get(activeConversationId);
+			}
+
+			if (targetId) {
+				const { data: existing, error } = await supabase
 					.from('chat_conversations')
-					.insert({
-						customer_id: $currentUser.id,
-						tenant_id: tenantId,
-						status: 'active'
-					})
-					.select().single();
+					.select('*')
+					.eq('id', targetId)
+					.maybeSingle();
 				
-				if (createError) throw createError;
-				conversation = created;
+				if (existing) {
+					conversation = existing;
+					setActiveConversation(existing.id); // Sync store if URL had it
+				}
+			}
+
+			// 3. Fallback to existing search logic if still no conversation
+			if (!conversation) {
+				const { data: existing } = await supabase
+					.from('chat_conversations')
+					.select('*')
+					.eq('customer_id', $currentUser.id)
+					.eq('tenant_id', tenantId)
+					.is('consultation_id', null)
+					.order('started_at', { ascending: false })
+					.limit(1)
+					.maybeSingle();
+
+				if (existing) {
+					conversation = existing;
+					setActiveConversation(existing.id);
+				} else {
+					// Create new if none found at all
+					const urlProductId = $page.url.searchParams.get('productId');
+					const urlChatType = $page.url.searchParams.get('type') || (urlProductId ? 'Consultation' : 'Customer Support');
+					const { data: created, error: createError } = await supabase
+						.from('chat_conversations')
+						.insert({
+							customer_id: $currentUser.id,
+							tenant_id: tenantId,
+							status: 'active',
+							chatType: urlChatType,
+							metadata: { 
+								origin: 'storefront_fallback',
+								productId: urlProductId 
+							}
+						})
+						.select().single();
+					
+					if (createError) throw createError;
+					conversation = created;
+					setActiveConversation(created.id);
+				}
+			}
+
+			// 4. Handle Product Inquiry Context
+			const urlProductId = $page.url.searchParams.get('productId');
+			const metaProductId = conversation?.metadata?.productId;
+			const productId = urlProductId || metaProductId;
+
+			if (productId) {
+				const { data: pData } = await supabase
+					.from('products')
+					.select('*')
+					.eq('id', productId)
+					.single();
+				productInquiry = pData;
 			}
 
 			const { data: msgData, error: msgError } = await supabase
@@ -114,7 +187,15 @@
 		}
 	}
 
+	async function endSession() {
+		if (confirm('Are you sure you want to end this chat session? This will clear your active chat history on this device.')) {
+			clearActiveConversation();
+			goto('/');
+		}
+	}
+
 	function setupSubscription() {
+		// 1. Messages Subscription
 		supabase.channel(`chat:${conversation.id}`)
 			.on('postgres_changes', {
 				event: 'INSERT',
@@ -129,6 +210,60 @@
 				}
 			})
 			.subscribe();
+
+		// 2. Typing Indicators Subscription
+		supabase.channel(`typing:${conversation.id}`)
+			.on('postgres_changes', {
+				event: '*',
+				schema: 'public',
+				table: 'chat_typing_indicators',
+				filter: `conversation_id=eq.${conversation.id}`
+			}, (payload: any) => {
+				if (payload.new?.user_id === $currentUser?.id || payload.old?.user_id === $currentUser?.id) return;
+				
+				const userId = payload.new?.user_id || payload.old?.user_id;
+				const typing = payload.new?.is_typing;
+				
+				if (typing) {
+					if (!othersTyping.includes(userId)) {
+						othersTyping = [...othersTyping, userId];
+						scrollToBottom();
+					}
+				} else {
+					othersTyping = othersTyping.filter(id => id !== userId);
+				}
+			})
+			.subscribe();
+	}
+
+	async function handleTyping() {
+		if (!conversation || !$currentUser) return;
+		
+		if (!isTyping) {
+			isTyping = true;
+			updateTypingStatus(true);
+		}
+
+		if (typingTimeout) clearTimeout(typingTimeout);
+		typingTimeout = setTimeout(() => {
+			isTyping = false;
+			updateTypingStatus(false);
+		}, 3000);
+	}
+
+	async function updateTypingStatus(typing: boolean) {
+		try {
+			await supabase
+				.from('chat_typing_indicators')
+				.upsert({
+					conversation_id: conversation.id,
+					user_id: $currentUser.id,
+					user_type: 'customer',
+					is_typing: typing
+				}, { onConflict: 'conversation_id,user_id' });
+		} catch (err) {
+			console.error('Failed to update typing status:', err);
+		}
 	}
 
 	async function sendMessage() {
@@ -144,7 +279,8 @@
 					conversation_id: conversation.id,
 					sender_id: $currentUser.id,
 					sender_type: 'customer',
-					message_text: text
+					message_text: text,
+					message_type: 'text'
 				})
 				.select().single();
 
@@ -180,9 +316,11 @@
 					conversation_id: conversation.id,
 					sender_id: $currentUser.id,
 					sender_type: 'customer',
-					message_text: `Sent an attachment: ${file.name}`,
+					message_text: file.name,
+					message_type: file.type.startsWith('image/') ? 'image' : (file.type === 'application/pdf' ? 'file' : 'file'),
+					media_url: publicUrl,
 					metadata: {
-						attachments: [{ url: publicUrl, name: file.name, type: file.type }]
+						attachments: [{ url: publicUrl, name: file.name, type: file.type, size: file.size }]
 					}
 				});
 			// Subscription handles UI update
@@ -212,9 +350,11 @@
 					conversation_id: conversation.id,
 					sender_id: $currentUser.id,
 					sender_type: 'customer',
-					message_text: 'Sent a voice message',
+					message_text: 'Voice Message',
+					message_type: 'audio',
+					media_url: publicUrl,
 					metadata: {
-						attachments: [{ url: publicUrl, name: file.name, type: 'audio/webm' }]
+						attachments: [{ url: publicUrl, name: file.name, type: 'audio/webm', duration: recordingTime }]
 					}
 				});
 				sending = false;
@@ -289,6 +429,24 @@
 			</div>
 			<p class="mt-4 text-xs font-black uppercase tracking-[0.3em] text-gray-400">Securing Clinical Line</p>
 		</div>
+	{:else if !$currentUser}
+		<div class="auth-required" transition:fade>
+			<div class="auth-card shadow-2xl">
+				<div class="auth-icon-wrap">
+					<ShieldCheck class="h-10 w-10 text-primary-600" />
+				</div>
+				<h2 class="auth-title">Authentication Required</h2>
+				<p class="auth-sub">Please sign in to your health profile to begin a secure consultation with our pharmacist.</p>
+				<button onclick={() => isAuthModalOpen.set(true)} class="login-btn w-full">
+					Sign in to Continue
+				</button>
+				<div class="flex items-center gap-2 mt-6 opacity-40">
+					<div class="h-[1px] flex-1 bg-gray-300"></div>
+					<span class="text-[9px] font-black uppercase tracking-widest">Medical Privacy</span>
+					<div class="h-[1px] flex-1 bg-gray-300"></div>
+				</div>
+			</div>
+		</div>
 	{:else}
 		<!-- HEADER: Focused & Clean -->
 		<header class="header">
@@ -312,6 +470,12 @@
 				<div class="flex items-center gap-2">
 					<button class="icon-btn text-gray-400 hover:text-primary-600"><Phone class="h-4 w-4" /></button>
 					<button class="icon-btn text-gray-400 hover:text-primary-600"><Video class="h-4 w-4" /></button>
+					<button 
+						onclick={endSession}
+						class="px-3 py-1.5 bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-rose-100 transition-colors ml-2"
+					>
+						End Session
+					</button>
 				</div>
 			</div>
 			<div class="encryption-bar">
@@ -323,29 +487,65 @@
 		<!-- MESSAGES AREA: Scrollable -->
 		<main class="messages-wrap" bind:this={messagesContainer}>
 			<div class="messages-inner">
+				{#if productInquiry}
+					<div class="inquiry-banner" in:slide>
+						<div class="flex items-center gap-4">
+							<div class="inquiry-img">
+								{#if productInquiry.image_url}
+									<img src={productInquiry.image_url} alt="" />
+								{:else}
+									<Package class="h-6 w-6 text-gray-300" />
+								{/if}
+							</div>
+							<div class="flex-1 min-w-0">
+								<p class="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Inquiry Context</p>
+								<h3 class="text-sm font-black text-gray-900 truncate uppercase tracking-tight">{productInquiry.name}</h3>
+								<p class="text-[10px] text-gray-500 font-medium">₦{productInquiry.price?.toLocaleString()}</p>
+							</div>
+							<button class="icon-btn text-gray-400" onclick={() => productInquiry = null}><X class="h-4 w-4" /></button>
+						</div>
+					</div>
+				{/if}
+
 				{#each messages as msg}
 					{@const isMe = msg.sender_id === $currentUser?.id}
 					<div class="msg-row {isMe ? 'me' : 'them'}" in:fly={{ y: 20 }}>
 						<div class="msg-bubble shadow-sm">
-							{#if msg.metadata?.attachments}
+							{#if msg.media_url || msg.metadata?.attachments}
 								<div class="msg-attachments">
-									{#each msg.metadata.attachments as attr}
-										{#if attr.type.startsWith('image/')}
-											<div class="attachment-img">
-												<img src={attr.url} alt="" />
-												<a href={attr.url} target="_blank" class="download-link"><Download class="h-3 w-3" /></a>
-											</div>
-										{:else if attr.type.startsWith('audio/')}
-											<div class="audio-msg">
-												<audio src={attr.url} controls class="h-8"></audio>
-											</div>
-										{:else}
-											<a href={attr.url} target="_blank" class="file-tag">
-												<FileText class="h-4 w-4" />
-												<span class="truncate">{attr.name}</span>
-											</a>
-										{/if}
-									{/each}
+									{#if msg.message_type === 'image' || (!msg.message_type && msg.media_url && !msg.media_url.endsWith('.pdf'))}
+										<div class="attachment-img">
+											<img src={msg.media_url || msg.metadata?.attachments?.[0]?.url} alt="" />
+											<a href={msg.media_url || msg.metadata?.attachments?.[0]?.url} target="_blank" class="download-link"><Download class="h-3 w-3" /></a>
+										</div>
+									{:else if msg.message_type === 'audio' || msg.metadata?.attachments?.[0]?.type?.startsWith('audio/')}
+										<div class="audio-msg">
+											<audio src={msg.media_url || msg.metadata?.attachments?.[0]?.url} controls class="h-8"></audio>
+										</div>
+									{:else if msg.message_type === 'file' || msg.metadata?.attachments?.[0]?.type === 'application/pdf'}
+										<a href={msg.media_url || msg.metadata?.attachments?.[0]?.url} target="_blank" class="file-tag">
+											<FileText class="h-4 w-4" />
+											<span class="truncate">{msg.message_text || msg.metadata?.attachments?.[0]?.name || 'Document'}</span>
+										</a>
+									{:else if msg.metadata?.attachments}
+										{#each msg.metadata.attachments as attr}
+											{#if attr.type.startsWith('image/')}
+												<div class="attachment-img">
+													<img src={attr.url} alt="" />
+													<a href={attr.url} target="_blank" class="download-link"><Download class="h-3 w-3" /></a>
+												</div>
+											{:else if attr.type.startsWith('audio/')}
+												<div class="audio-msg">
+													<audio src={attr.url} controls class="h-8"></audio>
+												</div>
+											{:else}
+												<a href={attr.url} target="_blank" class="file-tag">
+													<FileText class="h-4 w-4" />
+													<span class="truncate">{attr.name}</span>
+												</a>
+											{/if}
+										{/each}
+									{/if}
 								</div>
 							{/if}
 							{#if msg.metadata?.suggested_product}
@@ -354,6 +554,59 @@
 									{tenantId} 
 								/>
 							{/if}
+
+							{#if msg.metadata?.product}
+								<div class="product-msg-card bg-gray-50 rounded-2xl p-3 border border-gray-100 mb-2">
+									<div class="flex items-center gap-3">
+										<div class="h-12 w-12 bg-white rounded-lg flex items-center justify-center border border-gray-200">
+											{#if msg.metadata.product.image_url}
+												<img src={msg.metadata.product.image_url} alt="" class="h-full w-full object-cover" />
+											{:else}
+												<Package class="h-6 w-6 text-gray-300" />
+											{/if}
+										</div>
+										<div class="flex-1 min-w-0">
+											<h4 class="text-xs font-black truncate uppercase tracking-tight">{msg.metadata.product.name}</h4>
+											<p class="text-xs font-black text-primary-600">₦{msg.metadata.product.sharedPrice?.toLocaleString() || msg.metadata.product.unit_price?.toLocaleString()}</p>
+										</div>
+									</div>
+									<button 
+										onclick={() => handleProductSelect(msg.metadata.product)}
+										class="w-full mt-2 bg-black text-white text-[10px] font-black py-2 rounded-lg uppercase tracking-widest flex items-center justify-center gap-2"
+									>
+										Add to Bag <Plus class="h-3 w-3" />
+									</button>
+								</div>
+							{/if}
+
+							{#if msg.metadata?.doctor}
+								<div class="referral-card bg-indigo-50/50 rounded-2xl p-4 border border-indigo-100 mb-2">
+									<div class="flex items-center gap-2 mb-3">
+										<div class="p-1.5 bg-indigo-100 rounded-lg"><Stethoscope class="h-3 w-3 text-indigo-600" /></div>
+										<span class="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-600">Medical Referral</span>
+									</div>
+									<div class="flex items-center gap-3">
+										<div class="h-12 w-12 bg-indigo-100 rounded-full flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
+											{#if msg.metadata.doctor.avatar}
+												<img src={msg.metadata.doctor.avatar} alt="" class="h-full w-full object-cover" />
+											{:else}
+												<User class="h-6 w-6 text-indigo-300" />
+											{/if}
+										</div>
+										<div class="flex-1 min-w-0">
+											<h4 class="text-sm font-black text-indigo-900 truncate uppercase tracking-tight">{msg.metadata.doctor.name}</h4>
+											<p class="text-[10px] text-indigo-500 font-bold uppercase tracking-widest">{msg.metadata.doctor.specialization}</p>
+										</div>
+									</div>
+									<a 
+										href="/medics/{msg.metadata.doctor.id}"
+										class="w-full mt-4 bg-indigo-600 text-white text-[10px] font-black py-2.5 rounded-xl uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
+									>
+										View Profile <ChevronRight class="h-3 w-3" />
+									</a>
+								</div>
+							{/if}
+
 							<p class="text-sm leading-relaxed">{msg.message_text}</p>
 							<span class="msg-time">{formatTime(msg.created_at)}</span>
 						</div>
@@ -369,35 +622,47 @@
 						<p class="text-[10px] text-gray-400 max-w-[200px] mt-2 font-medium">Ask about dosages, side effects, or request a prescription refill.</p>
 					</div>
 				{/if}
+
+				{#if othersTyping.length > 0}
+					<div class="msg-row them" in:fade>
+						<div class="msg-bubble shadow-sm bg-gray-50 flex items-center gap-1 py-3 px-4 rounded-2xl">
+							<div class="typing-dot"></div>
+							<div class="typing-dot"></div>
+							<div class="typing-dot"></div>
+							<span class="text-[10px] font-bold text-gray-400 ml-2 uppercase tracking-widest">Pharmacist is typing</span>
+						</div>
+					</div>
+				{/if}
 			</div>
 		</main>
 
 		<!-- FIXED INTERACTION CENTER -->
 		<footer class="interaction-center">
-			<!-- Media Actions Flyout -->
-			{#if showMediaMenu}
-				<div class="media-menu shadow-2xl" transition:fly={{ y: 20 }}>
-					<button class="media-option" onclick={() => document.getElementById('image-up')?.click()}>
-						<div class="media-icon bg-blue-50 text-blue-600"><ImageIcon class="h-5 w-5" /></div>
-						<span>Images</span>
-					</button>
-					<button class="media-option" onclick={() => document.getElementById('pdf-up')?.click()}>
-						<div class="media-icon bg-amber-50 text-amber-600"><FileText class="h-5 w-5" /></div>
-						<span>Medical PDF</span>
-					</button>
-					<input id="image-up" type="file" accept="image/*" class="hidden" onchange={handleFileUpload} />
-					<input id="pdf-up" type="file" accept="application/pdf" class="hidden" onchange={handleFileUpload} />
-				</div>
-			{/if}
+
 
 			<div class="input-strip shadow-2xl">
-				<div class="flex items-center gap-1">
+				<div class="flex items-center gap-1 relative">
 					<button 
 						class="strip-btn {showMediaMenu ? 'rotate-45' : ''} transition-transform" 
 						onclick={() => showMediaMenu = !showMediaMenu}
 					>
 						<Plus class="h-6 w-6" />
 					</button>
+
+					{#if showMediaMenu}
+						<div class="media-menu shadow-2xl" transition:fly={{ y: 20 }}>
+							<button class="media-option" onclick={() => document.getElementById('image-up')?.click()}>
+								<div class="media-icon bg-blue-50 text-blue-600"><ImageIcon class="h-5 w-5" /></div>
+								<span>Images</span>
+							</button>
+							<button class="media-option" onclick={() => document.getElementById('pdf-up')?.click()}>
+								<div class="media-icon bg-amber-50 text-amber-600"><FileText class="h-5 w-5" /></div>
+								<span>Medical PDF</span>
+							</button>
+							<input id="image-up" type="file" accept="image/*" class="hidden" onchange={handleFileUpload} />
+							<input id="pdf-up" type="file" accept="application/pdf" class="hidden" onchange={handleFileUpload} />
+						</div>
+					{/if}
 					<button class="strip-btn" onclick={openProductModal} title="Product Discovery">
 						<Package class="h-5 w-5" />
 					</button>
@@ -417,6 +682,7 @@
 						type="text" 
 						bind:value={newMessage} 
 						onkeydown={(e) => e.key === 'Enter' && sendMessage()}
+						oninput={handleTyping}
 						placeholder="Message your pharmacist..." 
 						disabled={sending}
 					/>
@@ -561,9 +827,9 @@
 
 	/* Media Menu */
 	.media-menu { 
-		position: absolute; bottom: 5.5rem; left: 1.5rem; background: white; 
+		position: absolute; bottom: calc(100% + 1rem); left: 0; background: white; 
 		border-radius: 1.25rem; padding: 8px; display: flex; flex-direction: column; gap: 4px;
-		width: 160px; border: 1px solid #f1f5f9;
+		width: 160px; border: 1px solid #f1f5f9; z-index: 70;
 	}
 	.media-option { 
 		display: flex; align-items: center; gap: 12px; padding: 8px; border: none; background: transparent; 
@@ -586,5 +852,63 @@
 	}
 	.status-dot { position: absolute; bottom: -2px; right: -2px; width: 10px; height: 10px; background: #10b981; border: 2px solid white; border-radius: 50%; }
 
+	/* Auth Required */
+	.auth-required {
+		flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem;
+		background: radial-gradient(circle at center, #f8fafc 0%, #f1f5f9 100%);
+	}
+	.auth-card {
+		background: white; border-radius: 2.5rem; padding: 3rem; max-width: 400px; width: 100%;
+		text-align: center; border: 1px solid rgba(255,255,255,0.8);
+	}
+	.auth-icon-wrap {
+		width: 80px; height: 80px; background: #f5f3ff; border-radius: 2rem;
+		display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem;
+		box-shadow: 0 10px 20px -5px rgba(79,70,229,0.1);
+	}
+	.auth-title { font-size: 1.5rem; font-weight: 900; color: #1e1b4b; letter-spacing: -0.02em; margin-bottom: 1rem; }
+	.auth-sub { font-size: 0.875rem; color: #64748b; line-height: 1.6; margin-bottom: 2.5rem; }
+	.login-btn {
+		display: block; width: 100%; padding: 1.25rem; background: black; color: white;
+		border-radius: 1.25rem; font-size: 0.875rem; font-weight: 800; text-transform: uppercase;
+		letter-spacing: 0.1em; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s;
+	}
+	.login-btn:hover { transform: translateY(-2px); box-shadow: 0 15px 30px -5px rgba(0,0,0,0.15); }
+
 	@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+	.typing-dot {
+		width: 4px;
+		height: 4px;
+		background: #cbd5e1;
+		border-radius: 50%;
+		animation: typingPulse 1.4s infinite ease-in-out both;
+	}
+	.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+	.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+	.inquiry-banner {
+		background: white;
+		border: 1px solid #f3f4f6;
+		border-radius: 1.5rem;
+		padding: 1rem;
+		margin-bottom: 2rem;
+		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+	}
+	.inquiry-img {
+		width: 3.5rem;
+		height: 3.5rem;
+		background: #f9fafb;
+		border-radius: 1rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+	}
+	.inquiry-img img { width: 100%; height: 100%; object-fit: cover; }
+
+	@keyframes typingPulse {
+		0%, 80%, 100% { transform: scale(0); }
+		40% { transform: scale(1); }
+	}
 </style>

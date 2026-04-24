@@ -5,8 +5,11 @@
 		ShoppingCart, Heart, Share2, Plus, Minus, ArrowLeft, 
 		ShieldCheck, Clock, Truck, Star, CheckCircle2, ChevronRight, Tag, ArrowRight, Stethoscope
 	} from 'lucide-svelte';
-	import { isAuthenticated } from '$lib/stores/auth';
+	import { isAuthenticated, currentUser } from '$lib/stores/auth';
 	import { isAuthModalOpen } from '$lib/stores/ui';
+	import { supabase } from '$lib/supabase';
+	import { activeConversationId, setActiveConversation } from '$lib/stores/chat.store';
+	import { get } from 'svelte/store';
 
 	export let data;
 
@@ -42,13 +45,49 @@
 		goto(`/cart`);
 	}
 
-	function handleRxChat() {
+	async function handleRxChat() {
 		if (!$isAuthenticated) {
 			localStorage.setItem('pending_chat_redirect', '/chat');
 			isAuthModalOpen.set(true);
 			return;
 		}
-		goto('/chat');
+
+		const productId = product?.id;
+		const chatUrl = productId ? `/chat?productId=${productId}` : '/chat';
+
+		// Check for existing active conversation
+		const existingId = get(activeConversationId);
+		if (existingId) {
+			goto(`${chatUrl}${chatUrl.includes('?') ? '&' : '?'}id=${existingId}`);
+			return;
+		}
+
+		// Create new "Consultation" chat
+		try {
+			const { data: created, error } = await supabase
+				.from('chat_conversations')
+				.insert({
+					customer_id: $currentUser.id,
+					tenant_id: storefront?.id,
+					chatType: 'Consultation',
+					"isConsulatation": false,
+					status: 'active',
+					metadata: { 
+						origin: 'storefront_product_rx',
+						productId: productId
+					}
+				})
+				.select().single();
+
+			if (error) throw error;
+			if (created) {
+				setActiveConversation(created.id);
+				goto(`${chatUrl}${chatUrl.includes('?') ? '&' : '?'}id=${created.id}`);
+			}
+		} catch (err) {
+			console.error('Failed to initiate consultation chat:', err);
+			goto(chatUrl);
+		}
 	}
 </script>
 

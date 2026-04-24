@@ -18,9 +18,8 @@
 		full_name: string;
 		email?: string;
 		phone: string;
-		loyalty_points_balance: number;
 		total_orders: number;
-		total_spent: number;
+		total_purchases: number;
 		created_at: string;
 		tier?: string;
 	};
@@ -38,9 +37,8 @@
 				full_name: $currentUser?.user_metadata?.full_name || $currentUser?.email?.split('@')[0] || 'Member',
 				email: $currentUser?.email || 'member@kemani.io',
 				phone: $currentUser?.user_metadata?.phone || '',
-				loyalty_points_balance: 450,
 				total_orders: 12,
-				total_spent: 125000,
+				total_purchases: 125000,
 				created_at: $currentUser?.created_at || '2024-01-15T08:00:00Z',
 				tier: 'Standard'
 			};
@@ -49,7 +47,7 @@
 		{ id: '2', order_number: 'ORD-99085', status: 'processing', total_amount: 8400, created_at: '2024-04-01T14:30:00Z' }
 	];
 	let isLoading = false;
-	let activeTab: 'profile' | 'orders' | 'loyalty' | 'messages' | 'medics' | 'products' | 'tracking' | 'appointments' = 'profile';
+	let activeTab: 'profile' | 'orders' | 'messages' | 'medics' | 'products' | 'tracking' | 'appointments' = 'profile';
 	let error = '';
 
 	onMount(async () => {
@@ -80,9 +78,8 @@
 				full_name: $currentUser?.user_metadata?.full_name || 'Member',
 				email: $currentUser?.email || '',
 				phone: $currentUser?.user_metadata?.phone || '',
-				loyalty_points_balance: 0,
 				total_orders: 0,
-				total_spent: 0,
+				total_purchases: 0,
 				created_at: $currentUser?.created_at || new Date().toISOString(),
 				tier: 'Standard'
 			};
@@ -104,7 +101,7 @@
 					}));
 					
 					customer.total_orders = orders.length;
-					customer.total_spent = orders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+					customer.total_purchases = orders.reduce((sum, o) => sum + Number(o.total_amount), 0);
 				}
 			}
 		} catch (err: any) {
@@ -166,11 +163,6 @@
 						>
 							<ShoppingBag class="nav-icon" /> Orders
 						</button>
-						<button 
-							on:click={() => activeTab = 'loyalty'} 
-							class="nav-item {activeTab === 'loyalty' ? 'active' : ''}"
-						>
-							<Award class="nav-icon" /> Rewards
 						</button>
 						<button 
 							on:click={() => activeTab = 'messages'} 
@@ -178,12 +170,14 @@
 						>
 							<MessageCircle class="nav-icon" /> Messages
 						</button>
-						<button 
-							on:click={() => activeTab = 'medics'} 
-							class="nav-item {activeTab === 'medics' ? 'active' : ''}"
-						>
-							<Stethoscope class="nav-icon" /> Medics
-						</button>
+						{#if storefront?.allowDoctorPartnerShip ?? true}
+							<button 
+								on:click={() => activeTab = 'medics'} 
+								class="nav-item {activeTab === 'medics' ? 'active' : ''}"
+							>
+								<Stethoscope class="nav-icon" /> Medics
+							</button>
+						{/if}
 						<button 
 							on:click={() => activeTab = 'products'} 
 							class="nav-item {activeTab === 'products' ? 'active' : ''}"
@@ -196,12 +190,14 @@
 						>
 							<Truck class="nav-icon" /> Tracking
 						</button>
-						<button 
-							on:click={() => activeTab = 'appointments'} 
-							class="nav-item {activeTab === 'appointments' ? 'active' : ''}"
-						>
-							<Calendar class="nav-icon" /> Appointments
-						</button>
+						{#if storefront?.allowDoctorPartnerShip ?? true}
+							<button 
+								on:click={() => activeTab = 'appointments'} 
+								class="nav-item {activeTab === 'appointments' ? 'active' : ''}"
+							>
+								<Calendar class="nav-icon" /> Appointments
+							</button>
+						{/if}
 						<div class="nav-sep"></div>
 						<a href="/cart" class="nav-item">
 							<ShoppingCart class="nav-icon" /> Your Bag
@@ -228,8 +224,8 @@
 									<p class="stat-val">{customer?.total_orders}</p>
 								</div>
 								<div class="stat-card">
-									<p class="stat-label">Member Points</p>
-									<p class="stat-val text-accent">{customer?.loyalty_points_balance}</p>
+									<p class="stat-label">Total Purchases</p>
+									<p class="stat-val">₦{customer?.total_purchases?.toLocaleString()}</p>
 								</div>
 								<div class="stat-card">
 									<p class="stat-label">Joined</p>
@@ -287,33 +283,6 @@
 							{/if}
 						</div>
 
-					{:else if activeTab === 'loyalty'}
-						<div class="content-view">
-							<h2 class="view-title">Medics Rewards</h2>
-							
-							<div class="loyalty-hero">
-								<div class="hero-content">
-									<Award class="hero-icon" />
-									<p class="hero-label">Available Points</p>
-									<p class="hero-balance">{customer?.loyalty_points_balance}</p>
-									<p class="hero-value">Equivalent to ₦{(customer?.loyalty_points_balance || 0) * 10} in store credit</p>
-								</div>
-                                <div class="hero-divider"></div>
-                                <div class="hero-footer">
-                                    <div class="tier-badge">Standard</div>
-                                    <p class="tier-next">50 points until <span class="text-white font-bold">Premium</span></p>
-                                </div>
-							</div>
-
-							<section class="reward-rules mt-12">
-								<h4 class="section-label">How to Earn</h4>
-								<ul class="rules-list">
-									<li>Earn <span class="text-accent">1 point</span> for every ₦100 spent.</li>
-									<li>Redeem points at checkout for direct discounts.</li>
-									<li>Points are awarded upon successful delivery.</li>
-								</ul>
-							</section>
-						</div>
 					{:else if activeTab === 'messages'}
 						<div class="content-view">
 							<h2 class="view-title">Curator Messaging</h2>
