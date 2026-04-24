@@ -145,6 +145,8 @@
 							tenant_id: tenantId,
 							status: 'active',
 							chatType: urlChatType,
+							participant_name: $currentUser?.user_metadata?.full_name || $currentUser?.email,
+							participant_avatar_url: $currentUser?.user_metadata?.avatar_url,
 							metadata: { 
 								origin: 'storefront_fallback',
 								productId: urlProductId 
@@ -463,8 +465,12 @@
 							<div class="status-dot"></div>
 						</div>
 						<div>
-							<h1 class="text-sm font-black text-gray-900 uppercase tracking-tight leading-none">Pharmacy Support</h1>
-							<p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">Pharmacist is Online</p>
+							<h1 class="text-sm font-black text-gray-900 uppercase tracking-tight leading-none">
+								{conversation?.chatType === 'Customer Support' ? 'Customer Support' : 'Pharmacy Support'}
+							</h1>
+							<p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">
+								{conversation?.chatType === 'Customer Support' ? 'Support is Online' : 'Pharmacist is Online'}
+							</p>
 						</div>
 					</div>
 				</div>

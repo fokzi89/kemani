@@ -151,6 +151,8 @@
 					customer_id: $currentUser.id,
 					tenant_id: storefront?.id,
 					chatType: 'Consultation',
+					participant_name: $currentUser?.user_metadata?.full_name || $currentUser?.email,
+					participant_avatar_url: $currentUser?.user_metadata?.avatar_url,
 					status: 'active',
 					metadata: { 
 						origin: 'storefront_rx',
