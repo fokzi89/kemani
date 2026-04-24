@@ -50,8 +50,9 @@
 					customer_id: $currentUser.id,
 					tenant_id: storefront?.id,
 					chatType: type,
-					participant_name: $currentUser?.user_metadata?.full_name || $currentUser?.email,
-					participant_avatar_url: $currentUser?.user_metadata?.avatar_url,
+					customer_name: $currentUser?.user_metadata?.full_name || $currentUser?.email,
+					customer_pic: $currentUser?.user_metadata?.avatar_url,
+					isConsulatation: type === 'Consultation',
 					status: 'active',
 					metadata: { 
 						origin: type === 'Consultation' ? 'storefront_header' : 'storefront_floating',

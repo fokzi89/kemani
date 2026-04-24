@@ -145,8 +145,9 @@
 							tenant_id: tenantId,
 							status: 'active',
 							chatType: urlChatType,
-							participant_name: $currentUser?.user_metadata?.full_name || $currentUser?.email,
-							participant_avatar_url: $currentUser?.user_metadata?.avatar_url,
+							customer_name: $currentUser?.user_metadata?.full_name || $currentUser?.email,
+							customer_pic: $currentUser?.user_metadata?.avatar_url,
+							isConsulatation: urlChatType === 'Consultation',
 							metadata: { 
 								origin: 'storefront_fallback',
 								productId: urlProductId 
