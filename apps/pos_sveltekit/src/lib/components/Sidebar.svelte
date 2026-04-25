@@ -15,14 +15,14 @@
 		{ name: 'Lab Tests', href: '/lab-tests', icon: FlaskConical, visible: (userData?.canManageProducts ?? false) && (Array.isArray(userData?.branches) ? userData.branches[0]?.business_type === 'diagnostic_centre' : userData?.branches?.business_type === 'diagnostic_centre') },
 		{ name: 'Suppliers', href: '/suppliers', icon: Truck, visible: userData?.canManageProducts ?? false },
 		{ name: 'Medic Partners', href: '/medics', icon: Stethoscope, visible: tenant?.allowDoctorPartnerShip ?? true },
-		{ name: 'Customers', href: '/customers', icon: Users, visible: userData?.['canManage Customers'] ?? false },
+		{ name: 'Customers', href: '/customers', icon: Users, visible: userData?.canManageCustomers ?? false },
 		{ name: 'Orders', href: '/orders', icon: ShoppingCart, visible: userData?.canManageOrders ?? false },
 		{ name: 'Returns', href: '/returns', icon: RotateCcw, visible: userData?.canReturnProducts ?? false },
 		{ name: 'Inventory', href: '/inventory', icon: ClipboardList, visible: userData?.canManageInventory ?? false },
 		{ name: 'Staffs', href: '/staffs', icon: Briefcase, visible: userData?.canMangeStaff ?? false },
 		{ name: 'Messages', href: '/messages', icon: MessageSquare, visible: true },
 		{ name: 'Commissions', href: '/commissions', icon: Coins, visible: userData?.role === 'tenant_admin' },
-		{ name: 'Branches', href: '/branches', icon: Building, visible: userData?.canManagebranches ?? false },
+		{ name: 'Branches', href: '/branches', icon: Building, visible: userData?.canManageBranches ?? false },
 		{ name: 'Analytics', href: '/analytics', icon: BarChart3, visible: userData?.canViewAnalytics ?? false },
 		{ name: 'Settings', href: '/settings', icon: Settings, visible: true }
 	].filter(item => item.visible));

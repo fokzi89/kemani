@@ -174,12 +174,11 @@
 					canManageProducts: true,
 					canManageCustomers: true,
 					canManageOrders: true,
-					canManageStaff: true,
 					canManageInventory: true,
 					canManageTransfer: true,
 					canManageBranches: true,
 					canManageRoles: true,
-					canManageScrap: true
+					canMangeStaff: true
 				}, { onConflict: 'id' });
 
 			if (userErr) throw userErr;
