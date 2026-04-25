@@ -22,16 +22,49 @@
 	// Atomic check to prevent race conditions
 	let isSyncing = false;
 
+	// Reactive effect for path changes
+	$effect(() => {
+		const currentPath = $page.url.pathname;
+		console.log('[Layout] Path changed to:', currentPath);
+		
+		// If we are on the page we were redirecting to, we can stop the "redirecting" spinner
+		// This is a safety measure in case syncAuthState didn't catch it
+		if (redirecting) {
+			const isAuthPath = currentPath.startsWith('/auth');
+			const isOnboardingPath = currentPath.startsWith('/onboarding');
+			
+			// If we are where we need to be, stop the redirecting spinner
+			if (!user && isAuthPath) redirecting = false;
+			if (user && !userDataCache?.onboarding_done && isOnboardingPath) redirecting = false;
+			if (user && userDataCache?.onboarding_done && !isAuthPath && !isOnboardingPath) redirecting = false;
+		}
+
+		// Re-sync on navigation to ensure auth state is correct for the new path
+		if (initialCheckDone) {
+			supabase.auth.getSession().then(({ data: { session } }) => {
+				syncAuthState(session, currentPath);
+			});
+		}
+	});
+
 	async function syncAuthState(session: any, currentPath: string) {
+		const start = performance.now();
 		const now = Date.now();
 		const userId = session?.user?.id;
 		
+		console.log(`[Layout] Sync started for ${currentPath}`, { hasSession: !!session });
+
 		// If we're already syncing, or if we synced THIS user less than 30s ago, skip the heavy fetch
-		if (isSyncing) return;
+		if (isSyncing) {
+			console.log('[Layout] Sync skipped: already syncing');
+			return;
+		}
+		
 		if (userId && lastProcessedId === userId && (now - lastSyncTime < 30000)) {
 			console.log('[Layout] Sync throttled (synced recently)');
 			loading = false;
 			initialCheckDone = true;
+			redirecting = false; // Ensure we reset redirecting if we are skipping
 			return;
 		}
 
@@ -53,6 +86,8 @@
 					redirecting = true;
 					goto('/auth/login');
 				} else {
+					console.log('[Layout] No session, already on auth path');
+					redirecting = false; // Reset redirecting if we've arrived
 					loading = false;
 				}
 				initialCheckDone = true;
@@ -63,11 +98,20 @@
 			user = session.user;
 			console.log('[Layout] Syncing profile for:', user.email);
 			
-			const { data, error } = await supabase
+			// Add a timeout to the profile fetch to prevent infinite loading if Supabase is slow
+			const profilePromise = supabase
 				.from('users')
 				.select('*, tenants:tenants!users_tenant_id_fkey(*), branches:branches!users_branch_id_fkey(*)')
 				.eq('id', userId)
 				.maybeSingle();
+
+			const timeoutPromise = new Promise((_, reject) => 
+				setTimeout(() => reject(new Error('Profile fetch timeout')), 8000)
+			);
+
+			const { data, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
+			const fetchEnd = performance.now();
+			console.log(`[Layout] Profile fetch took ${(fetchEnd - start).toFixed(2)}ms`);
 
 			if (error) {
 				console.error('[Layout] Profile error:', error);
@@ -96,27 +140,59 @@
 				redirecting = false;
 				
 				if (isAuthPath || isOnboardingPath) {
+					console.log('[Layout] Logged in and onboarded, redirecting to home');
 					redirecting = true;
 					if (window.location.pathname !== '/') goto('/');
 				}
 			} else if (userDataCache) {
 				tenant = null;
 				if (!isAuthPath && !isOnboardingPath) {
+					console.log('[Layout] Logged in but not onboarded, redirecting to onboarding');
 					redirecting = true;
 					if (window.location.pathname !== '/onboarding') goto('/onboarding');
+				} else {
+					redirecting = false;
 				}
+			} else {
+				// Logged in but no profile data yet (or fetch failed/timed out)
+				// Allow them to stay where they are but log the issue
+				console.warn('[Layout] User logged in but no profile data found');
+				redirecting = false;
 			}
+		} catch (err) {
+			console.error('[Layout] Sync fatal error:', err);
+			// On error, try to at least stop the loading spinner
+			loading = false;
+			redirecting = false;
 		} finally {
 			isSyncing = false;
 			initialCheckDone = true;
 			loading = false;
+			const end = performance.now();
+			console.log(`[Layout] Full sync cycle took ${(end - start).toFixed(2)}ms`);
 		}
 	}
 
 	onMount(() => {
+		console.log('[Layout] onMount started');
+		
+		// Safety fallback: if we are still loading after 10 seconds, force loading to false
+		const safetyTimeout = setTimeout(() => {
+			if (loading) {
+				console.warn('[Layout] Safety timeout reached, forcing loading = false');
+				loading = false;
+			}
+		}, 10000);
+
 		// Initial sync
+		console.log('[Layout] Getting initial session...');
 		supabase.auth.getSession().then(({ data: { session } }) => {
+			console.log('[Layout] Initial session retrieved:', !!session);
 			syncAuthState(session, window.location.pathname);
+		}).catch(err => {
+			console.error('[Layout] Failed to get initial session:', err);
+			loading = false;
+			initialCheckDone = true;
 		});
 
 		// Listen for auth changes
@@ -124,12 +200,13 @@
 			console.log('[Layout] Auth Event:', event);
 			// Only sync on major events or if the userId changed
 			const userId = session?.user?.id;
-			if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && userId !== lastProcessedId)) {
+			if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && userId !== lastProcessedId) || event === 'INITIAL_SESSION') {
 				syncAuthState(session, window.location.pathname);
 			}
 		});
 
 		return () => {
+			clearTimeout(safetyTimeout);
 			subscription.unsubscribe();
 			if (realtimeChannel) supabase.removeChannel(realtimeChannel);
 		};
