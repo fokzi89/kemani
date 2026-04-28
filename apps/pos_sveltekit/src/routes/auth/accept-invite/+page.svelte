@@ -108,7 +108,7 @@
 						canReturnProducts: invitation.canReturnProducts,
 						canCreatePrescription: invitation.canCreatePrescription,
 						canApplyDiscount: invitation.canApplyDiscount,
-						canReferToDoctor: invitation.canReferDoctor,
+						canReferDoctor: invitation.canReferDoctor,
 						updated_at: new Date().toISOString()
 					})
 					.eq('email', invEmail);
@@ -141,7 +141,7 @@
 						canReturnProducts: invitation.canReturnProducts,
 						canCreatePrescription: invitation.canCreatePrescription,
 						canApplyDiscount: invitation.canApplyDiscount,
-						canReferToDoctor: invitation.canReferDoctor
+						canReferDoctor: invitation.canReferDoctor
 					});
 
 				if (insertErr) throw insertErr;

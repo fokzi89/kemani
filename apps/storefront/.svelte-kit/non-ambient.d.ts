@@ -29,7 +29,7 @@ declare module "$app/types" {
 	type MatcherParam<M> = M extends (param : string) => param is (infer U extends string) ? U : string;
 
 	export interface AppTypes {
-		RouteId(): "/(marketplace)" | "/" | "/api" | "/api/customers" | "/api/customers/auth" | "/api/customers/[id]" | "/api/customers/[id]/addresses" | "/api/marketplace" | "/api/marketplace/categories" | "/api/marketplace/info" | "/api/marketplace/products" | "/api/marketplace/products/[productId]" | "/api/orders" | "/api/orders/[id]" | "/api/orders/[id]/status" | "/api/payment" | "/api/payment/initialize" | "/api/payment/verify" | "/api/track" | "/api/track/[id]" | "/auth" | "/auth/callback" | "/auth/portal" | "/(marketplace)/cart" | "/(marketplace)/checkout" | "/consultations" | "/diagnostics" | "/(marketplace)/medics" | "/(marketplace)/medics/[medicId]" | "/(marketplace)/products" | "/(marketplace)/products/[productId]" | "/(marketplace)/profile";
+		RouteId(): "/(marketplace)" | "/" | "/api" | "/api/customers" | "/api/customers/auth" | "/api/customers/[id]" | "/api/customers/[id]/addresses" | "/api/marketplace" | "/api/marketplace/categories" | "/api/marketplace/info" | "/api/marketplace/products" | "/api/marketplace/products/[productId]" | "/api/orders" | "/api/orders/[id]" | "/api/orders/[id]/status" | "/api/payment" | "/api/payment/initialize" | "/api/payment/verify" | "/api/track" | "/api/track/[id]" | "/auth" | "/auth/callback" | "/auth/portal" | "/(marketplace)/cart" | "/(marketplace)/chat" | "/(marketplace)/checkout" | "/consultations" | "/diagnostics" | "/(marketplace)/medics" | "/(marketplace)/medics/[medicId]" | "/(marketplace)/products" | "/(marketplace)/products/[productId]" | "/(marketplace)/profile";
 		RouteParams(): {
 			"/api/customers/[id]": { id: string };
 			"/api/customers/[id]/addresses": { id: string };
@@ -65,6 +65,7 @@ declare module "$app/types" {
 			"/auth/callback": Record<string, never>;
 			"/auth/portal": Record<string, never>;
 			"/(marketplace)/cart": Record<string, never>;
+			"/(marketplace)/chat": Record<string, never>;
 			"/(marketplace)/checkout": Record<string, never>;
 			"/consultations": Record<string, never>;
 			"/diagnostics": Record<string, never>;
@@ -74,7 +75,7 @@ declare module "$app/types" {
 			"/(marketplace)/products/[productId]": { productId: string };
 			"/(marketplace)/profile": Record<string, never>
 		};
-		Pathname(): "/" | "/api/customers" | "/api/customers/auth" | `/api/customers/${string}` & {} | `/api/customers/${string}/addresses` & {} | "/api/marketplace/categories" | "/api/marketplace/info" | "/api/marketplace/products" | `/api/marketplace/products/${string}` & {} | "/api/orders" | `/api/orders/${string}` & {} | `/api/orders/${string}/status` & {} | "/api/payment/initialize" | "/api/payment/verify" | `/api/track/${string}` & {} | "/auth/callback" | "/auth/portal" | "/cart" | "/checkout" | "/consultations" | "/diagnostics" | "/medics" | `/medics/${string}` & {} | `/products/${string}` & {} | "/profile";
+		Pathname(): "/" | "/api/customers" | "/api/customers/auth" | `/api/customers/${string}` & {} | `/api/customers/${string}/addresses` & {} | "/api/marketplace/categories" | "/api/marketplace/info" | "/api/marketplace/products" | `/api/marketplace/products/${string}` & {} | "/api/orders" | `/api/orders/${string}` & {} | `/api/orders/${string}/status` & {} | "/api/payment/initialize" | "/api/payment/verify" | `/api/track/${string}` & {} | "/auth/callback" | "/auth/portal" | "/cart" | "/chat" | "/checkout" | "/consultations" | "/diagnostics" | "/medics" | `/medics/${string}` & {} | `/products/${string}` & {} | "/profile";
 		ResolvedPathname(): `${"" | `/${string}`}${ReturnType<AppTypes['Pathname']>}`;
 		Asset(): string & {};
 	}

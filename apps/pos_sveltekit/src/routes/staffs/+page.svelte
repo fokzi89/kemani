@@ -35,7 +35,7 @@
 		{ key: 'canReturnProducts', label: 'Returns', description: 'Can process returns' },
 		{ key: 'canCreatePrescription', label: 'Prescribe', description: 'Can create prescriptions' },
 		{ key: 'canApplyDiscount', label: 'Discounts', description: 'Can apply manual discounts' },
-		{ key: 'canReferToDoctor', label: 'Doctor Referrals', description: 'Can refer patients to doctors' }
+		{ key: 'canReferDoctor', label: 'Doctor Referrals', description: 'Can refer patients to doctors' }
 	];
 
 	let filteredStaff = $derived(
@@ -105,7 +105,7 @@
 			canReturnProducts: person.canReturnProducts ?? false,
 			canCreatePrescription: person.canCreatePrescription ?? false,
 			canApplyDiscount: person.canApplyDiscount ?? false,
-			canReferToDoctor: person.canReferToDoctor ?? true
+			canReferDoctor: person.canReferDoctor ?? true
 		};
 		showPrivilegesModal = true;
 		activeDropdown = null;
@@ -144,7 +144,7 @@
 					canManageRoles: false,
 					canTransferProduct: false, canReturnProducts: false,
 					canCreatePrescription: false, canApplyDiscount: false,
-					canReferToDoctor: false,
+					canReferDoctor: false,
 					deleted_at: new Date().toISOString()
 				})
 				.eq('id', person.id);

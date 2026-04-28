@@ -4,7 +4,8 @@
 	import { goto } from '$app/navigation';
 	import { 
 		Building2, MapPin, User, Globe, Store, 
-		CheckCircle2, ArrowRight, Loader2, Sparkles
+		CheckCircle2, ArrowRight, Loader2, Sparkles,
+		Phone, Navigation, LocateFixed
 	} from 'lucide-svelte';
 
 	let currentStage = $state(1);
@@ -21,7 +22,12 @@
 		// Stage 2: Business Info
 		businessName: '',
 		businessType: 'supermarket',
-		branchName: 'Main Branch',
+		branchName: '', // Will be generated from businessName
+		address: '',
+		state: '',
+		city: '',
+		latitude: null as number | null,
+		longitude: null as number | null,
 		
 		// Stage 3: Personal Profile
 		fullName: '',
@@ -68,6 +74,22 @@
 		currentUser = session.user;
 		// Pre-fill email/name if available from auth
 		if (currentUser.user_metadata?.full_name) form.fullName = currentUser.user_metadata.full_name;
+		if (currentUser.user_metadata?.business_name) form.businessName = currentUser.user_metadata.business_name;
+
+		// Check if already on-boarded
+		const { data: userData } = await supabase
+			.from('users')
+			.select('onboarding_done, tenant_id, full_name, phone')
+			.eq('id', currentUser.id)
+			.single();
+
+		if (userData?.onboarding_done) {
+			goto('/');
+		} else if (userData?.tenant_id) {
+			// Part way through onboarding, pre-fill what we have
+			form.fullName = userData.full_name || form.fullName;
+			form.phone = userData.phone || form.phone;
+		}
 	});
 
 	$effect(() => {
@@ -81,10 +103,47 @@
 		}
 	});
 
-	async function nextStage() {
-		if (currentStage === 2 && !form.businessName) {
-			error = 'Please enter your business name';
+	async function detectLocation() {
+		if (!navigator.geolocation) {
+			error = 'Geolocation is not supported by your browser';
 			return;
+		}
+
+		loading = true;
+		navigator.geolocation.getCurrentPosition(
+			(position) => {
+				form.latitude = position.coords.latitude;
+				form.longitude = position.coords.longitude;
+				loading = false;
+				console.log('Location detected:', form.latitude, form.longitude);
+			},
+			(err) => {
+				console.error('Geolocation error:', err);
+				error = 'Could not detect location. Please enter coordinates manually if needed or skip.';
+				loading = false;
+			},
+			{ enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+		);
+	}
+
+	async function nextStage() {
+		if (currentStage === 2) {
+			if (!form.businessName) {
+				error = 'Please enter your business name';
+				return;
+			}
+			// Automatically set branch name if empty
+			if (!form.branchName) {
+				form.branchName = form.businessName + ' - Main Branch';
+			}
+			if (!form.address || !form.state || !form.city) {
+				error = 'Please complete your business location details (Address, State, City)';
+				return;
+			}
+			if (!form.latitude || !form.longitude) {
+				error = 'Please detect your store location coordinates using the button below';
+				return;
+			}
 		}
 		if (currentStage === 3 && (!form.fullName || !form.phone)) {
 			error = 'Please complete your profile details';
@@ -105,65 +164,116 @@
 		error = '';
 		
 		try {
-			// 1. Create Tenant (Business)
-			const slug = form.businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substr(2, 5);
-			
-			const { data: tenant, error: tenantErr } = await supabase
-				.from('tenants')
-				.insert({
+			// Check if user already has a tenant (Idempotency check)
+			const { data: existingUser } = await supabase
+				.from('users')
+				.select('tenant_id, branch_id')
+				.eq('id', currentUser.id)
+				.single();
+
+			let tenantId = existingUser?.tenant_id;
+			let branchId = existingUser?.branch_id;
+
+			// 1. Create or Update Tenant (Business)
+			if (!tenantId) {
+				const slug = form.businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substr(2, 5);
+				
+				const { data: tenant, error: tenantErr } = await supabase
+					.from('tenants')
+					.insert({
+						name: form.businessName,
+						slug: slug,
+						email: currentUser.email,
+						phone: form.phone
+					})
+					.select()
+					.single();
+
+				if (tenantErr) throw tenantErr;
+				tenantId = tenant.id;
+
+				// 2. Create Subscription (Free Tier)
+				const { data: sub, error: subErr } = await supabase
+					.from('subscriptions')
+					.insert({
+						tenant_id: tenantId,
+						plan_tier: 'free',
+						monthly_fee: 0,
+						commission_rate: 10, // 10% default commission
+						max_branches: 1,
+						max_staff_users: 10,
+						max_products: 1000,
+						monthly_transaction_quota: 500,
+						billing_cycle_start: new Date().toISOString(),
+						billing_cycle_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+						status: 'active'
+					})
+					.select()
+					.single();
+
+				if (subErr) throw subErr;
+			} else {
+				// Update existing tenant with potentially new phone/name
+				await supabase.from('tenants').update({
 					name: form.businessName,
-					slug: slug,
-					email: currentUser.email,
 					phone: form.phone
-				})
-				.select()
-				.single();
+				}).eq('id', tenantId);
+			}
 
-			if (tenantErr) throw tenantErr;
+			// 3. Create or Update Default Branch
+			if (!branchId && tenantId) {
+				// Check if the tenant already has any branch (prevents double entry)
+				const { data: tenantBranches } = await supabase
+					.from('branches')
+					.select('id')
+					.eq('tenant_id', tenantId)
+					.limit(1);
+				
+				if (tenantBranches && tenantBranches.length > 0) {
+					branchId = tenantBranches[0].id;
+				}
+			}
 
-			// 2. Create Subscription (Free Tier)
-			const { data: sub, error: subErr } = await supabase
-				.from('subscriptions')
-				.insert({
-					tenant_id: tenant.id,
-					plan_tier: 'free',
-					monthly_fee: 0,
-					commission_rate: 10, // 10% default commission
-					max_branches: 1,
-					max_staff_users: 10,
-					max_products: 1000,
-					monthly_transaction_quota: 500,
-					billing_cycle_start: new Date().toISOString(),
-					billing_cycle_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-					status: 'active'
-				})
-				.select()
-				.single();
+			const branchData = {
+				tenant_id: tenantId,
+				name: form.branchName || (form.businessName + ' - Main Branch'),
+				business_type: form.businessType,
+				currency: form.currency,
+				phone: form.phone,
+				country: form.country,
+				state: form.state,
+				city: form.city,
+				address: form.address,
+				latitude: form.latitude,
+				longitude: form.longitude
+			};
 
-			if (subErr) throw subErr;
+			if (!branchId) {
+				const { data: branch, error: branchErr } = await supabase
+					.from('branches')
+					.insert(branchData)
+					.select()
+					.single();
 
-			// 3. Create Default Branch
-			const { data: branch, error: branchErr } = await supabase
-				.from('branches')
-				.insert({
-					tenant_id: tenant.id,
-					name: form.branchName,
-					business_type: form.businessType,
-					currency: form.currency,
-					phone: form.phone
-				})
-				.select()
-				.single();
-
-			if (branchErr) throw branchErr;
+				if (branchErr) throw branchErr;
+				branchId = branch.id;
+			} else {
+				// Update existing branch
+				const { error: branchUpdateErr } = await supabase
+					.from('branches')
+					.update(branchData)
+					.eq('id', branchId);
+				
+				if (branchUpdateErr) throw branchUpdateErr;
+			}
 
 			// 4. Create or Update User Profile (Upsert)
 			const { error: userErr } = await supabase
 				.from('users')
 				.upsert({
 					id: currentUser.id,
-					tenant_id: tenant.id,
-					branch_id: branch.id,
+					tenant_id: tenantId,
+					branch_id: branchId,
 					full_name: form.fullName,
 					email: currentUser.email,
 					phone: form.phone,
@@ -178,7 +288,7 @@
 					canManageTransfer: true,
 					canManageBranches: true,
 					canManageRoles: true,
-					canMangeStaff: true
+					canManageStaff: true
 				}, { onConflict: 'id' });
 
 			if (userErr) throw userErr;
@@ -327,6 +437,61 @@
 								{/each}
 							</div>
 						</div>
+
+						<!-- Location Details -->
+						<div class="pt-4 border-t border-gray-50">
+							<div class="flex items-center justify-between mb-4">
+								<label class="text-sm font-bold text-gray-700 flex items-center gap-2">
+									Store Location <span class="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded uppercase tracking-wider">Required</span>
+								</label>
+								<button 
+									onclick={detectLocation}
+									class="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-lg transition-colors"
+								>
+									<LocateFixed size={12} /> {form.latitude ? 'Location Updated' : 'Detect My Location'}
+								</button>
+							</div>
+
+							<div class="space-y-4">
+								<div class="relative group">
+									<MapPin class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={18} />
+									<input 
+										type="text" 
+										bind:value={form.address}
+										placeholder="Full Street Address"
+										class="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-600 transition-all outline-none font-medium"
+									/>
+								</div>
+
+								<div class="grid grid-cols-2 gap-4">
+									<div class="relative group">
+										<Building2 class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+										<input 
+											type="text" 
+											bind:value={form.city}
+											placeholder="City"
+											class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-600 transition-all outline-none font-medium text-sm"
+										/>
+									</div>
+									<div class="relative group">
+										<Navigation class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+										<input 
+											type="text" 
+											bind:value={form.state}
+											placeholder="State / Region"
+											class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-600 transition-all outline-none font-medium text-sm"
+										/>
+									</div>
+								</div>
+
+								{#if form.latitude}
+									<div class="flex gap-4 text-[10px] font-mono text-gray-400 px-2">
+										<span>LAT: {form.latitude.toFixed(6)}</span>
+										<span>LONG: {form.longitude?.toFixed(6)}</span>
+									</div>
+								{/if}
+							</div>
+						</div>
 					</div>
 				</div>
 
@@ -361,7 +526,7 @@
 						<div>
 							<label for="phone" class="block text-sm font-bold text-gray-700 mb-2">Phone Number</label>
 							<div class="relative group">
-								<MapPin class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={18} />
+								<Phone class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={18} />
 								<input 
 									id="phone"
 									type="tel" 

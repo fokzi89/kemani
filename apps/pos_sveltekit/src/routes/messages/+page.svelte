@@ -77,7 +77,7 @@
 		
 		// Load user context (tenant/branch)
 		const { data: userData } = await supabase.from('users')
-			.select('tenant_id, branch_id, canCreatePrescription, canApplyDiscount, canReferToDoctor')
+			.select('tenant_id, branch_id, canCreatePrescription, canApplyDiscount, canReferDoctor')
 			.eq('id', staffId)
 			.single();
 			
@@ -86,7 +86,7 @@
 			currentBranchId = userData.branch_id;
 			canPrescribe = userData.canCreatePrescription;
 			canApplyDiscount = userData.canApplyDiscount;
-			canReferToDoctor = userData.canReferToDoctor;
+			canReferDoctor = userData.canReferDoctor;
 		}
 
 		if (tenantId) {
@@ -161,7 +161,7 @@
 	// ── Rich composer state ────────────────────────────────────────────────────
 	let canPrescribe: boolean = $state(false);
 	let canApplyDiscount: boolean = $state(true);
-	let canReferToDoctor: boolean = $state(true);
+	let canReferDoctor: boolean = $state(true);
 
 	// Product picker
 	let showProductPicker: boolean = $state(false);
@@ -813,7 +813,7 @@
 								<span class="attach-opt-icon prod"><Package class="h-5 w-5" /></span>
 								<span>Product</span>
 							</button>
-							{#if canReferToDoctor}
+							{#if canReferDoctor}
 								<button onclick={() => { showDoctorPicker = true; showAttachTray = false; }} class="attach-option">
 									<span class="attach-opt-icon ref"><Stethoscope class="h-5 w-5" /></span>
 									<span>Dr. Referral</span>

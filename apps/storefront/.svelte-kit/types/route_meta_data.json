@@ -61,6 +61,10 @@
 		"src/routes/(marketplace)/+layout.server.ts",
 		"src/routes/+layout.server.ts"
 	],
+	"/(marketplace)/chat": [
+		"src/routes/(marketplace)/+layout.server.ts",
+		"src/routes/+layout.server.ts"
+	],
 	"/(marketplace)/checkout": [
 		"src/routes/(marketplace)/checkout/+page.server.ts",
 		"src/routes/(marketplace)/+layout.server.ts",

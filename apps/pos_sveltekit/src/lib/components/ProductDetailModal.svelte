@@ -8,9 +8,10 @@
 	} from 'lucide-svelte';
 	import Chart from 'chart.js/auto';
 
-	let { productId, branchId, isOpen, onClose, productName = '' } = $props<{
+	let { productId, branchId, inventoryId, isOpen, onClose, productName = '' } = $props<{
 		productId: string;
 		branchId: string;
+		inventoryId?: string;
 		isOpen: boolean;
 		onClose: () => void;
 		productName: string;
@@ -24,6 +25,8 @@
 	let chartPeriod = $state<'30d' | 'quarter' | 'year' | '5y'>('30d');
 	let lowStockThreshold = $state(0);
 	let savingThreshold = $state(false);
+
+	let activeBatch = $derived(batches.find(b => b.id === inventoryId) || batches[0] || null);
 
 	let chartCanvas = $state<HTMLCanvasElement | null>(null);
 	let chart: Chart | null = null;
@@ -41,19 +44,39 @@
 			lowStockThreshold = pData?.low_stock_threshold || 0;
 
 			// 2. Fetch all batches for this product in this branch
-			const { data: bData } = await supabase.from('branch_inventory')
+			let batchQuery = supabase.from('branch_inventory')
 				.select('*, suppliers(name)')
 				.eq('product_id', productId)
-				.eq('branch_id', branchId)
-				.order('created_at', { ascending: false });
+				.eq('branch_id', branchId);
+			
+			if (inventoryId) {
+				// First get the specific batch to see if we should filter by its invoice
+				const { data: targetBatch } = await supabase.from('branch_inventory')
+					.select('purchase_invoice')
+					.eq('id', inventoryId)
+					.single();
+				
+				if (targetBatch?.purchase_invoice) {
+					batchQuery = batchQuery.eq('purchase_invoice', targetBatch.purchase_invoice);
+				} else {
+					batchQuery = batchQuery.eq('id', inventoryId);
+				}
+			}
+
+			const { data: bData } = await batchQuery.order('created_at', { ascending: false });
 			batches = bData || [];
 
 			// 3. Fetch Sale History Joined with Sales and Users (Cashier)
-			const { data: sData } = await supabase.from('sale_items')
+			let saleQuery = supabase.from('sale_items')
 				.select('*, sales!inner(*, users:cashier_id(full_name))')
 				.eq('product_id', productId)
-				.eq('sales.branch_id', branchId)
-				.order('sales(created_at)', { ascending: false });
+				.eq('sales.branch_id', branchId);
+			
+			if (inventoryId) {
+				saleQuery = saleQuery.eq('inventory_id', inventoryId);
+			}
+
+			const { data: sData } = await saleQuery.order('sales(created_at)', { ascending: false });
 			
 			sales = (sData || []).map(item => ({
 				...item,
@@ -73,9 +96,10 @@
 	async function updateThreshold() {
 		savingThreshold = true;
 		try {
-			const { error } = await supabase.from('products')
+			const { error } = await supabase.from('branch_inventory')
 				.update({ low_stock_threshold: lowStockThreshold })
-				.eq('id', productId);
+				.eq('product_id', productId)
+				.eq('branch_id', branchId);
 			
 			if (error) throw error;
 			if (product) product.low_stock_threshold = lowStockThreshold;
@@ -195,13 +219,15 @@
 					<p class="text-lg font-black text-gray-900">{batches.reduce((acc, b) => acc + b.stock_quantity, 0)} Units</p>
 				</div>
 				<div class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm font-black">
-					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Price Range</p>
+					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Selling Price</p>
 					<p class="text-lg text-indigo-600">
-						{#if batches.length > 0}
-							{formatCurrency(Math.min(...batches.map(b => b.selling_price)))} - {formatCurrency(Math.max(...batches.map(b => b.selling_price)))}
-						{:else}
-							N/A
-						{/if}
+						{activeBatch ? formatCurrency(activeBatch.selling_price) : 'N/A'}
+					</p>
+				</div>
+				<div class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm font-black">
+					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Cost Price</p>
+					<p class="text-lg text-rose-600">
+						{activeBatch ? formatCurrency(activeBatch.cost_price || 0) : 'N/A'}
 					</p>
 				</div>
 				<div class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
@@ -313,11 +339,11 @@
 								<table class="w-full text-left">
 									<thead class="bg-gray-50/50">
 										<tr>
-											<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase whitespace-nowrap">Batch</th>
+											<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase whitespace-nowrap">Batch / Invoice</th>
 											<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase whitespace-nowrap">Pricing</th>
 											<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase whitespace-nowrap">Stock</th>
 											<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase whitespace-nowrap">Supplier</th>
-											<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase whitespace-nowrap">Supply Date</th>
+											<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase whitespace-nowrap">Added By</th>
 											<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase whitespace-nowrap">Expiry</th>
 										</tr>
 									</thead>
@@ -326,7 +352,7 @@
 											<tr class="hover:bg-gray-50/50 transition-colors">
 												<td class="px-6 py-4">
 													<p class="text-sm font-black text-gray-900">{batch.batch_no || 'NA'}</p>
-													<p class="text-[10px] text-gray-400 font-bold uppercase">{batch.id.split('-')[0]}</p>
+													<p class="text-[10px] text-indigo-600 font-bold uppercase">INV: {batch.purchase_invoice || 'NO-INV'}</p>
 												</td>
 												<td class="px-4 py-4">
 													<p class="text-sm font-black text-indigo-600">{formatCurrency(batch.selling_price)}</p>
@@ -340,9 +366,10 @@
 														<Truck class="h-3.5 w-3.5 text-gray-400" />
 														<p class="text-sm font-bold text-gray-700">{batch.suppliers?.name || 'Manual Stock'}</p>
 													</div>
+													<p class="text-[10px] text-gray-400 font-medium">Date: {new Date(batch.created_at).toLocaleDateString()}</p>
 												</td>
 												<td class="px-4 py-4 text-sm text-gray-500">
-													{new Date(batch.created_at).toLocaleDateString()}
+													<p class="font-bold text-gray-700">{batch.added_by || 'System'}</p>
 												</td>
 												<td class="px-6 py-4">
 													<p class="text-sm font-black {new Date(batch.expiry_date) < new Date() ? 'text-rose-600' : 'text-gray-700'}">
