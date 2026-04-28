@@ -176,13 +176,23 @@
 	onMount(() => {
 		console.log('[Layout] onMount started');
 		
-		// Safety fallback: if we are still loading after 10 seconds, force loading to false
+		// 0. Manual logout recovery
+		if ($page.url.searchParams.get('logout') === 'true') {
+			console.log('[Layout] Manual logout triggered');
+			supabase.auth.signOut().then(() => {
+				window.location.href = '/auth/login';
+			});
+			return;
+		}
+
+		// Safety fallback: if we are still loading after 15 seconds, force loading to false
 		const safetyTimeout = setTimeout(() => {
 			if (loading) {
 				console.warn('[Layout] Safety timeout reached, forcing loading = false');
 				loading = false;
+				redirecting = false;
 			}
-		}, 10000);
+		}, 15000);
 
 		// Initial sync
 		console.log('[Layout] Getting initial session...');
@@ -193,6 +203,7 @@
 			console.error('[Layout] Failed to get initial session:', err);
 			loading = false;
 			initialCheckDone = true;
+			redirecting = false;
 		});
 
 		// Listen for auth changes

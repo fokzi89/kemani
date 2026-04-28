@@ -10,11 +10,12 @@
 	} from 'lucide-svelte';
 	import Chart from 'chart.js/auto';
 
-	let productId = $derived($page.params.id);
+	let inventoryId = $derived($page.params.id);
 	let branchId = $derived($page.url.searchParams.get('branchId') || '');
 
 	let loading = $state(true);
 	let product = $state<any>(null);
+	let activeInventory = $state<any>(null);
 	let batches = $state<any[]>([]);
 	let sales = $state<any[]>([]);
 	let supplyHistory = $state<any[]>([]);
@@ -27,53 +28,77 @@
 	let chart: Chart | null = null;
 
 	async function fetchData() {
-		if (!productId || !branchId) return;
+		if (!inventoryId) {
+			console.log('[InventoryDetail] No ID found in params');
+			return;
+		}
+		console.log('[InventoryDetail] Fetching data for ID:', inventoryId);
 		loading = true;
+		
 		try {
-			// 1. Fetch Product Basic Info
-			const { data: pData } = await supabase.from('products')
-				.select('*')
-				.eq('id', productId)
-				.single();
-			product = pData;
-			lowStockThreshold = pData?.low_stock_threshold || 0;
-
-			// 2. Fetch all batches for this product in this branch
-			const { data: bData } = await supabase.from('branch_inventory')
-				.select('*, suppliers(name)')
-				.eq('product_id', productId)
-				.eq('branch_id', branchId)
-				.order('created_at', { ascending: false });
-			batches = bData || [];
-
-			// 3. Fetch Sale History Joined with Sales and Users (Cashier)
-			const { data: sData } = await supabase.from('sale_items')
-				.select('*, sales!inner(*, users:cashier_id(full_name))')
-				.eq('product_id', productId)
-				.eq('sales.branch_id', branchId)
-				.order('sales(created_at)', { ascending: false });
+			// 1. Fetch Active Inventory Batch Info
+			console.log('[InventoryDetail] Fetching batch info...');
+			const { data: invData, error: invErr } = await supabase.from('branch_inventory')
+				.select('*, products(*)')
+				.eq('id', inventoryId)
+				.maybeSingle();
 			
-			sales = (sData || []).map((item: any) => ({
+			if (invErr) {
+				console.error('[InventoryDetail] Batch fetch error:', invErr);
+				throw invErr;
+			}
+			
+			if (!invData) {
+				console.warn('[InventoryDetail] Inventory record not found for ID:', inventoryId);
+				loading = false;
+				return;
+			}
+
+			console.log('[InventoryDetail] Found inventory for product:', invData.products?.name);
+			activeInventory = invData;
+			product = invData.products;
+			lowStockThreshold = invData?.low_stock_threshold || 0;
+			batches = [invData];
+
+			// 2. Fetch Sales and Transactions in parallel
+			console.log('[InventoryDetail] Fetching history in parallel...');
+			const [salesRes, transRes] = await Promise.all([
+				supabase.from('sale_items')
+					.select('*')
+					.eq('inventory_id', inventoryId)
+					.order('created_at', { ascending: false })
+					.then(r => { console.log('[InventoryDetail] Sales fetch complete'); return r; }),
+				supabase.from('inventory_transactions')
+					.select('*, users:staff_id(full_name)')
+					.eq('product_id', invData.product_id)
+					.eq('branch_id', invData.branch_id)
+					.eq('transaction_type', 'restock')
+					.order('created_at', { ascending: false })
+					.then(r => { console.log('[InventoryDetail] Transactions fetch complete'); return r; })
+			]);
+
+			if (salesRes.error) {
+				console.error('[InventoryDetail] Sales error:', salesRes.error);
+				throw salesRes.error;
+			}
+			if (transRes.error) {
+				console.error('[InventoryDetail] Transactions error:', transRes.error);
+			}
+
+			sales = (salesRes.data || []).map((item: any) => ({
 				...item,
-				sale_date: item.sales.created_at,
-				cashier_name: item.sales.users?.full_name || 'System',
+				sale_date: item.sale_date || item.created_at,
 				total: (item.quantity * item.unit_price) - (item.discount_amount || 0)
 			}));
 
-			// 4. Fetch Supply History from inventory_transactions 
-			// We look for 'restock' or 'purchase' logic where new inventory entered.
-			const { data: tData } = await supabase.from('inventory_transactions')
-				.select('*, users:staff_id(full_name)')
-				.eq('product_id', productId)
-				.eq('branch_id', branchId)
-				.eq('transaction_type', 'restock')
-				.order('created_at', { ascending: false });
-			supplyHistory = tData || [];
+			supplyHistory = transRes.data || [];
+			console.log(`[InventoryDetail] Loaded ${sales.length} sales and ${supplyHistory.length} transactions`);
 
 			updateChart();
 		} catch (err) {
-			console.error('Error fetching product detail:', err);
+			console.error('[InventoryDetail] Fatal fetch error:', err);
 		} finally {
+			console.log('[InventoryDetail] Fetch cycle complete');
 			loading = false;
 		}
 	}
@@ -81,12 +106,13 @@
 	async function updateThreshold() {
 		savingThreshold = true;
 		try {
-			const { error } = await supabase.from('products')
+			const { error } = await supabase.from('branch_inventory')
 				.update({ low_stock_threshold: lowStockThreshold })
-				.eq('id', productId);
+				.eq('product_id', activeInventory.product_id)
+				.eq('branch_id', activeInventory.branch_id);
 			
 			if (error) throw error;
-			if (product) product.low_stock_threshold = lowStockThreshold;
+			if (activeInventory) activeInventory.low_stock_threshold = lowStockThreshold;
 		} catch (err) {
 			alert('Failed to update threshold');
 		} finally {
@@ -168,7 +194,7 @@
 	}
 
 	$effect(() => { 
-		if (productId) fetchData(); 
+		if (inventoryId) fetchData(); 
 	});
 	
 	$effect(() => { 
@@ -220,18 +246,14 @@
 				<p class="text-lg font-black text-gray-900">{batches.reduce((acc, b) => acc + b.stock_quantity, 0)} Units</p>
 			</div>
 			<div class="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm font-black">
-				<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Selling Range</p>
+				<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Selling Price</p>
 				<p class="text-lg text-emerald-600">
-					{#if batches.length > 0}
-						{formatCurrency(Math.min(...batches.map(b => b.selling_price)))} - {formatCurrency(Math.max(...batches.map(b => b.selling_price)))}
-					{:else}
-						N/A
-					{/if}
+					{activeInventory ? formatCurrency(activeInventory.selling_price) : 'N/A'}
 				</p>
 			</div>
 			<div class="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
-				<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Last Supply Price</p>
-				<p class="text-lg font-black text-indigo-600">{formatCurrency(lastSupplyPrice)}</p>
+				<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Cost Price</p>
+				<p class="text-lg font-black text-rose-600">{activeInventory ? formatCurrency(activeInventory.cost_price) : 'N/A'}</p>
 			</div>
 			<div class="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
 				<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Last Sale</p>
@@ -454,12 +476,11 @@
 								<table class="w-full text-left whitespace-nowrap min-w-[800px]">
 									<thead class="bg-gray-50">
 										<tr>
-											<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase">Sale Date</th>
+											<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase">Sale Date & Time</th>
 											<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase">Sale Code</th>
 											<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase">Qty Sold</th>
 											<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase">Unit Price</th>
 											<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase">Total Revenue</th>
-											<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase">Processed By</th>
 										</tr>
 									</thead>
 									<tbody class="divide-y divide-gray-50">
@@ -475,14 +496,6 @@
 												<td class="px-4 py-4 text-sm font-black text-gray-900 text-center bg-gray-50/50">{sale.quantity}</td>
 												<td class="px-4 py-4 text-sm text-gray-500 font-medium border-l border-gray-50">{formatCurrency(sale.unit_price)}</td>
 												<td class="px-4 py-4 text-sm font-black text-emerald-600">{formatCurrency(sale.total)}</td>
-												<td class="px-6 py-4">
-													<div class="flex items-center gap-2">
-														<div class="h-6 w-6 bg-purple-50 text-purple-600 rounded-full flex justify-center items-center text-[10px] font-black">
-															{(sale.cashier_name || 'Unk').charAt(0)}
-														</div>
-														<span class="text-xs font-bold text-gray-700">{sale.cashier_name}</span>
-													</div>
-												</td>
 											</tr>
 										{:else}
 											<tr><td colspan="6" class="text-center py-10 text-gray-400 italic font-medium">This product has not been sold yet!</td></tr>

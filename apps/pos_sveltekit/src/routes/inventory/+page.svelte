@@ -5,7 +5,8 @@
 		Search, MapPin, Package, Check, 
 		X, MoreHorizontal, ArrowRightLeft, 
 		ArrowRight, Building, AlertTriangle, Plus,
-		Eye, Save, ChevronLeft, ChevronRight
+		Eye, Save, ChevronLeft, ChevronRight,
+		FileText, Settings
 	} from 'lucide-svelte';
 
 
@@ -28,6 +29,8 @@
 	let showTransferModal = $state(false);
 	let targetBranchId = $state('');
 	let transferLoading = $state(false);
+
+
 
 
 
@@ -88,6 +91,7 @@
 				cost_price,
 				selling_price,
 				expiry_date,
+				low_stock_threshold,
 				updated_at
 			`)
 			.eq('tenant_id', currentTenantId)
@@ -123,6 +127,7 @@
 				sku: row.sku,
 				unit_price: row.selling_price,
 				cost_price: row.cost_price,
+				low_stock_threshold: row.low_stock_threshold || 10,
 				image_url: row.image_url,
 				is_expiring_soon: soon
 			};
@@ -146,7 +151,8 @@
 					stock_quantity: item.stock_quantity,
 					unit_price: item.unit_price,
 					cost_price: item.cost_price,
-					expiry_date: item.expiry_date
+					expiry_date: item.expiry_date,
+					low_stock_threshold: item.low_stock_threshold
 				}
 			};
 		}
@@ -170,6 +176,7 @@
 				const { error: biErr } = await supabase.from('branch_inventory')
 					.update({
 						stock_quantity: vals.stock_quantity,
+						low_stock_threshold: vals.low_stock_threshold,
 						expiry_date: vals.expiry_date || null,
 						updated_at: new Date().toISOString()
 					})
@@ -423,9 +430,11 @@
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Product Information</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Location</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">In Stock</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Low Stock Lvl</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l">Selling Price</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost Price</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l">Expiry</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-gray-100">
@@ -484,6 +493,22 @@
 										<div class="text-[10px] text-gray-500 uppercase tracking-tighter">Total: {item.stock_quantity}</div>
 									{/if}
 								</td>
+								<td class="px-4 py-3 text-center border-l bg-gray-50/30">
+									{#if isSelected}
+										<input 
+											type="number" 
+											bind:value={editingValues[invId].low_stock_threshold}
+											class="w-16 px-2 py-1.5 bg-white border border-indigo-200 rounded-lg text-center font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 h-9 transition-all"
+										/>
+									{:else}
+										<div class="flex flex-col items-center">
+											<span class="text-sm font-black text-gray-600">{item.low_stock_threshold}</span>
+											{#if item.stock_quantity <= item.low_stock_threshold}
+												<span class="text-[8px] font-black bg-red-100 text-red-600 px-1 py-0.5 rounded uppercase mt-1">Low Stock</span>
+											{/if}
+										</div>
+									{/if}
+								</td>
 								<td class="px-4 py-3 border-l">
 									{#if isSelected}
 										<div class="relative">
@@ -529,6 +554,15 @@
 											{/if}
 										</div>
 									{/if}
+								</td>
+								<td class="px-4 py-3 text-right">
+									<a 
+										href="/inventory/{item.inv_id}?branchId={item.branch_id}"
+										class="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all inline-block"
+										title="View Supply & Sale Details"
+									>
+										<Eye class="h-4 w-4" />
+									</a>
 								</td>
 							</tr>
 						{/each}

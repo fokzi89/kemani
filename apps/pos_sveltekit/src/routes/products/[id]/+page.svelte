@@ -61,16 +61,15 @@
 				}
 			}
 
-			// 3. Fetch Sale History from sale_items (Tenant and Branch scoped via RLS or explicit filter)
+			// 3. Fetch Sale History from sale_items
 			const { data: sData } = await supabase.from('sale_items')
-				.select('*, sales!inner(created_at, payment_method, status, users:cashier_id(full_name))')
+				.select('*')
 				.eq('product_id', productId)
 				.order('created_at', { ascending: false });
 			
 			salesHistory = (sData || []).map((item: any) => ({
 				...item,
-				sale_date: item.sales.created_at,
-				cashier_name: item.sales.users?.full_name || 'System',
+				sale_date: item.created_at,
 				total: item.subtotal
 			}));
 
@@ -451,8 +450,6 @@
 										<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Sale Code</th>
 										<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Qty</th>
 										<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Subtotal</th>
-										<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Profit</th>
-										<th class="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Cashier</th>
 									</tr>
 								</thead>
 								<tbody class="divide-y divide-gray-50">
@@ -469,10 +466,6 @@
 											</td>
 											<td class="px-6 py-5 text-sm font-black text-gray-900">{sale.quantity}</td>
 											<td class="px-6 py-5 text-sm font-black text-emerald-600">{formatCurrency(sale.total)}</td>
-											<td class="px-6 py-5 text-sm font-bold text-indigo-600">{formatCurrency(sale.gross_profit)}</td>
-											<td class="px-8 py-5 text-right">
-												<span class="text-xs font-bold text-gray-600">{sale.cashier_name}</span>
-											</td>
 										</tr>
 									{:else}
 										<tr><td colspan="6" class="text-center py-20 text-gray-400 italic">No sales recorded for this product yet.</td></tr>
