@@ -2,12 +2,13 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { supabase } from '$lib/supabase';
 	import { goto } from '$app/navigation';
-	import { ArrowLeft, Save, AlertCircle, Plus, Image as ImageIcon } from 'lucide-svelte';
+	import { ArrowLeft, Save, AlertCircle, Plus, Image as ImageIcon, CheckCircle } from 'lucide-svelte';
 	import FileUpload from '$lib/components/FileUpload.svelte';
 
 	let tenantId = $state('');
 	let loading = $state(false);
 	let error = $state('');
+	let success = $state('');
 	let form = $state({
 		product_type: 'Grocery',
 		name: '', barcode: '', description: '', category: '',
@@ -119,16 +120,30 @@
 		if (!tenantId) { error = 'User session error: Tenant ID not found. Please refresh.'; return; }
 		if (!form.name) { error = 'Product name is required'; return; }
 		
-		loading = true; error = '';
+		loading = true; error = ''; success = '';
 		try {
 			// Duplicate check
-			const { data: existing } = await supabase.from('products')
-				.select('id')
-				.ilike('name', form.name)
-				.single();
+			let query = supabase.from('products').select('id').ilike('name', form.name);
 			
-			if (existing) {
-				error = `A product with the name "${form.name}" already exists in the catalog.`;
+			if (form.product_type === 'Drug') {
+				if (form.strength) {
+					query = query.ilike('strength', form.strength);
+				} else {
+					query = query.is('strength', null);
+				}
+			}
+
+			const { data: existingRecords, error: checkErr } = await query.limit(1);
+			
+			if (checkErr) {
+				error = checkErr.message || 'Failed to verify product uniqueness';
+				loading = false;
+				return;
+			}
+
+			if (existingRecords && existingRecords.length > 0) {
+				const strengthMsg = form.product_type === 'Drug' && form.strength ? ` and strength "${form.strength}"` : '';
+				error = `A product with the name "${form.name}"${strengthMsg} already exists in the catalog.`;
 				loading = false;
 				return;
 			}
@@ -164,7 +179,24 @@
 					await supabase.from('products').update({ image_url: publicUrl }).eq('id', productData.id);
 				}
 			}
-			goto('/products');
+			
+			success = `Product "${form.name}" added successfully!`;
+			form = {
+				product_type: form.product_type,
+				name: '', barcode: '', description: '', category: '',
+				is_active: true,
+				generic_name: '', strength: '', dosage_form: '', 
+				treatment_class: '', manufacturer: '',
+				test_name: '', sample_type: ''
+			};
+			file = null;
+			previewUrl = '';
+			categorySearch = '';
+			
+			setTimeout(() => {
+				success = '';
+			}, 4000);
+			
 		} catch (err: any) {
 			error = err.message || 'Failed to create product';
 		} finally {
@@ -187,6 +219,12 @@
 	{#if error}
 		<div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-5 flex items-start gap-2">
 			<AlertCircle class="h-5 w-5 flex-shrink-0 mt-0.5" /><p class="text-sm">{error}</p>
+		</div>
+	{/if}
+
+	{#if success}
+		<div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg mb-5 flex items-start gap-2">
+			<CheckCircle class="h-5 w-5 flex-shrink-0 mt-0.5" /><p class="text-sm font-medium">{success}</p>
 		</div>
 	{/if}
 

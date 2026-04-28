@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { supabase } from '$lib/supabase';
 	import { goto } from '$app/navigation';
-	import { Search, Plus, Package, Edit, Eye, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-svelte';
+	import { Search, Plus, Package, Edit, Eye, AlertTriangle, ChevronLeft, ChevronRight, Info, Download } from 'lucide-svelte';
 
 	let products = $state<any[]>([]);
 	let filtered = $state<any[]>([]);
@@ -281,11 +281,73 @@
 		if (diffMonths >= 12) return 'bg-green-50 text-green-700 border-green-200';
 		return 'bg-gray-50';
 	}
+
+	function downloadTemplate() {
+		const headers = ['name', 'product_type', 'category', 'barcode', 'description', 'generic_name', 'strength', 'dosage_form', 'manufacturer', 'sample_type'];
+		const tableHeader = headers.map(h => `<th style="background-color: #4f46e5; color: white; border: 1px solid #e5e7eb;">${h}</th>`).join('');
+		const tableHtml = `
+			<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+			<head>
+				<meta charset="UTF-8">
+				<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Bulk Product Template</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+			</head>
+			<body>
+				<table>
+					<thead>
+						<tr>${tableHeader}</tr>
+					</thead>
+				</table>
+			</body>
+			</html>`;
+		
+		const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel' });
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = 'bulk_product_template.xls';
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+	}
+
+	let topScrollRef = $state<HTMLDivElement | null>(null);
+	let tableScrollRef = $state<HTMLDivElement | null>(null);
+
+	function handleTopScroll() {
+		if (topScrollRef && tableScrollRef) {
+			tableScrollRef.scrollLeft = topScrollRef.scrollLeft;
+		}
+	}
+
+	function handleTableScroll() {
+		if (topScrollRef && tableScrollRef) {
+			topScrollRef.scrollLeft = tableScrollRef.scrollLeft;
+		}
+	}
 </script>
 
 <svelte:head><title>Products – Kemani POS</title></svelte:head>
 
 <div class="p-6 space-y-5 max-w-7xl mx-auto">
+	<!-- Bulk Upload Info -->
+	<div class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-500">
+		<div class="flex items-center gap-3 flex-1">
+			<div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+				<Info class="h-5 w-5 text-blue-600" />
+			</div>
+			<div>
+				<h3 class="font-bold text-blue-900 text-sm">Bulk Product Upload</h3>
+				<p class="text-xs text-blue-700 mt-0.5">To upload products in bulk, please download the template below, fill it accurately, and send it to the admin for processing.</p>
+			</div>
+		</div>
+		<button 
+			onclick={downloadTemplate}
+			class="inline-flex items-center justify-center gap-2 bg-white border border-blue-200 text-blue-700 font-bold px-4 py-2.5 rounded-xl hover:bg-blue-50 transition-all text-sm shadow-sm"
+		>
+			<Download class="h-4 w-4" /> Download Excel Template
+		</button>
+	</div>
+
 	<!-- Batch Result Notification -->
 	{#if lastResult}
 		<div class="bg-green-50 border border-green-200 rounded-xl p-4 flex gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -350,7 +412,17 @@
 	</div>
 
 	<!-- Table -->
-	<div class="bg-white rounded-xl border overflow-hidden">
+	<div class="bg-white rounded-xl border overflow-hidden flex flex-col">
+		{#if !loading && paginated.length > 0}
+			<div 
+				bind:this={topScrollRef} 
+				onscroll={handleTopScroll}
+				class="overflow-x-auto h-3 border-b bg-gray-50/50 scrollbar-thin"
+			>
+				<div style="width: 1200px; height: 1px;"></div>
+			</div>
+		{/if}
+
 		{#if loading}
 			<div class="p-12 text-center"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto"></div></div>
 		{:else if paginated.length === 0}
@@ -360,7 +432,7 @@
 				<a href="/products/new" class="mt-3 inline-block text-sm text-indigo-600 hover:underline">Add your first product</a>
 			</div>
 		{:else}
-			<div class="overflow-x-auto">
+			<div bind:this={tableScrollRef} onscroll={handleTableScroll} class="overflow-x-auto">
 				<table class="w-full text-sm min-w-[1200px]">
 					<thead class="bg-gray-50 border-b">
 						<tr>
@@ -377,7 +449,7 @@
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Batch No</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Exp Date</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</th>
-							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Unit Cost</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost Price</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Selling</th>
 							<th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider uppercase tracking-wider">Type/Actions</th>
 						</tr>
