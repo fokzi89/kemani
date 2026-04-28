@@ -448,6 +448,9 @@
 									<tr>
 										<th class="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date & Time</th>
 										<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Sale Code</th>
+										<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</th>
+										<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Cashier</th>
+										<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Provider</th>
 										<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Qty</th>
 										<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Subtotal</th>
 									</tr>
@@ -464,11 +467,20 @@
 													#{sale.id.split('-')[0]}
 												</span>
 											</td>
+											<td class="px-6 py-5">
+												<p class="text-xs font-bold text-gray-700">{sale.customer_name || 'Walk-in'}</p>
+											</td>
+											<td class="px-6 py-5">
+												<p class="text-xs font-bold text-gray-700">{sale.cashier_name || '-'}</p>
+											</td>
+											<td class="px-6 py-5">
+												<p class="text-xs font-bold text-gray-700">{sale.healthcare_provider_name || '-'}</p>
+											</td>
 											<td class="px-6 py-5 text-sm font-black text-gray-900">{sale.quantity}</td>
 											<td class="px-6 py-5 text-sm font-black text-emerald-600">{formatCurrency(sale.total)}</td>
 										</tr>
 									{:else}
-										<tr><td colspan="6" class="text-center py-20 text-gray-400 italic">No sales recorded for this product yet.</td></tr>
+										<tr><td colspan="7" class="text-center py-20 text-gray-400 italic">No sales recorded for this product yet.</td></tr>
 									{/each}
 								</tbody>
 							</table>

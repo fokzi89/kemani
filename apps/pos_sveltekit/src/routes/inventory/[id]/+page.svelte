@@ -474,33 +474,45 @@
 						<div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
 							<div class="overflow-x-auto">
 								<table class="w-full text-left whitespace-nowrap min-w-[800px]">
-									<thead class="bg-gray-50">
-										<tr>
-											<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase">Sale Date & Time</th>
-											<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase">Sale Code</th>
-											<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase">Qty Sold</th>
-											<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase">Unit Price</th>
-											<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase">Total Revenue</th>
+								<thead class="bg-gray-50">
+									<tr>
+										<th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase">Sale Date & Time</th>
+										<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase">Sale Code</th>
+										<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase">Customer</th>
+										<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase">Cashier</th>
+										<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase">Provider</th>
+										<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase text-center">Qty Sold</th>
+										<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase">Unit Price</th>
+										<th class="px-4 py-4 text-[10px] font-black text-gray-400 uppercase">Total Revenue</th>
+									</tr>
+								</thead>
+								<tbody class="divide-y divide-gray-50">
+									{#each sales as sale}
+										<tr class="hover:bg-gray-50/50 transition-colors">
+											<td class="px-6 py-4">
+												<p class="text-sm font-bold text-gray-900">{new Date(sale.sale_date).toLocaleDateString()}</p>
+												<p class="text-[10px] text-gray-400 font-medium">{new Date(sale.sale_date).toLocaleTimeString()}</p>
+											</td>
+											<td class="px-4 py-4">
+												<span class="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md font-bold font-mono">{sale.sales?.sale_number || 'UNKNOWN'}</span>
+											</td>
+											<td class="px-4 py-4">
+												<p class="text-xs font-bold text-gray-700">{sale.customer_name || 'Walk-in'}</p>
+											</td>
+											<td class="px-4 py-4">
+												<p class="text-xs font-bold text-gray-700">{sale.cashier_name || '-'}</p>
+											</td>
+											<td class="px-4 py-4">
+												<p class="text-xs font-bold text-gray-700">{sale.healthcare_provider_name || '-'}</p>
+											</td>
+											<td class="px-4 py-4 text-sm font-black text-gray-900 text-center bg-gray-50/50">{sale.quantity}</td>
+											<td class="px-4 py-4 text-sm text-gray-500 font-medium border-l border-gray-50">{formatCurrency(sale.unit_price)}</td>
+											<td class="px-4 py-4 text-sm font-black text-emerald-600">{formatCurrency(sale.total)}</td>
 										</tr>
-									</thead>
-									<tbody class="divide-y divide-gray-50">
-										{#each sales as sale}
-											<tr class="hover:bg-gray-50/50 transition-colors">
-												<td class="px-6 py-4">
-													<p class="text-sm font-bold text-gray-900">{new Date(sale.sale_date).toLocaleDateString()}</p>
-													<p class="text-[10px] text-gray-400 font-medium">{new Date(sale.sale_date).toLocaleTimeString()}</p>
-												</td>
-												<td class="px-4 py-4">
-													<span class="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md font-bold font-mono">{sale.sales?.sale_number || 'UNKNOWN'}</span>
-												</td>
-												<td class="px-4 py-4 text-sm font-black text-gray-900 text-center bg-gray-50/50">{sale.quantity}</td>
-												<td class="px-4 py-4 text-sm text-gray-500 font-medium border-l border-gray-50">{formatCurrency(sale.unit_price)}</td>
-												<td class="px-4 py-4 text-sm font-black text-emerald-600">{formatCurrency(sale.total)}</td>
-											</tr>
-										{:else}
-											<tr><td colspan="6" class="text-center py-10 text-gray-400 italic font-medium">This product has not been sold yet!</td></tr>
-										{/each}
-									</tbody>
+									{:else}
+										<tr><td colspan="8" class="text-center py-10 text-gray-400 italic font-medium">This product has not been sold yet!</td></tr>
+									{/each}
+								</tbody>
 								</table>
 							</div>
 						</div>
