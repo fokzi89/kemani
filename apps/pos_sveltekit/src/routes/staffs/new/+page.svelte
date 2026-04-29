@@ -41,7 +41,12 @@
 		canReferDoctor: true
 	});
 
-	const roles = ['manager', 'cashier', 'pharmacist', 'tenant_admin'];
+	const roles = [
+		{ id: 'branch_manager', label: 'Manager' },
+		{ id: 'cashier', label: 'Cashier' },
+		{ id: 'pharmacist', label: 'Pharmacist' },
+		{ id: 'doctor', label: 'Doctor' }
+	];
 
 	const privileges = [
 		{ key: 'canManagePOS', label: 'POS Access', description: 'Can process sales' },
@@ -61,6 +66,13 @@
 		{ key: 'canApplyDiscount', label: 'Discounts', description: 'Can apply manual discounts' },
 		{ key: 'canReferDoctor', label: 'Doctor Referrals', description: 'Can refer patients to doctors' }
 	];
+
+	let allPrivilegesSelected = $derived(privileges.every(p => form[p.key]));
+
+	function toggleAllPrivileges() {
+		const targetState = !allPrivilegesSelected;
+		privileges.forEach(p => form[p.key] = targetState);
+	}
 
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
@@ -229,7 +241,7 @@
 						<select id="inv_role" bind:value={form.role}
 							class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white">
 							{#each roles as r}
-								<option value={r}>{r.replace('_', ' ')}</option>
+								<option value={r.id}>{r.label}</option>
 							{/each}
 						</select>
 					</div>
@@ -248,9 +260,24 @@
 
 			<!-- Access Privileges -->
 			<div class="bg-white rounded-xl border p-5 space-y-4">
-				<h2 class="font-semibold text-sm uppercase tracking-wider text-gray-500 flex items-center gap-2">
-					<Shield class="h-3.5 w-3.5" /> Initial Access Privileges
-				</h2>
+				<div class="flex items-center justify-between">
+					<h2 class="font-semibold text-sm uppercase tracking-wider text-gray-500 flex items-center gap-2">
+						<Shield class="h-3.5 w-3.5" /> Initial Access Privileges
+					</h2>
+					<button 
+						type="button"
+						onclick={toggleAllPrivileges}
+						class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
+					>
+						<span class="text-[10px] font-black uppercase tracking-widest {allPrivilegesSelected ? 'text-indigo-600' : 'text-gray-400'}">
+							{allPrivilegesSelected ? 'Deselect All' : 'Select All'}
+						</span>
+						<div class="relative shrink-0 scale-75">
+							<div class="w-9 h-5 {allPrivilegesSelected ? 'bg-indigo-600' : 'bg-gray-200'} rounded-full transition-colors"></div>
+							<div class="absolute top-[3px] left-[3px] h-3.5 w-3.5 bg-white rounded-full shadow transition-all {allPrivilegesSelected ? 'translate-x-4' : ''}"></div>
+						</div>
+					</button>
+				</div>
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
 					{#each privileges as priv}
 						<label class="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">

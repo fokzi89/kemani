@@ -38,6 +38,13 @@
 		{ key: 'canReferDoctor', label: 'Doctor Referrals', description: 'Can refer patients to doctors' }
 	];
 
+	let allPrivilegesSelected = $derived(privileges.every(p => privilegeForm[p.key]));
+
+	function toggleAllPrivileges() {
+		const targetState = !allPrivilegesSelected;
+		privileges.forEach(p => privilegeForm[p.key] = targetState);
+	}
+
 	let filteredStaff = $derived(
 		staff.filter(s =>
 			!searchQuery ||
@@ -368,7 +375,17 @@
 					</div>
 					<div>
 						<h2 class="text-lg font-extrabold text-gray-900">{editingStaff.full_name}</h2>
-						<p class="text-xs text-gray-500">Edit Access Privileges</p>
+						<div class="flex items-center gap-3">
+							<p class="text-xs text-gray-500">Edit Access Privileges</p>
+							<span class="text-gray-300">•</span>
+							<button 
+								type="button" 
+								onclick={toggleAllPrivileges}
+								class="text-[10px] font-black uppercase tracking-widest hover:text-blue-600 transition-colors {allPrivilegesSelected ? 'text-blue-600' : 'text-gray-400'}"
+							>
+								{allPrivilegesSelected ? 'Deselect All' : 'Select All'}
+							</button>
+						</div>
 					</div>
 				</div>
 				<button onclick={() => showPrivilegesModal = false} disabled={savingPrivileges} class="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-50 rounded-xl transition-colors" aria-label="Close">

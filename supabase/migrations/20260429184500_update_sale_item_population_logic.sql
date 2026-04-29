@@ -1,7 +1,7 @@
 -- ============================================================
--- Migration: Populate Sale Item Names
+-- Migration: Update Sale Item Population Logic
 -- Description: Updates the populate_sale_item_details function to fetch and snapshot
---              customer_name, cashier_name, and healthcare_provider_name.
+--              city, state, country (from branch) and generic_name (from product).
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION populate_sale_item_details()
@@ -15,9 +15,12 @@ DECLARE
     v_customer_name TEXT;
     v_cashier_name TEXT;
     v_provider_name TEXT;
+    v_city TEXT;
+    v_state TEXT;
+    v_country TEXT;
 BEGIN
-    -- 1. Get product details from catalog
-    SELECT p.name, p.barcode as sku, p.category_id, c.name as category_name
+    -- 1. Get product details from catalog (including generic_name)
+    SELECT p.name, p.barcode as sku, p.category_id, c.name as category_name, p.generic_name
     INTO r_prod
     FROM public.products p
     LEFT JOIN public.categories c ON c.id = p.category_id
@@ -44,7 +47,7 @@ BEGIN
     NEW.customer_id := COALESCE(NEW.customer_id, v_customer_id);
     NEW.cashier_id := COALESCE(NEW.cashier_id, v_cashier_id);
 
-    -- 4. Fetch Names for the consolidated IDs if they aren't already provided in NEW
+    -- 4. Fetch Names and Locations for the consolidated IDs
     -- Customer Name
     IF NEW.customer_name IS NULL THEN
         IF NEW.customer_id IS NOT NULL THEN
@@ -53,7 +56,7 @@ BEGIN
         END IF;
         -- Fallback to the name on the sale record if customer_id doesn't yield a name (e.g. walk-in)
         IF NEW.customer_name IS NULL THEN
-            NEW.customer_name := v_customer_name; -- This v_customer_name came from the sales table SELECT above
+            NEW.customer_name := v_customer_name; 
         END IF;
     END IF;
 
@@ -69,12 +72,25 @@ BEGIN
         NEW.healthcare_provider_name := v_provider_name;
     END IF;
 
+    -- Location Details (from branch)
+    IF (NEW.city IS NULL OR NEW.state IS NULL OR NEW.country IS NULL) AND NEW.branch_id IS NOT NULL THEN
+        SELECT city, state, country 
+        INTO v_city, v_state, v_country 
+        FROM public.branches 
+        WHERE id = NEW.branch_id;
+        
+        NEW.city := COALESCE(NEW.city, v_city);
+        NEW.state := COALESCE(NEW.state, v_state);
+        NEW.country := COALESCE(NEW.country, v_country);
+    END IF;
+
     -- 5. Populate metadata snapshots for product
     IF r_prod IS NOT NULL THEN
         NEW.product_name := COALESCE(NEW.product_name, r_prod.name);
         NEW.product_sku := COALESCE(NEW.product_sku, r_prod.sku);
         NEW.category_id := COALESCE(NEW.category_id, r_prod.category_id);
         NEW.category_name := COALESCE(NEW.category_name, r_prod.category_name);
+        NEW.generic_name := COALESCE(NEW.generic_name, r_prod.generic_name);
         NEW.unit_of_measure := COALESCE(NEW.unit_of_measure, 'piece');
 
         -- 5b. Fetch unit_cost from branch_inventory if missing
@@ -95,3 +111,5 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION populate_sale_item_details IS 'Trigger function to auto-populate product snapshot details, location context, and names in sale_items';

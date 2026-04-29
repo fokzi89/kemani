@@ -23,6 +23,7 @@
 	let selectedCategory = $state('all');
 	let categories       = $state<string[]>([]);
 	let tenantId         = $state('');
+	let tenantName       = $state('');
 	let userBranchId     = $state('');
 	let loading          = $state(true);
 
@@ -45,6 +46,7 @@
 	let saleSuccess       = $state(false);
 	let lastSale          = $state<any>(null);
 	let processingPayment = $state(false);
+	let receiptSize       = $state<'A4' | 'ticket'>('ticket');
 
 	// ── Derived ───────────────────────────────────────────────────────────────
 	let activeItems = $derived(carts[activeCartIdx].items);
@@ -65,6 +67,11 @@
 		if (user) {
 			tenantId = user.tenant_id;
 			userBranchId = user.branch_id;
+			
+			// Fetch business name
+			const { data: tData } = await supabase.from('tenants').select('name').eq('id', tenantId).single();
+			if (tData) tenantName = tData.name;
+
 			if (userBranchId) await loadProducts();
 		}
 		loading = false;
@@ -203,7 +210,10 @@
 					unit_price: i.price,
 					subtotal: i.price * i.qty,
 					discount_amount: 0,
-					discount_percent: 0
+					discount_percent: 0,
+					city: localStorage.getItem('pos_city'),
+					state: localStorage.getItem('pos_state'),
+					country: localStorage.getItem('pos_country')
 				}))
 			);
 			if (itemsErr) throw itemsErr;
@@ -241,7 +251,13 @@
 	}
 </script>
 
-<svelte:head><title>POS – Kemani POS</title></svelte:head>
+<svelte:head>
+	<title>
+		{saleSuccess && lastSale 
+			? `${tenantName || 'Kemani'} - ${lastSale.sale_number}` 
+			: 'POS – Kemani POS'}
+	</title>
+</svelte:head>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
      LAYOUT: Desktop = [Products | Cart]   Mobile = [Cart full-screen]
@@ -586,7 +602,7 @@
 
 <!-- ── Sale Success & Receipt Modal ────────────────────────────────────────── -->
 {#if saleSuccess && lastSale}
-	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+	<div class="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200 receipt-modal-container">
 		<div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
 			<!-- Header -->
 			<div class="p-4 border-b flex items-center justify-between bg-gray-50">
@@ -594,16 +610,32 @@
 					<Receipt class="h-5 w-5" />
 					<span class="font-bold uppercase tracking-wider text-sm">Receipt</span>
 				</div>
-				<button onclick={() => saleSuccess = false} class="p-2 hover:bg-gray-200 rounded-full transition-colors">
-					<X class="h-5 w-5 text-gray-500" />
-				</button>
+				<div class="flex items-center gap-3">
+					<div class="flex bg-gray-100 p-1 rounded-lg border border-gray-200 mr-2">
+						<button 
+							onclick={() => receiptSize = 'ticket'}
+							class="px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-md transition-all {receiptSize === 'ticket' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}"
+						>
+							Ticket
+						</button>
+						<button 
+							onclick={() => receiptSize = 'A4'}
+							class="px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-md transition-all {receiptSize === 'A4' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}"
+						>
+							A4
+						</button>
+					</div>
+					<button onclick={() => saleSuccess = false} class="p-2 hover:bg-gray-200 rounded-full transition-colors">
+						<X class="h-5 w-5 text-gray-500" />
+					</button>
+				</div>
 			</div>
 
 			<!-- Scrollable Receipt Content -->
-			<div id="printable-receipt" class="flex-1 overflow-y-auto p-6 space-y-6 print:p-0">
+			<div id="printable-receipt" class="flex-1 overflow-y-auto p-6 space-y-6 print:p-0 {receiptSize === 'ticket' ? 'receipt-ticket' : 'receipt-a4'}">
 				<!-- Header info -->
 				<div class="text-center space-y-1">
-					<h2 class="text-xl font-bold text-gray-900">Kemani POS</h2>
+					<h2 class="text-xl font-bold text-gray-900">{tenantName || 'Kemani POS'}</h2>
 					<p class="text-xs text-gray-500 font-mono">{lastSale.sale_number}</p>
 					<p class="text-xs text-gray-400 font-medium">Date: {new Date(lastSale.created_at).toLocaleString()}</p>
 				</div>
@@ -668,8 +700,12 @@
 					</div>
 				{/if}
 
-				<div class="text-center pt-4 border-t-2 border-dashed border-gray-100">
+				<div class="text-center pt-4 border-t-2 border-dashed border-gray-100 space-y-2">
 					<p class="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">Thank you for your business!</p>
+					<div class="pt-2">
+						<p class="text-[8px] text-gray-400 font-medium">Powered by <a href="https://www.kemani.com" target="_blank" class="text-indigo-400 underline decoration-indigo-200">Kemani POS</a></p>
+						<p class="text-[7px] text-gray-300">www.kemani.com</p>
+					</div>
 				</div>
 			</div>
 
@@ -706,33 +742,83 @@
 
 	/* ── Print Styles ───────────────────────────────────────────────────────── */
 	@media print {
-		/* Hide everything except the receipt */
-		:global(body > *:not(.fixed)) { display: none !important; }
-		:global(.fixed:not(:has(#printable-receipt))) { display: none !important; }
-		
-		#printable-receipt {
-			position: fixed;
-			inset: 0;
-			background: white;
-			z-index: 9999;
-			visibility: visible;
-			padding: 0;
-			margin: 0;
-			width: 100%;
-			height: 100%;
+		@page { margin: 0; }
+
+		/* 1. Hide everything by default using visibility */
+		:global(body) {
+			visibility: hidden !important;
+			background: white !important;
 		}
 
-		/* Reset modal styling for print */
-		#printable-receipt * { visibility: visible; }
-		:global(header), :global(nav), .p-4.border-b, .p-4.bg-gray-50.border-t { display: none !important; }
+		/* 2. Show the receipt modal container and all its content */
+		:global(.receipt-modal-container),
+		:global(.receipt-modal-container *) {
+			visibility: visible !important;
+		}
+
+		/* 3. Position the container to the top of the print page */
+		:global(.receipt-modal-container) {
+			position: absolute !important;
+			left: 0 !important;
+			top: 0 !important;
+			width: 100% !important;
+			display: block !important;
+			padding: 0 !important;
+			margin: 0 !important;
+			background: white !important;
+		}
+
+		/* 4. Reset the inner modal box for print */
+		:global(.receipt-modal-container > div) {
+			box-shadow: none !important;
+			border: none !important;
+			max-width: 100% !important;
+			width: 100% !important;
+			max-height: none !important;
+			height: auto !important;
+		}
+
+		/* 5. Formatting for specific sizes */
+		.receipt-ticket {
+			width: 80mm !important;
+			padding: 4mm !important;
+			margin: 0 auto !important;
+			display: block !important;
+		}
+
+		.receipt-a4 {
+			width: 210mm !important;
+			padding: 15mm !important;
+			margin: 0 auto !important;
+			display: block !important;
+		}
+
+		/* 6. Hide UI elements (Header, Buttons, etc.) */
+		.p-4.border-b, 
+		.p-4.bg-gray-50, 
+		:global(button),
+		:global(.receipt-modal-container .X) {
+			display: none !important;
+			visibility: hidden !important;
+		}
+
+		/* 7. Ensure the receipt itself is visible and not scrollable */
+		#printable-receipt {
+			display: block !important;
+			overflow: visible !important;
+			padding: 0 !important;
+		}
 	}
 
 	/* ── Animations ─────────────────────────────────────────────────────────── */
 	.animate-in { animation-duration: 200ms; animation-fill-mode: both; }
 	.fade-in { animation-name: fadeIn; }
 	.zoom-in-95 { animation-name: zoomIn95; }
+	
+	/* ── Receipt Preview ────────────────────────────────────────────────────── */
+	.receipt-ticket { max-width: 100%; margin: 0 auto; }
+	.receipt-a4 { max-width: 100%; margin: 0 auto; aspect-ratio: 1 / 1.414; }
 
 	@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 	@keyframes zoomIn95 { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-
 </style>

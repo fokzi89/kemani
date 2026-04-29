@@ -23,6 +23,15 @@
 
 	let userRole = $state('');
 	let branches = $state<any[]>([]);
+	let canUpload = $derived(
+		selectedIds.length > 0 && 
+		selectedIds.every(id => {
+			const p = products.find(prod => prod.id === id);
+			if (!p) return false;
+			const prov = p.provisioning;
+			return prov.qty > 0 && prov.cost > 0 && prov.selling > 0 && prov.unit_of_measure;
+		})
+	);
 
 	// Invoice Details Modal State
 	let showInvoiceModal = $state(false);
@@ -107,7 +116,7 @@
 		
 		products = (data || []).map(p => ({
 			...p,
-			provisioning: { qty: 0, batch: '', cost: 0, selling: 0, expiry: '', supplier_id: null }
+			provisioning: { qty: 0, batch: '', cost: 0, selling: 0, expiry: '', supplier_id: null, unit_of_measure: p.unit_of_measure || 'unit' }
 		}));
 		categories = [...new Set(products.map(p => p.category).filter(Boolean))];
 		applyFilter();
@@ -125,13 +134,23 @@
 		);
 		filtered = r;
 		page = 1;
-		selectedIds = [];
 		lastResult = null;
 	}
 
 	async function prepareStockProvision() {
 		if (!invoiceForm.targetBranchId) { alert('No branch selected for provisioning.'); return; }
 		if (selectedIds.length === 0) return;
+
+		// Validation: Ensure all selected products have qty, cost, selling, and UOM
+		for (const id of selectedIds) {
+			const p = products.find(prod => prod.id === id);
+			if (!p) continue;
+			const prov = p.provisioning;
+			if (!prov.qty || prov.qty <= 0 || !prov.cost || prov.cost <= 0 || !prov.selling || prov.selling <= 0 || !prov.unit_of_measure) {
+				alert(`Incomplete details for ${p.name}. Please fill in Quantity, Cost, Price, and Unit of Measure.`);
+				return;
+			}
+		}
 		
 		// Generate the next Purchase Order Number
 		await generateNextPOCode();
@@ -198,6 +217,7 @@
 					cost_price: product.provisioning?.cost || 0,
 					selling_price: product.provisioning?.selling || 0,
 					supplier_id: product.provisioning?.supplier_id || null,
+					unit_of_measure: product.provisioning?.unit_of_measure || 'unit',
 					product_type: product.product_type || null,
 					barcode: product.barcode || null,
 					sku: product.provisioning?.batch || null,
@@ -381,9 +401,11 @@
 					</span>
 					<button 
 						onclick={prepareStockProvision}
-						class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm shadow-lg shadow-green-100"
+						disabled={!canUpload}
+						title={!canUpload ? 'Please select products and fill all fields (Qty, Cost, Selling, UOM) to upload stock' : 'Proceed to upload stock'}
+						class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm shadow-lg shadow-green-100 disabled:opacity-30 disabled:cursor-not-allowed"
 					>
-						<Package class="h-4 w-4" /> Add to Stock
+						<Package class="h-4 w-4" /> Upload Stock
 					</button>
 				</div>
 			{/if}
@@ -449,6 +471,7 @@
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Batch No</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Exp Date</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">UOM</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost Price</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Selling</th>
 							<th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider uppercase tracking-wider">Type/Actions</th>
@@ -497,6 +520,15 @@
 										class="w-40 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium">
 										<option value={null}>No Supplier</option>
 										{#each suppliers as s}<option value={s.id}>{s.name}</option>{/each}
+									</select>
+								</td>
+								<td class="px-2 py-3">
+									<select bind:value={product.provisioning.unit_of_measure} disabled={!selectedIds.includes(product.id)}
+										class="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium">
+										<option value="unit">Unit</option>
+										<option value="sachet">Sachet</option>
+										<option value="pack">Pack</option>
+										<option value="bottle">Bottle</option>
 									</select>
 								</td>
 								<td class="px-2 py-3">

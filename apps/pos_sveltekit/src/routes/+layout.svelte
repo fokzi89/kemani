@@ -120,6 +120,19 @@
 				lastProcessedId = userId;
 				lastSyncTime = Date.now();
 				
+				// Fallback: If join failed (RLS) but we have a tenant_id, try fetching separately
+				if (data && !data.tenants && data.tenant_id) {
+					console.warn('[Layout] Tenant join returned null, attempting direct fetch...');
+					const { data: tnt } = await supabase.from('tenants').select('*').eq('id', data.tenant_id).maybeSingle();
+					if (tnt) data.tenants = tnt;
+				}
+
+				if (data && (!data.branches || data.branches.length === 0) && data.branch_id) {
+					console.warn('[Layout] Branch join returned null, attempting direct fetch...');
+					const { data: brch } = await supabase.from('branches').select('*').eq('id', data.branch_id).maybeSingle();
+					if (brch) data.branches = brch;
+				}
+
 				// Setup Realtime if not present
 				if (!realtimeChannel && data) {
 					realtimeChannel = supabase.channel(`user-${userId}`)
@@ -131,6 +144,17 @@
 						}, (payload) => {
 							if (userDataCache) userDataCache = { ...userDataCache, ...payload.new };
 						}).subscribe();
+				}
+
+				// Save location to localStorage for analytics snapshots
+				if (data?.branches) {
+					const branch = Array.isArray(data.branches) ? data.branches[0] : data.branches;
+					if (branch) {
+						localStorage.setItem('pos_city', branch.city || '');
+						localStorage.setItem('pos_state', branch.state || '');
+						localStorage.setItem('pos_country', branch.country || '');
+						console.log('[Layout] Saved branch location to localStorage:', { city: branch.city, state: branch.state });
+					}
 				}
 			}
 

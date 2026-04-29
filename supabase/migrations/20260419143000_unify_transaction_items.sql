@@ -103,7 +103,7 @@ DECLARE
     v_tenant_id UUID;
 BEGIN
     -- Get product details from catalog
-    SELECT p.name, p.sku, p.category_id, c.name as category_name, p.cost_price, p.unit_of_measure
+    SELECT p.name, p.barcode as sku, p.category_id, c.name as category_name
     INTO r_prod
     FROM public.products p
     LEFT JOIN public.categories c ON c.id = p.category_id
@@ -122,11 +122,7 @@ BEGIN
         NEW.product_sku := COALESCE(NEW.product_sku, r_prod.sku);
         NEW.category_id := COALESCE(NEW.category_id, r_prod.category_id);
         NEW.category_name := COALESCE(NEW.category_name, r_prod.category_name);
-        NEW.unit_of_measure := COALESCE(NEW.unit_of_measure, r_prod.unit_of_measure, 'piece');
-
-        IF NEW.unit_cost IS NULL AND r_prod.cost_price IS NOT NULL THEN
-            NEW.unit_cost := r_prod.cost_price;
-        END IF;
+        NEW.unit_of_measure := COALESCE(NEW.unit_of_measure, 'piece');
     END IF;
 
     -- Populate tenant and branch
