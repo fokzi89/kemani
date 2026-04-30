@@ -72,12 +72,10 @@
 
 	function calculateServiceCharge(amount: number) {
 		if (amount <= 0) return 0;
-		if (amount < 500) return 20;
-		if (amount < 5000) return 50;
-		if (amount < 10000) return 100;
-		if (amount < 25001) return 150;
-		if (amount < 1000001) return 200;
-		return 1000;
+		if (amount <= 4999) return 30;
+		if (amount <= 10000) return 50;
+		if (amount <= 100000) return 100;
+		return 150;
 	}
 
 	$: serviceCharge = calculateServiceCharge(subtotal);
@@ -235,7 +233,6 @@
 
 						<button
 							class="checkout-btn"
-							style="background: {brandColor};"
 							onclick={proceedToCheckout}
 							disabled={isLoading}
 							id="proceed-to-checkout-btn"
@@ -501,6 +498,7 @@
 		width: 100%;
 		padding: 1rem;
 		border-radius: 10px;
+		background: #111827;
 		color: #fff;
 		font-size: 0.9375rem;
 		font-weight: 700;

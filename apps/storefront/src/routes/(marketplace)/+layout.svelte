@@ -11,6 +11,7 @@
 	import { get } from 'svelte/store';
 	import { PUBLIC_APP_URL } from '$env/static/public';
 	import AuthModal from '$lib/components/AuthModal.svelte';
+	import { cartStore, cartCount } from '$lib/stores/cart.store';
 
 	export let data;
 
@@ -20,7 +21,6 @@
 
 	let isMenuOpen = false;
 	let isScrolled = false;
-	let cartCount = 0;
 	let isAccountOpen = false;
 
 	async function toggleChat(type: 'Customer Support' | 'Consultation' = 'Customer Support') { 
@@ -112,13 +112,6 @@
 		const handleScroll = () => { isScrolled = window.scrollY > 20; };
 		window.addEventListener('scroll', handleScroll);
 
-		const updateCart = () => {
-			try {
-				const cart = JSON.parse(localStorage.getItem('cart') || '{"items":[]}');
-				cartCount = cart.items.reduce((s: number, i: any) => s + i.quantity, 0);
-			} catch { cartCount = 0; }
-		};
-
 		// Sync customer record AND handle pending chat redirect whenever auth changes
 		const unsubscribe = currentUser.subscribe(async (user) => {
 			if (user) {
@@ -137,14 +130,8 @@
 			}
 		});
 
-		updateCart();
-		window.addEventListener('storage', updateCart);
-		window.addEventListener('cart-updated', updateCart);
-
 		return () => {
 			window.removeEventListener('scroll', handleScroll);
-			window.removeEventListener('storage', updateCart);
-			window.removeEventListener('cart-updated', updateCart);
 			unsubscribe();
 		};
 	});
@@ -227,11 +214,14 @@
 							{/if}
 						</div>
 
-						<a href="/cart" class="relative group">
-							<ShoppingCart class="h-4 w-4 text-gray-900" />
-							{#if cartCount > 0}
-								<span class="absolute -top-2 -right-2 bg-gray-900 text-white text-[8px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-white">
-									{cartCount}
+						<a 
+							href="/cart" 
+							class="relative group p-1.5 hover:bg-gray-100/50 rounded-full transition-all"
+						>
+							<ShoppingCart class="h-6 w-6 text-gray-900" />
+							{#if $cartCount > 0}
+								<span class="absolute -top-1 -right-1 bg-white text-gray-900 text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border border-gray-100 shadow-md animate-in zoom-in-50 duration-300">
+									{$cartCount}
 								</span>
 							{/if}
 						</a>

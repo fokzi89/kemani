@@ -21,9 +21,19 @@ const getInitialCart = (): Cart => {
 		const stored = localStorage.getItem('cart');
 		if (stored) {
 			try {
-				return JSON.parse(stored);
-			} catch {
-				return { items: [], tenant_id: null };
+				const cart = JSON.parse(stored);
+				if (cart && Array.isArray(cart.items)) {
+					// Filter out any items with invalid quantity
+					cart.items = cart.items.filter((item: any) => 
+						item && 
+						typeof item.quantity === 'number' && 
+						item.quantity > 0 &&
+						(item.product_id || item.id)
+					);
+					return cart;
+				}
+			} catch (e) {
+				console.error('Failed to parse cart from localStorage:', e);
 			}
 		}
 	}
@@ -104,14 +114,26 @@ export const cartCount = derived(cartStore, $cart =>
 );
 
 export const cartSubtotal = derived(cartStore, $cart =>
-	$cart.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0)
+	$cart.items.reduce((sum, item: any) => sum + ((item.unit_price || item.price || 0) * item.quantity), 0)
 );
 
 export const cartTax = derived(cartSubtotal, $subtotal =>
 	$subtotal * 0.075 // 7.5% VAT
 );
 
+export const calculateServiceCharge = (amount: number) => {
+	if (amount <= 0) return 0;
+	if (amount <= 4999) return 30;
+	if (amount <= 10000) return 50;
+	if (amount <= 100000) return 100;
+	return 150;
+};
+
+export const cartServiceCharge = derived(cartSubtotal, $subtotal => 
+	calculateServiceCharge($subtotal)
+);
+
 export const cartTotal = derived(
-	[cartSubtotal, cartTax],
-	([$subtotal, $tax]) => $subtotal + $tax
+	[cartSubtotal, cartTax, cartServiceCharge],
+	([$subtotal, $tax, $serviceCharge]) => $subtotal + $tax + $serviceCharge
 );
