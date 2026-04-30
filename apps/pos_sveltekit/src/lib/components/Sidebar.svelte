@@ -3,13 +3,15 @@
 	import {
 		LayoutDashboard, Package, Users, ShoppingCart, BarChart3, Settings, 
 		Store, LogOut, MessageSquare, Briefcase, Building, ClipboardList,
-		FlaskConical, Truck, Stethoscope, Coins, RotateCcw, Clock
+		FlaskConical, Truck, Stethoscope, Coins, RotateCcw, Clock, Bike,
+		Sparkles
 	} from 'lucide-svelte';
 
 	let { tenant, userData, email, handleLogout, onnavclick = (e: any) => {} } = $props<any>();
 
 	let navigation = $derived([
 		{ name: 'Dashboard', href: '/', icon: LayoutDashboard, visible: true },
+		{ name: 'AI Assistant', href: '/ai-assistant', icon: Sparkles, visible: true },
 		{ name: 'POS', href: '/pos', icon: Store, visible: userData?.canManagePOS ?? false },
 		{ name: 'Products', href: '/products', icon: Package, visible: userData?.canManageProducts ?? false },
 		{ name: 'Lab Tests', href: '/lab-tests', icon: FlaskConical, visible: (userData?.canManageProducts ?? false) && (Array.isArray(userData?.branches) ? userData.branches[0]?.business_type === 'diagnostic_centre' : userData?.branches?.business_type === 'diagnostic_centre') },
@@ -17,6 +19,7 @@
 		{ name: 'Medic Partners', href: '/medics', icon: Stethoscope, visible: tenant?.allowDoctorPartnerShip ?? true },
 		{ name: 'Customers', href: '/customers', icon: Users, visible: userData?.canManageCustomers ?? false },
 		{ name: 'Orders', href: '/orders', icon: ShoppingCart, visible: userData?.canManageOrders ?? false },
+		{ name: 'Delivery', href: '/delivery', icon: Bike, visible: userData?.canManageOrders ?? false },
 		{ name: 'Returns', href: '/returns', icon: RotateCcw, visible: userData?.canReturnProducts ?? false },
 		{ name: 'Inventory', href: '/inventory', icon: ClipboardList, visible: userData?.canManageInventory ?? false },
 		{ name: 'Staffs', href: '/staffs', icon: Briefcase, visible: userData?.canManageStaff ?? false },

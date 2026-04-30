@@ -6,7 +6,7 @@
 		Loader2, User, Phone, Video, Paperclip, Smile,
 		Mic, X, Image as ImageIcon, FileText, ShoppingCart,
 		Plus, CheckCircle2, ChevronRight, Package, Download, Play, Pause,
-		Stethoscope
+		Stethoscope, Sparkles
 	} from 'lucide-svelte';
 	import { supabase } from '$lib/supabase';
 	import { authStore, currentUser } from '$lib/stores/auth';
@@ -477,6 +477,9 @@
 				</div>
 				
 				<div class="flex items-center gap-2">
+					<a href="/chat/ai" class="icon-btn text-primary-600 bg-primary-50 hover:bg-primary-100" title="Switch to AI Shopper">
+						<Sparkles class="h-4 w-4" />
+					</a>
 					<button class="icon-btn text-gray-400 hover:text-primary-600"><Phone class="h-4 w-4" /></button>
 					<button class="icon-btn text-gray-400 hover:text-primary-600"><Video class="h-4 w-4" /></button>
 					<button 

@@ -66,8 +66,22 @@
 	}
 
 	$: subtotal = cart.items.reduce((s, i) => s + i.price * i.quantity, 0);
-	$: tax = Math.round(subtotal * 0.05);
-	$: estimatedTotal = subtotal + tax;
+	
+	$: taxRate = storefront?.branches?.[0]?.tax_rate || 0;
+	$: tax = Math.round(subtotal * (taxRate / 100));
+
+	function calculateServiceCharge(amount: number) {
+		if (amount <= 0) return 0;
+		if (amount < 500) return 20;
+		if (amount < 5000) return 50;
+		if (amount < 10000) return 100;
+		if (amount < 25001) return 150;
+		if (amount < 1000001) return 200;
+		return 1000;
+	}
+
+	$: serviceCharge = calculateServiceCharge(subtotal);
+	$: estimatedTotal = subtotal + tax + serviceCharge;
 
 	async function proceedToCheckout() {
 		if (cart.items.length === 0) return;
@@ -77,7 +91,15 @@
 			return;
 		}
 		isLoading = true;
-		const orderData = { items: cart.items, subtotal, tax, delivery_fee: 0, total: estimatedTotal, order_type: 'delivery' };
+		const orderData = { 
+			items: cart.items, 
+			subtotal, 
+			tax, 
+			service_charge: serviceCharge,
+			delivery_fee: 0, 
+			total: estimatedTotal, 
+			order_type: 'delivery' 
+		};
 		localStorage.setItem('checkout_data', JSON.stringify(orderData));
 		await goto('/checkout');
 		isLoading = false;
@@ -190,9 +212,15 @@
 								<span class="row-label">Subtotal</span>
 								<span class="row-val">₦{subtotal.toLocaleString()}</span>
 							</div>
+							{#if taxRate > 0}
+								<div class="summary-row">
+									<span class="row-label">Estimated Tax ({taxRate}%)</span>
+									<span class="row-val">₦{tax.toLocaleString()}</span>
+								</div>
+							{/if}
 							<div class="summary-row">
-								<span class="row-label">Estimated Tax (5%)</span>
-								<span class="row-val">₦{tax.toLocaleString()}</span>
+								<span class="row-label">Service Charge</span>
+								<span class="row-val">₦{serviceCharge.toLocaleString()}</span>
 							</div>
 						</div>
 

@@ -41,7 +41,7 @@ export async function load({ locals, params }) {
 			ecommerce_enabled, subdomain, custom_domain,
 			ecommerce_settings, services_offered,
 			allowDoctorPartnerShip,
-			branches!tenant_id(id, name, address)
+			branches!tenant_id(id, name, address, tax_rate)
 		`)
 		.eq('id', tenantId)
 		.is('deleted_at', null)
@@ -67,7 +67,8 @@ export async function load({ locals, params }) {
 			branches: ((tenant.branches as any[]) || []).map((b: any) => ({
 				id: b.id,
 				name: b.name,
-				address: b.address
+				address: b.address,
+				tax_rate: b.tax_rate || 0
 			}))
 		}
 	};

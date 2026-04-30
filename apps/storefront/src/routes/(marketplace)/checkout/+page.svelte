@@ -67,7 +67,8 @@
 				p_total_amount: orderData.total,
 				p_delivery_address_id: orderData.delivery_address_id || null,
 				p_special_instructions: orderData.special_instructions || null,
-				p_items: formattedItems
+				p_items: formattedItems,
+				p_service_charge: orderData.service_charge || 0
 			});
 
 			if (rpcError) throw rpcError;
@@ -222,9 +223,15 @@
 								<span>Merchandise</span>
 								<span>₦{orderData.subtotal.toLocaleString()}</span>
 							</div>
+							{#if orderData.tax > 0}
+								<div class="summary-row">
+									<span>Processing (VAT)</span>
+									<span>₦{orderData.tax.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+								</div>
+							{/if}
 							<div class="summary-row">
-								<span>Processing (VAT)</span>
-								<span>₦{orderData.tax.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+								<span>Service Charge</span>
+								<span>₦{(orderData.service_charge || 0).toLocaleString()}</span>
 							</div>
 							{#if orderData.delivery_fee > 0}
 								<div class="summary-row">

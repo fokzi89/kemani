@@ -6,7 +6,11 @@
   "directories": {
     "doc": "docs"
   },
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
+    "dev": "npm run dev --workspace",
     "test": "playwright test",
     "test:unit": "cd apps/storefront && npm test",
     "test:e2e": "playwright test tests/",
