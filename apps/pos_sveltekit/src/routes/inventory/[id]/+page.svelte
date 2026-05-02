@@ -6,7 +6,7 @@
 	import { 
 		ArrowLeft, Package, Clock, ShoppingCart, TrendingUp, 
 		Calendar, User, AlertTriangle, Save, Loader2,
-		Download, BarChart3, Truck, ClipboardList
+		Download, BarChart3, Truck, ClipboardList, Star, Tag
 	} from 'lucide-svelte';
 	import Chart from 'chart.js/auto';
 
@@ -22,6 +22,11 @@
 	let activeTab = $state<'overview' | 'batches' | 'supply' | 'sales' | 'analytics'>('overview');
 	let chartPeriod = $state<'30d' | 'quarter' | 'year' | '5y'>('30d');
 	let lowStockThreshold = $state(0);
+	let isOnSale = $state(false);
+	let isFeatured = $state(false);
+	let isNewArrival = $state(false);
+	let salePriceOverride = $state<number | null>(null);
+	let savingPromotion = $state(false);
 	let savingThreshold = $state(false);
 
 	let chartCanvas = $state<HTMLCanvasElement | null>(null);
@@ -58,6 +63,9 @@
 			activeInventory = invData;
 			product = invData.products;
 			lowStockThreshold = invData?.low_stock_threshold || 0;
+			isOnSale = invData?.is_on_sale || false;
+			isFeatured = invData?.is_featured || false;
+			isNewArrival = invData?.is_new_arrival || false;
 			batches = [invData];
 
 			// 2. Fetch Sales and Transactions in parallel
@@ -94,6 +102,17 @@
 			supplyHistory = transRes.data || [];
 			console.log(`[InventoryDetail] Loaded ${sales.length} sales and ${supplyHistory.length} transactions`);
 
+			// 3. Check Promotional Status
+			console.log('[InventoryDetail] Checking promotional status...');
+			const [featRes, saleRes2] = await Promise.all([
+				supabase.from('featured_products').select('id').eq('product_id', invData.product_id).eq('tenant_id', invData.tenant_id).maybeSingle(),
+				supabase.from('sale_products').select('id, sale_price').eq('product_id', invData.product_id).eq('tenant_id', invData.tenant_id).maybeSingle()
+			]);
+
+			isFeatured = !!featRes.data;
+			isOnSale = !!saleRes2.data;
+			salePriceOverride = saleRes2.data?.sale_price || null;
+
 			updateChart();
 		} catch (err) {
 			console.error('[InventoryDetail] Fatal fetch error:', err);
@@ -103,20 +122,84 @@
 		}
 	}
 
-	async function updateThreshold() {
+	async function updateSettings() {
 		savingThreshold = true;
 		try {
 			const { error } = await supabase.from('branch_inventory')
-				.update({ low_stock_threshold: lowStockThreshold })
-				.eq('product_id', activeInventory.product_id)
-				.eq('branch_id', activeInventory.branch_id);
+				.update({ 
+					low_stock_threshold: lowStockThreshold,
+					is_new_arrival: isNewArrival
+				})
+				.eq('id', inventoryId);
 			
 			if (error) throw error;
-			if (activeInventory) activeInventory.low_stock_threshold = lowStockThreshold;
+			if (activeInventory) {
+				activeInventory.low_stock_threshold = lowStockThreshold;
+				activeInventory.is_new_arrival = isNewArrival;
+			}
 		} catch (err) {
-			alert('Failed to update threshold');
+			alert('Failed to update settings');
 		} finally {
 			savingThreshold = false;
+		}
+	}
+
+	async function toggleFeatured() {
+		if (!activeInventory) return;
+		savingPromotion = true;
+		try {
+			if (isFeatured) {
+				const { error } = await supabase.from('featured_products')
+					.delete()
+					.eq('product_id', activeInventory.product_id)
+					.eq('tenant_id', activeInventory.tenant_id);
+				if (error) throw error;
+				isFeatured = false;
+			} else {
+				const { error } = await supabase.from('featured_products')
+					.insert({
+						product_id: activeInventory.product_id,
+						tenant_id: activeInventory.tenant_id,
+						inventory_id: inventoryId
+					});
+				if (error) throw error;
+				isFeatured = true;
+			}
+		} catch (err) {
+			console.error(err);
+			alert('Failed to update featured status');
+		} finally {
+			savingPromotion = false;
+		}
+	}
+
+	async function toggleSale() {
+		if (!activeInventory) return;
+		savingPromotion = true;
+		try {
+			if (isOnSale) {
+				const { error } = await supabase.from('sale_products')
+					.delete()
+					.eq('product_id', activeInventory.product_id)
+					.eq('tenant_id', activeInventory.tenant_id);
+				if (error) throw error;
+				isOnSale = false;
+			} else {
+				const { error } = await supabase.from('sale_products')
+					.insert({
+						product_id: activeInventory.product_id,
+						tenant_id: activeInventory.tenant_id,
+						inventory_id: inventoryId,
+						sale_price: activeInventory.sale_price || activeInventory.selling_price
+					});
+				if (error) throw error;
+				isOnSale = true;
+			}
+		} catch (err) {
+			console.error(err);
+			alert('Failed to update sale status');
+		} finally {
+			savingPromotion = false;
 		}
 	}
 
@@ -268,7 +351,7 @@
 						class="w-16 text-lg font-black bg-transparent outline-none border-b border-indigo-200 focus:border-indigo-600 p-0 text-indigo-900"
 					/>
 					<button 
-						onclick={updateThreshold} 
+						onclick={updateSettings} 
 						disabled={savingThreshold}
 						class="text-indigo-600 hover:text-indigo-800 transition-colors p-1"
 						title="Save specific threshold"
@@ -280,6 +363,49 @@
 						{/if}
 					</button>
 				</div>
+			</div>
+
+			<!-- Storefront Promotions -->
+			<div class="lg:col-span-2 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+				<div class="flex gap-4">
+					<button 
+						onclick={toggleFeatured}
+						disabled={savingPromotion}
+						class="flex items-center gap-2 px-4 py-2 rounded-xl border transition-all {isFeatured ? 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm' : 'bg-white border-gray-100 text-gray-500 hover:border-amber-200 hover:text-amber-600'}"
+					>
+						{#if savingPromotion}<Loader2 class="h-3 w-3 animate-spin" />{:else}<Star class="h-3 w-3 {isFeatured ? 'fill-amber-400' : ''}" />{/if}
+						<span class="text-[10px] font-black uppercase tracking-widest">{isFeatured ? 'Remove from Featured' : 'Mark as Featured'}</span>
+					</button>
+
+					<button 
+						onclick={toggleSale}
+						disabled={savingPromotion}
+						class="flex items-center gap-2 px-4 py-2 rounded-xl border transition-all {isOnSale ? 'bg-rose-50 border-rose-200 text-rose-700 shadow-sm' : 'bg-white border-gray-100 text-gray-500 hover:border-rose-200 hover:text-rose-600'}"
+					>
+						{#if savingPromotion}<Loader2 class="h-3 w-3 animate-spin" />{:else}<Tag class="h-3 w-3" />{/if}
+						<span class="text-[10px] font-black uppercase tracking-widest">{isOnSale ? 'Remove from Sale' : 'Add to Sale'}</span>
+					</button>
+
+					<label class="flex items-center gap-2 cursor-pointer group px-4 py-2">
+						<input type="checkbox" bind:checked={isNewArrival} class="sr-only peer" />
+						<div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 relative"></div>
+						<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-indigo-600 transition-colors">New Arrival</span>
+					</label>
+				</div>
+				<button 
+					onclick={updateSettings} 
+					disabled={savingThreshold}
+					class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-100"
+					title="Save Threshold & New Arrival Status"
+				>
+					{#if savingThreshold}
+						<Loader2 class="h-3 w-3 animate-spin" />
+						Saving...
+					{:else}
+						<Save class="h-3 w-3" />
+						Update Storefront
+					{/if}
+				</button>
 			</div>
 		</div>
 

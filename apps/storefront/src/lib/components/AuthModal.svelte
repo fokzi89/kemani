@@ -55,14 +55,14 @@
 	<div
 		class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-md"
 		transition:fade={{ duration: 200 }}
-		on:click={close}
+		onclick={close}
 	>
 		<!-- Modal -->
 		<div
 			class="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100"
 			transition:scale={{ duration: 300, start: 0.95 }}
-			on:click|stopPropagation
-			on:keydown|stopPropagation
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="auth-modal-title"
@@ -70,7 +70,7 @@
 		>
 			<!-- Close -->
 			<button
-				on:click={close}
+				onclick={close}
 				class="absolute top-5 right-5 p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-900"
 				aria-label="Close"
 			>
@@ -97,7 +97,7 @@
 
 				<!-- Google Button -->
 				<button
-					on:click={handleGoogleLogin}
+					onclick={handleGoogleLogin}
 					disabled={loading}
 					id="google-signin-btn"
 					class="w-full flex items-center justify-center gap-3 py-3.5 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-[0.98] shadow-sm disabled:opacity-60"

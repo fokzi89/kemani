@@ -14,6 +14,7 @@
 	import { activeConversationId, setActiveConversation } from '$lib/stores/chat.store';
 	import { get } from 'svelte/store';
 	import { PUBLIC_APP_URL } from '$env/static/public';
+	import { cartStore } from '$lib/stores/cart.store';
 
 	$: storefront = data.storefront;
 	$: brandColor      = storefront?.brand_color || '#4f46e5';
@@ -22,7 +23,9 @@
 
 	export let data;
 
-	let products: MarketplaceProduct[] = [];
+	let featuredProducts: MarketplaceProduct[] = [];
+	let onSaleProducts: MarketplaceProduct[] = [];
+	let newArrivals: MarketplaceProduct[] = [];
 	let categories: Array<{ name: string; count: number }> = [];
 	let isLoading = true;
 
@@ -41,12 +44,10 @@
 	let toastProduct     = '';
 	let toastTimeout: ReturnType<typeof setTimeout> | null = null;
     
-	let selectedProduct: MarketplaceProduct | null = null;
 	let itemQuantity = 1;
 
 	onMount(async () => {
 		await Promise.all([loadCategories(), loadProducts()]);
-		updateCartCount();
 	});
 
 	async function loadCategories() {
@@ -62,59 +63,47 @@
 	async function loadProducts() {
 		isLoading = true;
 		try {
-			const p = new URLSearchParams();
-			if (selectedCategory) p.set('category',     selectedCategory);
-			if (selectedBranch)   p.set('branch_id',    selectedBranch);
-			if (searchQuery)      p.set('search',        searchQuery);
-			if (minPrice)         p.set('min_price',     minPrice);
-			if (maxPrice)         p.set('max_price',     maxPrice);
-			if (inStockOnly)      p.set('in_stock_only', 'true');
-			p.set('sort_by', sortBy);
-			p.set('page',    currentPage.toString());
-			p.set('limit',   '24');
+			// Fetch Featured Products
+			const featuredParams = new URLSearchParams({ is_featured: 'true', limit: '8', in_stock_only: 'true' });
+			const featuredRes = await fetch(`/api/marketplace/products?${featuredParams}`);
+			const featuredJson = await featuredRes.json();
+			featuredProducts = featuredJson.products || [];
 
-			const res  = await fetch(`/api/marketplace/products?${p}`);
-			const json = await res.json();
+			// Fetch On Sale Products
+			const saleParams = new URLSearchParams({ is_on_sale: 'true', limit: '8', in_stock_only: 'true' });
+			const saleRes = await fetch(`/api/marketplace/products?${saleParams}`);
+			const saleJson = await saleRes.json();
+			onSaleProducts = saleJson.products || [];
 
-			if (res.ok && json.products?.length > 0) {
-				products   = json.products;
-				totalPages = json.pagination?.pages || 1;
-			} else {
-				products   = [];
-				totalPages = 1;
+			// Fetch New Arrivals
+			const newParams = new URLSearchParams({ is_new_arrival: 'true', limit: '8', in_stock_only: 'true' });
+			const newRes = await fetch(`/api/marketplace/products?${newParams}`);
+			const newJson = await newRes.json();
+			newArrivals = newJson.products || [];
+
+			// If no specific products found, fill with general products as fallback
+			if (featuredProducts.length === 0) {
+				const fallbackParams = new URLSearchParams({ limit: '8', in_stock_only: 'true' });
+				const fallbackRes = await fetch(`/api/marketplace/products?${fallbackParams}`);
+				const fallbackJson = await fallbackRes.json();
+				featuredProducts = fallbackJson.products || [];
 			}
-		} catch {
-			products = [];
+		} catch (err) {
+			console.error('Failed to load home page products', err);
 		} finally {
 			isLoading = false;
 		}
 	}
 
-	function updateCartCount() {
-		const cart = JSON.parse(localStorage.getItem('cart') || '{"items":[]}');
-		cartItemCount = cart.items.reduce((s: number, i: any) => s + i.quantity, 0);
-	}
-
 	function addToCart(product: MarketplaceProduct, qty: number = 1) {
-		const cart = JSON.parse(localStorage.getItem('cart') || '{"items":[]}');
-		const found = cart.items.find((i: any) => i.product_id === product.id);
-		if (found) {
-			found.quantity += qty;
-		} else {
-			cart.items.push({
-				product_id:     product.id,
-				product_name:   product.name,
-				product_image:  product.image_url,
-				price:          product.price,
-				quantity:       qty,
-				stock_available: product.stock_quantity
-			});
-		}
-		localStorage.setItem('cart', JSON.stringify(cart));
-		updateCartCount();
-
-		// Notify the layout navbar to refresh its cart count (storage events only fire cross-tab)
-		window.dispatchEvent(new Event('cart-updated'));
+		cartStore.addItem({
+			product_id:     product.id,
+			product_name:   product.name,
+			product_image:  product.image_url,
+			price:          product.price,
+			quantity:       qty,
+			stock_available: product.stock_quantity
+		}, storefront.id);
 
 		// Show toast feedback
 		toastProduct = product.name;
@@ -204,304 +193,165 @@
 		<section class="hero-section" style="background-color: #0b1a30;">
 			<div class="hero-content">
 				<span class="hero-label">
-					<Tag class="label-icon" /> {storefront.name}
+					<Tag class="label-icon" /> {storefront.slogan || storefront.name}
 				</span>
 				<h2 class="hero-title">
-					{#if storefront?.allowDoctorPartnerShip ?? true}
+					{#if storefront?.hero_title}
+						{storefront.hero_title}
+					{:else if storefront?.allowDoctorPartnerShip ?? true}
 						Discover Medics,<br/>Delivered to You
 					{:else}
 						Premium Health,<br/>Delivered to You
 					{/if}
 				</h2>
 				<p class="hero-subtitle">
-					{(storefront?.ecommerce_settings as any)?.description || 'Curated healthcare products — quality you can trust, prices you can afford.'}
+					{storefront?.hero_subtitle || 'Curated healthcare products — quality you can trust, prices you can afford.'}
 				</p>
-				<a href="#shop" class="hero-cta">
-					Shop Now <ArrowRight class="cta-arrow" />
-				</a>
+				<div class="hero-cta-row">
+					<a href="/products" class="hero-cta">
+						Shop Now <ArrowRight class="cta-arrow" />
+					</a>
+					<button class="hero-cta hero-cta-ghost" onclick={() => handleRxChat()}>
+						<MessageSquare class="cta-arrow" /> Chat Pharmacist
+					</button>
+				</div>
 			</div>
 		</section>
 
-		<!-- ═══════════ CONTENT AREA: SIDEBAR + MAIN ═══════════ -->
-		<div class="content-area" id="shop">
-			<!-- LEFT SIDEBAR -->
-			<aside class="sidebar">
-				<!-- Categories -->
-				<div class="sidebar-block">
-					<h3 class="sidebar-heading">Categories</h3>
-					<div class="sidebar-list">
-						<button
-							onclick={() => handleCategoryClick('')}
-							class="sidebar-item"
-							class:sidebar-item-active={selectedCategory === ''}
-						>
-							<span>All Categories</span>
-							<ChevronRight class="sidebar-chevron" />
-						</button>
-						{#each categories as cat}
-							<button
-								onclick={() => handleCategoryClick(cat.name)}
-								class="sidebar-item"
-								class:sidebar-item-active={selectedCategory === cat.name}
-							>
-								<span>{cat.name}</span>
-								{#if cat.count > 0}<span class="sidebar-count">{cat.count}</span>{/if}
-							</button>
-						{/each}
-					</div>
+		<!-- ═══════════ FEATURED PRODUCTS ═══════════ -->
+		<section class="home-section" id="shop">
+			<div class="section-header">
+				<div>
+					<p class="section-label">Handpicked for you</p>
+					<h2 class="section-title">Featured Products</h2>
 				</div>
-
-				<!-- Price Filter -->
-				<div class="sidebar-block">
-					<h3 class="sidebar-heading">Price Range</h3>
-					<div class="price-inputs">
-						<div class="price-field">
-							<span class="price-symbol">₦</span>
-							<input type="number" bind:value={minPrice} placeholder="Min" class="price-input" />
-						</div>
-						<div class="price-field">
-							<span class="price-symbol">₦</span>
-							<input type="number" bind:value={maxPrice} placeholder="Max" class="price-input" />
-						</div>
-					</div>
-					<button onclick={() => loadProducts()} class="apply-btn">Apply</button>
-				</div>
-
-				<!-- Stock Filter -->
-				<div class="sidebar-block">
-					<label class="stock-toggle">
-						<input type="checkbox" bind:checked={inStockOnly} onchange={() => loadProducts()} class="stock-checkbox" />
-						<span>In-stock only</span>
-					</label>
-				</div>
-			</aside>
-
-			<!-- MAIN CONTENT -->
-			<main class="main-content">
-				<!-- Search + Sort Row -->
-				<div class="search-bar">
-					<div class="search-input-wrap">
-						<Search class="search-icon" />
-						<input
-							type="search"
-							bind:value={searchQuery}
-							onkeydown={(e) => e.key === 'Enter' && handleSearch()}
-							placeholder="Search products..."
-							class="search-input"
-						/>
-					</div>
-					<select bind:value={sortBy} onchange={() => loadProducts()} class="sort-select">
-						<option value="newest">Featured</option>
-						<option value="price_asc">Price: Low → High</option>
-						<option value="price_desc">Price: High → Low</option>
-						<option value="name">A – Z</option>
-					</select>
-				</div>
-
-				<!-- Branch Chips -->
-				{#if storefront.branches?.length > 0}
-					<div class="branch-chips">
-						<button onclick={() => handleBranchClick('')} class="chip chip-sm" class:chip-active={selectedBranch === ''}>All Branches</button>
-						{#each storefront.branches as branch}
-							<button onclick={() => handleBranchClick(branch.id)} class="chip chip-sm" class:chip-active={selectedBranch === branch.id}>{branch.name}</button>
-						{/each}
-					</div>
-				{/if}
-
-				<!-- Products -->
-				<section class="products-section">
-			{#if isLoading}
-				<div class="product-grid">
-					{#each Array(8) as _}
-						<div class="product-skeleton">
-							<div class="skeleton-img"></div>
-							<div class="skeleton-text w60"></div>
-							<div class="skeleton-text w40"></div>
-						</div>
-					{/each}
-				</div>
-			{:else if products.length === 0}
-				<div class="empty-state">
-					<ShoppingCart class="empty-icon" />
-					<h3 class="empty-title">No products found</h3>
-					<p class="empty-sub">Try adjusting your filters or clear your search.</p>
-					<button
-						onclick={() => { searchQuery=''; selectedCategory=''; selectedBranch=''; loadProducts(); }}
-						class="empty-cta"
-					>Browse All</button>
-				</div>
-			{:else}
-				<div class="product-grid">
-					{#each products as product}
-						<div class="product-card">
-							<button class="product-img-wrap border-none outline-none text-left w-full cursor-pointer p-0 bg-transparent block" onclick={(e) => { e.preventDefault(); selectedProduct = product; itemQuantity = 1; }}>
-								{#if product.image_url}
-									<img src={product.image_url} alt={product.name} class="product-img" />
-								{:else}
-									<div class="product-img-placeholder"><ShoppingCart /></div>
-								{/if}
-								{#if product.percentage_discount && product.percentage_discount > 0}
-									<span class="badge badge-discount">{product.percentage_discount}% Off</span>
-								{/if}
-
-								{#if !product.is_available || product.stock_quantity === 0}
-									<div class="product-sold-out">
-										<span>Sold Out</span>
-									</div>
-								{/if}
-							</button>
-							<div class="product-info">
-								<div class="product-category">
-									{product.category?.name || (product as any).category_name || 'VERIFIED PRODUCT'}
-								</div>
-								<button class="product-name border-none bg-transparent outline-none p-0 text-left w-full cursor-pointer" onclick={(e) => { e.preventDefault(); selectedProduct = product; itemQuantity = 1; }}>{product.name}</button>
-								<div class="product-generic">
-									{(product as any).generic_name || product.name} {#if (product as any).dosage}• {(product as any).dosage}{/if}
-								</div>
-								{#if product.description}
-									<p class="product-desc">{product.description}</p>
-								{/if}
-								<div class="product-bottom-row">
-									<div class="product-price flex items-baseline gap-1">
-										{#if product.sale_price && product.sale_price > 0}
-											<span class="price-current font-black text-lg">₦{product.sale_price.toLocaleString()}</span>
-										{:else}
-											<span class="price-current font-black text-lg">₦{product.price.toLocaleString()}</span>
-										{/if}
-									</div>
-									<div class="product-actions-flex">
-										<button 
-											class="action-icon-btn action-rx" 
-											onclick={(e) => handleRxChat(e, undefined, product.id)}
-											title="RX Chat"
-										>
-											<MessageSquare class="w-4 h-4" />
-										</button>
-										{#if product.is_available && product.stock_quantity > 0}
-										<button 
-											class="action-icon-btn action-bag" 
-											onclick={(e) => { e.stopPropagation(); e.preventDefault(); addToCart(product); }}
-											title="Add to Bag"
-										>
-											<ShoppingCart class="w-4 h-4" />
-										</button>
-										{/if}
-									</div>
-								</div>
-							</div>
-						</div>
-					{/each}
-				</div>
-
-				<!-- Pagination -->
-				{#if totalPages > 1}
-					<div class="pagination">
-						<button onclick={() => handlePageChange(currentPage-1)} disabled={currentPage===1} class="page-btn"><ArrowLeft class="page-arrow" /></button>
-						{#each Array(totalPages) as _, i}
-							<button onclick={() => handlePageChange(i+1)} class="page-btn" class:page-active={currentPage===i+1}>{i+1}</button>
-						{/each}
-						<button onclick={() => handlePageChange(currentPage+1)} disabled={currentPage===totalPages} class="page-btn"><ChevronRight class="page-arrow" /></button>
-					</div>
-				{/if}
-			{/if}
-			</section>
-			</main>
-		</div>
-		<!-- ═══════════ PRODUCT DETAIL MODAL ═══════════ -->
-		{#if selectedProduct}
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div class="modal-backdrop" transition:fade onclick={() => selectedProduct = null}>
-				<div class="modal-content" transition:scale={{ start: 0.9, duration: 200 }} onclick={(e) => e.stopPropagation()}>
-					<button class="modal-close" onclick={() => selectedProduct = null}><X /></button>
-					
-					<div class="modal-body">
-						<div class="modal-img">
-							{#if selectedProduct.image_url}
-								<img src={selectedProduct.image_url} alt={selectedProduct.name} />
-							{:else}
-								<div class="m-ph"><ShoppingCart class="w-16 h-16" /></div>
-							{/if}
-						</div>
-						
-						<div class="modal-info">
-							<div class="m-header">
-								<span class="m-cat">{selectedProduct.category?.name || (selectedProduct as any).category_name || 'VERIFIED PRODUCT'}</span>
-								<h2>{selectedProduct.name}</h2>
-								{#if (selectedProduct as any).generic_name}
-									<p class="m-generic">Generic: <strong>{(selectedProduct as any).generic_name}</strong></p>
-								{/if}
-							</div>
-
-							<div class="m-details">
-								{#if (selectedProduct as any).strength || (selectedProduct as any).dosage}
-									<div class="m-detail">
-										<span class="label">Strength / Dosage</span>
-										<span class="val">{(selectedProduct as any).strength || (selectedProduct as any).dosage}</span>
-									</div>
-								{/if}
-								{#if (selectedProduct as any).dosage_form}
-									<div class="m-detail">
-										<span class="label">Form</span>
-										<span class="val">{(selectedProduct as any).dosage_form}</span>
-									</div>
-								{/if}
-								{#if (selectedProduct as any).manufacturer}
-									<div class="m-detail">
-										<span class="label">Manufacturer</span>
-										<span class="val">{(selectedProduct as any).manufacturer}</span>
-									</div>
-								{/if}
-							</div>
-
-							<p class="m-desc">{selectedProduct.description || 'No detailed description available for this product.'}</p>
-
-							<div class="m-footer">
-								<div class="m-price-section">
-									<span class="m-price">
-										{#if selectedProduct.sale_price && selectedProduct.sale_price > 0}
-											₦{selectedProduct.sale_price.toLocaleString()}
-										{:else}
-											₦{selectedProduct.price.toLocaleString()}
-										{/if}
-									</span>
-									<span class="m-stock">In Stock: {selectedProduct.stock_quantity} units</span>
-								</div>
-								
-								{#if selectedProduct.is_available && selectedProduct.stock_quantity > 0}
-								<div class="m-qty-selector">
-									<button onclick={() => itemQuantity = Math.max(1, itemQuantity - 1)}><Minus class="w-4 h-4" /></button>
-									<span>{itemQuantity}</span>
-									<button onclick={() => itemQuantity = Math.min(selectedProduct!.stock_quantity, itemQuantity + 1)}><Plus class="w-4 h-4" /></button>
-								</div>
-								
-								<button 
-									class="m-add-btn" 
-									style="background: #e2e8f0; color: #0f172a;"
-									onclick={(e) => handleRxChat(e, () => { selectedProduct = null; }, selectedProduct?.id)}
-								>
-									<MessageSquare class="w-4 h-4 mr-2 inline" /> RX Chat
-								</button>
-								
-								<button 
-									class="m-add-btn" 
-									style="background: #0b2559;"
-									onclick={() => { 
-										addToCart(selectedProduct!, itemQuantity); 
-										selectedProduct = null; 
-									}}
-								>
-									<ShoppingCart class="w-4 h-4 mr-2 inline" /> Add to Cart
-								</button>
-								{:else}
-									<div class="m-add-btn flex text-center justify-center items-center" style="background: #ef4444; opacity: 0.8; cursor: not-allowed;">Out of Stock</div>
-								{/if}
-							</div>
-						</div>
-					</div>
-				</div>
+				<a href="/featured" class="see-all">See All <ArrowRight class="w-3.5 h-3.5" /></a>
 			</div>
+			{#if isLoading}
+				<div class="home-grid">{#each Array(4) as _}<div class="product-skeleton"><div class="skeleton-img"></div><div class="skeleton-text w60"></div><div class="skeleton-text w40"></div></div>{/each}</div>
+			{:else if featuredProducts.length === 0}
+				<div class="empty-state"><ShoppingCart class="empty-icon" /><p class="empty-title">No featured products yet</p></div>
+			{:else}
+				<div class="home-grid">
+					{#each featuredProducts as product}
+						<div class="product-card">
+							<a href={`/products/${product.id}`} class="product-img-wrap border-none outline-none text-left w-full cursor-pointer p-0 bg-transparent block">
+								{#if product.image_url}<img src={product.image_url} alt={product.name} class="product-img" />{:else}<div class="product-img-placeholder"><ShoppingCart /></div>{/if}
+								{#if product.percentage_discount > 0}<span class="badge badge-discount">{product.percentage_discount}% Off</span>{/if}
+								{#if !product.is_available}<div class="product-sold-out"><span>Sold Out</span></div>{/if}
+							</a>
+							<div class="product-info">
+								<div class="product-category">{product.category?.name || (product as any).category_name || 'PRODUCT'}</div>
+								<a href={`/products/${product.id}`} class="product-name border-none bg-transparent outline-none p-0 text-left w-full cursor-pointer">{product.name}</a>
+								<div class="product-bottom-row">
+									<span class="price-current font-black text-lg">₦{(product.sale_price > 0 ? product.sale_price : product.price)?.toLocaleString()}</span>
+									<div class="product-actions-flex">
+										<button class="action-icon-btn action-rx" onclick={(e) => { e.preventDefault(); handleRxChat(e, undefined, product.id); }} title="RX Chat"><MessageSquare class="w-4 h-4" /></button>
+										{#if product.is_available && product.stock_quantity > 0}<button class="action-icon-btn action-bag" onclick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product); }} title="Add to Bag"><ShoppingCart class="w-4 h-4" /></button>{/if}
+									</div>
+								</div>
+							</div>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</section>
+
+		<!-- ═══════════ PRODUCTS ON SALE ═══════════ -->
+		{#if onSaleProducts.length > 0}
+		<section class="home-section">
+			<div class="section-header">
+				<div>
+					<p class="section-label">Flash Deals</p>
+					<h2 class="section-title">On Sale Now</h2>
+				</div>
+				<a href="/on-sale" class="see-all">View All <ArrowRight class="w-3.5 h-3.5" /></a>
+			</div>
+			<div class="home-grid">
+				{#each onSaleProducts as product}
+					<div class="product-card">
+						<a href={`/products/${product.id}`} class="product-img-wrap border-none outline-none text-left w-full cursor-pointer p-0 bg-transparent block">
+							{#if product.image_url}<img src={product.image_url} alt={product.name} class="product-img" />{:else}<div class="product-img-placeholder"><ShoppingCart /></div>{/if}
+							<span class="badge badge-discount">{product.percentage_discount || 10}% Off</span>
+							{#if !product.is_available}<div class="product-sold-out"><span>Sold Out</span></div>{/if}
+						</a>
+						<div class="product-info">
+							<div class="product-category">{product.category?.name || (product as any).category_name || 'SALE'}</div>
+							<a href={`/products/${product.id}`} class="product-name border-none bg-transparent outline-none p-0 text-left w-full cursor-pointer">{product.name}</a>
+							<div class="product-bottom-row">
+								<div class="price-stack">
+									<span class="price-current font-black text-lg text-emerald-600">₦{(product.sale_price > 0 ? product.sale_price : product.price)?.toLocaleString()}</span>
+									{#if product.selling_price && product.selling_price > (product.sale_price || product.price)}
+										<span class="price-old text-xs text-gray-400 line-through">₦{product.selling_price.toLocaleString()}</span>
+									{/if}
+								</div>
+								<div class="product-actions-flex">
+									<button class="action-icon-btn action-rx" onclick={(e) => { e.preventDefault(); handleRxChat(e, undefined, product.id); }} title="RX Chat"><MessageSquare class="w-4 h-4" /></button>
+									{#if product.is_available && product.stock_quantity > 0}<button class="action-icon-btn action-bag" onclick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product); }} title="Add to Bag"><ShoppingCart class="w-4 h-4" /></button>{/if}
+								</div>
+							</div>
+						</div>
+					</div>
+				{/each}
+			</div>
+		</section>
 		{/if}
+
+		<!-- ═══════════ PHARMACIST CTA BANNER ═══════════ -->
+		<section class="rx-banner">
+			<div class="rx-banner-inner">
+				<div class="rx-icon-wrap">
+					<Stethoscope class="rx-icon" />
+				</div>
+				<div class="rx-copy">
+					<h3 class="rx-title">Not sure what you need?</h3>
+					<p class="rx-sub">Our licensed pharmacists are online and ready to help. Get free, personalised advice in under a minute.</p>
+				</div>
+				<button class="rx-cta" onclick={() => handleRxChat()}>
+					<MessageSquare class="w-4 h-4" /> Chat with a Pharmacist
+				</button>
+			</div>
+		</section>
+
+		<!-- ═══════════ NEW ARRIVALS ═══════════ -->
+		{#if newArrivals.length > 0}
+		<section class="home-section">
+			<div class="section-header">
+				<div>
+					<p class="section-label">Just landed</p>
+					<h2 class="section-title">New Arrivals</h2>
+				</div>
+				<a href="/products?sort=newest" class="see-all">View All <ArrowRight class="w-3.5 h-3.5" /></a>
+			</div>
+			<div class="home-grid">
+				{#each newArrivals as product}
+					<div class="product-card">
+						<a href={`/products/${product.id}`} class="product-img-wrap border-none outline-none text-left w-full cursor-pointer p-0 bg-transparent block">
+							{#if product.image_url}<img src={product.image_url} alt={product.name} class="product-img" />{:else}<div class="product-img-placeholder"><ShoppingCart /></div>{/if}
+							<span class="badge badge-new">New</span>
+							{#if !product.is_available}<div class="product-sold-out"><span>Sold Out</span></div>{/if}
+						</a>
+						<div class="product-info">
+							<div class="product-category">{product.category?.name || (product as any).category_name || 'PRODUCT'}</div>
+							<a href={`/products/${product.id}`} class="product-name border-none bg-transparent outline-none p-0 text-left w-full cursor-pointer">{product.name}</a>
+								<div class="product-bottom-row">
+									<span class="price-current font-black text-lg">₦{(product.sale_price > 0 ? product.sale_price : product.price)?.toLocaleString()}</span>
+									<div class="product-actions-flex">
+										<button class="action-icon-btn action-rx" onclick={(e) => { e.preventDefault(); handleRxChat(e, undefined, product.id); }} title="RX Chat"><MessageSquare class="w-4 h-4" /></button>
+										{#if product.is_available && product.stock_quantity > 0}<button class="action-icon-btn action-bag" onclick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product); }} title="Add to Bag"><ShoppingCart class="w-4 h-4" /></button>{/if}
+									</div>
+								</div>
+						</div>
+					</div>
+				{/each}
+			</div>
+		</section>
+		{/if}
+
+		<!-- ═══════════ SHOP ALL CTA ═══════════ -->
+		<div class="shop-all-wrap">
+			<a href="/products" class="shop-all-btn">Browse All Products <ArrowRight class="w-4 h-4" /></a>
+		</div>
 
 		<!-- ═══════════ TRUST BADGES ═══════════ -->
 		<section class="trust-section">
@@ -549,6 +399,66 @@
 {/if}
 
 <style>
+	/* ─── NEW HOMEPAGE SECTIONS ─── */
+	.hero-cta-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+	.hero-cta {
+		display: inline-flex; align-items: center; gap: 8px;
+		background: var(--accent, #4f46e5); color: #fff;
+		padding: 14px 32px; border-radius: 8px; border: none; cursor: pointer;
+		font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+		text-decoration: none; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+		transition: transform 0.15s, box-shadow 0.15s;
+	}
+	.hero-cta:active { transform: scale(0.97); }
+	.hero-cta :global(.cta-arrow) { width: 14px; height: 14px; }
+	.hero-cta-ghost { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.3); backdrop-filter: blur(8px); }
+
+	.home-section { max-width: 1280px; margin: 0 auto; padding: 3rem 1.5rem 1rem; }
+	.section-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 1.75rem; }
+	.section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: var(--accent, #4f46e5); margin-bottom: 4px; }
+	.section-title { font-size: 1.5rem; font-weight: 900; color: #0f172a; letter-spacing: -0.02em; line-height: 1; }
+	.see-all { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #64748b; text-decoration: none; white-space: nowrap; transition: color 0.15s; }
+	.see-all:hover { color: #0f172a; }
+
+	.home-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+	@media (min-width: 640px) { .home-grid { grid-template-columns: repeat(3, 1fr); } }
+	@media (min-width: 1024px) { .home-grid { grid-template-columns: repeat(4, 1fr); gap: 1.25rem; } }
+
+	/* Pharmacist CTA Banner */
+	.rx-banner { background: linear-gradient(135deg, #0b1a30 0%, #1a2f5a 100%); margin: 2rem 0; }
+	.rx-banner-inner {
+		max-width: 1280px; margin: 0 auto; padding: 2.5rem 1.5rem;
+		display: flex; flex-wrap: wrap; align-items: center; gap: 1.5rem;
+	}
+	.rx-icon-wrap { width: 56px; height: 56px; background: rgba(255,255,255,0.1); border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+	.rx-icon { width: 28px; height: 28px; color: #fff; }
+	.rx-copy { flex: 1; min-width: 200px; }
+	.rx-title { font-size: 1.125rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+	.rx-sub { font-size: 13px; color: rgba(255,255,255,0.65); line-height: 1.5; }
+	.rx-cta {
+		display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
+		background: #fff; color: #0b1a30;
+		padding: 12px 24px; border-radius: 10px; border: none; cursor: pointer;
+		font-size: 13px; font-weight: 800; transition: opacity 0.15s;
+	}
+	.rx-cta:hover { opacity: 0.92; }
+
+	/* Shop All */
+	.shop-all-wrap { display: flex; justify-content: center; padding: 1rem 1.5rem 3rem; }
+	.shop-all-btn {
+		display: inline-flex; align-items: center; gap: 10px;
+		padding: 14px 36px; border-radius: 12px;
+		border: 2px solid #0f172a; color: #0f172a; background: transparent;
+		font-size: 13px; font-weight: 800; text-decoration: none; text-transform: uppercase; letter-spacing: 0.06em;
+		transition: all 0.2s;
+	}
+	.shop-all-btn:hover { background: #0f172a; color: #fff; }
+
+	/* New badge */
+	.badge-new { top: 10px; left: 10px; background: #10b981; color: #fff; }
+
+	.empty-title { font-size: 14px; font-weight: 700; color: #0f172a; }
+
 	/* ─── TOKENS ─── */
 	:root {
 		--font-display: 'Playfair Display', Georgia, serif;

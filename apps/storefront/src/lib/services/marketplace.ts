@@ -78,7 +78,10 @@ export class MarketplaceService {
           price: finalPrice,
           image_url: data.image_url,
           stock_quantity: (data.stock_quantity || 0) - (data.reserved_quantity || 0),
-          isPOM: data.isPOM
+          isPOM: data.isPOM,
+          is_on_sale: data.is_on_sale,
+          is_featured: data.is_featured,
+          is_new_arrival: data.is_new_arrival
         }
       };
     } catch (error: any) {
@@ -105,27 +108,25 @@ export class MarketplaceService {
       const limit = filters?.limit || 24;
       const offset = (page - 1) * limit;
 
-      // Build pure query on branch_inventory
+      // Build query on ecommerce_products view for aggregated data
       let query = this.supabase
-        .from('branch_inventory')
+        .from('ecommerce_products')
         .select('*', { count: 'exact' })
         .eq('tenant_id', resolvedTenantId)
-        .eq('isPOM', false)
-        .not('is_active', 'is', false)
-        .eq('_sync_is_deleted', false);
+        .eq('is_active', true);
 
       // Apply branch filter
       if (filters?.branch_id) {
         query = query.eq('branch_id', filters.branch_id);
       }
 
-      // Apply product-level filters (Using product_type as category)
+      // Apply product-level filters
       if (filters?.category) {
-        query = query.eq('product_type', filters.category);
+        query = query.eq('category', filters.category);
       }
 
       if (filters?.search) {
-        query = query.ilike('product_name', `%${filters.search}%`);
+        query = query.ilike('name', `%${filters.search}%`);
       }
 
       if (filters?.min_price !== undefined) {
@@ -138,6 +139,18 @@ export class MarketplaceService {
 
       if (filters?.in_stock_only) {
         query = query.gt('stock_quantity', 0);
+      }
+
+      if (filters?.is_on_sale) {
+        query = query.eq('is_on_sale', true);
+      }
+
+      if (filters?.is_featured) {
+        query = query.eq('is_featured', true);
+      }
+
+      if (filters?.is_new_arrival) {
+        query = query.eq('is_new_arrival', true);
       }
 
       // Apply sorting
@@ -162,29 +175,28 @@ export class MarketplaceService {
         return { error: error.message };
       }
 
-      // Transform record mapping directly from branch_inventory
+      // Transform record mapping from ecommerce_products view
       const products: MarketplaceProduct[] = (data || []).map((item: any) => {
-        const availableStock = (item.stock_quantity || 0) - (item.reserved_quantity || 0);
-        
-        // Effective price is sale_price if set, otherwise selling_price
-        const finalPrice = (item.sale_price && item.sale_price > 0) ? item.sale_price : item.selling_price;
-
         return {
-          id: item.product_id, // Link back to master product UUID for other APIs
-          inventory_id: item.id, // Primary key of this inventory entry
+          id: item.id,
           tenant_id: item.tenant_id,
-          branch_id: item.branch_id,
-          name: item.product_name || 'Unnamed Product',
-          description: item.product_type || 'General item',
-          sku: item.sku || item.batch_no || '', 
-          category: item.product_type || 'General',
-          price: finalPrice, 
+          name: item.name || 'Unnamed Product',
+          description: item.description || 'Verified product',
+          sku: item.sku || '',
+          category: item.category || 'General',
+          price: (item.sale_price && item.sale_price > 0) ? item.sale_price : item.selling_price,
           selling_price: item.selling_price,
           sale_price: item.sale_price,
-          percentage_discount: item.percentage_discount,
           image_url: item.image_url,
-          stock_quantity: availableStock,
-          is_available: availableStock > 0,
+          stock_quantity: item.total_stock || 0,
+          is_available: (item.total_stock || 0) > 0,
+          is_on_sale: item.is_on_sale,
+          is_featured: item.is_featured,
+          is_new_arrival: item.is_new_arrival,
+          generic_name: item.generic_name,
+          strength: item.strength,
+          dosage_form: item.dosage_form,
+          manufacturer: item.manufacturer,
           business_name: '' 
         };
       });
@@ -270,7 +282,10 @@ export class MarketplaceService {
           dosage_form: data.products?.dosage_form,
           product_side_effect: data.products?.['product side effect'] || data.products?.product_side_effect,
           interactions: data.products?.interactions,
-          product_details: data.products?.product_details
+          product_details: data.products?.product_details,
+          is_on_sale: data.is_on_sale,
+          is_featured: data.is_featured,
+          is_new_arrival: data.is_new_arrival
         }
       };
     } catch (error: any) {
@@ -315,5 +330,56 @@ export class MarketplaceService {
     } catch (error: any) {
       return { error: error.message || 'Failed to fetch categories' };
     }
+  }
+
+  // Promotional Table Management
+  async addToFeatured(productId: string, tenantId: string, inventoryId?: string) {
+    return this.supabase
+      .from('featured_products')
+      .insert({ product_id: productId, tenant_id: tenantId, inventory_id: inventoryId })
+      .select()
+      .single();
+  }
+
+  async removeFromFeatured(productId: string, tenantId: string) {
+    return this.supabase
+      .from('featured_products')
+      .delete()
+      .eq('product_id', productId)
+      .eq('tenant_id', tenantId);
+  }
+
+  async addToSale(productId: string, tenantId: string, inventoryId?: string, salePrice?: number) {
+    return this.supabase
+      .from('sale_products')
+      .insert({ 
+        product_id: productId, 
+        tenant_id: tenantId, 
+        inventory_id: inventoryId,
+        sale_price: salePrice 
+      })
+      .select()
+      .single();
+  }
+
+  async removeFromSale(productId: string, tenantId: string) {
+    return this.supabase
+      .from('sale_products')
+      .delete()
+      .eq('product_id', productId)
+      .eq('tenant_id', tenantId);
+  }
+
+  async checkPromotionStatus(productId: string, tenantId: string) {
+    const [featured, sale] = await Promise.all([
+      this.supabase.from('featured_products').select('id').eq('product_id', productId).eq('tenant_id', tenantId).maybeSingle(),
+      this.supabase.from('sale_products').select('id, sale_price').eq('product_id', productId).eq('tenant_id', tenantId).maybeSingle()
+    ]);
+
+    return {
+      isFeatured: !!featured.data,
+      isOnSale: !!sale.data,
+      salePrice: sale.data?.sale_price
+    };
   }
 }

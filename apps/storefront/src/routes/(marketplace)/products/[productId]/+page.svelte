@@ -128,6 +128,9 @@
 						{#if product.percentage_discount}
 							<span class="discount-badge">{product.percentage_discount}% OFF</span>
 						{/if}
+						{#if product.is_new_arrival}
+							<span class="new-badge">NEW ARRIVAL</span>
+						{/if}
 					</div>
 					
 					<div class="thumbnail-grid">
@@ -342,12 +345,8 @@
 	.main-image { width: 100%; height: 100%; object-fit: contain; transition: transform 0.6s ease; }
 	.main-image-wrap:hover .main-image { transform: scale(1.05); }
 
-	.discount-badge {
-		position: absolute; top: 1rem; left: 1rem;
-		background: #059669; color: #fff;
-		padding: 4px 12px; border-radius: 4px;
-		font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
-	}
+	.discount-badge { position: absolute; top: 1.5rem; left: 1.5rem; background: #0f172a; color: #fff; font-size: 11px; font-weight: 900; padding: 6px 12px; border-radius: 4px; letter-spacing: 0.05em; z-index: 10; }
+	.new-badge { position: absolute; top: 1.5rem; right: 1.5rem; background: #4f46e5; color: #fff; font-size: 11px; font-weight: 900; padding: 6px 12px; border-radius: 4px; letter-spacing: 0.05em; z-index: 10; }
 
 	.image-placeholder { display: flex; flex-direction: column; align-items: center; color: #d1d5db; font-size: 10px; font-weight: 600; text-transform: uppercase; gap: 1rem; }
 

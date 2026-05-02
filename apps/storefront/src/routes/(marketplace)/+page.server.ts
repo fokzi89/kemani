@@ -30,6 +30,7 @@ export async function load({ locals, params }: { locals: any; params: { slug?: s
     id, name, slug, logo_url, brand_color,
     ecommerce_enabled, subdomain, custom_domain,
     services_offered, ecommerce_settings,
+    slogan, hero_title, hero_subtitle, about_us,
     branches!tenant_id(id, name, address)
   `;
 
@@ -71,6 +72,10 @@ export async function load({ locals, params }: { locals: any; params: { slug?: s
       services_offered: tenant.services_offered || [],
       description: (tenant.ecommerce_settings as any)?.description || '',
       banner_url: (tenant.ecommerce_settings as any)?.banner_url || null,
+      slogan: tenant.slogan,
+      hero_title: tenant.hero_title,
+      hero_subtitle: tenant.hero_subtitle,
+      about_us: tenant.about_us,
       branches: ((tenant.branches as any[]) || []).map((b: any) => ({
         id: b.id,
         name: b.name,

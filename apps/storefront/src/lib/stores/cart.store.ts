@@ -3,10 +3,12 @@ import { browser } from '$app/environment';
 
 export interface CartItem {
 	product_id: string;
-	name: string;
-	unit_price: number;
+	product_name: string;
+	price: number;
 	quantity: number;
-	image_url?: string;
+	product_image?: string;
+	inventory_id?: string;
+	stock_available?: number;
 	sku?: string;
 }
 
@@ -41,12 +43,30 @@ const getInitialCart = (): Cart => {
 };
 
 function createCartStore() {
-	const { subscribe, set, update } = writable<Cart>(getInitialCart());
+	const initial = getInitialCart();
+	const { subscribe, set, update } = writable<Cart>(initial);
 
 	// Save to localStorage whenever cart changes
 	if (browser) {
 		subscribe(cart => {
 			localStorage.setItem('cart', JSON.stringify(cart));
+		});
+
+		// Listen for storage changes from other tabs
+		window.addEventListener('storage', (event) => {
+			if (event.key === 'cart' && event.newValue) {
+				try {
+					set(JSON.parse(event.newValue));
+				} catch (e) {
+					console.error('Failed to sync cart from storage event:', e);
+				}
+			}
+		});
+
+		// Listen for custom cart-updated event (same tab)
+		window.addEventListener('cart-updated', () => {
+			const updated = getInitialCart();
+			set(updated);
 		});
 	}
 
@@ -114,7 +134,7 @@ export const cartCount = derived(cartStore, $cart =>
 );
 
 export const cartSubtotal = derived(cartStore, $cart =>
-	$cart.items.reduce((sum, item: any) => sum + ((item.unit_price || item.price || 0) * item.quantity), 0)
+	$cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
 );
 
 export const cartTax = derived(cartSubtotal, $subtotal =>

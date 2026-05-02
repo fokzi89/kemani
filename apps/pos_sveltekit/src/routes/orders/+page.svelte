@@ -9,15 +9,17 @@
 	import { goto } from '$app/navigation';
 
 	let orders = $state<any[]>([]);
-	let filtered = $state<any[]>([]);
+	let totalCount = $state(0);
 	let loading = $state(true);
 	let searchQuery = $state('');
 	let statusFilter = $state('all');
 	let page = $state(1);
+	let tenantId = $state('');
+	let lastSearch = '';
+	let lastStatus = 'all';
 	const PER_PAGE = 15;
 
-	let paginated = $derived(filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE));
-	let totalPages = $derived(Math.ceil(filtered.length / PER_PAGE));
+	let totalPages = $derived(Math.ceil(totalCount / PER_PAGE));
 
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
@@ -30,38 +32,71 @@
 			.single();
 			
 		if (userProfile?.tenant_id) {
-			const { data, error } = await supabase.from('sales')
+			tenantId = userProfile.tenant_id;
+			// Initial load is handled by the effect
+		} else {
+			loading = false;
+		}
+	});
+
+	async function loadOrders() {
+		if (!tenantId) return;
+		loading = true;
+		try {
+			let query = supabase.from('sales')
 				.select(`
 					*,
 					customer:customers(full_name),
 					cashier:users!sales_cashier_id_fkey(full_name)
-				`)
-				.eq('tenant_id', userProfile.tenant_id)
-				.order('created_at', { ascending: false });
-				
-			if (error) console.error('Error fetching sales:', error);
-			orders = data || [];
-			filtered = orders;
-		}
-		loading = false;
-	});
+				`, { count: 'exact' })
+				.eq('tenant_id', tenantId);
 
-	function applyFilter() {
-		let r = orders;
-		if (statusFilter !== 'all') r = r.filter(o => o.sale_status === statusFilter);
-		if (searchQuery) {
-			const q = searchQuery.toLowerCase();
-			r = r.filter(o =>
-				o.sale_number?.toLowerCase().includes(q) ||
-				o.customer_name?.toLowerCase().includes(q) ||
-				o.customer?.full_name?.toLowerCase().includes(q)
-			);
+			if (statusFilter !== 'all') {
+				query = query.eq('sale_status', statusFilter);
+			}
+
+			if (searchQuery) {
+				const q = `%${searchQuery}%`;
+				query = query.or(`sale_number.ilike.${q},customer_name.ilike.${q}`);
+			}
+
+			const { data, count, error } = await query
+				.order('created_at', { ascending: false })
+				.range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
+
+			if (error) throw error;
+			orders = data || [];
+			totalCount = count || 0;
+		} catch (err) {
+			console.error('Error fetching sales:', err);
+		} finally {
+			loading = false;
 		}
-		filtered = r;
-		page = 1;
 	}
 
-	$effect(() => { searchQuery; statusFilter; applyFilter(); });
+	let debounceTimeout: any;
+	$effect(() => {
+		if (!tenantId) return;
+		
+		const p = page;
+		const q = searchQuery;
+		const s = statusFilter;
+
+		// If filters changed, reset to page 1
+		if (q !== lastSearch || s !== lastStatus) {
+			lastSearch = q;
+			lastStatus = s;
+			if (page !== 1) {
+				page = 1;
+				return;
+			}
+		}
+
+		clearTimeout(debounceTimeout);
+		debounceTimeout = setTimeout(() => {
+			loadOrders();
+		}, q ? 400 : 0);
+	});
 
 	function statusBadge(status: string) {
 		switch (status) {
@@ -106,7 +141,7 @@
 				<span>Sales Management</span>
 			</div>
 			<h1 class="text-2xl font-bold text-slate-900 tracking-tight">Orders & Transactions</h1>
-			<p class="text-slate-500 font-medium">{filtered.length} total records found</p>
+			<p class="text-slate-500 font-medium">{totalCount} total records found</p>
 		</div>
 		<div class="flex items-center gap-3">
 			<button class="inline-flex items-center gap-2 bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
@@ -159,7 +194,7 @@
 				</div>
 				<p class="text-slate-400 font-bold text-sm uppercase tracking-widest">Loading Transactions...</p>
 			</div>
-		{:else if paginated.length === 0}
+		{:else if orders.length === 0}
 			<div class="py-32 flex flex-col items-center justify-center text-center px-4">
 				<div class="h-20 w-20 bg-slate-50 rounded-3xl flex items-center justify-center mb-6">
 					<ShoppingBag class="h-10 w-10 text-slate-200" />
@@ -185,7 +220,7 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-50">
-						{#each paginated as order}
+						{#each orders as order}
 							{@const Icon = channelIcon(order.channel)}
 							<tr class="group hover:bg-slate-50/80 transition-all cursor-pointer" onclick={() => goto(`/orders/${order.id}`)}>
 								<td class="px-6 py-5">
@@ -257,7 +292,7 @@
 			{#if totalPages > 1}
 				<div class="px-6 py-5 border-t border-slate-100 flex items-center justify-between bg-slate-50/30">
 					<p class="text-xs font-bold text-slate-400 uppercase tracking-widest">
-						Showing <span class="text-slate-900">{(page-1)*PER_PAGE+1}–{Math.min(page*PER_PAGE, filtered.length)}</span> of <span class="text-slate-900">{filtered.length}</span> transactions
+						Showing <span class="text-slate-900">{(page-1)*PER_PAGE+1}–{Math.min(page*PER_PAGE, totalCount)}</span> of <span class="text-slate-900">{totalCount}</span> transactions
 					</p>
 					<div class="flex items-center gap-2">
 						<button 
@@ -269,14 +304,27 @@
 						</button>
 						
 						<div class="flex items-center gap-1 px-2">
-							{#each Array.from({length: Math.min(5, totalPages)}, (_, i) => i + 1) as p}
-								<button 
-									onclick={() => page = p}
-									class="h-10 w-10 rounded-xl text-sm font-bold transition-all {page === p ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400 hover:text-slate-900 hover:bg-white hover:shadow-sm'}"
-								>
-									{p}
-								</button>
-							{/each}
+							{#if totalPages <= 5}
+								{#each Array.from({length: totalPages}, (_, i) => i + 1) as p}
+									<button 
+										onclick={() => page = p}
+										class="h-10 w-10 rounded-xl text-sm font-bold transition-all {page === p ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400 hover:text-slate-900 hover:bg-white hover:shadow-sm'}"
+									>
+										{p}
+									</button>
+								{/each}
+							{:else}
+								<!-- Simple dynamic pagination window -->
+								{@const start = Math.max(1, Math.min(page - 2, totalPages - 4))}
+								{#each Array.from({length: 5}, (_, i) => start + i) as p}
+									<button 
+										onclick={() => page = p}
+										class="h-10 w-10 rounded-xl text-sm font-bold transition-all {page === p ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400 hover:text-slate-900 hover:bg-white hover:shadow-sm'}"
+									>
+										{p}
+									</button>
+								{/each}
+							{/if}
 						</div>
 
 						<button 

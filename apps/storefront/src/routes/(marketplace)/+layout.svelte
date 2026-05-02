@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ShoppingCart, Search, User, Menu, X, ArrowRight, Instagram, Twitter, Facebook, MessageCircle, Send, ChevronDown, ShieldCheck, Globe, Share2, Mail, Phone } from 'lucide-svelte';
+	import { ShoppingCart, Search, User, Menu, X, ArrowRight, Instagram, Twitter, Facebook, MessageCircle, Send, ChevronDown, ShieldCheck, Globe, Share2, Mail, Phone, Sparkles } from 'lucide-svelte';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -22,6 +22,28 @@
 	let isMenuOpen = false;
 	let isScrolled = false;
 	let isAccountOpen = false;
+	let isBranchOpen = false;
+
+	$: branches = storefront?.branches || [];
+	$: mainBranch = branches[0] || null;
+
+	function openProducts(e: MouseEvent) {
+		if (branches.length <= 1) {
+			// Only one branch or none — go directly
+			const q = mainBranch ? `?branch=${mainBranch.id}` : '';
+			goto(`/products${q}`);
+		} else {
+			e.preventDefault();
+			isBranchOpen = !isBranchOpen;
+			isAccountOpen = false;
+		}
+	}
+
+	function goToBranch(branchId: string | null) {
+		isBranchOpen = false;
+		const q = branchId ? `?branch=${branchId}` : '';
+		goto(`/products${q}`);
+	}
 
 	async function toggleChat(type: 'Customer Support' | 'Consultation' = 'Customer Support') { 
 		if (!$isAuthenticated) {
@@ -125,7 +147,11 @@
 				if (pendingChat) {
 					localStorage.removeItem('pending_chat_redirect');
 					isAuthModalOpen.set(false);
-					goto(pendingChat);
+					
+					// Only redirect if not already on a target page (cart/checkout)
+					if (!$page.url.pathname.includes('/cart') && !$page.url.pathname.includes('/checkout')) {
+						goto(pendingChat);
+					}
 				}
 			}
 		});
@@ -154,7 +180,7 @@
 	<!-- Navigation -->
 	{#if $page.url.pathname !== '/profile' && !$page.url.pathname.startsWith('/chat')}
 		<nav 
-			class="sticky top-0 z-50 transition-all duration-500 {isScrolled ? 'bg-white/80 backdrop-blur-md border-b border-gray-100 py-3' : 'bg-transparent py-6'}"
+			class="sticky top-0 z-50 transition-all duration-500 bg-white border-b border-gray-100 {isScrolled ? 'py-3' : 'py-6'}"
 		>
 			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 				<div class="flex items-center justify-between">
@@ -172,11 +198,42 @@
 
 					<!-- Desktop Menu -->
 					<div class="hidden md:flex items-center gap-8">
-						<a href="/" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 {$page.url.pathname === '/' ? 'text-gray-900' : 'text-gray-500'}">Products</a>
+						<!-- Products with branch dropdown -->
+						<div class="relative">
+							<button
+								onclick={openProducts}
+								class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 {$page.url.pathname.startsWith('/products') ? 'text-gray-900' : 'text-gray-500'}"
+							>
+								Products
+								{#if branches.length > 1}<ChevronDown class="w-3 h-3 opacity-50" />{/if}
+							</button>
+							{#if isBranchOpen && branches.length > 1}
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<!-- svelte-ignore a11y_click_events_have_key_events -->
+								<div class="absolute left-0 top-full mt-2 w-52 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-2 animate-in fade-in slide-in-from-top-2 duration-150">
+									<p class="px-4 py-1.5 text-[9px] font-bold uppercase tracking-widest text-gray-400">Select Branch</p>
+									<button onclick={() => goToBranch(null)} class="w-full text-left px-4 py-2 text-[11px] font-semibold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+										All Branches
+									</button>
+									<div class="border-t border-gray-50 my-1"></div>
+									{#each branches as branch, i}
+										<button onclick={() => goToBranch(branch.id)} class="w-full text-left px-4 py-2 text-[11px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors flex items-center gap-2">
+											{#if i === 0}<span class="text-[8px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-bold uppercase">Main</span>{/if}
+											{branch.name}
+										</button>
+									{/each}
+								</div>
+							{/if}
+						</div>
 						{#if storefront?.allowDoctorPartnerShip ?? true}
 							<a href="/medics" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 {$page.url.pathname === '/medics' ? 'text-gray-900' : 'text-gray-500'}">Medics</a>
 						{/if}
 						<a href="/tracking" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 text-gray-500">Track Order</a>
+						{#if storefront?.ai_is_enabled}
+							<a href="/chat/ai" class="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-600 hover:text-blue-700 flex items-center gap-1.5">
+								<Sparkles class="w-3.5 h-3.5" /> AI Shopper
+							</a>
+						{/if}
 						<button 
 							onclick={() => toggleChat('Consultation')}
 							title="Pharmacist on duty"
@@ -251,7 +308,7 @@
 				<h4 class="font-display text-2xl tracking-widest uppercase font-bold" style="color: {brandColor};">{storefront?.name || 'Storefront'}</h4>
 			  </div>
 			  <p class="footer-desc">
-				{storefront?.description || 'Connecting patients with the worlds leading medical specialists. Quality healthcare, just a click away.'}
+				{storefront?.about_us || 'Connecting patients with the worlds leading medical specialists. Quality healthcare, just a click away.'}
 			  </p>
 			</div>
 
@@ -290,7 +347,7 @@
 	<!-- Floating Chat Icon -->
 	{#if !$page.url.pathname.startsWith('/chat')}
 	<button 
-		onclick={() => toggleChat('Customer Support')}
+		onclick={() => storefront?.ai_is_enabled ? goto('/chat/ai') : goto('/chat/customer-care')}
 		class="fixed bottom-8 right-8 z-[60] w-14 h-14 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 group"
 	>
 		<MessageCircle class="h-6 w-6 group-hover:rotate-12 transition-transform" />

@@ -6,7 +6,7 @@
 		Loader2, User, Phone, Video, Paperclip, Smile,
 		Mic, X, Image as ImageIcon, FileText, ShoppingCart,
 		Plus, CheckCircle2, ChevronRight, Package, Download, Play, Pause,
-		Stethoscope, Sparkles
+		Sparkles
 	} from 'lucide-svelte';
 	import { supabase } from '$lib/supabase';
 	import { authStore, currentUser } from '$lib/stores/auth';
@@ -50,12 +50,10 @@
 	let typingTimeout: any = null;
 	let othersTyping = $state<string[]>([]);
 
-	// 5. Activity Tracking
+	// 6. Activity Tracking
 	async function logActivity(action: string) {
 		if (!conversation) return;
 		try {
-			// This message is marked as pharmacist_only and is_activity
-			// It will be hidden from the customer but visible to the pharmacist
 			await supabase
 				.from('chat_messages')
 				.insert({
@@ -65,7 +63,6 @@
 					message_text: `Activity: ${action}`,
 					metadata: { 
 						is_activity: true,
-						pharmacist_only: true, // Only pharmacist sees this
 						is_visible_to_customer: false 
 					}
 				});
@@ -75,12 +72,11 @@
 	}
 
 	onMount(async () => {
-		// Wait for auth store to initialize
 		const checkAuth = () => {
 			if ($authStore.initialized) {
 				if (!$currentUser) {
-					loading = false; // Show login required state
-					isAuthModalOpen.set(true); // Automatically open the standard login modal
+					loading = false;
+					isAuthModalOpen.set(true);
 				} else {
 					initChat();
 				}
@@ -99,16 +95,13 @@
 	async function initChat() {
 		loading = true;
 		try {
-			// 1. Check for ID in URL
 			let targetId = $page.url.searchParams.get('id');
-
-			// 2. Fallback to global store
 			if (!targetId) {
 				targetId = get(activeConversationId);
 			}
 
 			if (targetId) {
-				const { data: existing, error } = await supabase
+				const { data: existing } = await supabase
 					.from('chat_conversations')
 					.select('*')
 					.eq('id', targetId)
@@ -116,18 +109,17 @@
 				
 				if (existing) {
 					conversation = existing;
-					setActiveConversation(existing.id); // Sync store if URL had it
+					setActiveConversation(existing.id);
 				}
 			}
 
-			// 3. Fallback to existing search logic if still no conversation
 			if (!conversation) {
 				const { data: existing } = await supabase
 					.from('chat_conversations')
 					.select('*')
 					.eq('customer_id', $currentUser.id)
 					.eq('tenant_id', tenantId)
-					.is('consultation_id', null)
+					.eq('chatType', 'Customer Support')
 					.order('started_at', { ascending: false })
 					.limit(1)
 					.maybeSingle();
@@ -136,21 +128,19 @@
 					conversation = existing;
 					setActiveConversation(existing.id);
 				} else {
-					// Create new if none found at all
 					const urlProductId = $page.url.searchParams.get('productId');
-					const urlChatType = $page.url.searchParams.get('type') || (urlProductId ? 'Consultation' : 'Customer Support');
 					const { data: created, error: createError } = await supabase
 						.from('chat_conversations')
 						.insert({
 							customer_id: $currentUser.id,
 							tenant_id: tenantId,
 							status: 'active',
-							chatType: urlChatType,
+							chatType: 'Customer Support',
 							customer_name: $currentUser?.user_metadata?.full_name || $currentUser?.email,
 							customer_pic: $currentUser?.user_metadata?.avatar_url,
-							isConsulatation: urlChatType === 'Consultation',
+							isConsulatation: false,
 							metadata: { 
-								origin: 'storefront_fallback',
+								origin: 'customer_care_page',
 								productId: urlProductId 
 							}
 						})
@@ -162,7 +152,7 @@
 				}
 			}
 
-			// 4. Handle Product Inquiry Context
+			// Handle Product Inquiry Context
 			const urlProductId = $page.url.searchParams.get('productId');
 			const metaProductId = conversation?.metadata?.productId;
 			const productId = urlProductId || metaProductId;
@@ -192,14 +182,13 @@
 	}
 
 	async function endSession() {
-		if (confirm('Are you sure you want to end this chat session? This will clear your active chat history on this device.')) {
+		if (confirm('Are you sure you want to end this chat session?')) {
 			clearActiveConversation();
 			goto('/');
 		}
 	}
 
 	function setupSubscription() {
-		// 1. Messages Subscription
 		supabase.channel(`chat:${conversation.id}`)
 			.on('postgres_changes', {
 				event: 'INSERT',
@@ -207,7 +196,6 @@
 				table: 'chat_messages',
 				filter: `conversation_id=eq.${conversation.id}`
 			}, (payload) => {
-				// Only display if it's not a pharmacist-only activity message
 				if (payload.eventType === 'INSERT' && !payload.new.metadata?.pharmacist_only) {
 					if (!messages.find(m => m.id === payload.new.id)) {
 						messages = [...messages, payload.new];
@@ -217,7 +205,6 @@
 			})
 			.subscribe();
 
-		// 2. Typing Indicators Subscription
 		supabase.channel(`typing:${conversation.id}`)
 			.on('postgres_changes', {
 				event: '*',
@@ -226,10 +213,8 @@
 				filter: `conversation_id=eq.${conversation.id}`
 			}, (payload: any) => {
 				if (payload.new?.user_id === $currentUser?.id || payload.old?.user_id === $currentUser?.id) return;
-				
 				const userId = payload.new?.user_id || payload.old?.user_id;
 				const typing = payload.new?.is_typing;
-				
 				if (typing) {
 					if (!othersTyping.includes(userId)) {
 						othersTyping = [...othersTyping, userId];
@@ -244,12 +229,10 @@
 
 	async function handleTyping() {
 		if (!conversation || !$currentUser) return;
-		
 		if (!isTyping) {
 			isTyping = true;
 			updateTypingStatus(true);
 		}
-
 		if (typingTimeout) clearTimeout(typingTimeout);
 		typingTimeout = setTimeout(() => {
 			isTyping = false;
@@ -300,36 +283,26 @@
 		}
 	}
 
-	// 6. Media Handlers
 	async function handleFileUpload(e: Event) {
 		const target = e.target as HTMLInputElement;
 		const file = target.files?.[0];
 		if (!file) return;
-
 		sending = true;
 		showMediaMenu = false;
-
 		try {
 			const path = `chat/${conversation.id}/${Date.now()}_${file.name}`;
 			const { error: uploadError } = await supabase.storage.from('chat-attachments').upload(path, file);
 			if (uploadError) throw uploadError;
-
 			const { data: { publicUrl } } = supabase.storage.from('chat-attachments').getPublicUrl(path);
-
-			await supabase
-				.from('chat_messages')
-				.insert({
-					conversation_id: conversation.id,
-					sender_id: $currentUser.id,
-					sender_type: 'customer',
-					message_text: file.name,
-					message_type: file.type.startsWith('image/') ? 'image' : (file.type === 'application/pdf' ? 'file' : 'file'),
-					media_url: publicUrl,
-					metadata: {
-						attachments: [{ url: publicUrl, name: file.name, type: file.type, size: file.size }]
-					}
-				});
-			// Subscription handles UI update
+			await supabase.from('chat_messages').insert({
+				conversation_id: conversation.id,
+				sender_id: $currentUser.id,
+				sender_type: 'customer',
+				message_text: file.name,
+				message_type: file.type.startsWith('image/') ? 'image' : 'file',
+				media_url: publicUrl,
+				metadata: { attachments: [{ url: publicUrl, name: file.name, type: file.type, size: file.size }] }
+			});
 		} catch (err) {
 			console.error('Upload failed:', err);
 		} finally {
@@ -346,12 +319,10 @@
 			mediaRecorder.onstop = async () => {
 				const blob = new Blob(audioChunks, { type: 'audio/webm' });
 				const file = new File([blob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
-				
 				sending = true;
 				const path = `chat/${conversation.id}/${file.name}`;
 				await supabase.storage.from('chat-attachments').upload(path, file);
 				const { data: { publicUrl } } = supabase.storage.from('chat-attachments').getPublicUrl(path);
-
 				await supabase.from('chat_messages').insert({
 					conversation_id: conversation.id,
 					sender_id: $currentUser.id,
@@ -359,13 +330,10 @@
 					message_text: 'Voice Message',
 					message_type: 'audio',
 					media_url: publicUrl,
-					metadata: {
-						attachments: [{ url: publicUrl, name: file.name, type: 'audio/webm', duration: recordingTime }]
-					}
+					metadata: { attachments: [{ url: publicUrl, name: file.name, type: 'audio/webm', duration: recordingTime }] }
 				});
 				sending = false;
 			};
-
 			mediaRecorder.start();
 			isRecording = true;
 			recordingTime = 0;
@@ -384,7 +352,6 @@
 		clearInterval(recordingInterval);
 	}
 
-	// 7. Product / Cart Helpers
 	function openProductModal() {
 		showProductModal = true;
 		logActivity('Opened Product Selection Modal');
@@ -404,7 +371,6 @@
 			quantity: 1,
 			stock_available: product.stock_quantity
 		}, tenantId);
-		
 		showProductModal = false;
 		logActivity(`Added ${product.name} to bag`);
 	}
@@ -422,7 +388,7 @@
 </script>
 
 <svelte:head>
-	<title>Pharmacy Hub — Live Consultation</title>
+	<title>Customer Support — Kemani</title>
 </svelte:head>
 
 <div class="chat-viewport">
@@ -432,7 +398,7 @@
 				<Loader2 class="h-8 w-8 animate-spin text-primary-600" />
 				<div class="loader-pulse"></div>
 			</div>
-			<p class="mt-4 text-xs font-black uppercase tracking-[0.3em] text-gray-400">Securing Clinical Line</p>
+			<p class="mt-4 text-xs font-black uppercase tracking-[0.3em] text-gray-400">Connecting to Support</p>
 		</div>
 	{:else if !$currentUser}
 		<div class="flex-1 flex flex-col items-center justify-center p-8 text-center" transition:fade>
@@ -443,7 +409,6 @@
 			<p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest max-w-[200px]">Please sign in to access your secure chat history.</p>
 		</div>
 	{:else}
-		<!-- HEADER: Focused & Clean -->
 		<header class="header">
 			<div class="header-content">
 				<div class="flex items-center gap-4">
@@ -452,15 +417,15 @@
 					</a>
 					<div class="flex items-center gap-3">
 						<div class="avatar-wrap">
-							<div class="avatar-box">RX</div>
+							<div class="avatar-box">CS</div>
 							<div class="status-dot"></div>
 						</div>
 						<div>
 							<h1 class="text-sm font-black text-gray-900 uppercase tracking-tight leading-none">
-								{conversation?.chatType === 'Customer Support' ? 'Customer Support' : 'Pharmacy Support'}
+								Customer Support
 							</h1>
 							<p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">
-								{conversation?.chatType === 'Customer Support' ? 'Support is Online' : 'Pharmacist is Online'}
+								Support is Online
 							</p>
 						</div>
 					</div>
@@ -479,11 +444,10 @@
 			</div>
 			<div class="encryption-bar">
 				<ShieldCheck class="h-3 w-3" />
-				<span>End-to-end encrypted medical consultation</span>
+				<span>Secure customer support session</span>
 			</div>
 		</header>
 
-		<!-- MESSAGES AREA: Scrollable -->
 		<main class="messages-wrap" bind:this={messagesContainer}>
 			<div class="messages-inner">
 				{#if productInquiry}
@@ -497,7 +461,7 @@
 								{/if}
 							</div>
 							<div class="flex-1 min-w-0">
-								<p class="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Inquiry Context</p>
+								<p class="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Product Inquiry</p>
 								<h3 class="text-sm font-black text-gray-900 truncate uppercase tracking-tight">{productInquiry.name}</h3>
 								<p class="text-[10px] text-gray-500 font-medium">₦{productInquiry.price?.toLocaleString()}</p>
 							</div>
@@ -506,7 +470,7 @@
 					</div>
 				{/if}
 
-				{#each messages.filter(m => !m.metadata?.is_activity) as msg}
+				{#each messages as msg}
 					{@const isMe = msg.sender_id === $currentUser?.id}
 					<div class="msg-row {isMe ? 'me' : 'them'}" in:fly={{ y: 20 }}>
 						<div class="msg-bubble shadow-sm">
@@ -526,32 +490,8 @@
 											<FileText class="h-4 w-4" />
 											<span class="truncate">{msg.message_text || msg.metadata?.attachments?.[0]?.name || 'Document'}</span>
 										</a>
-									{:else if msg.metadata?.attachments}
-										{#each msg.metadata.attachments as attr}
-											{#if attr.type.startsWith('image/')}
-												<div class="attachment-img">
-													<img src={attr.url} alt="" />
-													<a href={attr.url} target="_blank" class="download-link"><Download class="h-3 w-3" /></a>
-												</div>
-											{:else if attr.type.startsWith('audio/')}
-												<div class="audio-msg">
-													<audio src={attr.url} controls class="h-8"></audio>
-												</div>
-											{:else}
-												<a href={attr.url} target="_blank" class="file-tag">
-													<FileText class="h-4 w-4" />
-													<span class="truncate">{attr.name}</span>
-												</a>
-											{/if}
-										{/each}
 									{/if}
 								</div>
-							{/if}
-							{#if msg.metadata?.suggested_product}
-								<SuggestedProductCard 
-									productId={msg.metadata.suggested_product} 
-									{tenantId} 
-								/>
 							{/if}
 
 							{#if msg.metadata?.product}
@@ -578,34 +518,6 @@
 								</div>
 							{/if}
 
-							{#if msg.metadata?.doctor}
-								<div class="referral-card bg-indigo-50/50 rounded-2xl p-4 border border-indigo-100 mb-2">
-									<div class="flex items-center gap-2 mb-3">
-										<div class="p-1.5 bg-indigo-100 rounded-lg"><Stethoscope class="h-3 w-3 text-indigo-600" /></div>
-										<span class="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-600">Medical Referral</span>
-									</div>
-									<div class="flex items-center gap-3">
-										<div class="h-12 w-12 bg-indigo-100 rounded-full flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
-											{#if msg.metadata.doctor.avatar}
-												<img src={msg.metadata.doctor.avatar} alt="" class="h-full w-full object-cover" />
-											{:else}
-												<User class="h-6 w-6 text-indigo-300" />
-											{/if}
-										</div>
-										<div class="flex-1 min-w-0">
-											<h4 class="text-sm font-black text-indigo-900 truncate uppercase tracking-tight">{msg.metadata.doctor.name}</h4>
-											<p class="text-[10px] text-indigo-500 font-bold uppercase tracking-widest">{msg.metadata.doctor.specialization}</p>
-										</div>
-									</div>
-									<a 
-										href="/medics/{msg.metadata.doctor.id}"
-										class="w-full mt-4 bg-indigo-600 text-white text-[10px] font-black py-2.5 rounded-xl uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
-									>
-										View Profile <ChevronRight class="h-3 w-3" />
-									</a>
-								</div>
-							{/if}
-
 							<p class="text-sm leading-relaxed">{msg.message_text}</p>
 							<span class="msg-time">{formatTime(msg.created_at)}</span>
 						</div>
@@ -617,8 +529,8 @@
 						<div class="h-16 w-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4 border-2 border-gray-100 border-dashed">
 							<MessageCircle class="h-8 w-8" />
 						</div>
-						<h3 class="text-xs font-black uppercase tracking-widest text-gray-900">Direct Consultation</h3>
-						<p class="text-[10px] text-gray-400 max-w-[200px] mt-2 font-medium">Ask about dosages, side effects, or request a prescription refill.</p>
+						<h3 class="text-xs font-black uppercase tracking-widest text-gray-900">Direct Support</h3>
+						<p class="text-[10px] text-gray-400 max-w-[200px] mt-2 font-medium">How can we help you today? Ask about your orders or any product details.</p>
 					</div>
 				{/if}
 
@@ -628,17 +540,14 @@
 							<div class="typing-dot"></div>
 							<div class="typing-dot"></div>
 							<div class="typing-dot"></div>
-							<span class="text-[10px] font-bold text-gray-400 ml-2 uppercase tracking-widest">Pharmacist is typing</span>
+							<span class="text-[10px] font-bold text-gray-400 ml-2 uppercase tracking-widest">Support is typing</span>
 						</div>
 					</div>
 				{/if}
 			</div>
 		</main>
 
-		<!-- FIXED INTERACTION CENTER -->
 		<footer class="interaction-center">
-
-
 			<div class="input-strip shadow-2xl">
 				<div class="flex items-center gap-1 relative">
 					<button 
@@ -656,7 +565,7 @@
 							</button>
 							<button class="media-option" onclick={() => document.getElementById('pdf-up')?.click()}>
 								<div class="media-icon bg-amber-50 text-amber-600"><FileText class="h-5 w-5" /></div>
-								<span>Medical PDF</span>
+								<span>Document</span>
 							</button>
 							<input id="image-up" type="file" accept="image/*" class="hidden" onchange={handleFileUpload} />
 							<input id="pdf-up" type="file" accept="application/pdf" class="hidden" onchange={handleFileUpload} />
@@ -682,7 +591,7 @@
 						bind:value={newMessage} 
 						onkeydown={(e) => e.key === 'Enter' && sendMessage()}
 						oninput={handleTyping}
-						placeholder="Message your pharmacist..." 
+						placeholder="Message support..." 
 						disabled={sending}
 					/>
 				</div>
@@ -741,7 +650,6 @@
 		font-family: 'Inter', sans-serif;
 	}
 
-	/* Loader */
 	.loading-overlay { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 	.loader-wrap { position: relative; }
 	.loader-pulse { 
@@ -749,14 +657,12 @@
 		border-radius: 50%; opacity: 0.2; animation: ping 2s cubic-bezier(0,0,0.2,1) infinite; 
 	}
 
-	/* Header */
 	.header { background: white; border-bottom: 1px solid #f3f4f6; z-index: 50; }
 	.header-content { height: 4rem; padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between; }
 	.encryption-bar { 
-		display: flex; align-items: center; justify-content: center; gap: 4px; text-transform: uppercase; letter-spacing: 0.05em;
+		display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px; background: #f9fafb; font-size: 9px; font-weight: 800; color: #64748b; border-bottom: 1px solid #f1f5f9; text-transform: uppercase; letter-spacing: 0.05em;
 	}
 
-	/* Messages */
 	.messages-wrap { flex: 1; overflow-y: auto; padding: 1.5rem; scroll-behavior: smooth; }
 	.messages-inner { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
 	
@@ -777,7 +683,6 @@
 
 	.empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding-top: 5rem; opacity: 0.5; }
 
-	/* Attachments */
 	.msg-attachments { margin-bottom: 0.5rem; display: flex; flex-direction: column; gap: 4px; }
 	.attachment-img { position: relative; border-radius: 0.75rem; overflow: hidden; }
 	.attachment-img img { max-height: 200px; width: 100%; object-fit: cover; }
@@ -787,9 +692,8 @@
 		display: flex; align-items: center; gap: 8px; padding: 8px; background: #f9fafb; border-radius: 8px;
 		font-size: 11px; font-weight: 600; text-decoration: none; color: #1f2937;
 	}
-	.me .file-tag { background: white/10; color: white; }
+	.me .file-tag { background: rgba(255,255,255,0.1); color: white; }
 
-	/* Interaction Center */
 	.interaction-center { 
 		padding: 1.5rem; background: linear-gradient(to top, var(--bg), transparent); 
 		position: relative; z-index: 60;
@@ -817,15 +721,13 @@
 		border-radius: 1rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 	}
 
-	/* Recording */
 	.recording-ui { 
 		position: absolute; inset: 0; background: white; z-index: 10; 
 		display: flex; align-items: center; justify-content: space-between; padding: 0 1rem; border-radius: 1.5rem;
 	}
 	.pulse-dot { width: 8px; height: 8px; background: #ef4444; border-radius: 50%; animation: pulse 1s infinite; }
-	.stop-btn { font-size: 10px; font-black: 900; color: #ef4444; padding: 4px 8px; background: #fef2f2; border: none; border-radius: 6px; }
+	.stop-btn { font-size: 10px; font-weight: 900; color: #ef4444; padding: 4px 8px; background: #fef2f2; border: none; border-radius: 6px; }
 
-	/* Media Menu */
 	.media-menu { 
 		position: absolute; bottom: calc(100% + 1rem); left: 0; background: white; 
 		border-radius: 1.25rem; padding: 8px; display: flex; flex-direction: column; gap: 4px;
@@ -852,7 +754,6 @@
 	}
 	.status-dot { position: absolute; bottom: -2px; right: -2px; width: 10px; height: 10px; background: #10b981; border: 2px solid white; border-radius: 50%; }
 
-	/* Auth Required */
 	.auth-required {
 		flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem;
 		background: radial-gradient(circle at center, #f8fafc 0%, #f1f5f9 100%);
@@ -875,18 +776,6 @@
 	}
 	.login-btn:hover { transform: translateY(-2px); box-shadow: 0 15px 30px -5px rgba(0,0,0,0.15); }
 
-	@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-
-	.typing-dot {
-		width: 4px;
-		height: 4px;
-		background: #cbd5e1;
-		border-radius: 50%;
-		animation: typingPulse 1.4s infinite ease-in-out both;
-	}
-	.typing-dot:nth-child(1) { animation-delay: -0.32s; }
-	.typing-dot:nth-child(2) { animation-delay: -0.16s; }
-
 	.inquiry-banner {
 		background: white;
 		border: 1px solid #f3f4f6;
@@ -907,8 +796,18 @@
 	}
 	.inquiry-img img { width: 100%; height: 100%; object-fit: cover; }
 
+	@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 	@keyframes typingPulse {
 		0%, 80%, 100% { transform: scale(0); }
 		40% { transform: scale(1); }
 	}
+	.typing-dot {
+		width: 4px;
+		height: 4px;
+		background: #cbd5e1;
+		border-radius: 50%;
+		animation: typingPulse 1.4s infinite ease-in-out both;
+	}
+	.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+	.typing-dot:nth-child(2) { animation-delay: -0.16s; }
 </style>

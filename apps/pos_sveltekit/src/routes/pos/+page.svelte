@@ -249,6 +249,15 @@
 		if (!d) return null;
 		return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
 	}
+
+	// ── Effect to manage body class for printing ──────────────────────────────
+	$effect(() => {
+		if (saleSuccess) {
+			document.body.classList.add('showing-receipt');
+		} else {
+			document.body.classList.remove('showing-receipt');
+		}
+	});
 </script>
 
 <svelte:head>
@@ -744,20 +753,20 @@
 	@media print {
 		@page { margin: 0; }
 
-		/* 1. Hide everything by default using visibility */
-		:global(body) {
+		/* 1. Hide everything by default using visibility, but ONLY when showing a receipt */
+		:global(body.showing-receipt) {
 			visibility: hidden !important;
 			background: white !important;
 		}
 
 		/* 2. Show the receipt modal container and all its content */
-		:global(.receipt-modal-container),
-		:global(.receipt-modal-container *) {
+		:global(body.showing-receipt .receipt-modal-container),
+		:global(body.showing-receipt .receipt-modal-container *) {
 			visibility: visible !important;
 		}
 
 		/* 3. Position the container to the top of the print page */
-		:global(.receipt-modal-container) {
+		:global(body.showing-receipt .receipt-modal-container) {
 			position: absolute !important;
 			left: 0 !important;
 			top: 0 !important;
@@ -769,7 +778,7 @@
 		}
 
 		/* 4. Reset the inner modal box for print */
-		:global(.receipt-modal-container > div) {
+		:global(body.showing-receipt .receipt-modal-container > div) {
 			box-shadow: none !important;
 			border: none !important;
 			max-width: 100% !important;
@@ -794,10 +803,10 @@
 		}
 
 		/* 6. Hide UI elements (Header, Buttons, etc.) */
-		.p-4.border-b, 
-		.p-4.bg-gray-50, 
-		:global(button),
-		:global(.receipt-modal-container .X) {
+		:global(body.showing-receipt) .p-4.border-b, 
+		:global(body.showing-receipt) .p-4.bg-gray-50, 
+		:global(body.showing-receipt button),
+		:global(body.showing-receipt .receipt-modal-container .X) {
 			display: none !important;
 			visibility: hidden !important;
 		}

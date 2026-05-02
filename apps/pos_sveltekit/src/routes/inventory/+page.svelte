@@ -12,6 +12,7 @@
 
 	let inventory = $state<any[]>([]);
 	let branches = $state<any[]>([]);
+	let totalCount = $state(0);
 	let loading = $state(true);
 	let searchQuery = $state('');
 	let selectedBranchId = $state('all');
@@ -20,6 +21,8 @@
 	let currentTenantId = $state('');
 	let userBranchId = $state('');
 	let userRole = $state('');
+	let lastSearch = '';
+	let lastBranchId = 'all';
 
 	// Pagination
 	let page = $state(1);
@@ -30,23 +33,7 @@
 	let targetBranchId = $state('');
 	let transferLoading = $state(false);
 
-
-
-
-
-	// Derived lists
-	let filtered = $derived(
-		inventory.filter(item => {
-			const matchesSearch = item.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-								item.sku?.toLowerCase().includes(searchQuery.toLowerCase());
-			const matchesBranch = selectedBranchId === 'all' || item.branch_id === selectedBranchId;
-			const hasStock = item.stock_quantity > 0;
-			return matchesSearch && matchesBranch && hasStock;
-		})
-	);
-
-	let paginated = $derived(filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE));
-	let totalPages = $derived(Math.ceil(filtered.length / PER_PAGE));
+	let totalPages = $derived(Math.ceil(totalCount / PER_PAGE));
 
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
@@ -62,9 +49,12 @@
 			userBranchId = user.branch_id || '';
 			userRole = user.role;
 			selectedBranchId = user.branch_id || 'all';
-			await Promise.all([loadBranches(), loadInventory()]);
+			lastBranchId = selectedBranchId;
+			await loadBranches();
+			// Initial load handled by effect
+		} else {
+			loading = false;
 		}
-		loading = false;
 	});
 
 	async function loadBranches() {
@@ -75,64 +65,97 @@
 	}
 
 	async function loadInventory() {
-		// Build the query against branch_inventory directly
-		let query = supabase
-			.from('branch_inventory')
-			.select(`
-				id,
-				branch_id,
-				product_id,
-				stock_quantity,
-				reserved_quantity,
-				batch_no,
-				product_name,
-				sku,
-				image_url,
-				cost_price,
-				selling_price,
-				expiry_date,
-				low_stock_threshold,
-				updated_at
-			`)
-			.eq('tenant_id', currentTenantId)
-			.gt('stock_quantity', 0);
+		if (!currentTenantId) return;
+		loading = true;
+		try {
+			let query = supabase
+				.from('branch_inventory')
+				.select(`
+					id,
+					branch_id,
+					product_id,
+					stock_quantity,
+					reserved_quantity,
+					batch_no,
+					product_name,
+					sku,
+					image_url,
+					cost_price,
+					selling_price,
+					expiry_date,
+					low_stock_threshold,
+					updated_at
+				`, { count: 'exact' })
+				.eq('tenant_id', currentTenantId)
+				.gt('stock_quantity', 0);
 
-		// If a specific branch is selected, filter server-side
-		if (selectedBranchId && selectedBranchId !== 'all') {
-			query = query.eq('branch_id', selectedBranchId);
+			if (selectedBranchId !== 'all') {
+				query = query.eq('branch_id', selectedBranchId);
+			}
+
+			if (searchQuery) {
+				const q = `%${searchQuery}%`;
+				query = query.or(`product_name.ilike.${q},sku.ilike.${q},batch_no.ilike.${q}`);
+			}
+
+			const { data, count, error } = await query
+				.order('product_name', { ascending: true })
+				.range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
+
+			if (error) throw error;
+
+			inventory = (data || []).map((row: any) => {
+				const soon = row.expiry_date
+					? (new Date(row.expiry_date).getTime() - Date.now()) < 1000 * 60 * 60 * 24 * 90
+					: false;
+				return {
+					inv_id: row.id,
+					branch_id: row.branch_id,
+					product_id: row.product_id,
+					stock_quantity: row.stock_quantity,
+					reserved_quantity: row.reserved_quantity || 0,
+					available_stock: row.stock_quantity - (row.reserved_quantity || 0),
+					expiry_date: row.expiry_date,
+					batch_no: row.batch_no,
+					name: row.product_name,
+					sku: row.sku,
+					unit_price: row.selling_price,
+					cost_price: row.cost_price,
+					low_stock_threshold: row.low_stock_threshold || 10,
+					image_url: row.image_url,
+					is_expiring_soon: soon
+				};
+			});
+			totalCount = count || 0;
+		} catch (err) {
+			console.error('Inventory fetch error:', err);
+		} finally {
+			loading = false;
 		}
-
-		const { data, error } = await query;
-
-		if (error) {
-			console.error('Inventory fetch error:', error);
-			return;
-		}
-
-		// Map to the format expected by the table
-		inventory = (data || []).map((row: any) => {
-			const soon = row.expiry_date
-				? (new Date(row.expiry_date).getTime() - Date.now()) < 1000 * 60 * 60 * 24 * 90
-				: false;
-			return {
-				inv_id: row.id, // branch_inventory PK
-				branch_id: row.branch_id,
-				product_id: row.product_id,
-				stock_quantity: row.stock_quantity,
-				reserved_quantity: row.reserved_quantity || 0,
-				available_stock: row.stock_quantity - (row.reserved_quantity || 0),
-				expiry_date: row.expiry_date,
-				batch_no: row.batch_no,
-				name: row.product_name,
-				sku: row.sku,
-				unit_price: row.selling_price,
-				cost_price: row.cost_price,
-				low_stock_threshold: row.low_stock_threshold || 10,
-				image_url: row.image_url,
-				is_expiring_soon: soon
-			};
-		});
 	}
+
+	let debounceTimeout: any;
+	$effect(() => {
+		if (!currentTenantId) return;
+		
+		const p = page;
+		const q = searchQuery;
+		const b = selectedBranchId;
+
+		if (q !== lastSearch || b !== lastBranchId) {
+			lastSearch = q;
+			lastBranchId = b;
+			if (page !== 1) {
+				page = 1;
+				return;
+			}
+		}
+
+		clearTimeout(debounceTimeout);
+		debounceTimeout = setTimeout(() => {
+			loadInventory();
+		}, q ? 400 : 0);
+	});
 
 	function handleSelectRow(invId: string) {
 		if (selectedIds.includes(invId)) {
@@ -347,7 +370,7 @@
 				<Package class="h-6 w-6 text-indigo-600" />
 				Inventory
 			</h1>
-			<p class="text-sm text-gray-500 mt-0.5">{filtered.length} product{filtered.length !== 1 ? 's' : ''} in stock</p>
+			<p class="text-sm text-gray-500 mt-0.5">{totalCount} product{totalCount !== 1 ? 's' : ''} in stock</p>
 		</div>
 		<div class="flex items-center gap-3">
 			{#if selectedIds.length > 0}
@@ -411,7 +434,7 @@
 				<div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto"></div>
 				<p class="text-xs text-gray-500 mt-4 font-medium italic tracking-wide">Syncing product levels...</p>
 			</div>
-		{:else if filtered.length === 0}
+		{:else if totalCount === 0}
 			<div class="p-16 text-center">
 				<div class="bg-gray-50 h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
 					<Package class="h-8 w-8 text-gray-300" />
@@ -438,7 +461,7 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-gray-100">
-						{#each paginated as item}
+						{#each inventory as item}
 							{@const invId = item.inv_id}
 							{@const isSelected = selectedIds.includes(invId)}
 							<tr class="hover:bg-gray-50 transition-colors {isSelected ? 'bg-indigo-50/30' : ''}">
@@ -575,10 +598,10 @@
 				<div class="p-4 border-t bg-gray-50/30 flex items-center justify-between text-sm text-gray-600">
 					<p class="text-xs font-medium">
 						Showing <span class="text-gray-900 font-bold">{(page-1)*PER_PAGE+1}</span> – 
-						<span class="text-gray-900 font-bold">{Math.min(filtered.length, page * PER_PAGE)}</span> of 
-						<span class="text-gray-900 font-bold">{filtered.length}</span>
+						<span class="text-gray-900 font-bold">{Math.min(totalCount, page * PER_PAGE)}</span> of 
+						<span class="text-gray-900 font-bold">{totalCount}</span>
 					</p>
-					<div class="flex gap-1">
+					<div class="flex items-center gap-1">
 						<button 
 							disabled={page === 1}
 							onclick={() => page--}
@@ -586,6 +609,30 @@
 						>
 							<ChevronLeft class="h-4 w-4" />
 						</button>
+						
+						<div class="flex items-center gap-1 px-1">
+							{#if totalPages <= 5}
+								{#each Array.from({length: totalPages}, (_, i) => i + 1) as p}
+									<button 
+										onclick={() => page = p}
+										class="w-8 h-8 rounded-lg text-xs font-bold transition-all {page === p ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-900 hover:bg-white'}"
+									>
+										{p}
+									</button>
+								{/each}
+							{:else}
+								{@const start = Math.max(1, Math.min(page - 2, totalPages - 4))}
+								{#each Array.from({length: 5}, (_, i) => start + i) as p}
+									<button 
+										onclick={() => page = p}
+										class="w-8 h-8 rounded-lg text-xs font-bold transition-all {page === p ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-900 hover:bg-white'}"
+									>
+										{p}
+									</button>
+								{/each}
+							{/if}
+						</div>
+
 						<button 
 							disabled={page === totalPages}
 							onclick={() => page++}

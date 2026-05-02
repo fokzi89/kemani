@@ -4,93 +4,46 @@
 	import { ShoppingCart, Trash2, Plus, Minus, ArrowLeft, ShieldCheck, Truck, ArrowRight } from 'lucide-svelte';
 	import { isAuthenticated } from '$lib/stores/auth';
 	import { isAuthModalOpen } from '$lib/stores/ui';
+	import { cartStore, cartCount, cartSubtotal, cartServiceCharge } from '$lib/stores/cart.store';
 
 	export let data;
 
 	$: storefront = data.storefront;
 	$: brandColor = storefront?.brand_color || '#003f87';
 
-	type CartItem = {
-		product_id: string;
-		inventory_id?: string;
-		product_name: string;
-		product_image?: string;
-		price: number;
-		quantity: number;
-		stock_available: number;
-	};
-
-	type Cart = { items: CartItem[] };
-
-	let cart: Cart = { items: [] };
 	let isLoading = false;
 
 	onMount(() => {
-		loadCart();
-		window.addEventListener('storage', loadCart);
-		window.addEventListener('cart-updated', loadCart);
-		return () => {
-			window.removeEventListener('storage', loadCart);
-			window.removeEventListener('cart-updated', loadCart);
-		};
+		// Store automatically syncs via localStorage and storage events
 	});
 
-	function loadCart() {
-		try {
-			const raw = localStorage.getItem('cart');
-			cart = raw ? JSON.parse(raw) : { items: [] };
-		} catch {
-			cart = { items: [] };
-		}
+	function updateQuantity(product_id: string, qty: number) {
+		cartStore.updateQuantity(product_id, qty);
 	}
 
-	function saveCart() {
-		localStorage.setItem('cart', JSON.stringify(cart));
-		window.dispatchEvent(new Event('cart-updated'));
+	function removeItem(product_id: string) {
+		cartStore.removeItem(product_id);
 	}
 
-	function updateQuantity(index: number, qty: number) {
-		if (qty <= 0) { removeItem(index); return; }
-		const max = cart.items[index].stock_available || 999;
-		if (qty <= max) {
-			cart.items[index].quantity = qty;
-			cart = cart;
-			saveCart();
-		}
-	}
-
-	function removeItem(index: number) {
-		cart.items.splice(index, 1);
-		cart = cart;
-		saveCart();
-	}
-
-	$: subtotal = cart.items.reduce((s, i) => s + i.price * i.quantity, 0);
+	$: subtotal = $cartSubtotal;
 	
 	$: taxRate = storefront?.branches?.[0]?.tax_rate || 0;
 	$: tax = Math.round(subtotal * (taxRate / 100));
 
-	function calculateServiceCharge(amount: number) {
-		if (amount <= 0) return 0;
-		if (amount <= 4999) return 30;
-		if (amount <= 10000) return 50;
-		if (amount <= 100000) return 100;
-		return 150;
-	}
-
-	$: serviceCharge = calculateServiceCharge(subtotal);
+	$: serviceCharge = $cartServiceCharge;
 	$: estimatedTotal = subtotal + tax + serviceCharge;
 
 	async function proceedToCheckout() {
-		if (cart.items.length === 0) return;
+		if ($cartStore.items.length === 0) return;
 		if (!$isAuthenticated) {
 			localStorage.setItem('auth_redirect', '/cart');
+			localStorage.removeItem('pending_chat_redirect');
 			isAuthModalOpen.set(true);
 			return;
 		}
 		isLoading = true;
 		const orderData = { 
-			items: cart.items, 
+			items: $cartStore.items, 
 			subtotal, 
 			tax, 
 			service_charge: serviceCharge,
@@ -121,14 +74,14 @@
 			<h1 class="page-title">Your Cart</h1>
 		</div>
 
-		{#if cart.items.length === 0}
+		{#if $cartStore.items.length === 0}
 			<div class="empty-state">
 				<div class="empty-icon-wrap">
 					<ShoppingCart class="empty-icon" />
 				</div>
 				<h2 class="empty-title">Your cart is empty</h2>
 				<p class="empty-sub">Discover our curated healthcare collection and add items to your bag.</p>
-				<a href="/" class="empty-cta">Start Shopping</a>
+				<a href="/products" class="empty-cta">Start Shopping</a>
 			</div>
 		{:else}
 			<div class="cart-layout">
@@ -147,7 +100,7 @@
 					{/if}
 
 					<div class="items-list">
-						{#each cart.items as item, index}
+						{#each $cartStore.items as item}
 							<div class="item-row">
 								<!-- Product image -->
 								<div class="item-img-wrap">
@@ -174,7 +127,7 @@
 										<div class="qty-wrap">
 											<button
 												class="qty-btn"
-												onclick={() => updateQuantity(index, item.quantity - 1)}
+												onclick={() => updateQuantity(item.product_id, item.quantity - 1)}
 												aria-label="Decrease quantity"
 											>
 												<Minus class="qty-icon" />
@@ -182,7 +135,7 @@
 											<span class="qty-val">{item.quantity}</span>
 											<button
 												class="qty-btn"
-												onclick={() => updateQuantity(index, item.quantity + 1)}
+												onclick={() => updateQuantity(item.product_id, item.quantity + 1)}
 												aria-label="Increase quantity"
 											>
 												<Plus class="qty-icon" />
@@ -190,7 +143,7 @@
 										</div>
 
 										<!-- Remove -->
-										<button class="remove-btn" onclick={() => removeItem(index)}>
+										<button class="remove-btn" onclick={() => removeItem(item.product_id)}>
 											<Trash2 class="remove-icon" /> Remove
 										</button>
 									</div>
@@ -217,7 +170,7 @@
 								</div>
 							{/if}
 							<div class="summary-row">
-								<span class="row-label">Service Charge</span>
+								<span class="row-label">Transaction Fee</span>
 								<span class="row-val">₦{serviceCharge.toLocaleString()}</span>
 							</div>
 						</div>

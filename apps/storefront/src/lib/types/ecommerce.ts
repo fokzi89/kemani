@@ -105,6 +105,9 @@ export interface MarketplaceProduct {
   product_side_effect?: string;
   interactions?: string;
   product_details?: string;
+  is_on_sale?: boolean;
+  is_featured?: boolean;
+  is_new_arrival?: boolean;
 }
 
 /**
@@ -203,6 +206,9 @@ export interface MarketplaceFilters {
   sort_by?: 'price_asc' | 'price_desc' | 'name' | 'newest';
   page?: number;
   limit?: number;
+  is_on_sale?: boolean;
+  is_featured?: boolean;
+  is_new_arrival?: boolean;
 }
 
 /**

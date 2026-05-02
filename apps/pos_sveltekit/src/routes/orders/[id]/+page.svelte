@@ -38,7 +38,7 @@
 <svelte:head><title>Order #{orderId?.slice(-6).toUpperCase()} – Kemani POS</title></svelte:head>
 
 <div class="p-6 max-w-2xl mx-auto">
-	<div class="flex items-center justify-between mb-6">
+	<div class="flex items-center justify-between mb-6 print:hidden">
 		<div class="flex items-center gap-3">
 			<a href="/orders" class="p-2 hover:bg-gray-100 rounded-lg"><ArrowLeft class="h-5 w-5 text-gray-600" /></a>
 			<div>
@@ -46,7 +46,7 @@
 				{#if order}<p class="text-sm text-gray-500">{new Date(order.created_at).toLocaleString()}</p>{/if}
 			</div>
 		</div>
-		<button onclick={() => window.print()} class="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-colors text-sm">
+		<button onclick={() => window.print()} class="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-colors text-sm print:hidden">
 			<Printer class="h-4 w-4" /> Print
 		</button>
 	</div>
@@ -107,3 +107,38 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	@media print {
+		:global(body) {
+			background: white !important;
+			padding: 0 !important;
+			margin: 0 !important;
+		}
+		.p-6 {
+			padding: 0 !important;
+			max-width: 100% !important;
+		}
+		.bg-white {
+			border: none !important;
+			padding: 0 !important;
+		}
+		.rounded-xl {
+			border-radius: 0 !important;
+		}
+		.border {
+			border-bottom: 1px solid #eee !important;
+		}
+		.shadow-sm, .shadow-md, .shadow-lg {
+			box-shadow: none !important;
+		}
+		/* Ensure text is black for printing */
+		:global(*) {
+			color: black !important;
+			-webkit-print-color-adjust: exact;
+		}
+		.text-indigo-600 {
+			color: #4f46e5 !important; /* Keep brand color if possible */
+		}
+	}
+</style>

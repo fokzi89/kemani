@@ -21,6 +21,23 @@
 	let success = '';
     let step = 1; 
 
+	let shippingAddress = '';
+	let billingAddress = '';
+	let sameAsShipping = true;
+
+	$: if (sameAsShipping) {
+		billingAddress = shippingAddress;
+	}
+
+	$: branch = storefront?.branches?.[0];
+	$: deliveryEnabled = branch?.delivery_enabled ?? true;
+	
+	let fulfillmentType = 'delivery';
+	
+	$: if (!deliveryEnabled && fulfillmentType === 'delivery') {
+		fulfillmentType = 'pickup';
+	}
+
 	onMount(() => {
 		// Wait for auth initialization before checking status
 		const unsubscribe = authStore.subscribe(state => {
@@ -98,16 +115,18 @@
 				p_branch_id: orderData.branch_id || storefront.branches?.[0]?.id, 
 				p_customer_id: $currentUser?.id,
 				p_order_type: 'marketplace',
-				p_fulfillment_type: orderData.order_type === 'delivery' ? 'delivery' : 'pickup',
+				p_fulfillment_type: fulfillmentType,
 				p_subtotal: orderData.subtotal,
-				p_delivery_fee: orderData.delivery_fee || 0,
+				p_delivery_fee: fulfillmentType === 'delivery' ? (orderData.delivery_fee || 0) : 0,
 				p_tax_amount: orderData.tax || 0,
-				p_total_amount: orderData.total,
+				p_total_amount: fulfillmentType === 'delivery' ? orderData.total : (orderData.total - (orderData.delivery_fee || 0)),
 				p_delivery_address_id: orderData.delivery_address_id || null,
 				p_special_instructions: orderData.special_instructions || null,
 				p_items: formattedItems,
 				p_service_charge: orderData.service_charge || 0,
-				p_payment_reference: paymentReference // Pass the reference if the RPC supports it
+				p_payment_reference: paymentReference,
+				p_billing_address: billingAddress,
+				p_shipping_address: shippingAddress
 			});
 
 			if (rpcError) throw rpcError;
@@ -160,7 +179,7 @@
                         </div>
 
 						<button 
-							on:click={() => goto('/profile')}
+							onclick={() => goto('/profile')}
 							class="btn-primary success-btn"
 						>
 							View Collection Status
@@ -202,6 +221,72 @@
 										<p class="item-label">Delivery</p>
 										<p class="item-val">{orderData?.order_type === 'delivery' ? 'Standard Home Delivery' : 'Self Collection'}</p>
 									</div>
+								</div>
+						</section>
+
+						<!-- Fulfillment Selection -->
+						{#if deliveryEnabled}
+							<section class="form-section">
+								<h3 class="section-label">Fulfillment Choice</h3>
+								<div class="flex gap-4">
+									<button 
+										class="flex-1 p-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-3 {fulfillmentType === 'delivery' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'}"
+										onclick={() => fulfillmentType = 'delivery'}
+									>
+										<Truck class="w-8 h-8 {fulfillmentType === 'delivery' ? 'text-gray-900' : 'text-gray-400'}" />
+										<div class="text-center">
+											<p class="text-[10px] font-black uppercase tracking-widest {fulfillmentType === 'delivery' ? 'text-gray-900' : 'text-gray-500'}">Home Delivery</p>
+											<p class="text-[8px] font-bold text-gray-400 uppercase mt-1">To your doorstep</p>
+										</div>
+									</button>
+									<button 
+										class="flex-1 p-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-3 {fulfillmentType === 'pickup' ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'}"
+										onclick={() => fulfillmentType = 'pickup'}
+									>
+										<ShoppingBag class="w-8 h-8 {fulfillmentType === 'pickup' ? 'text-gray-900' : 'text-gray-400'}" />
+										<div class="text-center">
+											<p class="text-[10px] font-black uppercase tracking-widest {fulfillmentType === 'pickup' ? 'text-gray-900' : 'text-gray-500'}">Self Pickup</p>
+											<p class="text-[8px] font-bold text-gray-400 uppercase mt-1">Collect from branch</p>
+										</div>
+									</button>
+								</div>
+							</section>
+						{/if}
+						
+						<!-- Address Section -->
+						<section class="form-section">
+							<h3 class="section-label">Logistics & Billing</h3>
+							<div class="address-grid">
+								{#if fulfillmentType === 'delivery'}
+									<div class="address-field">
+										<label for="shipping_address" class="field-label">Shipping Address</label>
+										<textarea 
+											id="shipping_address" 
+											bind:value={shippingAddress} 
+											placeholder="Enter full delivery address"
+											class="address-textarea"
+										></textarea>
+									</div>
+								{/if}
+								
+								<div class="address-field {fulfillmentType === 'delivery' ? 'mt-6' : ''}">
+									<div class="flex items-center justify-between mb-2">
+										<label for="billing_address" class="field-label">Billing Address</label>
+										{#if fulfillmentType === 'delivery'}
+											<label class="flex items-center gap-2 text-xs font-bold text-gray-500 cursor-pointer hover:text-gray-900 transition-colors">
+												<input type="checkbox" bind:checked={sameAsShipping} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+												Same as shipping
+											</label>
+										{/if}
+									</div>
+									{#if !sameAsShipping || fulfillmentType === 'pickup'}
+										<textarea 
+											id="billing_address" 
+											bind:value={billingAddress} 
+											placeholder="Enter billing address"
+											class="address-textarea"
+										></textarea>
+									{/if}
 								</div>
 							</div>
 						</section>
@@ -272,7 +357,7 @@
 								<span>Service Charge</span>
 								<span>₦{(orderData.service_charge || 0).toLocaleString()}</span>
 							</div>
-							{#if orderData.delivery_fee > 0}
+							{#if fulfillmentType === 'delivery' && orderData.delivery_fee > 0}
 								<div class="summary-row">
 									<span>Logistics</span>
 									<span>₦{orderData.delivery_fee.toLocaleString()}</span>
@@ -282,11 +367,13 @@
 
 						<div class="summary-total-row">
 							<p class="total-label">Estimated Total</p>
-							<p class="total-val" style="color: {brandColor};">₦{orderData.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+							<p class="total-val" style="color: {brandColor};">
+								₦{(fulfillmentType === 'delivery' ? orderData.total : (orderData.total - (orderData.delivery_fee || 0))).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+							</p>
 						</div>
 
 						<button
-							on:click={initiatePayment}
+							onclick={initiatePayment}
 							disabled={isLoading || !$isAuthenticated}
 							class="btn-primary checkout-btn"
 						>
@@ -428,4 +515,14 @@
 
 	.loader-dot { width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
 	@keyframes spin { to { transform: rotate(360deg); } }
+
+	.field-label { display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--on-surface-muted); margin-bottom: 0.5rem; }
+	.address-textarea { 
+		width: 100%; min-height: 80px; padding: 1rem; background: #fff; 
+		border: 1px solid var(--border); border-radius: 12px; 
+		font-size: 0.875rem; color: var(--on-surface); line-height: 1.5;
+		resize: vertical; transition: border-color 0.2s;
+	}
+	.address-textarea:focus { outline: none; border-color: var(--on-surface); }
+	.mt-6 { margin-top: 1.5rem; }
 </style>

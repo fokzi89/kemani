@@ -5,7 +5,7 @@
 	import { Search, Plus, Package, Edit, Eye, AlertTriangle, ChevronLeft, ChevronRight, Info, Download } from 'lucide-svelte';
 
 	let products = $state<any[]>([]);
-	let filtered = $state<any[]>([]);
+	let totalCount = $state(0);
 	let loading = $state(true);
 	let searchQuery = $state('');
 	let selectedCategory = $state('all');
@@ -20,6 +20,9 @@
 	let page = $state(1);
 	let selectedIds = $state<string[]>([]);
 	let lastResult = $state<{names: string[], count: number} | null>(null);
+	let lastSearch = '';
+	let lastCategory = 'all';
+	let lastType = 'all';
 
 	let userRole = $state('');
 	let branches = $state<any[]>([]);
@@ -42,17 +45,15 @@
 		targetBranchId: ''
 	});
 
-	const PER_PAGE = 20; // Keep display pagination at 20
-	const BATCH_LIMIT = 50; // Selection limit increased to 50
+	const PER_PAGE = 20; 
+	const BATCH_LIMIT = 50; 
 
-	let paginated = $derived(filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE));
-	let totalPages = $derived(Math.ceil(filtered.length / PER_PAGE));
+	let totalPages = $derived(Math.ceil(totalCount / PER_PAGE));
 
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
 		if (!session) return;
 		
-		// 1. Fetch core user info first to unblock data loading
 		const { data: userData, error: userErr } = await supabase.from('users')
 			.select('tenant_id, branch_id, full_name, role')
 			.eq('id', session.user.id)
@@ -71,11 +72,9 @@
 		invoiceForm.addedBy = staffName;
 		invoiceForm.targetBranchId = userBranchId;
 
-		// 2. Trigger loading of list data immediately
-		await Promise.all([loadProducts(), loadSuppliers(), loadBranches()]); 
-		loading = false;
-
-		// 3. Background fetch metadata (business name, branch name) for provisioning
+		await Promise.all([loadCategories(), loadSuppliers(), loadBranches()]); 
+		
+		// Background fetch metadata
 		const { data: tnt } = await supabase.from('tenants').select('name').eq('id', tenantId).single();
 		if (tnt) businessName = tnt.name;
 
@@ -84,6 +83,14 @@
 			if (brch) branchName = brch.name;
 		}
 	});
+
+	async function loadCategories() {
+		const { data } = await supabase.from('products')
+			.select('category')
+			.eq('tenant_id', tenantId)
+			.not('category', 'is', null);
+		categories = [...new Set((data || []).map(p => p.category))];
+	}
 
 	async function loadBranches() {
 		if (!tenantId) return;
@@ -104,38 +111,63 @@
 
 	async function loadProducts() {
 		if (!tenantId) return;
-		const { data, error: dbErr } = await supabase.from('products')
-			.select('*')
-			.or('product_type.is.null,product_type.neq.Laboratory test')
-			.order('created_at', { ascending: false });
-		
-		if (dbErr) {
-			console.error('Failed to load products:', dbErr);
-			return;
+		loading = true;
+		try {
+			let query = supabase.from('products')
+				.select('*', { count: 'exact' })
+				.eq('tenant_id', tenantId)
+				.or('product_type.is.null,product_type.neq.Laboratory test');
+
+			if (selectedCategory !== 'all') query = query.eq('category', selectedCategory);
+			if (productTypeFilter !== 'all') query = query.eq('product_type', productTypeFilter);
+			
+			if (searchQuery) {
+				const q = `%${searchQuery}%`;
+				query = query.or(`name.ilike.${q},barcode.ilike.${q}`);
+			}
+
+			const { data, count, error } = await query
+				.order('created_at', { ascending: false })
+				.range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
+			
+			if (error) throw error;
+			
+			products = (data || []).map(p => ({
+				...p,
+				provisioning: { qty: 0, batch: '', cost: 0, selling: 0, expiry: '', supplier_id: null, unit_of_measure: p.unit_of_measure || 'unit' }
+			}));
+			totalCount = count || 0;
+		} catch (err) {
+			console.error('Failed to load products:', err);
+		} finally {
+			loading = false;
 		}
-		
-		products = (data || []).map(p => ({
-			...p,
-			provisioning: { qty: 0, batch: '', cost: 0, selling: 0, expiry: '', supplier_id: null, unit_of_measure: p.unit_of_measure || 'unit' }
-		}));
-		categories = [...new Set(products.map(p => p.category).filter(Boolean))];
-		applyFilter();
 	}
 
-	function applyFilter() {
-		let r = products;
-		if (selectedCategory !== 'all') r = r.filter(p => p.category === selectedCategory);
-		if (productTypeFilter !== 'all') {
-			r = r.filter(p => p.product_type === productTypeFilter);
+	let debounceTimeout: any;
+	$effect(() => {
+		if (!tenantId) return;
+		
+		const p = page;
+		const q = searchQuery;
+		const c = selectedCategory;
+		const t = productTypeFilter;
+
+		if (q !== lastSearch || c !== lastCategory || t !== lastType) {
+			lastSearch = q;
+			lastCategory = c;
+			lastType = t;
+			if (page !== 1) {
+				page = 1;
+				return;
+			}
 		}
-		if (searchQuery) r = r.filter(p =>
-			p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			(p.barcode && p.barcode.toLowerCase().includes(searchQuery.toLowerCase()))
-		);
-		filtered = r;
-		page = 1;
-		lastResult = null;
-	}
+
+		clearTimeout(debounceTimeout);
+		debounceTimeout = setTimeout(() => {
+			loadProducts();
+		}, q ? 400 : 0);
+	});
 
 	async function prepareStockProvision() {
 		if (!invoiceForm.targetBranchId) { alert('No branch selected for provisioning.'); return; }
@@ -391,7 +423,7 @@
 	<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 		<div>
 			<h1 class="text-2xl font-bold text-gray-900">Products</h1>
-			<p class="text-sm text-gray-500 mt-0.5">{filtered.length} product{filtered.length !== 1 ? 's' : ''}</p>
+			<p class="text-sm text-gray-500 mt-0.5">{totalCount} product{totalCount !== 1 ? 's' : ''}</p>
 		</div>
 		<div class="flex items-center gap-3">
 			{#if selectedIds.length > 0}
@@ -435,7 +467,7 @@
 
 	<!-- Table -->
 	<div class="bg-white rounded-xl border overflow-hidden flex flex-col">
-		{#if !loading && paginated.length > 0}
+		{#if !loading && products.length > 0}
 			<div 
 				bind:this={topScrollRef} 
 				onscroll={handleTopScroll}
@@ -447,7 +479,7 @@
 
 		{#if loading}
 			<div class="p-12 text-center"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto"></div></div>
-		{:else if paginated.length === 0}
+		{:else if products.length === 0}
 			<div class="p-12 text-center text-gray-400">
 				<Package class="h-12 w-12 mx-auto mb-3 opacity-30" />
 				<p class="font-medium">No products found</p>
@@ -461,7 +493,7 @@
 							<th class="px-4 py-3 text-left">
 								<input 
 									type="checkbox" 
-									checked={paginated.length > 0 && paginated.every(p => selectedIds.includes(p.id))} 
+									checked={products.length > 0 && products.every(p => selectedIds.includes(p.id))} 
 									onchange={toggleSelectAll}
 									class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer" 
 								/>
@@ -478,7 +510,7 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-gray-100">
-						{#each paginated as product}
+						{#each products as product}
 							<tr class="hover:bg-gray-50 transition-colors {selectedIds.includes(product.id) ? 'bg-indigo-50/30' : ''}">
 								<td class="px-4 py-3">
 									<input 
@@ -558,13 +590,37 @@
 				<div class="px-4 py-3 border-t bg-gray-50/30 flex items-center justify-between text-sm text-gray-600">
 					<p class="text-xs font-medium">
 						Showing <span class="text-gray-900 font-bold">{(page-1)*PER_PAGE+1}</span> – 
-						<span class="text-gray-900 font-bold">{Math.min(filtered.length, page * PER_PAGE)}</span> of 
-						<span class="text-gray-900 font-bold">{filtered.length}</span>
+						<span class="text-gray-900 font-bold">{Math.min(totalCount, page * PER_PAGE)}</span> of 
+						<span class="text-gray-900 font-bold">{totalCount}</span>
 					</p>
-					<div class="flex gap-1">
+					<div class="flex items-center gap-1">
 						<button onclick={() => page--} disabled={page === 1} class="p-2 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors disabled:opacity-40">
 							<ChevronLeft class="h-4 w-4" />
 						</button>
+						
+						<div class="flex items-center gap-1 px-1">
+							{#if totalPages <= 5}
+								{#each Array.from({length: totalPages}, (_, i) => i + 1) as p}
+									<button 
+										onclick={() => page = p}
+										class="w-8 h-8 rounded-lg text-xs font-bold transition-all {page === p ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-900 hover:bg-white'}"
+									>
+										{p}
+									</button>
+								{/each}
+							{:else}
+								{@const start = Math.max(1, Math.min(page - 2, totalPages - 4))}
+								{#each Array.from({length: 5}, (_, i) => start + i) as p}
+									<button 
+										onclick={() => page = p}
+										class="w-8 h-8 rounded-lg text-xs font-bold transition-all {page === p ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-900 hover:bg-white'}"
+									>
+										{p}
+									</button>
+								{/each}
+							{/if}
+						</div>
+
 						<button onclick={() => page++} disabled={page === totalPages} class="p-2 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors disabled:opacity-40">
 							<ChevronRight class="h-4 w-4" />
 						</button>

@@ -26,7 +26,10 @@ export async function GET({ locals, params, url }: { locals: any; params: any; u
       branch_id: url.searchParams.get('branch_id') || undefined,
       sort_by: (url.searchParams.get('sort_by') as any) || 'newest',
       page: parseInt(url.searchParams.get('page') || '1'),
-      limit: parseInt(url.searchParams.get('limit') || '24')
+      limit: parseInt(url.searchParams.get('limit') || '24'),
+      is_on_sale: url.searchParams.get('is_on_sale') === 'true',
+      is_featured: url.searchParams.get('is_featured') === 'true',
+      is_new_arrival: url.searchParams.get('is_new_arrival') === 'true'
     };
 
     const marketplaceService = new MarketplaceService(supabase);

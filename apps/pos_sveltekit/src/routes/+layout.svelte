@@ -265,7 +265,7 @@
 	<!-- Main POS Dashboard Layout -->
 	<div class="min-h-screen bg-gray-50 flex">
 		<!-- Mobile Header -->
-		<div class="lg:hidden fixed top-0 left-0 right-0 bg-white shadow-sm z-50 h-16 flex items-center px-4">
+		<div class="lg:hidden fixed top-0 left-0 right-0 bg-white shadow-sm z-50 h-16 flex items-center px-4 print:hidden">
 			<button
 				onclick={toggleMobileMenu}
 				class="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
@@ -284,25 +284,25 @@
 		<!-- Mobile Menu Overlay -->
 		{#if mobileMenuOpen}
 			<div
-				class="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+				class="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40 print:hidden"
 				onclick={toggleMobileMenu}
 			></div>
 		{/if}
 
 		<!-- Sidebar -->
-		<aside class="hidden lg:block w-64 flex-shrink-0 bg-white border-r border-gray-200 h-screen sticky top-0 overflow-hidden">
+		<aside class="hidden lg:block w-64 flex-shrink-0 bg-white border-r border-gray-200 h-screen sticky top-0 overflow-hidden print:hidden">
 			<Sidebar {tenant} userData={userDataCache} email={user.email} {handleLogout} />
 		</aside>
 
 		<!-- Mobile Sidebar -->
 		<div
-			class="lg:hidden fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-50 transform transition-all duration-300 {mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}"
+			class="lg:hidden fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-50 transform transition-all duration-300 print:hidden {mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}"
 		>
 			<Sidebar {tenant} userData={userDataCache} email={user.email} {handleLogout} onnavclick={toggleMobileMenu} />
 		</div>
 
 		<!-- Main Content -->
-		<main class="flex-1 overflow-y-auto lg:pt-0 pt-16">
+		<main class="flex-1 overflow-y-auto lg:pt-0 pt-16 print:pt-0">
 			<slot />
 		</main>
 	</div>

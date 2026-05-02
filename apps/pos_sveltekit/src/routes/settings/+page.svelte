@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { supabase } from '$lib/supabase';
-	import { Save, AlertCircle, CheckCircle, Store, Globe, DollarSign, Bell, Stethoscope } from 'lucide-svelte';
+	import { Save, AlertCircle, CheckCircle, Store, Globe, DollarSign, Bell, Stethoscope, Sparkles } from 'lucide-svelte';
 
 	let loading = $state(true);
 	let saving = $state(false);
@@ -12,7 +12,8 @@
 		business_name: '', business_type: '', phone: '', email: '',
 		address: '', currency: 'NGN', timezone: 'Africa/Lagos',
 		receipt_footer: '', low_stock_threshold: '10',
-		tax_rate: '0', tax_name: 'VAT'
+		tax_rate: '0', tax_name: 'VAT',
+		logo_url: '', slogan: '', hero_title: '', hero_subtitle: '', about_us: ''
 	});
 	let allowPartnership = $state(true);
 
@@ -35,7 +36,12 @@
 					receipt_footer: tenant.receipt_footer || 'Thank you for shopping with us!',
 					low_stock_threshold: (tenant.low_stock_threshold || 10).toString(),
 					tax_rate: (tenant.tax_rate || 0).toString(),
-					tax_name: tenant.tax_name || 'VAT'
+					tax_name: tenant.tax_name || 'VAT',
+					logo_url: tenant.logo_url || '',
+					slogan: tenant.slogan || '',
+					hero_title: tenant.hero_title || '',
+					hero_subtitle: tenant.hero_subtitle || '',
+					about_us: tenant.about_us || ''
 				};
 				allowPartnership = tenant.allowDoctorPartnerShip ?? true;
 			}
@@ -59,6 +65,11 @@
 				low_stock_threshold: parseInt(settings.low_stock_threshold),
 				tax_rate: parseFloat(settings.tax_rate),
 				tax_name: settings.tax_name || null,
+				logo_url: settings.logo_url || null,
+				slogan: settings.slogan || null,
+				hero_title: settings.hero_title || null,
+				hero_subtitle: settings.hero_subtitle || null,
+				about_us: settings.about_us || null,
 				allowDoctorPartnerShip: allowPartnership
 			}).eq('id', tenantId);
 			if (dbErr) throw dbErr;
@@ -167,6 +178,37 @@
 				<div>
 					<label class="block text-sm font-medium text-gray-700 mb-1">Receipt Footer Message</label>
 					<textarea bind:value={settings.receipt_footer} rows="2" placeholder="Thank you for shopping with us!" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm resize-none"></textarea>
+				</div>
+			</div>
+
+			<!-- Storefront Branding -->
+			<div class="bg-white rounded-xl border p-5 space-y-4">
+				<h2 class="font-semibold text-gray-900 flex items-center gap-2"><Sparkles class="h-4 w-4 text-indigo-500" /> Storefront Branding</h2>
+				<p class="text-xs text-gray-500">Customize how your store looks to customers</p>
+				
+				<div class="space-y-4">
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
+						<input type="text" bind:value={settings.logo_url} placeholder="https://..." class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm" />
+					</div>
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1">Company Slogan</label>
+						<input type="text" bind:value={settings.slogan} placeholder="e.g. Quality health, delivered." class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm" />
+					</div>
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-1">Hero Title</label>
+							<input type="text" bind:value={settings.hero_title} placeholder="Discover Medics, Delivered to You" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm" />
+						</div>
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-1">Hero Subtitle</label>
+							<input type="text" bind:value={settings.hero_subtitle} placeholder="Curated healthcare products — quality you can trust, prices you can afford." class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm" />
+						</div>
+					</div>
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1">About Us (Footer)</label>
+						<textarea bind:value={settings.about_us} rows="3" placeholder="Connecting patients with the worlds leading medical specialists. Quality healthcare, just a click away." class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm resize-none"></textarea>
+					</div>
 				</div>
 			</div>
 
