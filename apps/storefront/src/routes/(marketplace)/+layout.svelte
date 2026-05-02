@@ -312,8 +312,20 @@
 		<div class="layout-container" style="max-width: 1280px; margin: 0 auto; padding: 0 1.5rem;">
 		  <div class="footer-top">
 			<div class="footer-info">
-			  <div class="footer-logo">
-				<h4 class="font-display text-2xl tracking-widest uppercase font-bold" style="color: {brandColor};">{storefront?.name || 'Storefront'}</h4>
+			  <div class="footer-logo mb-4">
+				<a href="/" class="flex items-center gap-3 group">
+					{#if storefront?.logo_url}
+						<img src={storefront.logo_url} alt="logo" class="h-10 w-10 object-contain rounded-md" />
+					{:else}
+						<div 
+							class="h-10 w-10 flex items-center justify-center text-white font-serif text-lg font-bold rounded-md shadow-sm"
+							style="background-color: {brandColor};"
+						>
+							{(storefront?.name || 'S').charAt(0).toUpperCase()}
+						</div>
+					{/if}
+					<h4 class="font-display text-2xl tracking-widest uppercase font-bold" style="color: {brandColor};">{storefront?.name || 'Storefront'}</h4>
+				</a>
 			  </div>
 			  <p class="footer-desc">
 				{storefront?.about_us || 'Connecting patients with the worlds leading medical specialists. Quality healthcare, just a click away.'}

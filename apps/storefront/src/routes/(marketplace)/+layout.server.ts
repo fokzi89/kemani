@@ -60,6 +60,7 @@ export async function load({ locals, params }) {
 			ecommerce_settings, services_offered,
 			allowDoctorPartnerShip, ai_is_enabled,
 			slogan, hero_title, hero_subtitle, about_us,
+			email, phone,
 			branches!tenant_id(id, name, address, tax_rate, delivery_enabled)
 		`)
 		.eq('id', tenantId)
@@ -89,6 +90,8 @@ export async function load({ locals, params }) {
 			hero_title: tenant.hero_title,
 			hero_subtitle: tenant.hero_subtitle,
 			about_us: tenant.about_us,
+			email: tenant.email,
+			phone: tenant.phone,
 			branches: ((tenant.branches as any[]) || []).map((b: any) => ({
 				id: b.id,
 				name: b.name,
