@@ -189,7 +189,10 @@
 						{#if storefront?.logo_url}
 							<img src={storefront.logo_url} alt="logo" class="h-10 w-10 object-contain rounded-md" />
 						{:else}
-							<div class="h-10 w-10 bg-gray-900 flex items-center justify-center text-white font-serif text-lg font-bold rounded-md">
+							<div 
+								class="h-10 w-10 flex items-center justify-center text-white font-serif text-lg font-bold rounded-md shadow-sm"
+								style="background-color: {brandColor};"
+							>
 								{(storefront?.name || 'S').charAt(0).toUpperCase()}
 							</div>
 						{/if}
