@@ -89,6 +89,21 @@
 			goto(chatUrl);
 		}
 	}
+
+	function handleShare() {
+		if (navigator.share) {
+			navigator.share({
+				title: product?.name,
+				text: product?.description || `Check out ${product?.name} on ${storefront?.name}`,
+				url: window.location.href,
+			}).catch(err => {
+				if (err.name !== 'AbortError') console.error('Share failed:', err);
+			});
+		} else {
+			navigator.clipboard.writeText(window.location.href);
+			alert('Product link copied to clipboard!');
+		}
+	}
 </script>
 
 <svelte:head>
@@ -157,7 +172,12 @@
 							</div>
 						</div>
 						
-						<h1 class="product-title">{product.name}</h1>
+						<div class="product-title-row">
+							<h1 class="product-title">{product.name}</h1>
+							<button onclick={handleShare} class="share-btn" title="Share Product">
+								<Share2 class="w-5 h-5" />
+							</button>
+						</div>
 						<div class="product-sku">REF: {product.sku || 'KMN-992-UX'}</div>
 					</header>
 
@@ -366,11 +386,20 @@
 	.star-filled { width: 12px; height: 12px; color: #f59e0b; fill: #f59e0b; }
 	.rating-text { font-size: 11px; font-weight: 600; }
 
+	.product-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.5rem; }
 	.product-title {
 		font-family: var(--font-display);
 		font-size: 2.25rem; font-weight: 500;
-		line-height: 1.1; margin-bottom: 0.5rem;
+		line-height: 1.1; margin-bottom: 0; flex: 1;
 	}
+	.share-btn {
+		width: 44px; height: 44px; border-radius: 50%;
+		display: flex; align-items: center; justify-content: center;
+		background: #fff; border: 1px solid var(--border);
+		color: var(--on-surface-muted); cursor: pointer;
+		transition: all 0.2s;
+	}
+	.share-btn:hover { border-color: var(--on-surface); color: var(--on-surface); transform: scale(1.1); }
 	.product-sku { font-size: 10px; color: var(--on-surface-muted); letter-spacing: 0.05em; }
 
 	.price-row { display: flex; align-items: baseline; gap: 12px; }
