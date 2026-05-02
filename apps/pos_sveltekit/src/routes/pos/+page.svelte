@@ -81,7 +81,7 @@
 		if (!userBranchId) return;
 		const { data, error } = await supabase
 			.from('branch_inventory')
-			.select('*, products(*)')
+			.select('*')
 			.eq('branch_id', userBranchId)
 			.eq('is_active', true)
 			.gt('stock_quantity', 0)
@@ -103,7 +103,11 @@
 			seen.add(row.product_id);
 			const fifo = bmap[row.product_id][0];
 			display.push({
-				...row.products,
+				id:            row.product_id,
+				name:          row.product_name,
+				image_url:     row.image_url,
+				category:      row.category,
+				barcode:       row.barcode,
 				product_id:    row.product_id,
 				stock_quantity: bmap[row.product_id].reduce((s, b) => s + b.stock_quantity, 0),
 				price:         fifo.selling_price || 0,

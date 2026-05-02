@@ -132,16 +132,16 @@
 	.promotional-page { background: #faf9f6; min-height: 100vh; }
 	.container { max-width: 1280px; margin: 0 auto; padding: 0 1.5rem; }
 	
-	.promo-header { background: #fff; border-bottom: 1px solid #f1f5f9; padding: 3rem 0; }
+	.promo-header { background: #fff; border-bottom: 1px solid #f1f5f9; padding: 1.5rem 0; }
 	.back-link { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; text-decoration: none; margin-bottom: 2rem; }
 	.back-link:hover { color: #0f172a; }
 	
 	.title-wrap { display: flex; align-items: center; gap: 1.5rem; }
 	.icon-badge { width: 64px; height: 64px; background: #fff9eb; border: 1px solid #fee08b; border-radius: 20px; display: flex; align-items: center; justify-content: center; }
-	.page-title { font-size: 2.5rem; font-weight: 900; color: #0f172a; letter-spacing: -0.03em; line-height: 1; }
-	.page-subtitle { font-size: 1.125rem; color: #64748b; margin-top: 0.5rem; }
+	.page-title { font-size: 1.75rem; font-weight: 900; color: #0f172a; letter-spacing: -0.02em; }
+	.page-subtitle { font-size: 13px; color: #64748b; margin-top: 4px; }
 	
-	.product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+	.product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; padding-top: 3rem; padding-bottom: 4rem; }
 	@media (min-width: 768px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }
 	@media (min-width: 1024px) { .product-grid { grid-template-columns: repeat(4, 1fr); } }
 	
@@ -159,12 +159,12 @@
 	
 	.card-body { padding: 1.5rem; }
 	.card-cat { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 6px; }
-	.card-name { font-size: 15px; font-weight: 800; color: #0f172a; text-decoration: none; display: block; margin-bottom: 1.25rem; line-height: 1.4; height: 2.8em; overflow: hidden; }
+	.card-name { font-size: 13px; font-weight: 700; color: #0f172a; text-decoration: none; display: block; margin-bottom: 10px; line-height: 1.3; }
 	.card-name:hover { color: #4f46e5; }
 	
 	.card-footer { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
 	.price-stack { display: flex; flex-direction: column; }
-	.price-current { font-size: 18px; font-weight: 900; color: #0f172a; }
+	.price-current { font-size: 15px; font-weight: 900; color: #0f172a; }
 	.price-old { font-size: 12px; color: #94a3b8; text-decoration: line-through; }
 	
 	.actions { display: flex; gap: 8px; }

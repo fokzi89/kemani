@@ -84,7 +84,9 @@
 					selling_price,
 					expiry_date,
 					low_stock_threshold,
-					updated_at
+					updated_at,
+					isPOM,
+					product_type
 				`, { count: 'exact' })
 				.eq('tenant_id', currentTenantId)
 				.gt('stock_quantity', 0);
@@ -123,7 +125,9 @@
 					cost_price: row.cost_price,
 					low_stock_threshold: row.low_stock_threshold || 10,
 					image_url: row.image_url,
-					is_expiring_soon: soon
+					is_expiring_soon: soon,
+					isPOM: row.isPOM,
+					product_type: row.product_type
 				};
 			});
 			totalCount = count || 0;
@@ -175,7 +179,8 @@
 					unit_price: item.unit_price,
 					cost_price: item.cost_price,
 					expiry_date: item.expiry_date,
-					low_stock_threshold: item.low_stock_threshold
+					low_stock_threshold: item.low_stock_threshold,
+					isPOM: item.isPOM
 				}
 			};
 		}
@@ -201,6 +206,7 @@
 						stock_quantity: vals.stock_quantity,
 						low_stock_threshold: vals.low_stock_threshold,
 						expiry_date: vals.expiry_date || null,
+						isPOM: vals.isPOM,
 						updated_at: new Date().toISOString()
 					})
 					.eq('id', invId);
@@ -456,6 +462,7 @@
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Low Stock Lvl</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l">Selling Price</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost Price</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l text-center">PoM</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l">Expiry</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
 						</tr>
@@ -545,7 +552,6 @@
 									{:else}
 										<span class="font-bold text-gray-900">₦{Number(item.unit_price).toLocaleString()}</span>
 									{/if}
-								</td>
 								<td class="px-4 py-3">
 									{#if isSelected}
 										<div class="relative">
@@ -558,6 +564,25 @@
 										</div>
 									{:else}
 										<span class="font-medium text-gray-500 italic">₦{Number(item.cost_price || 0).toLocaleString()}</span>
+									{/if}
+								</td>
+								<td class="px-4 py-3 border-l text-center">
+									{#if item.product_type === 'Drug'}
+										{#if isSelected}
+											<div class="flex items-center justify-center h-9">
+												<input 
+													type="checkbox" 
+													bind:checked={editingValues[invId].isPOM}
+													class="h-5 w-5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer transition-all"
+												/>
+											</div>
+										{:else}
+											<span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider {item.isPOM ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
+												{item.isPOM ? 'PoM' : 'OTC'}
+											</span>
+										{/if}
+									{:else}
+										<span class="text-gray-300 text-xs">—</span>
 									{/if}
 								</td>
 								<td class="px-4 py-3 border-l">

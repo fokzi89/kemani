@@ -54,29 +54,24 @@
 		const { data: { session } } = await supabase.auth.getSession();
 		if (!session) return;
 		
-		const { data: userData, error: userErr } = await supabase.from('users')
-			.select('tenant_id, branch_id, full_name, role')
+		const { data: userData } = await supabase.from('users')
+			.select('branch_id, full_name, role, tenant_id')
 			.eq('id', session.user.id)
 			.single();
 			
-		if (userErr || !userData?.tenant_id) {
-			console.error('Core user data not found:', userErr);
-			loading = false;
-			return;
-		}
-
-		tenantId = userData.tenant_id; 
-		userBranchId = userData.branch_id || '';
-		userRole = userData.role || '';
-		staffName = userData.full_name || '';
+		tenantId = userData?.tenant_id || '';
+		userBranchId = userData?.branch_id || '';
+		userRole = userData?.role || '';
+		staffName = userData?.full_name || '';
 		invoiceForm.addedBy = staffName;
 		invoiceForm.targetBranchId = userBranchId;
 
 		await Promise.all([loadCategories(), loadSuppliers(), loadBranches()]); 
 		
-		// Background fetch metadata
-		const { data: tnt } = await supabase.from('tenants').select('name').eq('id', tenantId).single();
-		if (tnt) businessName = tnt.name;
+		if (tenantId) {
+			const { data: tnt } = await supabase.from('tenants').select('name').eq('id', tenantId).single();
+			if (tnt) businessName = tnt.name;
+		}
 
 		if (userBranchId) {
 			const { data: brch } = await supabase.from('branches').select('name').eq('id', userBranchId).single();
@@ -87,7 +82,6 @@
 	async function loadCategories() {
 		const { data } = await supabase.from('products')
 			.select('category')
-			.eq('tenant_id', tenantId)
 			.not('category', 'is', null);
 		categories = [...new Set((data || []).map(p => p.category))];
 	}
@@ -110,13 +104,10 @@
 	}
 
 	async function loadProducts() {
-		if (!tenantId) return;
 		loading = true;
 		try {
 			let query = supabase.from('products')
-				.select('*', { count: 'exact' })
-				.eq('tenant_id', tenantId)
-				.or('product_type.is.null,product_type.neq.Laboratory test');
+				.select('*', { count: 'exact' });
 
 			if (selectedCategory !== 'all') query = query.eq('category', selectedCategory);
 			if (productTypeFilter !== 'all') query = query.eq('product_type', productTypeFilter);
@@ -127,7 +118,7 @@
 			}
 
 			const { data, count, error } = await query
-				.order('created_at', { ascending: false })
+				.order('name', { ascending: true })
 				.range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 			
 			if (error) throw error;
@@ -146,8 +137,6 @@
 
 	let debounceTimeout: any;
 	$effect(() => {
-		if (!tenantId) return;
-		
 		const p = page;
 		const q = searchQuery;
 		const c = selectedCategory;

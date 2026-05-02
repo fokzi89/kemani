@@ -101,6 +101,7 @@ SELECT
                 'is_on_sale', EXISTS (SELECT 1 FROM sale_products sp2 WHERE sp2.product_id = p.id AND sp2.tenant_id = bi.tenant_id),
                 'is_featured', EXISTS (SELECT 1 FROM featured_products fp2 WHERE fp2.product_id = p.id AND fp2.tenant_id = bi.tenant_id),
                 'is_new_arrival', bi.is_new_arrival,
+                'is_pom', p."isPOM",
                 'selling_price', bi.selling_price,
                 'sale_price', COALESCE(sp.sale_price, bi.sale_price)
             ) ORDER BY b.name
@@ -146,6 +147,7 @@ GROUP BY
     p.is_active,
     p.created_at,
     p.updated_at,
+    p."isPOM",
     p.unit_of_measure,
     p.product_type,
     p.generic_name,

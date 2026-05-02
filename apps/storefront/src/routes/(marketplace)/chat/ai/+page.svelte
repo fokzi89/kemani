@@ -1,226 +1,243 @@
 <script lang="ts">
-    import { Chat } from '@ai-sdk/svelte';
-    import { HttpChatTransport } from 'ai';
-    import { Sparkles, Send, Loader2, Package, ShoppingBag, History, User, Bot, ArrowLeft, ArrowRight, X } from 'lucide-svelte';
-    import { fade, fly, slide } from 'svelte/transition';
-    import { page } from '$app/stores';
-    import { isAuthModalOpen } from '$lib/stores/ui';
-    import { authStore, currentUser } from '$lib/stores/auth';
+	import { onMount, tick, onDestroy } from 'svelte';
+	import { fade, fly, slide } from 'svelte/transition';
+	import { 
+		Send, Sparkles, User, ArrowLeft, 
+		Loader2, ShoppingCart, MessageSquare, 
+		Plus, RefreshCw, X, Bot, Smile, Mic, Image as ImageIcon, FileText
+	} from 'lucide-svelte';
+	import { supabase } from '$lib/supabase';
+	import { currentUser } from '$lib/stores/auth';
+	import { page } from '$app/stores';
+	import { MarketplaceService } from '$lib/services/marketplace';
+	import { cartStore } from '$lib/stores/cart.store';
 
-    let loading = $state(true);
+	// 1. Core AI Chat State
+	let messages = $state<any[]>([
+		{
+			id: 'welcome',
+			sender_type: 'ai',
+			message_text: "Hi! I'm your Kemani AI Shopper. I can help you find products, check availability, or suggest alternatives. What are you looking for today?",
+			created_at: new Date().toISOString()
+		}
+	]);
+	let newMessage = $state('');
+	let loading = $state(false);
+	let sending = $state(false);
+	let messagesContainer = $state<HTMLElement | null>(null);
+	let showAttachmentMenu = $state(false);
+	let showEmojiMenu = $state(false);
+	const popularEmojis = ['😊', '😂', '🥰', '👍', '🙏', '💊', '🏥', '👋', '💙', '✅'];
 
-    let input = $state('');
+	// 2. Suggestions
+	const suggestions = [
+		"Vitamins for energy",
+		"Pain relief for kids",
+		"Skincare for dry skin",
+		"Check stock for Paracetamol"
+	];
 
-    const chat = new Chat({
-        transport: new HttpChatTransport({
-            api: '/api/chat/ai',
-            body: {
-                tenantId: $page.data.storefront?.id,
-                customerId: $page.data.session?.user?.id
-            }
-        }),
-        initialMessages: [
-            { id: 'welcome', role: 'assistant', content: 'Hi there! I am your AI personal shopper. I can help you find products, check your orders, or recommend something based on your style. How can I help today?' }
-        ]
-    });
+	async function sendMessage() {
+		if (!newMessage.trim() || sending) return;
+		
+		const userText = newMessage;
+		newMessage = '';
+		sending = true;
 
-    let chatContainer: HTMLElement;
-    
-    $effect(() => {
-        if (chat.messages.length > 0) {
-            setTimeout(() => {
-                if (chatContainer) {
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                }
-            }, 50);
-        }
-    });
+		// Add User Message
+		messages = [...messages, {
+			id: Date.now().toString(),
+			sender_type: 'customer',
+			message_text: userText,
+			created_at: new Date().toISOString()
+		}];
 
-    const suggestions = [
-        "What's new in store?",
-        "Check my order status",
-        "Recommend some products",
-        "Find medicine for headache"
-    ];
+		await tick();
+		scrollToBottom();
 
-    function applySuggestion(text: string) {
-        input = text;
-    }
+		// Simulate AI Response (In a real app, this calls an edge function)
+		setTimeout(async () => {
+			messages = [...messages, {
+				id: (Date.now() + 1).toString(),
+				sender_type: 'ai',
+				message_text: "I'm searching our pharmacy inventory for the best options based on your request. One moment please...",
+				created_at: new Date().toISOString()
+			}];
+			sending = false;
+			await tick();
+			scrollToBottom();
+		}, 1000);
+	}
 
-    async function handleSubmit(e: Event) {
-        e.preventDefault();
-        if (!input.trim() || chat.status !== 'ready') return;
-        
-        const message = input;
-        input = ''; 
-        
-        try {
-            await chat.sendMessage({ text: message });
-        } catch (err) {
-            console.error('Failed to send message:', err);
-        }
-    }
+	function handleSuggestion(text: string) {
+		newMessage = text;
+		sendMessage();
+	}
 
-    $effect(() => {
-        if (!$authStore.initialized) {
-            loading = true;
-            return;
-        }
-        loading = false;
-        if (!$currentUser) {
-            isAuthModalOpen.set(true);
-        } else {
-            // User is authenticated — ensure modal is closed
-            isAuthModalOpen.set(false);
-        }
-    });
+	async function scrollToBottom() {
+		if (messagesContainer) {
+			messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
+		}
+	}
+
+	function formatTime(dateStr: string) {
+		return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+	}
+
+	function resetChat() {
+		messages = [messages[0]];
+	}
 </script>
 
-<div class="flex flex-col h-screen bg-[#fafafa] overflow-hidden">
-    {#if loading}
-        <div class="flex-1 flex flex-col items-center justify-center p-8 text-center" transition:fade>
-            <Loader2 class="h-8 w-8 animate-spin text-black" />
-            <p class="mt-4 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Initializing AI Shopper</p>
-        </div>
-    {:else if !$currentUser}
-        <div class="flex-1 flex flex-col items-center justify-center p-8 text-center" transition:fade>
-            <div class="h-20 w-20 bg-white rounded-2xl shadow-xl flex items-center justify-center mb-6 animate-pulse border border-slate-100">
-                <Bot class="h-10 w-10 text-slate-200" />
-            </div>
-            <h2 class="text-sm font-black text-slate-900 uppercase tracking-[0.2em] mb-2">Authentication Required</h2>
-            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest max-w-[200px]">Please sign in to interact with your personal AI shopper.</p>
-        </div>
-    {:else}
-        <!-- Header -->
-        <header class="bg-white/80 backdrop-blur-md border-b px-4 py-3 flex items-center justify-between shrink-0 sticky top-0 z-50">
-            <div class="flex items-center gap-3">
-                <a href="/chat" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                    <ArrowLeft class="h-5 w-5 text-slate-600" />
-                </a>
-                <div class="flex items-center gap-2">
-                    <div class="h-8 w-8 bg-black rounded-lg flex items-center justify-center text-white shadow-lg">
-                        <Sparkles class="h-4 w-4" />
-                    </div>
-                    <div>
-                        <h1 class="text-sm font-black uppercase tracking-tight text-slate-900">Personal AI Shopper</h1>
-                        <div class="flex items-center gap-1">
-                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Always Active</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <button class="p-2 text-slate-400 hover:text-slate-900" onclick={() => window.history.back()}>
-                <X class="h-5 w-5" />
-            </button>
-        </header>
+<svelte:head>
+	<title>AI Shopper — Kemani</title>
+</svelte:head>
 
-        <!-- Chat Area -->
-        <main 
-            bind:this={chatContainer}
-            class="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth"
-        >
-            {#each chat.messages as message}
-                <div 
-                    class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'}"
-                    in:fly={{ y: 10, duration: 300 }}
-                >
-                    <div class="flex gap-2.5 max-w-[85%] {message.role === 'user' ? 'flex-row-reverse' : ''}">
-                        <div class="h-7 w-7 rounded-lg flex items-center justify-center shrink-0 mt-1
-                            {message.role === 'user' ? 'bg-slate-200 text-slate-600' : 'bg-black text-white'}">
-                            {#if message.role === 'user'}
-                                <User class="h-3.5 w-3.5" />
-                            {:else}
-                                <Bot class="h-3.5 w-3.5" />
-                            {/if}
-                        </div>
-                        
-                        <div class="space-y-1">
-                            <div class="p-3.5 rounded-2xl shadow-sm text-[13px] leading-relaxed
-                                {message.role === 'user' 
-                                    ? 'bg-black text-white rounded-tr-none font-medium' 
-                                    : 'bg-white border border-slate-100 text-slate-700 rounded-tl-none font-medium'}">
-                                {message.content}
-                                
-                                {#if message.toolInvocations}
-                                    <div class="mt-2 space-y-2 pt-2 border-t border-slate-100">
-                                        {#each message.toolInvocations as tool}
-                                            <div class="flex items-center gap-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                                                <Loader2 class="h-2.5 w-2.5 animate-spin" />
-                                                {tool.toolName === 'search_products' ? 'Searching Inventory...' : 'Checking Data...'}
-                                            </div>
-                                        {/each}
-                                    </div>
-                                {/if}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            {/each}
+<div class="chat-viewport">
+	{#if loading}
+		<div class="loading-overlay" transition:fade>
+			<Loader2 class="h-8 w-8 animate-spin text-purple-600" />
+			<p class="mt-4 text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Initializing AI Shopper</p>
+		</div>
+	{:else}
+		<header class="header">
+			<div class="header-content">
+				<div class="flex items-center gap-4">
+					<a href="/" class="icon-btn"><ArrowLeft class="h-5 w-5" /></a>
+					<div class="flex items-center gap-3">
+						<div class="avatar-box bg-purple-50 text-purple-600"><Bot class="h-5 w-5" /></div>
+						<div>
+							<h1 class="text-sm font-black text-gray-900 uppercase tracking-tight leading-none">AI Shopper</h1>
+							<p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">Always Online</p>
+						</div>
+					</div>
+				</div>
+				<button onclick={resetChat} class="px-3 py-1.5 bg-gray-50 text-gray-600 text-[10px] font-black uppercase tracking-widest rounded-lg flex items-center gap-2">
+					<RefreshCw class="h-3 w-3" /> Reset
+				</button>
+			</div>
+		</header>
 
-            {#if chat.status !== 'ready' && chat.messages[chat.messages.length - 1]?.role === 'user'}
-                <div class="flex justify-start" in:fade>
-                    <div class="flex gap-2.5">
-                        <div class="h-7 w-7 rounded-lg bg-black text-white flex items-center justify-center">
-                            <Bot class="h-3.5 w-3.5 animate-pulse" />
-                        </div>
-                        <div class="bg-white border border-slate-100 p-3 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-1.5">
-                            <span class="w-1 h-1 bg-slate-300 rounded-full animate-bounce"></span>
-                            <span class="w-1 h-1 bg-slate-300 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                            <span class="w-1 h-1 bg-slate-300 rounded-full animate-bounce [animation-delay:0.4s]"></span>
-                        </div>
-                    </div>
-                </div>
-            {/if}
-        </main>
+		<main class="messages-wrap" bind:this={messagesContainer}>
+			<div class="messages-inner">
+				{#each messages as msg}
+					{@const isMe = msg.sender_type === 'customer'}
+					<div class="msg-row {isMe ? 'me' : 'them'}" in:fly={{ y: 20 }}>
+						<div class="msg-bubble shadow-sm">
+							<p class="text-sm leading-relaxed">{msg.message_text}</p>
+							<span class="msg-time">{formatTime(msg.created_at)}</span>
+						</div>
+					</div>
+				{/each}
 
-        <!-- Footer -->
-        <footer class="p-4 bg-white border-t shrink-0 pb-8">
-            {#if chat.messages.length < 3}
-                <div class="flex gap-2 overflow-x-auto pb-3 no-scrollbar" in:slide>
-                    {#each suggestions as suggestion}
-                        <button 
-                            onclick={() => applySuggestion(suggestion)}
-                            class="whitespace-nowrap px-3.5 py-2 bg-slate-50 border border-slate-100 rounded-full text-[11px] font-black uppercase tracking-tight text-slate-600 hover:bg-black hover:text-white hover:border-black transition-all flex items-center gap-2 group"
-                        >
-                            {suggestion}
-                            <ArrowRight class="h-3 w-3 opacity-0 group-hover:opacity-100 transition-all" />
-                        </button>
-                    {/each}
-                </div>
-            {/if}
+				{#if sending}
+					<div class="msg-row them" in:fade>
+						<div class="msg-bubble loading">
+							<div class="typing-dots">
+								<span></span><span></span><span></span>
+							</div>
+						</div>
+					</div>
+				{/if}
+				
+				{#if messages.length === 1}
+					<div class="suggestions-grid" in:fade>
+						{#each suggestions as sug}
+							<button class="suggestion-pill" onclick={() => handleSuggestion(sug)}>
+								{sug}
+							</button>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		</main>
 
-            <form 
-                onsubmit={handleSubmit}
-                class="relative flex items-center gap-2"
-            >
-                <input 
-                    bind:value={input}
-                    placeholder="Ask your AI shopper..."
-                    class="flex-1 bg-slate-100 border-none rounded-2xl px-4 py-3 text-sm font-medium focus:ring-1 focus:ring-black transition-all"
-                />
-                <button 
-                    type="submit"
-                    disabled={chat.status !== 'ready' || !input.trim()}
-                    class="bg-black text-white p-3 rounded-xl hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-md"
-                >
-                    {#if chat.status !== 'ready'}
-                        <Loader2 class="h-4 w-4 animate-spin" />
-                    {:else}
-                        <Send class="h-4 w-4" />
-                    {/if}
-                </button>
-            </form>
-        </footer>
-    {/if}
+		<footer class="interaction-center p-4">
+			<div class="input-strip flex items-center gap-2 bg-white rounded-2xl p-2 border shadow-lg max-w-[800px] mx-auto relative">
+				<div class="relative">
+					<button class="icon-btn" onclick={() => showAttachmentMenu = !showAttachmentMenu} title="Add Attachment">
+						<Plus class="h-5 w-5 {showAttachmentMenu ? 'rotate-45' : ''} transition-transform" />
+					</button>
+
+					{#if showAttachmentMenu}
+						<div class="absolute bottom-full mb-4 left-0 bg-white border border-slate-100 rounded-2xl shadow-2xl p-2 min-w-[140px] flex flex-col gap-1 z-50" transition:fly={{ y: 10, duration: 200 }}>
+							<button class="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700" onclick={() => { showAttachmentMenu = false; }}>
+								<div class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><ImageIcon class="h-4 w-4" /></div>
+								<span class="text-[11px] font-black uppercase tracking-tight">Image</span>
+							</button>
+							<button class="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-700" onclick={() => { showAttachmentMenu = false; }}>
+								<div class="w-8 h-8 bg-rose-50 text-rose-600 rounded-lg flex items-center justify-center"><FileText class="h-4 w-4" /></div>
+								<span class="text-[11px] font-black uppercase tracking-tight">PDF</span>
+							</button>
+						</div>
+					{/if}
+				</div>
+				<div class="flex-1 flex items-center px-4 gap-2">
+					<input 
+						type="text" 
+						bind:value={newMessage} 
+						onkeydown={(e) => e.key === 'Enter' && sendMessage()}
+						placeholder="Find medication, ask for tips..." 
+						class="flex-1 outline-none text-sm"
+					/>
+					<div class="relative">
+						<button class="text-slate-400 hover:text-slate-600 transition-colors" onclick={() => showEmojiMenu = !showEmojiMenu}>
+							<Smile class="h-5 w-5" />
+						</button>
+						{#if showEmojiMenu}
+							<div class="absolute bottom-full mb-4 right-0 bg-white border border-slate-100 rounded-2xl shadow-2xl p-3 min-w-[200px] z-50" transition:fly={{ y: 10, duration: 200 }}>
+								<div class="grid grid-cols-5 gap-2">
+									{#each popularEmojis as emoji}
+										<button class="text-xl hover:scale-125 transition-transform p-1" onclick={() => { newMessage += emoji; showEmojiMenu = false; }}>
+											{emoji}
+										</button>
+									{/each}
+								</div>
+							</div>
+						{/if}
+					</div>
+				</div>
+				<button 
+					class="send-btn {newMessage.trim() ? 'bg-purple-600' : 'bg-purple-600'} text-white p-3 rounded-xl transition-all" 
+					onclick={newMessage.trim() ? sendMessage : () => {}}
+					disabled={sending}
+				>
+					{#if newMessage.trim()}
+						<Send class="h-4 w-4" />
+					{:else}
+						<Mic class="h-4 w-4" />
+					{/if}
+				</button>
+			</div>
+		</footer>
+	{/if}
 </div>
 
 <style>
-    .no-scrollbar::-webkit-scrollbar {
-        display: none;
-    }
-    .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-    }
+	.chat-viewport { height: 100vh; display: flex; flex-direction: column; background: #fafafa; }
+	.header { background: white; border-bottom: 1px solid #eee; }
+	.header-content { height: 4rem; padding: 0 1rem; display: flex; align-items: center; justify-content: space-between; }
+	.messages-wrap { flex: 1; overflow-y: auto; padding: 1.5rem; }
+	.messages-inner { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem; }
+	.msg-row { display: flex; flex-direction: column; max-width: 80%; }
+	.msg-row.me { align-self: flex-end; }
+	.msg-row.them { align-self: flex-start; }
+	.msg-bubble { padding: 0.75rem 1rem; border-radius: 1rem; background: white; border: 1px solid #f0f0f0; }
+	.me .msg-bubble { background: #7c3aed; color: white; border: none; border-bottom-right-radius: 0.25rem; }
+	.msg-time { font-size: 8px; opacity: 0.4; margin-top: 4px; display: block; text-transform: uppercase; font-weight: 800; }
+	.avatar-box { width: 2.25rem; height: 2.25rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+	.icon-btn { width: 2.5rem; height: 2.5rem; display: flex; align-items: center; justify-content: center; border-radius: 0.75rem; transition: background 0.2s; }
+	.icon-btn:hover { background: #f3f4f6; }
+	.loading-overlay { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+	
+	.suggestions-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; justify-content: flex-start; }
+	.suggestion-pill { padding: 0.5rem 1rem; background: white; border: 1px solid #eee; border-radius: 2rem; font-size: 0.75rem; font-weight: 600; color: #666; transition: all 0.2s; }
+	.suggestion-pill:hover { border-color: #7c3aed; color: #7c3aed; background: #f5f3ff; }
+
+	.typing-dots { display: flex; gap: 4px; padding: 4px 0; }
+	.typing-dots span { width: 6px; height: 6px; background: #aaa; border-radius: 50%; animation: pulse 1s infinite; }
+	.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+	.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+	@keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
 </style>

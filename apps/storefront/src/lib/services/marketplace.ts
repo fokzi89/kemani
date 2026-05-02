@@ -108,12 +108,14 @@ export class MarketplaceService {
       const limit = filters?.limit || 24;
       const offset = (page - 1) * limit;
 
-      // Build query on ecommerce_products view for aggregated data
+      // Build query directly on branch_inventory for total autonomy
       let query = this.supabase
-        .from('ecommerce_products')
+        .from('branch_inventory')
         .select('*', { count: 'exact' })
         .eq('tenant_id', resolvedTenantId)
-        .eq('is_active', true);
+        .eq('isPOM', false)
+        .eq('is_active', true)
+        .eq('_sync_is_deleted', false);
 
       // Apply branch filter
       if (filters?.branch_id) {
@@ -122,11 +124,11 @@ export class MarketplaceService {
 
       // Apply product-level filters
       if (filters?.category) {
-        query = query.eq('category', filters.category);
+        query = query.eq('product_type', filters.category);
       }
 
       if (filters?.search) {
-        query = query.ilike('name', `%${filters.search}%`);
+        query = query.ilike('product_name', `%${filters.search}%`);
       }
 
       if (filters?.min_price !== undefined) {
@@ -175,28 +177,29 @@ export class MarketplaceService {
         return { error: error.message };
       }
 
-      // Transform record mapping from ecommerce_products view
+      // Transform record mapping from branch_inventory
       const products: MarketplaceProduct[] = (data || []).map((item: any) => {
+        const finalPrice = (item.sale_price && item.sale_price > 0) ? item.sale_price : item.selling_price;
         return {
-          id: item.id,
+          id: item.product_id,
+          inventory_id: item.id,
           tenant_id: item.tenant_id,
-          name: item.name || 'Unnamed Product',
-          description: item.description || 'Verified product',
+          branch_id: item.branch_id,
+          name: item.product_name || 'Unnamed Product',
+          description: item.product_type || 'Verified product',
           sku: item.sku || '',
-          category: item.category || 'General',
-          price: (item.sale_price && item.sale_price > 0) ? item.sale_price : item.selling_price,
+          category: item.product_type || 'General',
+          price: finalPrice,
           selling_price: item.selling_price,
           sale_price: item.sale_price,
           image_url: item.image_url,
-          stock_quantity: item.total_stock || 0,
-          is_available: (item.total_stock || 0) > 0,
+          stock_quantity: (item.stock_quantity || 0) - (item.reserved_quantity || 0),
+          is_available: (item.stock_quantity || 0) > (item.reserved_quantity || 0),
           is_on_sale: item.is_on_sale,
           is_featured: item.is_featured,
           is_new_arrival: item.is_new_arrival,
+          isPOM: item.isPOM,
           generic_name: item.generic_name,
-          strength: item.strength,
-          dosage_form: item.dosage_form,
-          manufacturer: item.manufacturer,
           business_name: '' 
         };
       });

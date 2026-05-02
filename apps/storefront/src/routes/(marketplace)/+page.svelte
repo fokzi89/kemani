@@ -115,7 +115,6 @@
 	async function handleRxChat(e?: Event, onBeforeOpen?: () => void, productId?: string) {
 		e?.stopPropagation();
 		if (!$isAuthenticated) {
-			// Run any pre-action (e.g. close product modal) before opening auth modal
 			if (onBeforeOpen) onBeforeOpen();
 			const redirectUrl = productId ? `/chat?productId=${productId}&type=Consultation` : '/chat?type=Consultation';
 			localStorage.setItem('pending_chat_redirect', redirectUrl);
