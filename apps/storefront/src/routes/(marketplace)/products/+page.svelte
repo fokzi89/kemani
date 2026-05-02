@@ -5,7 +5,10 @@
 	import { Search, ShoppingCart, ChevronRight, SlidersHorizontal, X, ArrowLeft, MessageSquare, CheckCircle2, Package, LayoutGrid, List, ChevronLeft } from 'lucide-svelte';
 	import { cartStore } from '$lib/stores/cart.store';
 	import { isAuthModalOpen, chatProduct, isChatOpen } from '$lib/stores/ui';
-	import { isAuthenticated } from '$lib/stores/auth';
+	import { isAuthenticated, currentUser } from '$lib/stores/auth';
+	import { supabase } from '$lib/supabase';
+	import { activeConversationId, setActiveConversation } from '$lib/stores/chat.store';
+	import { get } from 'svelte/store';
 
 	export let data;
 
@@ -107,6 +110,52 @@
 		maxPrice,
 		!inStockOnly ? 'stock' : ''
 	].filter(Boolean).length;
+
+	async function handleRxChat(e?: Event, onBeforeOpen?: () => void, productId?: string) {
+		e?.stopPropagation();
+		if (!$isAuthenticated) {
+			if (onBeforeOpen) onBeforeOpen();
+			const redirectUrl = productId ? `/chat?productId=${productId}&type=Consultation` : '/chat?type=Consultation';
+			localStorage.setItem('pending_chat_redirect', redirectUrl);
+			isAuthModalOpen.set(true);
+			return;
+		}
+
+		const chatUrl = productId ? `/chat?productId=${productId}&type=Consultation` : '/chat?type=Consultation';
+		const existingId = get(activeConversationId);
+		if (existingId) {
+			goto(`${chatUrl}${chatUrl.includes('?') ? '&' : '?'}id=${existingId}`);
+			return;
+		}
+
+		try {
+			const { data: created, error } = await supabase
+				.from('chat_conversations')
+				.insert({
+					customer_id: $currentUser.id,
+					tenant_id: storefront?.id,
+					chatType: 'Consultation',
+					customer_name: $currentUser?.user_metadata?.full_name || $currentUser?.email,
+					customer_pic: $currentUser?.user_metadata?.avatar_url,
+					isConsulatation: true,
+					status: 'active',
+					metadata: { 
+						origin: 'storefront_products_list',
+						productId: productId
+					}
+				})
+				.select().single();
+
+			if (error) throw error;
+			if (created) {
+				setActiveConversation(created.id);
+				goto(`${chatUrl}${chatUrl.includes('?') ? '&' : '?'}id=${created.id}`);
+			}
+		} catch (err) {
+			console.error('Failed to initiate consultation chat:', err);
+			goto(chatUrl);
+		}
+	}
 </script>
 
 <svelte:head>
@@ -258,9 +307,12 @@
 									<a href="/products/{product.id}" class="card-name">{product.name}</a>
 									<div class="card-footer">
 										<span class="card-price">₦{(product.sale_price > 0 ? product.sale_price : product.price)?.toLocaleString()}</span>
-										{#if product.is_available && product.stock_quantity > 0}
-											<button class="add-btn" onclick={() => addToCart(product)} title="Add to cart"><ShoppingCart class="w-4 h-4" /></button>
-										{/if}
+										<div class="card-actions">
+											<button class="rx-btn" onclick={(e) => handleRxChat(e, undefined, product.id)} title="Rx Chat"><MessageSquare class="w-4 h-4" /></button>
+											{#if product.is_available && product.stock_quantity > 0}
+												<button class="add-btn" onclick={() => addToCart(product)} title="Add to cart"><ShoppingCart class="w-4 h-4" /></button>
+											{/if}
+										</div>
 									</div>
 								</div>
 							</div>
@@ -283,13 +335,18 @@
 								<div class="list-right">
 									{#if product.percentage_discount > 0}<span class="discount-badge" style="position:static;margin-bottom:6px">{product.percentage_discount}% Off</span>{/if}
 									<span class="card-price">₦{(product.sale_price > 0 ? product.sale_price : product.price)?.toLocaleString()}</span>
-									{#if product.is_available && product.stock_quantity > 0}
-										<button class="add-btn" style="width:auto;padding:0 14px;gap:6px;" onclick={() => addToCart(product)}>
-											<ShoppingCart class="w-4 h-4" /> Add
+									<div class="list-actions-row">
+										<button class="rx-btn list-rx" onclick={(e) => handleRxChat(e, undefined, product.id)} title="Rx Chat">
+											<MessageSquare class="w-4 h-4" />
 										</button>
-									{:else}
-										<span class="list-out">Out of stock</span>
-									{/if}
+										{#if product.is_available && product.stock_quantity > 0}
+											<button class="add-btn" style="width:auto;padding:0 14px;gap:6px;" onclick={() => addToCart(product)}>
+												<ShoppingCart class="w-4 h-4" /> Add
+											</button>
+										{:else}
+											<span class="list-out">Out of stock</span>
+										{/if}
+									</div>
 								</div>
 							</div>
 						{/each}
@@ -430,6 +487,11 @@
 	.card-name:hover { color: #4f46e5; }
 	.card-footer { display: flex; align-items: center; justify-content: space-between; }
 	.card-price { font-size: 15px; font-weight: 900; color: #0f172a; }
+	.card-actions { display: flex; gap: 8px; align-items: center; }
+	.rx-btn { width: 34px; height: 34px; background: #eff6ff; color: #1d4ed8; border: none; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
+	.rx-btn:hover { background: #dbeafe; }
+	.list-rx { background: #f1f5f9; color: #64748b; }
+	.list-actions-row { display: flex; gap: 8px; align-items: center; }
 	.add-btn { width: 34px; height: 34px; background: #0f172a; color: #fff; border: none; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: opacity 0.15s; flex-shrink: 0; }
 	.add-btn:hover { opacity: 0.8; }
 
