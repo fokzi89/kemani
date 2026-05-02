@@ -187,13 +187,18 @@
 					<!-- Brand -->
 					<a href="/" class="flex items-center gap-3 group">
 						{#if storefront?.logo_url}
-							<img src={storefront.logo_url} alt="logo" class="h-8 w-8 object-contain" />
+							<img src={storefront.logo_url} alt="logo" class="h-10 w-10 object-contain rounded-md" />
 						{:else}
-							<div class="h-8 w-8 bg-gray-900 flex items-center justify-center text-white font-serif text-sm">
-								{storefront?.name.charAt(0)}
+							<div class="h-10 w-10 bg-gray-900 flex items-center justify-center text-white font-serif text-lg font-bold rounded-md">
+								{(storefront?.name || 'S').charAt(0).toUpperCase()}
 							</div>
+						{/if}
+						<div class="flex flex-col">
+							<h1 class="font-display text-lg tracking-widest text-gray-900 uppercase font-bold leading-none">{storefront?.name}</h1>
+							{#if storefront?.slogan}
+								<p class="text-[9px] text-gray-500 font-medium tracking-[0.1em] uppercase mt-1">{storefront.slogan}</p>
 							{/if}
-						<h1 class="font-display text-xl tracking-widest text-gray-900 uppercase font-light">{storefront?.name}</h1>
+						</div>
 					</a>
 
 					<!-- Desktop Menu -->
