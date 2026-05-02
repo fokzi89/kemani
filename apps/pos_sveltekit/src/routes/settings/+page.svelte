@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { supabase } from '$lib/supabase';
-	import { Save, AlertCircle, CheckCircle, Store, Globe, DollarSign, Bell, Stethoscope, Sparkles } from 'lucide-svelte';
+	import { Save, AlertCircle, CheckCircle, Store, Globe, DollarSign, Bell, Stethoscope, Sparkles, Upload } from 'lucide-svelte';
+	import FileUpload from '$lib/components/FileUpload.svelte';
 
 	let loading = $state(true);
 	let saving = $state(false);
@@ -16,6 +17,8 @@
 		logo_url: '', slogan: '', hero_title: '', hero_subtitle: '', about_us: ''
 	});
 	let allowPartnership = $state(true);
+	let logoFile = $state<File | null>(null);
+	let logoPreviewUrl = $state('');
 
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
@@ -44,6 +47,7 @@
 					about_us: tenant.about_us || ''
 				};
 				allowPartnership = tenant.allowDoctorPartnerShip ?? true;
+				logoPreviewUrl = tenant.logo_url || '';
 			}
 		}
 		loading = false;
@@ -53,6 +57,18 @@
 		e.preventDefault();
 		saving = true; error = ''; success = false;
 		try {
+			// 1. Upload logo if a new file was selected
+			if (logoFile) {
+				const fileExt = logoFile.name.split('.').pop();
+				const fileName = `logo-${tenantId}-${Date.now()}.${fileExt}`;
+				
+				const { error: uploadErr } = await supabase.storage.from('product-images').upload(fileName, logoFile);
+				if (uploadErr) throw uploadErr;
+
+				const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(fileName);
+				settings.logo_url = publicUrl;
+			}
+
 			const { error: dbErr } = await supabase.from('tenants').update({
 				business_name: settings.business_name,
 				business_type: settings.business_type || null,
@@ -77,7 +93,10 @@
 			setTimeout(() => success = false, 3000);
 		} catch (err: any) {
 			error = err.message || 'Failed to save settings';
-		} finally { saving = false; }
+		} finally { 
+			saving = false; 
+			logoFile = null; // Clear file after successful or failed save (preview remains)
+		}
 	}
 
 	const currencies = ['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR'];
@@ -187,10 +206,12 @@
 				<p class="text-xs text-gray-500">Customize how your store looks to customers</p>
 				
 				<div class="space-y-4">
-					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
-						<input type="text" bind:value={settings.logo_url} placeholder="https://..." class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm" />
-					</div>
+					<FileUpload 
+						label="Business Logo" 
+						bind:file={logoFile} 
+						bind:previewUrl={logoPreviewUrl} 
+						onFileSelect={() => {}} 
+					/>
 					<div>
 						<label class="block text-sm font-medium text-gray-700 mb-1">Company Slogan</label>
 						<input type="text" bind:value={settings.slogan} placeholder="e.g. Quality health, delivered." class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm" />
