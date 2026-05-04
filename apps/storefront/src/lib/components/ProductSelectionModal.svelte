@@ -17,7 +17,7 @@
 			let query = supabase
 				.from('branch_inventory')
 				.select(`
-					id, product_id, product_name, product_description, 
+					id, product_id, product_name, 
 					image_url, selling_price, stock_quantity, product_type, isPOM
 				`)
 				.eq('tenant_id', tenantId)
@@ -36,7 +36,7 @@
 				id: row.product_id,
 				inventory_id: row.id,
 				name: row.product_name,
-				description: row.product_description,
+				description: '',
 				image_url: row.image_url,
 				unit_price: row.selling_price,
 				stock_quantity: row.stock_quantity,
@@ -136,7 +136,7 @@
 								</div>
 								<div class="opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all">
 									<div class="h-8 w-8 bg-black text-white rounded-lg flex items-center justify-center shadow-lg">
-										<Plus class="h-4 w-4" />
+										<Plus class="h-4 w-4 text-white" color="#ffffff" />
 									</div>
 								</div>
 							</button>

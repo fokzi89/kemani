@@ -163,7 +163,6 @@
 						>
 							<ShoppingBag class="nav-icon" /> Orders
 						</button>
-						</button>
 						<button 
 							on:click={() => activeTab = 'messages'} 
 							class="nav-item {activeTab === 'messages' ? 'active' : ''}"

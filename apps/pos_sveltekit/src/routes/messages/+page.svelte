@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy, tick } from 'svelte';
 	import { page } from '$app/stores';
 	import { supabase } from '$lib/supabase';
 	import {
@@ -16,6 +16,8 @@
 	let doctors: any[] = $state([]);
 	
 	let staffId: string = $state('');
+	let staffName: string = $state('');
+	let staffPic: string = $state('');
 	let tenantId: string = $state('');
 	let currentBranchId: string = $state('');
 	
@@ -24,7 +26,7 @@
 
 	// ── UI state ───────────────────────────────────────────────────────────────
 	let selectedBranchId: string = $state('all');
-	let statusFilter: 'all'|'active'|'closed' = $state('all');
+	let statusFilter: 'all'|'open'|'active'|'closed' = $state('all');
 	let searchQuery: string = $state('');
 	let activeConvId: string | null = $state(null);
 	let messageText: string = $state('');
@@ -42,7 +44,7 @@
 	let isRecording: boolean = $state(false);
 	let recordSeconds: number = $state(0);
 	let recordInterval: ReturnType<typeof setInterval> | null = null;
-	let pendingFiles: Array<{ type: 'image'|'audio'|'pdf'|'video', name: string, url: string }> = $state([]);
+	let pendingFiles: Array<{ type: 'image'|'audio'|'pdf'|'video', name: string, url: string, file: File }> = $state([]);
 	let msgInputEl: HTMLTextAreaElement;
 
 	const EMOJI_CATEGORIES = [
@@ -57,10 +59,17 @@
 	];
 
 	function insertEmoji(emoji: string) {
-		if (!msgInputEl) { messageText += emoji; return; }
+		if (!msgInputEl) { 
+			messageText += emoji; 
+			showEmojiPicker = false;
+			return; 
+		}
 		const start = msgInputEl.selectionStart ?? messageText.length;
 		const end   = msgInputEl.selectionEnd   ?? messageText.length;
 		messageText = messageText.slice(0, start) + emoji + messageText.slice(end);
+		
+		showEmojiPicker = false;
+
 		// Restore cursor after emoji
 		setTimeout(() => {
 			msgInputEl.focus();
@@ -77,13 +86,15 @@
 		
 		// Load user context (tenant/branch)
 		const { data: userData } = await supabase.from('users')
-			.select('tenant_id, branch_id, canCreatePrescription, canApplyDiscount, canReferDoctor')
+			.select('tenant_id, branch_id, full_name, avatar_url, canCreatePrescription, canApplyDiscount, canReferDoctor')
 			.eq('id', staffId)
 			.single();
 			
 		if (userData) {
 			tenantId = userData.tenant_id;
 			currentBranchId = userData.branch_id;
+			staffName = userData.full_name;
+			staffPic = userData.avatar_url || '';
 			canPrescribe = userData.canCreatePrescription;
 			canApplyDiscount = userData.canApplyDiscount;
 			canReferDoctor = userData.canReferDoctor;
@@ -112,15 +123,25 @@
 	}
 
 	async function loadConversations() {
-		if (!tenantId) return;
-		const { data } = await supabase.from('chat_conversations')
+		if (!tenantId) {
+			console.warn('[Messages] Cannot load conversations: tenantId is missing');
+			return;
+		}
+		
+		const { data, error } = await supabase.from('chat_conversations')
 			.select('*, branches(name)')
 			.eq('tenant_id', tenantId)
 			.order('started_at', { ascending: false });
 		
+		if (error) {
+			console.error('[Messages] Failed to load conversations:', error);
+			return;
+		}
+		
 		conversations = (data || []).map(c => ({
 			...c,
 			customer_name: c.customer_name || 'Anonymous',
+			customer_pic: c.customer_pic || null,
 			branch_name: c.branches?.name || 'Unknown'
 		}));
 	}
@@ -131,14 +152,15 @@
 		const { data } = await supabase.from('branch_inventory')
 			.select('id, product_id, product_name, category_name, selling_price, stock_quantity, sku')
 			.eq('tenant_id', tenantId)
+			.eq('branch_id', currentBranchId)
 			.gt('stock_quantity', 0);
 		
 		products = (data || []).map(row => ({
 			id: row.product_id,
 			name: row.product_name,
 			category: row.category_name || 'General',
-			unit_price: row.selling_price || 0,
-			stock_quantity: row.stock_quantity || 0,
+			price: row.selling_price || 0,
+			stock: row.stock_quantity || 0,
 			sku: row.sku,
 			isPOM: false // Simplified, could join with products if needed
 		}));
@@ -212,7 +234,67 @@
 	let activeConv = $derived(conversations.find(c => c.id === activeConvId) ?? null);
 
 	// ── Actions ────────────────────────────────────────────────────────────────
+	async function joinChat(conv: any) {
+		if (conv.status !== 'open') return;
+		console.log('[Messages] Joining chat:', conv.id, 'as staff:', staffId);
+		
+		// Requirement: isConsulatation True -> only pharmacist (canPrescribe)
+		if (conv.isConsulatation && !canPrescribe) {
+			alert('Only pharmacists can join consultation chats.');
+			return;
+		}
+
+		try {
+			const updatePayload = {
+				service_provider: staffId,
+				service_provider_name: staffName,
+				service_provider_pic: staffPic,
+				status: 'active'
+			};
+			console.log('[Messages] Update payload:', updatePayload);
+
+			const { data, error } = await supabase.from('chat_conversations')
+				.update(updatePayload)
+				.eq('id', conv.id)
+				.select()
+				.single();
+
+			if (error) {
+				console.error('[Messages] Join update error:', error);
+				throw error;
+			}
+			
+			if (!data) {
+				console.error('[Messages] No data returned from join update');
+				throw new Error('Join failed: no data returned');
+			}
+
+			console.log('[Messages] Joined successfully, updated record:', data);
+
+			// Update local state
+			conversations = conversations.map(c => c.id === conv.id ? { 
+				...c, 
+				status: data.status,
+				service_provider: data.service_provider,
+				service_provider_name: data.service_provider_name,
+				service_provider_pic: data.service_provider_pic
+			} : c);
+			
+			// Select it
+			await selectConv(conv.id);
+		} catch (err) {
+			console.error('Failed to join chat:', err);
+			alert('Could not join chat. Check console for details.');
+		}
+	}
+
 	async function selectConv(id: string) {
+		const conv = conversations.find(c => c.id === id);
+		if (conv?.status === 'open') {
+			await joinChat(conv);
+			return;
+		}
+		
 		activeConvId  = id;
 		mobileView    = 'chat';
 		
@@ -233,10 +315,18 @@
 				schema: 'public', 
 				table: 'chat_messages', 
 				filter: `conversation_id=eq.${id}` 
-			}, payload => {
+			}, async payload => {
 				// Avoid duplicate if we just sent it
 				if (!liveMessages.find(m => m.id === payload.new.id)) {
 					liveMessages = [...liveMessages, payload.new];
+
+					// Play sound if message is from customer
+					if (payload.new.sender_type !== 'staff') {
+						const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+						audio.play().catch(e => console.warn('[Messages] Sound blocked:', e));
+					}
+
+					await tick();
 					scrollToBottom();
 				}
 			})
@@ -250,36 +340,73 @@
 		activeConvId = null;
 	}
 
-	async function sendMessage(meta: any = null) {
+	async function sendMessage(metaPayload: any = null) {
+		// If metaPayload is an Event (from onclick), ignore it
+		const meta = (metaPayload instanceof Event) ? null : metaPayload;
+		
 		const text = messageText.trim();
 		const hasFiles = pendingFiles.length > 0;
 		if (!text && !hasFiles && !meta || sending || !activeConvId) return;
 		sending = true;
 
 		try {
-			const payload: any = {
-				conversation_id: activeConvId,
-				sender_type: 'staff',
-				sender_id: staffId,
-				message_text: text || (meta?.doctor ? 'Doctor Referral' : meta?.product ? 'Product Recommendation' : '')
+			// Helper to insert a message
+			const insertMessage = async (payload: any) => {
+				const { data, error } = await supabase.from('chat_messages')
+					.insert({
+						conversation_id: activeConvId,
+						sender_type: 'staff',
+						sender_id: staffId,
+						...payload
+					})
+					.select().single();
+				if (error) throw error;
+				
+				// Optimistic update
+				if (!liveMessages.find(m => m.id === data.id)) {
+					liveMessages = [...liveMessages, data];
+				}
+				return data;
 			};
 
+			// 1. If it's a direct meta/attachment (like voice note, product, or doctor referral)
 			if (meta) {
-				payload.metadata = meta;
+				await insertMessage({
+					message_text: meta.attachment_name || meta.message_text || '',
+					attachment_type: meta.attachment_type,
+					attachment_url: meta.attachment_url,
+					attachment_name: meta.attachment_name,
+					voice_duration: meta.voice_duration,
+					metadata: meta
+				});
+			} else {
+				// 2. Handle pending files
+				if (hasFiles) {
+					for (const pf of pendingFiles) {
+						try {
+							const url = await uploadFile(pf.file, pf.type);
+							await insertMessage({
+								message_text: pf.name,
+								attachment_type: pf.type,
+								attachment_url: url,
+								attachment_name: pf.name,
+								metadata: { type: pf.type, name: pf.name, url }
+							});
+						} catch (uploadErr) {
+							console.error('File upload failed:', uploadErr);
+							alert(`Failed to upload ${pf.name}`);
+						}
+					}
+					pendingFiles = [];
+				}
+
+				// 3. Handle text message
+				if (text) {
+					await insertMessage({ message_text: text });
+					messageText = '';
+				}
 			}
-			
-			const { data, error } = await supabase.from('chat_messages')
-				.insert(payload)
-				.select().single();
-			
-			if (error) throw error;
-			
-			// Optimistic update if not already there
-			if (!liveMessages.find(m => m.id === data.id)) {
-				liveMessages = [...liveMessages, data];
-			}
-			
-			if (!meta) messageText = ''; // only clear text if it wasn't a meta-only message
+
 			scrollToBottom();
 		} catch (err) {
 			console.error('Failed to send message:', err);
@@ -299,42 +426,94 @@
 	}
 
 	// ── Voice recording ────────────────────────────────────────────────────────
-	function toggleRecording() {
-		if (isRecording) {
-			// Stop — send voice note bubble
-			if (recordInterval) { clearInterval(recordInterval); recordInterval = null; }
-			const dur = recordSeconds;
-			recordSeconds = 0;
-			isRecording = false;
-			liveMessages = [...liveMessages, {
-				id: `tmp-voice-${Date.now()}`,
-				sender_type: 'staff',
-				content: null,
-				attachment_type: 'voice',
-				attachment_name: `Voice note (${formatDuration(dur)})`,
-				attachment_url: null,
-				voice_duration: dur,
-				created_at: new Date().toISOString()
-			}];
-			scrollToBottom();
-		} else {
-			// Start
-			isRecording = true;
-			recordSeconds = 0;
-			showAttachTray = false;
-			recordInterval = setInterval(() => { recordSeconds++; }, 1000);
-		}
-	}
-
-	function cancelRecording() {
-		if (recordInterval) { clearInterval(recordInterval); recordInterval = null; }
-		isRecording = false;
-		recordSeconds = 0;
-	}
-
 	function formatDuration(s: number): string {
 		const m = Math.floor(s / 60);
 		return `${m}:${String(s % 60).padStart(2, '0')}`;
+	}
+
+	// ── Supabase Storage ───────────────────────────────────────────────────────
+	async function uploadFile(file: File, type: string) {
+		const ext = file.name.split('.').pop();
+		const path = `${type}/${tenantId}/${activeConvId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+		
+		const { data, error } = await supabase.storage
+			.from('chat-attachments')
+			.upload(path, file);
+		
+		if (error) throw error;
+		
+		const { data: { publicUrl } } = supabase.storage
+			.from('chat-attachments')
+			.getPublicUrl(path);
+		
+		return publicUrl;
+	}
+
+	// ── Voice recording ────────────────────────────────────────────────────────
+	let mediaRecorder: MediaRecorder | null = null;
+	let audioChunks: Blob[] = [];
+
+	async function toggleRecording() {
+		if (isRecording) {
+			stopRecording();
+		} else {
+			try {
+				const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+				mediaRecorder = new MediaRecorder(stream);
+				audioChunks = [];
+				
+				mediaRecorder.ondataavailable = (e) => {
+					if (e.data.size > 0) audioChunks.push(e.data);
+				};
+				
+				mediaRecorder.onstop = async () => {
+					const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+					const file = new File([audioBlob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
+					
+					sending = true;
+					try {
+						const url = await uploadFile(file, 'audio');
+						sending = false; // Reset so sendMessage can proceed
+						await sendMessage({
+							attachment_type: 'audio',
+							attachment_url: url,
+							attachment_name: 'Voice Note',
+							voice_duration: recordSeconds
+						});
+					} catch (err) {
+						console.error('Failed to upload voice note:', err);
+						alert('Failed to send voice note.');
+					} finally {
+						sending = false;
+					}
+				};
+				
+				mediaRecorder.start();
+				isRecording = true;
+				recordSeconds = 0;
+				showAttachTray = false;
+				recordInterval = setInterval(() => {
+					recordSeconds++;
+					if (recordSeconds >= 120) {
+						stopRecording();
+					}
+				}, 1000);
+			} catch (err) {
+				console.error('Microphone access denied:', err);
+				alert('Could not access microphone.');
+			}
+		}
+	}
+
+	function stopRecording() {
+		if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+			mediaRecorder.stop();
+		}
+		if (recordInterval) {
+			clearInterval(recordInterval);
+			recordInterval = null;
+		}
+		isRecording = false;
 	}
 
 	// ── File attachment ────────────────────────────────────────────────────────
@@ -355,7 +534,7 @@
 				return;
 			}
 			const url = URL.createObjectURL(file);
-			pendingFiles = [...pendingFiles, { type, name: file.name, url }];
+			pendingFiles = [...pendingFiles, { type, name: file.name, url, file }];
 			showAttachTray = false;
 		};
 		input.click();
@@ -366,21 +545,20 @@
 	}
 
 	// ── Product picker ─────────────────────────────────────────────────────────
-	function shareProduct(product: any) {
+	async function shareProduct(product: any) {
 		const discPct = pendingDiscounts[product.id] ?? 0;
 		const finalPrice = discPct > 0 ? discountedPrice(product.unit_price, discPct) : product.unit_price;
-		liveMessages = [...liveMessages, {
-			id: `tmp-prod-${Date.now()}`,
-			sender_type: 'staff',
-			content: null,
+		
+		await sendMessage({
 			attachment_type: 'product',
-			product: { ...product, sharedPrice: finalPrice, discountPct: discPct },
-			created_at: new Date().toISOString()
-		}];
+			attachment_name: product.name,
+			message_text: `Product: ${product.name}`,
+			product: { ...product, sharedPrice: finalPrice, discountPct: discPct }
+		});
+
 		showProductPicker = false;
 		productSearch = '';
 		pendingDiscounts = {};  // clear discounts after sharing
-		scrollToBottom();
 	}
 
 	// ── Helpers ────────────────────────────────────────────────────────────────
@@ -395,6 +573,7 @@
 	}
 
 	function statusBadge(s: string) {
+		if (s === 'open') return 'bg-amber-100 text-amber-700';
 		return s === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500';
 	}
 
@@ -410,6 +589,13 @@
 	];
 	function avatarBg(name: string | null): string {
 		return avatarPalette[(name || '').charCodeAt(0) % avatarPalette.length];
+	}
+
+	async function scrollToBottom() {
+		await tick();
+		if (messagesEndEl) {
+			messagesEndEl.scrollIntoView({ behavior: 'smooth' });
+		}
 	}
 </script>
 
@@ -445,7 +631,7 @@
 				<h1 class="conv-title">
 					<MessageSquare class="h-5 w-5 text-indigo-600" />
 					Messages
-					<span class="conv-badge">{conversations.filter(c => c.status === 'active').length}</span>
+					<span class="conv-badge">{conversations.filter(c => c.status === 'active' || c.status === 'open').length}</span>
 				</h1>
 				<button class="icon-btn" title="Refresh"><RefreshCw class="h-4 w-4" /></button>
 			</div>
@@ -469,7 +655,7 @@
 					<ChevronDown class="select-chevron" />
 				</div>
 				<div class="status-pills">
-					{#each [['all','All'],['active','Active'],['closed','Closed']] as [val, label]}
+					{#each [['all','All'],['open','Open'],['active','Active'],['closed','Closed']] as [val, label]}
 						<button
 							onclick={() => statusFilter = val as any}
 							class="status-pill {statusFilter === val ? 'status-pill--active' : ''}"
@@ -495,7 +681,11 @@
 						<!-- Avatar -->
 						<div class="avatar-wrap">
 							<div class="avatar {activeConvId === conv.id ? 'bg-indigo-200 text-indigo-800' : avatarBg(conv.customer_name)}">
-								{initials(conv.customer_name)}
+								{#if conv.customer_pic}
+									<img src={conv.customer_pic} alt={conv.customer_name} class="h-full w-full object-cover rounded-full" />
+								{:else}
+									{initials(conv.customer_name)}
+								{/if}
 							</div>
 							{#if conv.status === 'active'}
 								<span class="online-dot"></span>
@@ -522,7 +712,7 @@
 						</div>
 
 						<!-- Status -->
-						<span class="status-dot {statusBadge(conv.status)}">{conv.status}</span>
+						<span class="status-dot {statusBadge(conv.status)}">{conv.status === 'open' ? 'Join Chat' : conv.status}</span>
 					</button>
 				{/each}
 			{/if}
@@ -574,7 +764,7 @@
 
 		<!-- Footer -->
 		<div class="conv-footer">
-			<span><strong>{conversations.filter(c => c.status === 'active').length}</strong> active</span>
+			<span><strong>{conversations.filter(c => c.status === 'active' || c.status === 'open').length}</strong> active</span>
 			<span>·</span>
 			<span><strong>{filteredConvs.length}</strong> shown</span>
 		</div>
@@ -626,6 +816,9 @@
 			<div class="messages-area">
 				{#each liveMessages as msg, i}
 					{@const isStaff = msg.sender_type === 'staff'}
+					{@const mediaType = msg.attachment_type || msg.metadata?.original_upload_type || msg.metadata?.type || msg.message_type}
+					{@const mediaUrl = msg.attachment_url || msg.media_url || msg.metadata?.file_url || msg.metadata?.url}
+					{@const mediaName = msg.attachment_name || msg.metadata?.file_name || msg.metadata?.name || 'File'}
 					{@const showSep = i === 0 || new Date(msg.created_at).toDateString() !== new Date(liveMessages[i-1].created_at).toDateString()}
 
 					{#if showSep}
@@ -636,11 +829,17 @@
 
 					<div class="bubble-row {isStaff ? 'bubble-row--right' : 'bubble-row--left'}">
 						{#if !isStaff}
-							<div class="bubble-avatar {avatarBg(activeConv.customer_name)}">{initials(activeConv.customer_name)}</div>
+							<div class="bubble-avatar {avatarBg(activeConv.customer_name)}">
+								{#if activeConv.customer_pic}
+									<img src={activeConv.customer_pic} alt="" class="avatar-img" />
+								{:else}
+									{initials(activeConv.customer_name)}
+								{/if}
+							</div>
 						{/if}
 						<div class="bubble-col {isStaff ? 'items-end' : 'items-start'}">
 							<!-- Voice note -->
-							{#if msg.attachment_type === 'voice'}
+							{#if mediaType === 'voice' || (mediaType === 'audio' && msg.voice_duration)}
 								<div class="bubble bubble-voice {isStaff ? 'bubble--staff' : 'bubble--customer'}">
 									<div class="voice-bubble">
 										<div class="voice-play-btn">▶</div>
@@ -649,53 +848,52 @@
 												<span class="voice-bar" style="height:{8 + Math.sin(wi * 1.3) * 10 + Math.random() * 6}px"></span>
 											{/each}
 										</div>
-										<span class="voice-dur">{msg.attachment_name?.match(/\((.+)\)/)?.[1] ?? '0:00'}</span>
+										<span class="voice-dur">{mediaName?.match(/\((.+)\)/)?.[1] ?? '0:00'}</span>
 									</div>
 								</div>
 							<!-- Video -->
-							{:else if msg.attachment_type === 'video'}
+							{:else if mediaType === 'video'}
 								<div class="bubble bubble-media {isStaff ? 'bubble--staff' : 'bubble--customer'}">
-									<video src={msg.attachment_url} controls class="media-video" playsinline></video>
-									<p class="media-name">{msg.attachment_name}</p>
+									<video src={mediaUrl} controls class="media-video" playsinline></video>
+									<p class="media-name">{mediaName}</p>
 								</div>
 							<!-- Image -->
-							{:else if msg.attachment_type === 'image'}
+							{:else if mediaType === 'image'}
 								<div class="bubble bubble-media {isStaff ? 'bubble--staff' : 'bubble--customer'}">
-									<img src={msg.attachment_url} alt={msg.attachment_name} class="media-img" />
-									<p class="media-name">{msg.attachment_name}</p>
+									<img src={mediaUrl} alt={mediaName} class="media-img" />
+									<p class="media-name">{mediaName}</p>
 								</div>
 							<!-- Audio file -->
-							{:else if msg.attachment_type === 'audio'}
+							{:else if mediaType === 'audio'}
 								<div class="bubble {isStaff ? 'bubble--staff' : 'bubble--customer'}">
-									<div class="file-chip">
-										<span class="file-chip-icon">🎵</span>
-										<span class="file-chip-name">{msg.attachment_name}</span>
+									<div class="audio-player mb-2">
+										<audio controls src={mediaUrl} class="max-w-[350px] h-10 outline-none rounded-full"></audio>
 									</div>
-									<audio src={msg.attachment_url} controls class="audio-player"></audio>
 								</div>
 							<!-- PDF -->
-							{:else if msg.attachment_type === 'pdf'}
-								<a href={msg.attachment_url} target="_blank" class="bubble bubble-file {isStaff ? 'bubble--staff' : 'bubble--customer'}">
+							{:else if mediaType === 'pdf' || mediaType === 'file'}
+								<a href={mediaUrl} target="_blank" class="bubble bubble-file {isStaff ? 'bubble--staff' : 'bubble--customer'}">
 									<div class="file-chip">
 										<span class="file-chip-icon pdf">PDF</span>
-										<span class="file-chip-name">{msg.attachment_name}</span>
+										<span class="file-chip-name">{mediaName}</span>
 									</div>
 								</a>
 							<!-- Product card -->
-							{:else if msg.attachment_type === 'product'}
+							{:else if mediaType === 'product'}
+								{@const p = msg.product || msg.metadata?.product || msg.metadata}
 								<div class="bubble bubble-product {isStaff ? 'bubble--staff-light' : 'bubble--customer'}">
 									<div class="product-card">
 										<div class="product-card-icon"><Package class="h-5 w-5" /></div>
 										<div class="product-card-body">
-											<p class="product-card-name">{msg.product.name}</p>
-											<p class="product-card-cat">{msg.product.category}</p>
+											<p class="product-card-name">{p.product_name || p.name}</p>
+											<p class="product-card-cat">{p.category || 'General'}</p>
 											<div class="product-card-pricing">
-												{#if msg.product.discountPct > 0}
-													<span class="product-original-price">₦{msg.product.unit_price.toLocaleString()}</span>
-													<span class="product-card-price">₦{msg.product.sharedPrice.toLocaleString()}</span>
-													<span class="product-disc-badge">{msg.product.discountPct}% OFF</span>
+												{#if p.discountPct > 0}
+													<span class="product-original-price">₦{(p.price || p.unit_price || 0).toLocaleString()}</span>
+													<span class="product-card-price">₦{(p.sharedPrice || 0).toLocaleString()}</span>
+													<span class="product-disc-badge">{p.discountPct}% OFF</span>
 												{:else}
-													<p class="product-card-price">₦{msg.product.unit_price.toLocaleString()}</p>
+													<p class="product-card-price">₦{(p.price || p.unit_price || p.sharedPrice || 0).toLocaleString()}</p>
 												{/if}
 											</div>
 										</div>
@@ -735,6 +933,16 @@
 							{/if}
 							<span class="bubble-time">{new Date(msg.created_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}</span>
 						</div>
+
+						{#if isStaff}
+							<div class="bubble-avatar {avatarBg(activeConv.service_provider_name || 'Staff')}">
+								{#if activeConv.service_provider_pic}
+									<img src={activeConv.service_provider_pic} alt="" class="avatar-img" />
+								{:else}
+									{initials(activeConv.service_provider_name || 'Staff')}
+								{/if}
+							</div>
+						{/if}
 					</div>
 				{/each}
 
@@ -1128,7 +1336,9 @@
 	width: 28px; height: 28px; border-radius: 50%;
 	display: flex; align-items: center; justify-content: center;
 	font-size: 0.625rem; font-weight: 700; flex-shrink: 0;
+	overflow: hidden;
 }
+.avatar-img { width: 100%; height: 100%; object-fit: cover; }
 .bubble-col { display: flex; flex-direction: column; max-width: 68%; }
 .items-end   { align-items: flex-end; }
 .items-start { align-items: flex-start; }
@@ -1273,7 +1483,8 @@
 .file-chip-icon.pdf { background: #fee2e2; color: #dc2626; }
 .bubble--customer .file-chip-icon { background: #e0e7ff; color: #4f46e5; }
 .file-chip-name { font-size: 0.75rem; }
-.audio-player { width: 100%; margin-top: 0.4rem; height: 32px; }
+.audio-player { width: 100%; max-width: 350px; margin-top: 0.25rem; }
+.audio-player audio { width: 100%; height: 40px; display: block; }
 
 /* Product bubble */
 .bubble-product { padding: 0.5rem !important; min-width: 200px; }
@@ -1295,20 +1506,20 @@
 }
 .product-order-btn:hover { background: #4338ca; }
 
-/* ── Product Picker Modal ───────────────────────────────────────────────── */
+/* ── Product Picker Drawer ───────────────────────────────────────────────── */
 .modal-backdrop {
 	position: fixed; inset: 0; background: rgba(0,0,0,0.45);
-	z-index: 100; display: flex; align-items: flex-end;
-	justify-content: center; padding: 0;
+	z-index: 100; display: flex; justify-content: flex-end; align-items: stretch;
+	padding: 0;
 }
 .product-modal {
-	background: #fff; width: 100%; max-width: 520px;
-	border-radius: 1.25rem 1.25rem 0 0;
-	max-height: 75vh; display: flex; flex-direction: column;
-	box-shadow: 0 -4px 32px rgba(0,0,0,0.12);
-	animation: slide-up 0.25s ease;
+	background: #fff; width: 100%; max-width: 420px;
+	border-radius: 0;
+	height: 100%; max-height: 100vh; display: flex; flex-direction: column;
+	box-shadow: -4px 0 32px rgba(0,0,0,0.12);
+	animation: slide-left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
-@keyframes slide-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes slide-left { from { transform: translateX(100%); } to { transform: none; } }
 .product-modal-header {
 	display: flex; justify-content: space-between; align-items: flex-start;
 	padding: 1.25rem 1.25rem 0.75rem; border-bottom: 1px solid #f3f4f6;
@@ -1389,8 +1600,7 @@
 }
 
 @media (min-width: 640px) {
-	.modal-backdrop { align-items: center; }
-	.product-modal { border-radius: 1.25rem; max-height: 80vh; }
+	/* Empty since drawer styles are universal now */
 }
 
 .closed-bar {

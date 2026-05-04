@@ -66,15 +66,18 @@
 
 		// Create new chat
 		try {
+			const tid = storefront?.id || $page.data.storefront?.id;
+
+			console.log('Attempting global chat creation...', { type, tid, uid: $currentUser.id });
+
 			const { data: created, error } = await supabase
 				.from('chat_conversations')
 				.insert({
 					customer_id: $currentUser.id,
-					tenant_id: storefront?.id,
+					tenant_id: tid,
 					chatType: type,
 					customer_name: $currentUser?.user_metadata?.full_name || $currentUser?.email,
 					customer_pic: $currentUser?.user_metadata?.avatar_url,
-					isConsulatation: type === 'Consultation',
 					status: 'active',
 					metadata: { 
 						origin: type === 'Consultation' ? 'storefront_header' : 'storefront_floating',
@@ -83,13 +86,18 @@
 				})
 				.select().single();
 
-			if (error) throw error;
+			if (error) {
+				console.error('Supabase Global Insert Error:', error);
+				throw error;
+			}
+
 			if (created) {
+				console.log('Global chat created:', created.id);
 				setActiveConversation(created.id);
 				goto(`${chatUrl}${chatUrl.includes('?') ? '&' : '?'}id=${created.id}`);
 			}
-		} catch (err) {
-			console.error('Failed to initiate chat:', err);
+		} catch (err: any) {
+			console.error('Failed to initiate global chat:', err);
 			// Fallback to chat page which has its own init logic
 			goto(chatUrl);
 		}

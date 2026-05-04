@@ -137,7 +137,6 @@
 					chatType: 'Consultation',
 					customer_name: $currentUser?.user_metadata?.full_name || $currentUser?.email,
 					customer_pic: $currentUser?.user_metadata?.avatar_url,
-					isConsulatation: true,
 					status: 'active',
 					metadata: { 
 						origin: 'storefront_products_list',

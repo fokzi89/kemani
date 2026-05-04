@@ -70,7 +70,6 @@
 					customer_id: $currentUser.id,
 					tenant_id: storefront?.id,
 					chatType: 'Consultation',
-					"isConsulatation": false,
 					status: 'active',
 					metadata: { 
 						origin: 'storefront_product_rx',

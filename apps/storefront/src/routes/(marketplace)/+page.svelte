@@ -11,6 +11,7 @@
 	import { isAuthenticated, currentUser } from '$lib/stores/auth';
 	import { isAuthModalOpen, isChatOpen, chatProduct, authRedirect } from '$lib/stores/ui';
 	import { supabase } from '$lib/supabase';
+	import { AuthService } from '$lib/services/auth';
 	import { activeConversationId, setActiveConversation } from '$lib/stores/chat.store';
 	import { get } from 'svelte/store';
 	import { PUBLIC_APP_URL } from '$env/static/public';
@@ -133,6 +134,12 @@
 
 		// Create new "Consultation" chat
 		try {
+			console.log('Initiating chat creation...', {
+				customer_id: $currentUser.id,
+				tenant_id: storefront?.id,
+				chatType: 'Consultation'
+			});
+
 			const { data: created, error } = await supabase
 				.from('chat_conversations')
 				.insert({
@@ -141,7 +148,6 @@
 					chatType: 'Consultation',
 					customer_name: $currentUser?.user_metadata?.full_name || $currentUser?.email,
 					customer_pic: $currentUser?.user_metadata?.avatar_url,
-					isConsulatation: true,
 					status: 'active',
 					metadata: { 
 						origin: 'storefront_rx',
@@ -150,13 +156,19 @@
 				})
 				.select().single();
 
-			if (error) throw error;
+			if (error) {
+				console.error('Supabase Insert Error (Consultation):', error);
+				throw error;
+			}
+
 			if (created) {
+				console.log('Chat created successfully:', created.id);
 				setActiveConversation(created.id);
 				goto(`${chatUrl}${chatUrl.includes('?') ? '&' : '?'}id=${created.id}`);
 			}
-		} catch (err) {
+		} catch (err: any) {
 			console.error('Failed to initiate consultation chat:', err);
+			// Even if insert fails, go to chat page and let it try its own logic
 			goto(chatUrl);
 		}
 	}
