@@ -4,7 +4,7 @@
 	import { page } from '$app/stores';
 	import { 
 		ArrowLeft, FileText, CheckCircle, Package, Truck, 
-		Printer, AlertCircle, Clock, Trash2, Send
+		Printer, AlertCircle, Clock, Trash2, Send, X, Calendar
 	} from 'lucide-svelte';
 	import { fade } from 'svelte/transition';
 
@@ -82,9 +82,11 @@
 	}
 
 	let receiveItems = $state<any[]>([]);
+	let receiveNotes = $state('');
 	let showReceiveModal = $state(false);
 
 	function openReceiveModal() {
+		receiveNotes = '';
 		receiveItems = items.map(i => ({
 			product_id: i.product_id,
 			product_name: i.products?.name,
@@ -117,7 +119,8 @@
 
 			const { data, error: rpcErr } = await supabase.rpc('receive_purchase_order', {
 				p_po_id: poId,
-				p_received_items: itemsToSubmit
+				p_received_items: itemsToSubmit,
+				p_notes: receiveNotes
 			});
 			if (rpcErr) throw rpcErr;
 
@@ -138,6 +141,20 @@
 		completed: 'bg-green-100 text-green-700',
 		cancelled: 'bg-red-100 text-red-700'
 	};
+
+	function getExpiryStatus(dateStr: string | null) {
+		if (!dateStr) return { color: 'text-gray-400', label: 'No Expiry' };
+		const expiry = new Date(dateStr);
+		const today = new Date();
+		const diffMs = expiry.getTime() - today.getTime();
+		const diffMonths = diffMs / (1000 * 60 * 60 * 24 * 30);
+		const diffYears = diffMs / (1000 * 60 * 60 * 24 * 365);
+
+		if (diffMonths < 0) return { color: 'text-red-600 font-black', label: 'EXPIRED' };
+		if (diffMonths <= 2) return { color: 'text-red-500 font-bold', label: 'Critical (<2m)' };
+		if (diffYears <= 1) return { color: 'text-orange-500 font-bold', label: 'Moderate (<1y)' };
+		return { color: 'text-green-600 font-bold', label: 'Safe (>1y)' };
+	}
 </script>
 
 <svelte:head><title>{po?.po_number || 'Draft'} – PO Detail</title></svelte:head>
@@ -365,6 +382,15 @@
 					</table>
 				</div>
 
+				<div class="mb-6">
+					<label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Receiving Notes / Remarks</label>
+					<textarea 
+						bind:value={receiveNotes}
+						placeholder="e.g., Damaged item noted, delivery batch 2..."
+						class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all h-20 resize-none"
+					></textarea>
+				</div>
+
 				<div class="flex gap-3 pt-4 border-t">
 					<button onclick={() => showReceiveModal = false} class="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors text-sm">
 						Cancel
@@ -421,15 +447,24 @@
 												<th class="pb-2">Product</th>
 												<th class="pb-2 text-center">Qty</th>
 												<th class="pb-2 text-right">Unit Cost</th>
+												<th class="pb-2 text-right">Expiry</th>
 												<th class="pb-2 text-right">Subtotal</th>
 											</tr>
 										</thead>
 										<tbody class="divide-y divide-gray-100">
 											{#each receipt.items as item}
+												{@const expiry = getExpiryStatus(item.expiry_date)}
 												<tr>
-													<td class="py-2 font-bold text-gray-800">{item.products?.name}</td>
+													<td class="py-2 font-bold text-gray-800">
+														{item.products?.name}
+														<span class="block text-[8px] text-gray-400 font-normal">Batch: {item.batch_no || 'N/A'}</span>
+													</td>
 													<td class="py-2 text-center font-black text-green-600">+{item.quantity}</td>
 													<td class="py-2 text-right text-gray-600 font-mono">₦{item.unit_cost.toLocaleString()}</td>
+													<td class="py-2 text-right">
+														<span class="text-[9px] block leading-none font-bold {expiry.color}">{item.expiry_date ? new Date(item.expiry_date).toLocaleDateString() : 'N/A'}</span>
+														<span class="text-[8px] block opacity-70 {expiry.color} uppercase tracking-tighter">{expiry.label}</span>
+													</td>
 													<td class="py-2 text-right font-black text-gray-900">₦{(item.quantity * item.unit_cost).toLocaleString()}</td>
 												</tr>
 											{/each}
