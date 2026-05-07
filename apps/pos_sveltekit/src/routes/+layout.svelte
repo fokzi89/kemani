@@ -261,7 +261,7 @@
 	<div class="flex items-center justify-center min-h-screen bg-gray-50">
 		<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
 	</div>
-{:else if user && tenant && !$page.url.pathname.startsWith('/auth') && !$page.url.pathname.startsWith('/onboarding')}
+{:else if user && tenant && !$page.url.pathname.startsWith('/auth') && !$page.url.pathname.startsWith('/onboarding') && !$page.url.pathname.endsWith('/print')}
 	<!-- Main POS Dashboard Layout -->
 	<div class="min-h-screen bg-gray-50 flex">
 		<!-- Mobile Header -->
@@ -306,6 +306,9 @@
 			<slot />
 		</main>
 	</div>
+{:else if user && tenant && !$page.url.pathname.startsWith('/auth') && !$page.url.pathname.startsWith('/onboarding') && $page.url.pathname.endsWith('/print')}
+	<!-- Print View (No Sidebar) -->
+	<slot />
 {:else if user && !tenant && !$page.url.pathname.startsWith('/auth') && !$page.url.pathname.startsWith('/onboarding')}
 	<!-- Transition to Onboarding -->
 	<div class="flex items-center justify-center min-h-screen bg-gray-50">
