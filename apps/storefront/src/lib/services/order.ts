@@ -340,7 +340,7 @@ export class OrderService {
   // ============================================================================
 
   /**
-   * Check inventory availability for order items
+   * Check inventory availability for order items across all batches
    */
   private async checkInventory(
     items: Array<{ product_id: string; quantity: number }>
@@ -349,16 +349,16 @@ export class OrderService {
 
     for (const item of items) {
       const { data: product } = await this.supabase
-        .from('products')
-        .select('stock_quantity')
+        .from('ecommerce_products')
+        .select('total_stock')
         .eq('id', item.product_id)
         .single();
 
       results.push({
         product_id: item.product_id,
         requested_quantity: item.quantity,
-        available_quantity: product?.stock_quantity || 0,
-        is_available: (product?.stock_quantity || 0) >= item.quantity
+        available_quantity: product?.total_stock || 0,
+        is_available: (product?.total_stock || 0) >= item.quantity
       });
     }
 

@@ -78,6 +78,7 @@
 					reserved_quantity,
 					batch_no,
 					product_name,
+					strength,
 					sku,
 					image_url,
 					cost_price,
@@ -85,8 +86,9 @@
 					expiry_date,
 					low_stock_threshold,
 					updated_at,
+					product_type,
 					isPOM,
-					product_type
+					unit_of_measure
 				`, { count: 'exact' })
 				.eq('tenant_id', currentTenantId)
 				.gt('stock_quantity', 0);
@@ -97,11 +99,12 @@
 
 			if (searchQuery) {
 				const q = `%${searchQuery}%`;
-				query = query.or(`product_name.ilike.${q},sku.ilike.${q},batch_no.ilike.${q}`);
+				query = query.or(`product_name.ilike.${q},sku.ilike.${q},batch_no.ilike.${q},strength.ilike.${q}`);
 			}
 
 			const { data, count, error } = await query
 				.order('product_name', { ascending: true })
+				.order('expiry_date', { ascending: true, nullsFirst: false })
 				.range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 
 			if (error) throw error;
@@ -120,6 +123,7 @@
 					expiry_date: row.expiry_date,
 					batch_no: row.batch_no,
 					name: row.product_name,
+					strength: row.strength,
 					sku: row.sku,
 					unit_price: row.selling_price,
 					cost_price: row.cost_price,
@@ -127,7 +131,8 @@
 					image_url: row.image_url,
 					is_expiring_soon: soon,
 					isPOM: row.isPOM,
-					product_type: row.product_type
+					product_type: row.product_type,
+					unit_of_measure: row.unit_of_measure || 'unit'
 				};
 			});
 			totalCount = count || 0;
@@ -180,7 +185,8 @@
 					cost_price: item.cost_price,
 					expiry_date: item.expiry_date,
 					low_stock_threshold: item.low_stock_threshold,
-					isPOM: item.isPOM
+					isPOM: item.isPOM,
+					unit_of_measure: item.unit_of_measure
 				}
 			};
 		}
@@ -205,8 +211,8 @@
 					.update({
 						stock_quantity: vals.stock_quantity,
 						low_stock_threshold: vals.low_stock_threshold,
-						expiry_date: vals.expiry_date || null,
 						isPOM: vals.isPOM,
+						unit_of_measure: vals.unit_of_measure,
 						updated_at: new Date().toISOString()
 					})
 					.eq('id', invId);
@@ -459,6 +465,7 @@
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Product Information</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Location</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">In Stock</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">UoM</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Low Stock Lvl</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l">Selling Price</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost Price</th>
@@ -490,7 +497,12 @@
 											{/if}
 										</div>
 										<div>
-											<p class="font-semibold text-gray-900 leading-tight">{item.name}</p>
+											<p class="font-semibold text-gray-900 leading-tight">
+												{item.name}
+												{#if item.strength}
+													<span class="ml-1 text-indigo-600 font-bold">{item.strength}</span>
+												{/if}
+											</p>
 											<div class="flex items-center gap-2 mt-0.5">
 												<span class="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded font-bold uppercase tracking-tight">{item.sku || 'No SKU'}</span>
 												<span class="text-[10px] text-gray-400 font-medium">• Batch: {item.batch_no || 'NA'}</span>
@@ -521,6 +533,22 @@
 											{item.available_stock} <span class="text-[10px] font-medium text-gray-400 ml-0.5">avail</span>
 										</div>
 										<div class="text-[10px] text-gray-500 uppercase tracking-tighter">Total: {item.stock_quantity}</div>
+									{/if}
+								</td>
+								<td class="px-4 py-3 text-center">
+									{#if isSelected}
+										<select 
+											bind:value={editingValues[invId].unit_of_measure}
+											class="w-20 px-1 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 h-9 transition-all"
+										>
+											<option value="unit">Unit</option>
+											<option value="pack">Pack</option>
+											<option value="sachet">Sachet</option>
+										</select>
+									{:else}
+										<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-bold uppercase tracking-tight">
+											{item.unit_of_measure}
+										</span>
 									{/if}
 								</td>
 								<td class="px-4 py-3 text-center border-l bg-gray-50/30">

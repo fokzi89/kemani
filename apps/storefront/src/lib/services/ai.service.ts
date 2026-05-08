@@ -41,10 +41,11 @@ export class StorefrontAIService {
                     }),
                     execute: async ({ query, limit }) => {
                         const { data, error } = await supabase
-                            .from('products')
-                            .select('id, name, description, unit_price, image_url, category_id')
+                            .from('ecommerce_products')
+                            .select('id, name, description, selling_price, image_url, category, branch_name')
+                            .eq('tenant_id', tenantId)
                             .ilike('name', `%${query}%`)
-                            .eq('is_active', true)
+                            .gt('total_stock', 0)
                             .limit(limit);
                         
                         if (error) return { error: error.message };
@@ -61,7 +62,7 @@ export class StorefrontAIService {
                         
                         const { data, error } = await supabase
                             .from('orders')
-                            .select('id, order_number, total_amount, order_status, created_at, order_items(product_name, quantity)')
+                            .select('id, order_number, total_amount, status, created_at, order_items(product_id, quantity, unit_price)')
                             .eq('customer_id', customerId)
                             .order('created_at', { ascending: false })
                             .limit(limit);
@@ -73,23 +74,24 @@ export class StorefrontAIService {
                 get_recommendations: tool({
                     description: 'Suggest products based on a category or general interest',
                     parameters: z.object({
-                        category_id: z.string().optional().describe('Filter by category ID if known'),
+                        category: z.string().optional().describe('Filter by category name if known'),
                         interest: z.string().optional().describe('A topic or interest to match')
                     }),
-                    execute: async ({ category_id, interest }) => {
-                        let query = supabase
-                            .from('products')
-                            .select('id, name, unit_price, image_url')
-                            .eq('is_active', true)
+                    execute: async ({ category, interest }) => {
+                        let queryBuilder = supabase
+                            .from('ecommerce_products')
+                            .select('id, name, selling_price, image_url')
+                            .eq('tenant_id', tenantId)
+                            .gt('total_stock', 0)
                             .limit(4);
                         
-                        if (category_id) {
-                            query = query.eq('category_id', category_id);
+                        if (category) {
+                            queryBuilder = queryBuilder.eq('category', category);
                         } else if (interest) {
-                            query = query.ilike('description', `%${interest}%`);
+                            queryBuilder = queryBuilder.ilike('description', `%${interest}%`);
                         }
                         
-                        const { data, error } = await query;
+                        const { data, error } = await queryBuilder;
                         if (error) return { error: error.message };
                         return data;
                     }

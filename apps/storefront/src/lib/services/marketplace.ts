@@ -81,7 +81,8 @@ export class MarketplaceService {
           isPOM: data.isPOM,
           is_on_sale: data.is_on_sale,
           is_featured: data.is_featured,
-          is_new_arrival: data.is_new_arrival
+          is_new_arrival: data.is_new_arrival,
+          allow_preorder: data.allow_preorder
         }
       };
     } catch (error: any) {
@@ -108,27 +109,24 @@ export class MarketplaceService {
       const limit = filters?.limit || 24;
       const offset = (page - 1) * limit;
 
-      // Build query directly on branch_inventory for total autonomy
+      // Build query on ecommerce_products view for aggregated batch data
       let query = this.supabase
-        .from('branch_inventory')
+        .from('ecommerce_products')
         .select('*', { count: 'exact' })
         .eq('tenant_id', resolvedTenantId)
-        .eq('isPOM', false)
-        .eq('is_active', true)
-        .eq('_sync_is_deleted', false);
+        .eq('is_pom', false);
 
-      // Apply branch filter
-      if (filters?.branch_id) {
-        query = query.eq('branch_id', filters.branch_id);
-      }
-
+      // Apply branch filter (The view provides a branches JSON array)
+      // Note: If filtering by branch, we still use the view but check availability in the branch list
+      // For simplicity in this list view, we filter where the product is available in the tenant
+      
       // Apply product-level filters
       if (filters?.category) {
-        query = query.eq('product_type', filters.category);
+        query = query.eq('category', filters.category);
       }
 
       if (filters?.search) {
-        query = query.ilike('product_name', `%${filters.search}%`);
+        query = query.ilike('name', `%${filters.search}%`);
       }
 
       if (filters?.min_price !== undefined) {
@@ -140,7 +138,7 @@ export class MarketplaceService {
       }
 
       if (filters?.in_stock_only) {
-        query = query.gt('stock_quantity', 0);
+        query = query.gt('total_stock', 0);
       }
 
       if (filters?.is_on_sale) {
@@ -164,7 +162,7 @@ export class MarketplaceService {
           query = query.order('selling_price', { ascending: false });
           break;
         case 'name':
-          query = query.order('product_name', { ascending: true });
+          query = query.order('name', { ascending: true });
           break;
         default:
           query = query.order('created_at', { ascending: false });
@@ -177,30 +175,31 @@ export class MarketplaceService {
         return { error: error.message };
       }
 
-      // Transform record mapping from branch_inventory
+      // Transform record mapping from branch-aggregated view
       const products: MarketplaceProduct[] = (data || []).map((item: any) => {
         const finalPrice = (item.sale_price && item.sale_price > 0) ? item.sale_price : item.selling_price;
         return {
-          id: item.product_id,
-          inventory_id: item.id,
+          id: item.product_id, // The actual product ID
+          view_id: item.id,    // Unique composite ID (product-branch)
           tenant_id: item.tenant_id,
           branch_id: item.branch_id,
-          name: item.product_name || 'Unnamed Product',
-          description: item.product_type || 'Verified product',
-          sku: item.sku || '',
-          category: item.product_type || 'General',
+          branch_name: item.branch_name,
+          name: item.name || 'Unnamed Product',
+          description: item.description || 'Verified product',
+          sku: item.product_id.split('-')[0],
+          category: item.category || 'General',
           price: finalPrice,
           selling_price: item.selling_price,
           sale_price: item.sale_price,
           image_url: item.image_url,
-          stock_quantity: (item.stock_quantity || 0) - (item.reserved_quantity || 0),
-          is_available: (item.stock_quantity || 0) > (item.reserved_quantity || 0),
+          stock_quantity: item.total_stock,
+          is_available: item.total_stock > 0,
           is_on_sale: item.is_on_sale,
           is_featured: item.is_featured,
           is_new_arrival: item.is_new_arrival,
-          isPOM: item.isPOM,
+          isPOM: item.is_pom,
           generic_name: item.generic_name,
-          business_name: '' 
+          business_name: item.branch_name // Use branch name as business name
         };
       });
 
@@ -221,11 +220,12 @@ export class MarketplaceService {
   }
 
   /**
-   * Get single marketplace product details directly from inventory
+   * Get single marketplace product details from the branch-aggregated view
    */
   async getMarketplaceProduct(
     productId: string,
-    tenantId: string
+    tenantId: string,
+    branchId?: string // Optional branch filter
   ): Promise<{
     product?: MarketplaceProduct;
     error?: string;
@@ -234,58 +234,49 @@ export class MarketplaceService {
       const resolvedTenantId = await this.resolveTenantSlug(tenantId);
       if (!resolvedTenantId) return { error: 'Invalid tenant identifier or slug.' };
 
-      const { data, error } = await this.supabase
-        .from('branch_inventory')
-        .select(`
-          *,
-          products (
-            generic_name,
-            strength,
-            dosage_form,
-            "product side effect",
-            interactions,
-            product_details
-          )
-        `)
+      let query = this.supabase
+        .from('ecommerce_products')
+        .select('*')
         .eq('product_id', productId)
         .eq('tenant_id', resolvedTenantId)
-        .eq('isPOM', false)
-        .not('is_active', 'is', false)
-        .order('stock_quantity', { ascending: false })
-        .limit(1)
-        .single();
+        .eq('is_pom', false);
 
-      if (error || !data) {
-        return { error: 'Product not found or out of stock.' };
+      if (branchId) {
+        query = query.eq('branch_id', branchId);
       }
 
-      const availableStock = (data.stock_quantity || 0) - (data.reserved_quantity || 0);
+      const { data, error } = await query
+        .order('total_stock', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !data) {
+        return { error: 'Product not found in this location.' };
+      }
+
       const finalPrice = (data.sale_price && data.sale_price > 0) ? data.sale_price : data.selling_price;
 
       return {
         product: {
           id: data.product_id,
-          inventory_id: data.id,
           tenant_id: data.tenant_id,
           branch_id: data.branch_id,
-          name: data.product_name || 'Unnamed Product',
-          description: data.product_type || 'Verified professional product',
-          sku: data.sku || data.batch_no || '',
-          category: data.product_type || 'General',
+          branch_name: data.branch_name,
+          name: data.name || 'Unnamed Product',
+          description: data.description || 'Verified professional product',
+          sku: data.product_id.split('-')[0],
+          category: data.category || 'General',
           price: finalPrice,
           selling_price: data.selling_price,
           sale_price: data.sale_price,
-          percentage_discount: data.percentage_discount,
           image_url: data.image_url,
-          stock_quantity: availableStock,
-          is_available: availableStock > 0,
-          business_name: '',
-          generic_name: data.products?.generic_name,
-          strength: data.products?.strength,
-          dosage_form: data.products?.dosage_form,
-          product_side_effect: data.products?.['product side effect'] || data.products?.product_side_effect,
-          interactions: data.products?.interactions,
-          product_details: data.products?.product_details,
+          stock_quantity: data.total_stock,
+          is_available: data.total_stock > 0,
+          business_name: data.branch_name,
+          generic_name: data.generic_name,
+          strength: data.strength,
+          dosage_form: data.dosage_form,
+          product_details: data.description,
           is_on_sale: data.is_on_sale,
           is_featured: data.is_featured,
           is_new_arrival: data.is_new_arrival
@@ -306,22 +297,20 @@ export class MarketplaceService {
       const resolvedTenantId = await this.resolveTenantSlug(tenantId);
       if (!resolvedTenantId) return { error: 'Invalid tenant identifier or slug.' };
 
-      // Query unique types from branch_inventory
+      // Query unique categories from aggregated view
       const { data, error } = await this.supabase
-        .from('branch_inventory')
-        .select('product_type')
+        .from('ecommerce_products')
+        .select('category')
         .eq('tenant_id', resolvedTenantId)
-        .eq('isPOM', false)
-        .not('is_active', 'is', false)
-        .eq('_sync_is_deleted', false);
+        .eq('is_pom', false);
 
       if (error) return { error: error.message };
 
-      // Group and count unique types
+      // Group and count unique categories
       const counts: Record<string, number> = {};
       (data || []).forEach((item: any) => {
-        const type = item.product_type || 'General';
-        counts[type] = (counts[type] || 0) + 1;
+        const cat = item.category || 'General';
+        counts[cat] = (counts[cat] || 0) + 1;
       });
 
       const categories = Object.keys(counts).map(name => ({
