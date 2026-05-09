@@ -157,11 +157,13 @@
 		</button>
 	</div>
 
-	<ExpenseModal 
-		bind:open={showAddModal} 
-		onClose={() => showAddModal = false} 
-		onSave={loadExpenses} 
-	/>
+	{#if showAddModal}
+		<ExpenseModal 
+			open={showAddModal} 
+			onClose={() => showAddModal = false} 
+			onSave={loadExpenses} 
+		/>
+	{/if}
 
 	<ExpenseActionModal 
 		bind:open={showActionModal}

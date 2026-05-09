@@ -133,7 +133,7 @@
 							<label for="evidence" class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Payment Evidence (Receipt/Screenshot)</label>
 							<FileUpload 
 								onFileSelect={(file) => paymentEvidence = file}
-								maxSize={5}
+								maxSize={5 * 1024 * 1024}
 								accept="image/*,application/pdf"
 							/>
 						</div>

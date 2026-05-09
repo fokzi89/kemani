@@ -48,9 +48,10 @@
 		if (!currentTenantId) return;
 		loading = true;
 		try {
+			// Step 1: Find products that have at least one batch below threshold
 			let query = supabase
 				.from('branch_inventory')
-				.select('*', { count: 'exact' })
+				.select('product_id')
 				.eq('tenant_id', currentTenantId)
 				.filter('stock_quantity', 'lte', 'low_stock_threshold');
 
@@ -62,13 +63,62 @@
 				query = query.ilike('product_name', `%${searchQuery}%`);
 			}
 
-			const { data, count, error } = await query
-				.order('stock_quantity', { ascending: true })
-				.range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
+			const { data: candidates, error: candErr } = await query;
+			if (candErr) throw candErr;
 
-			if (error) throw error;
-			inventory = data || [];
-			totalCount = count || 0;
+			if (!candidates || candidates.length === 0) {
+				inventory = [];
+				totalCount = 0;
+				return;
+			}
+
+			const uniqueProductIds = [...new Set(candidates.map(c => c.product_id))];
+
+			// Step 2: Fetch ALL batches for these candidate products to calculate real total stock
+			// We fetch in chunks to avoid potential URL length limits for many IDs
+			const CHUNK_SIZE = 100;
+			let allBatches: any[] = [];
+			
+			for (let i = 0; i < uniqueProductIds.length; i += CHUNK_SIZE) {
+				const chunk = uniqueProductIds.slice(i, i + CHUNK_SIZE);
+				let batchQuery = supabase
+					.from('branch_inventory')
+					.select('*')
+					.in('product_id', chunk);
+
+				if (selectedBranchId !== 'all') {
+					batchQuery = batchQuery.eq('branch_id', selectedBranchId);
+				}
+
+				const { data, error } = await batchQuery;
+				if (error) throw error;
+				allBatches = [...allBatches, ...data];
+			}
+
+			// Step 3: Aggregate stock by product (and branch if 'all' selected)
+			const aggMap = new Map();
+			allBatches.forEach(b => {
+				const key = selectedBranchId === 'all' ? `${b.branch_id}-${b.product_id}` : b.product_id;
+				if (!aggMap.has(key)) {
+					// Clone to avoid modifying the original data
+					aggMap.set(key, { ...b });
+				} else {
+					aggMap.get(key).stock_quantity += b.stock_quantity;
+					// Note: If different batches have different thresholds, we keep the first one
+					// which is usually the intended behavior for branch-level thresholds.
+				}
+			});
+
+			// Step 4: Final filter (only those whose TOTAL stock is <= threshold)
+			let filtered = Array.from(aggMap.values())
+				.filter(item => item.stock_quantity <= item.low_stock_threshold);
+
+			// Step 5: Sort and Paginate
+			filtered.sort((a, b) => a.stock_quantity - b.stock_quantity);
+			
+			totalCount = filtered.length;
+			inventory = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+
 		} catch (err) {
 			console.error('Low stock fetch error:', err);
 		} finally {
@@ -76,8 +126,15 @@
 		}
 	}
 
+	let lastFilterKey = '';
 	$effect(() => {
-		if (currentTenantId && (selectedBranchId || page || searchQuery)) {
+		const filterKey = `${selectedBranchId}-${searchQuery}`;
+		if (filterKey !== lastFilterKey) {
+			lastFilterKey = filterKey;
+			page = 1;
+		}
+		
+		if (currentTenantId) {
 			loadLowStock();
 		}
 	});

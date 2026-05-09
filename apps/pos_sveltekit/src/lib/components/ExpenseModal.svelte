@@ -5,11 +5,15 @@
 	import { 
 		X, Upload, Calendar, Hash, 
 		Briefcase, User, Info, RefreshCcw,
-		Search, Package, Building
+		Search, Package, Building, Plus
 	} from 'lucide-svelte';
 	import FileUpload from './FileUpload.svelte';
 
-	let { open = $bindable(false), onClose, onSave } = $props<any>();
+	let { open, onClose, onSave } = $props<{
+		open: boolean;
+		onClose: () => void;
+		onSave: () => void;
+	}>();
 
 	let loading = $state(false);
 	let expenseTypes = $state<ExpenseType[]>([]);
@@ -35,26 +39,30 @@
 	let showPOSuggestions = $state(false);
 
 	onMount(async () => {
-		const { data: { session } } = await supabase.auth.getSession();
-		if (!session) return;
+		try {
+			const { data: { session } } = await supabase.auth.getSession();
+			if (!session) return;
 
-		const { data: user } = await supabase.from('users').select('tenant_id').eq('id', session.user.id).single();
-		const tenantId = user?.tenant_id;
+			const { data: user } = await supabase.from('users').select('tenant_id').eq('id', session.user.id).single();
+			const tenantId = user?.tenant_id;
 
-		const [types, supData, brData, poData] = await Promise.all([
-			ExpenseService.getExpenseTypes(),
-			supabase.from('suppliers').select('id, name').eq('tenant_id', tenantId),
-			supabase.from('branches').select('id, name').eq('tenant_id', tenantId),
-			supabase.from('purchase_orders').select('id, po_number, total_cost, supplier:suppliers(name)').eq('tenant_id', tenantId).not('po_number', 'is', null)
-		]);
+			const [types, supData, brData, poData] = await Promise.all([
+				ExpenseService.getExpenseTypes(),
+				supabase.from('suppliers').select('id, name').eq('tenant_id', tenantId),
+				supabase.from('branches').select('id, name').eq('tenant_id', tenantId),
+				supabase.from('purchase_orders').select('id, po_number, total_cost, supplier:suppliers(name)').eq('tenant_id', tenantId).not('po_number', 'is', null)
+			]);
 
-		expenseTypes = types;
-		suppliers = supData.data || [];
-		branches = brData.data || [];
-		purchaseOrders = poData.data || [];
+			expenseTypes = types;
+			suppliers = supData.data || [];
+			branches = brData.data || [];
+			purchaseOrders = poData.data || [];
 
-		if (expenseTypes.length > 0) form.expense_type_id = expenseTypes[0].id;
-		if (branches.length > 0) form.branch_id = branches[0].id;
+			if (expenseTypes.length > 0) form.expense_type_id = expenseTypes[0].id;
+			if (branches.length > 0) form.branch_id = branches[0].id;
+		} catch (err) {
+			console.error('Failed to initialize ExpenseModal:', err);
+		}
 	});
 
 	let selectedType = $derived(expenseTypes.find(t => t.id === form.expense_type_id));
@@ -273,7 +281,7 @@
 					<label for="receipt" class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Attach Bill / Receipt</label>
 					<FileUpload 
 						onFileSelect={(file) => selectedFile = file}
-						maxSize={5}
+						maxSize={5 * 1024 * 1024}
 						accept="application/pdf,image/*"
 					/>
 				</div>
