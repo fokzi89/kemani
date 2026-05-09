@@ -4,8 +4,9 @@
 		LayoutDashboard, Package, Users, ShoppingCart, BarChart3, Settings, 
 		Store, LogOut, MessageSquare, Briefcase, Building, ClipboardList,
 		FlaskConical, Truck, Stethoscope, Coins, RotateCcw, Clock, Bike,
-		Sparkles
+		Sparkles, FileText, Wallet
 	} from 'lucide-svelte';
+	import NotificationBell from './NotificationBell.svelte';
 
 	let { tenant, userData, email, handleLogout, onnavclick = (e: any) => {} } = $props<any>();
 
@@ -22,8 +23,11 @@
 		{ name: 'Delivery', href: '/delivery', icon: Bike, visible: userData?.canManageOrders ?? false },
 		{ name: 'Returns', href: '/returns', icon: RotateCcw, visible: userData?.canReturnProducts ?? false },
 		{ name: 'Inventory', href: '/inventory', icon: ClipboardList, visible: userData?.canManageInventory ?? false },
+		{ name: 'Purchase Orders', href: '/inventory/po', icon: FileText, visible: (tenant?.po_enabled ?? false) && (userData?.canManageInventory ?? false) },
+		{ name: 'Expenses', href: '/expenses', icon: Wallet, visible: userData?.role === 'tenant_admin' || userData?.canManageExpenses },
 		{ name: 'Staffs', href: '/staffs', icon: Briefcase, visible: userData?.canManageStaff ?? false },
 		{ name: 'Attendance', href: '/attendance', icon: Clock, visible: true },
+		{ name: 'Tasks', href: '/tasks', icon: ClipboardList, visible: true },
 		{ name: 'Messages', href: '/messages', icon: MessageSquare, visible: true },
 		{ name: 'Commissions', href: '/commissions', icon: Coins, visible: userData?.role === 'tenant_admin' },
 		{ name: 'Branches', href: '/branches', icon: Building, visible: userData?.canManageBranches ?? false },
@@ -38,9 +42,14 @@
 
 <div class="flex flex-col h-full bg-white">
 	<!-- Brand -->
-	<div class="p-4 border-b shrink-0">
-		<h1 class="text-xl font-bold text-gray-900">{tenant?.name || 'Kemani POS'}</h1>
-		<p class="text-sm text-gray-500">Business Dashboard</p>
+	<div class="p-4 border-b shrink-0 flex items-center justify-between">
+		<div>
+			<h1 class="text-xl font-bold text-gray-900">{tenant?.name || 'Kemani POS'}</h1>
+			<p class="text-sm text-gray-500">Business Dashboard</p>
+		</div>
+		{#if tenant?.id}
+			<NotificationBell tenantId={tenant.id} align="left" />
+		{/if}
 	</div>
 
 	<!-- Navigation -->

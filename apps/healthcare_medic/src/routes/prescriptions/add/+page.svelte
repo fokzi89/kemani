@@ -48,6 +48,11 @@
 	let submitting = $state(false);
 	let submitProgress = $state<any[]>([]);
 
+	// Consultation Context
+	let consultationId = $state<string | null>(null);
+	let consultation = $state<any>(null);
+	let isFreelance = $state(false);
+
 	onMount(async () => {
 		const { data } = await supabase.auth.getSession();
 		const session = data?.session;
@@ -59,7 +64,37 @@
 				.single();
 			provider = providerData;
 
-			if (provider) {
+			// Handle Consultation Context
+			consultationId = new URLSearchParams(window.location.search).get('consultation');
+			if (consultationId) {
+				const { data: consultData } = await supabase
+					.from('consultations')
+					.select('*, patients(*)')
+					.eq('id', consultationId)
+					.single();
+				
+				if (consultData) {
+					consultation = consultData;
+					// Auto-select patient
+					selectedPatient = consultData.patients;
+					diagnosis = consultData.diagnosis || '';
+					
+					// Check if freelance partner for this tenant
+					const { data: alias } = await supabase
+						.from('doctor_aliases')
+						.select('id')
+						.eq('doctor_id', provider.id)
+						.eq('tenant_partner', consultData.tenant_id)
+						.eq('accepted', true)
+						.single();
+					
+					if (alias) {
+						isFreelance = true;
+					}
+				}
+			}
+
+			if (provider && !selectedPatient) {
 				const { data } = await supabase
 					.from('patients')
 					.select('id, full_name, phone, profile_photo_url, gender')
@@ -203,13 +238,17 @@
 			const { data: presData, error: presErr } = await supabase.from('prescriptions').insert({
 				provider_id: provider.id,
 				patient_id: currentPatientId,
-				consultation_id: null, // standalone
+				consultation_id: consultationId, 
 				diagnosis: diagnosis,
 				notes: notes,
 				provider_name: provider?.full_name || 'Unknown Provider',
 				status: status,
 				issue_date: new Date().toISOString(),
-				prescription_code: pCode
+				prescription_code: pCode,
+				is_freelance: isFreelance,
+				commission_rate: isFreelance ? 0.0550 : 0.0000,
+				platform_fee_rate: isFreelance ? 0.0100 : 0.0000,
+				medic_payout_rate: isFreelance ? 0.0450 : 0.0000
 			}).select().single();
 
 			if (presErr) throw presErr;

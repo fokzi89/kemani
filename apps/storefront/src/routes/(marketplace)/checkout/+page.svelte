@@ -11,6 +11,7 @@
 	export let data;
 	import { supabase } from '$lib/supabase';
 	import { MonnifyService } from '$lib/services/monnify';
+	import { cartPrescriptionFee } from '$lib/stores/cart.store';
 
 	$: storefront = data.storefront;
     $: brandColor = storefront?.brand_color || '#4f46e5';
@@ -101,35 +102,58 @@
 		error = '';
 
 		try {
-			// Format items as required by the RPC
-			const formattedItems = orderData.items.map((i: any) => ({
-				product_id: i.product_id || i.id,
-				product_name: i.product_name || i.name,
-				quantity: i.quantity,
-				unit_price: i.unit_price || i.price,
-				subtotal: (i.unit_price || i.price) * i.quantity
-			}));
+			const physicalItems = orderData.items.filter((i: any) => !i.is_preorder);
+			const preorderItems = orderData.items.filter((i: any) => i.is_preorder);
 
-			const { data: orderId, error: rpcError } = await supabase.rpc('checkout_storefront_order', {
-				p_tenant_id: storefront.id,
-				p_branch_id: orderData.branch_id || storefront.branches?.[0]?.id, 
-				p_customer_id: $currentUser?.id,
-				p_order_type: 'marketplace',
-				p_fulfillment_type: fulfillmentType,
-				p_subtotal: orderData.subtotal,
-				p_delivery_fee: fulfillmentType === 'delivery' ? (orderData.delivery_fee || 0) : 0,
-				p_tax_amount: orderData.tax || 0,
-				p_total_amount: fulfillmentType === 'delivery' ? orderData.total : (orderData.total - (orderData.delivery_fee || 0)),
-				p_delivery_address_id: orderData.delivery_address_id || null,
-				p_special_instructions: orderData.special_instructions || null,
-				p_items: formattedItems,
-				p_service_charge: orderData.service_charge || 0,
-				p_payment_reference: paymentReference,
-				p_billing_address: billingAddress,
-				p_shipping_address: shippingAddress
-			});
+			const submitOrder = async (itemsToSubmit: any[], isPreorder: boolean) => {
+				if (itemsToSubmit.length === 0) return null;
+				
+				const subtotal = itemsToSubmit.reduce((sum: number, i: any) => sum + (i.unit_price || i.price) * i.quantity, 0);
+				const itemRatio = orderData.subtotal > 0 ? (subtotal / orderData.subtotal) : 0;
+				
+				const taxAmount = orderData.tax * itemRatio;
+				const deliveryFee = fulfillmentType === 'delivery' ? ((orderData.delivery_fee || 0) * itemRatio) : 0;
+				const serviceCharge = (orderData.service_charge || 0) * itemRatio;
+				const overallTotal = (fulfillmentType === 'delivery' 
+					? orderData.subtotal + orderData.tax + (orderData.service_charge || 0) + (orderData.delivery_fee || 0) 
+					: orderData.subtotal + orderData.tax + (orderData.service_charge || 0)) + $cartPrescriptionFee;
+				const totalAmount = overallTotal * itemRatio;
 
-			if (rpcError) throw rpcError;
+				const formattedItems = itemsToSubmit.map((i: any) => ({
+					product_id: i.product_id || i.id,
+					product_name: i.product_name || i.name,
+					quantity: i.quantity,
+					unit_price: i.unit_price || i.price,
+					subtotal: (i.unit_price || i.price) * i.quantity,
+					is_preorder: i.is_preorder || false
+				}));
+
+				const { data: orderId, error: rpcError } = await supabase.rpc('checkout_storefront_order', {
+					p_tenant_id: storefront.id,
+					p_branch_id: orderData.branch_id || storefront.branches?.[0]?.id, 
+					p_customer_id: $currentUser?.id,
+					p_order_type: 'marketplace',
+					p_fulfillment_type: fulfillmentType,
+					p_subtotal: subtotal,
+					p_delivery_fee: deliveryFee,
+					p_tax_amount: taxAmount,
+					p_total_amount: totalAmount,
+					p_delivery_address_id: orderData.delivery_address_id || null,
+					p_special_instructions: orderData.special_instructions || null,
+					p_items: formattedItems,
+					p_service_charge: serviceCharge,
+					p_payment_reference: paymentReference,
+					p_billing_address: billingAddress,
+					p_shipping_address: shippingAddress,
+					p_is_preorder_order: isPreorder
+				});
+
+				if (rpcError) throw rpcError;
+				return orderId;
+			};
+
+			if (physicalItems.length > 0) await submitOrder(physicalItems, false);
+			if (preorderItems.length > 0) await submitOrder(preorderItems, true);
 
 			localStorage.removeItem('cart');
 			localStorage.removeItem('checkout_data');
@@ -328,13 +352,30 @@
 						</header>
 
 						<div class="summary-items">
+							<!-- Mixed Cart Banner -->
+							{#if orderData.items.some((i: any) => i.is_preorder) && orderData.items.some((i: any) => !i.is_preorder)}
+								<div class="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+									<strong>Mixed Cart:</strong> Your order will be split. Pre-orders will be fulfilled separately when stock arrives.
+								</div>
+							{:else if orderData.items.some((i: any) => i.is_preorder)}
+								<div class="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-xs">
+									<strong>Pre-Order:</strong> You will be notified when your items are ready for fulfillment.
+								</div>
+							{/if}
 							{#each orderData.items as item}
 								<div class="summary-item">
 									<div class="item-img-wrap">
 										<img src={item.product_image} alt={item.product_name} class="item-img shadow-sm" />
 									</div>
 									<div class="item-info">
-										<h4 class="item-name">{item.product_name}</h4>
+										<h4 class="item-name">
+											{item.product_name}
+											{#if item.is_preorder}
+												<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 uppercase tracking-wider">
+													Pre-Order
+												</span>
+											{/if}
+										</h4>
 										<p class="item-qty">Qty: {item.quantity}</p>
 									</div>
 									<p class="item-total">₦{(item.price * item.quantity).toLocaleString()}</p>
@@ -357,10 +398,10 @@
 								<span>Service Charge</span>
 								<span>₦{(orderData.service_charge || 0).toLocaleString()}</span>
 							</div>
-							{#if fulfillmentType === 'delivery' && orderData.delivery_fee > 0}
+							{#if $cartPrescriptionFee > 0}
 								<div class="summary-row">
-									<span>Logistics</span>
-									<span>₦{orderData.delivery_fee.toLocaleString()}</span>
+									<span>Consultation Commission</span>
+									<span>₦{$cartPrescriptionFee.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
 								</div>
 							{/if}
 						</div>
@@ -368,7 +409,7 @@
 						<div class="summary-total-row">
 							<p class="total-label">Estimated Total</p>
 							<p class="total-val" style="color: {brandColor};">
-								₦{(fulfillmentType === 'delivery' ? orderData.total : (orderData.total - (orderData.delivery_fee || 0))).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+								₦{( (fulfillmentType === 'delivery' ? orderData.subtotal + orderData.tax + (orderData.service_charge || 0) + (orderData.delivery_fee || 0) : orderData.subtotal + orderData.tax + (orderData.service_charge || 0)) + $cartPrescriptionFee ).toLocaleString(undefined, { maximumFractionDigits: 0 })}
 							</p>
 						</div>
 

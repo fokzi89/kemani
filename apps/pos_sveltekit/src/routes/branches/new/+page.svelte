@@ -19,7 +19,9 @@
 		currency: 'NGN',
 		phone: '',
 		latitude: '',
-		longitude: ''
+		longitude: '',
+		drug_markup: 30,
+		supermarket_markup: 20
 	});
 
 	let countries = $state<any[]>([]);
@@ -112,7 +114,9 @@
 				currency: form.currency,
 				latitude: form.latitude ? parseFloat(form.latitude) : null,
 				longitude: form.longitude ? parseFloat(form.longitude) : null,
-				phone: form.phone
+				phone: form.phone,
+				drug_markup: form.drug_markup,
+				supermarket_markup: form.supermarket_markup
 			});
 			if (dbErr) throw dbErr;
 			goto('/branches');

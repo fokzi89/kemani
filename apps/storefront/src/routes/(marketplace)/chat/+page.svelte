@@ -29,6 +29,8 @@
 	let sending = $state(false);
 	let messagesContainer = $state<HTMLElement | null>(null);
 	let productInquiry = $state<any>(null);
+	let isProviderFreelance = $state(false);
+	let queuePosition = $state<number | null>(null);
 
 	// 2. Navigation & Context
 	const tenantId = $derived($page.data.storefront?.id);
@@ -131,12 +133,19 @@
 			}
 
 			if (!conversation) {
-				const { data: existing } = await supabase
+				const preselectedProvider = $page.url.searchParams.get('serviceProvider');
+				let query = supabase
 					.from('chat_conversations')
 					.select('*')
 					.eq('customer_id', $currentUser.id)
 					.eq('tenant_id', tenantId)
-					.is('consultation_id', null)
+					.is('consultation_id', null);
+				
+				if (preselectedProvider) {
+					query = query.eq('service_provider', preselectedProvider);
+				}
+
+				const { data: existing } = await query
 					.order('started_at', { ascending: false })
 					.limit(1)
 					.maybeSingle();
@@ -161,9 +170,10 @@
 							tenant_id: tenantId,
 							status: 'active',
 							chatType: urlChatType,
+							service_provider: preselectedProvider || null,
 							customer_name: $currentUser?.user_metadata?.full_name || $currentUser?.email,
 							customer_pic: $currentUser?.user_metadata?.avatar_url,
-							metadata: { origin: 'storefront_fallback', productId: urlProductId }
+							metadata: { origin: 'storefront_direct', productId: urlProductId }
 						})
 						.select().single();
 					
@@ -175,6 +185,25 @@
 					console.log('Pharmacist chat created:', created.id);
 					conversation = created;
 					setActiveConversation(created.id);
+				}
+			}
+
+			// If waiting, get position
+			if (conversation?.status === 'waiting') {
+				const { data: pos } = await supabase.rpc('get_chat_queue_position', { p_conversation_id: conversation.id });
+				queuePosition = pos;
+			}
+
+			// Check if the service provider for this chat is freelance
+			if (conversation?.service_provider) {
+				const { data: pharmacist } = await supabase
+					.from('available_pharmacists')
+					.select('provider_type')
+					.eq('user_id', conversation.service_provider)
+					.maybeSingle();
+				
+				if (pharmacist?.provider_type === 'Freelance') {
+					isProviderFreelance = true;
 				}
 			}
 
@@ -220,6 +249,20 @@
 						messages = [...messages, payload.new];
 						scrollToBottom();
 					}
+				}
+			})
+			.on('postgres_changes', {
+				event: 'UPDATE',
+				schema: 'public',
+				table: 'chat_conversations',
+				filter: `id=eq.${conversation.id}`
+			}, (payload) => {
+				if (payload.new.status === 'active' && conversation.status === 'waiting') {
+					conversation.status = 'active';
+					queuePosition = null;
+					triggerToast('Pharmacist is ready!');
+				} else {
+					conversation = { ...conversation, ...payload.new };
 				}
 			})
 			.subscribe();
@@ -551,7 +594,9 @@
 												product_image: p.product_image || p.image_url,
 												price: p.price || p.unit_price || p.sharedPrice,
 												quantity: 1,
-												stock_available: p.stock_available || p.stock_quantity
+												stock_available: p.stock_available || p.stock_quantity,
+												is_freelance_prescription: isProviderFreelance,
+												prescription_id: msg.metadata?.prescription_id || null
 											}, tenantId);
 											triggerToast(p.product_name || p.name);
 										}}
@@ -573,13 +618,42 @@
 					</div>
 				{/each}
 				
-				{#if messages.length === 0}
+				{#if messages.length === 0 && conversation?.status !== 'waiting'}
 					<div class="empty-state">
 						<div class="h-16 w-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4 border-2 border-gray-100 border-dashed">
 							<MessageCircle class="h-8 w-8" />
 						</div>
 						<h3 class="text-xs font-black uppercase tracking-widest text-gray-900">Pharmacist Chat</h3>
 						<p class="text-[10px] text-gray-400 max-w-[200px] mt-2 font-medium">Connect with our licensed pharmacists for clinical advice and prescription help.</p>
+					</div>
+				{/if}
+
+				{#if conversation?.status === 'waiting'}
+					<div class="waiting-room" transition:fade>
+						<div class="waiting-card shadow-2xl">
+							<div class="waiting-icon-wrap">
+								<Clock class="h-8 w-8 text-amber-500 animate-pulse" />
+							</div>
+							<h2 class="waiting-title">You're in the Queue</h2>
+							<p class="waiting-desc">Our pharmacist is currently attending to another patient. Please stay on this page.</p>
+							
+							<div class="queue-status-box">
+								<div class="queue-num-wrap">
+									<span class="queue-label">Position</span>
+									<span class="queue-val">{queuePosition || '...'}</span>
+								</div>
+								<div class="queue-sep"></div>
+								<div class="queue-num-wrap">
+									<span class="queue-label">Est. Wait</span>
+									<span class="queue-val">~{(queuePosition || 1) * 3} min</span>
+								</div>
+							</div>
+
+							<div class="waiting-footer">
+								<Loader2 class="h-3 w-3 animate-spin text-gray-400" />
+								<span>Matching you with a licensed pharmacist</span>
+							</div>
+						</div>
 					</div>
 				{/if}
 			</div>
@@ -779,6 +853,43 @@
 	.icon-btn:hover { background: #f3f4f6; }
 	.loading-overlay { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 	.empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding-top: 5rem; opacity: 0.5; }
+
+	/* Waiting Room */
+	.waiting-room {
+		position: absolute; inset: 0; z-index: 100;
+		background: rgba(250, 250, 250, 0.8);
+		backdrop-filter: blur(8px);
+		display: flex; align-items: center; justify-content: center;
+		padding: 2rem;
+	}
+	.waiting-card {
+		background: white; border-radius: 2rem; padding: 2.5rem;
+		max-width: 400px; width: 100%; text-align: center;
+		border: 1px solid #f1f5f9;
+	}
+	.waiting-icon-wrap {
+		width: 4rem; height: 4rem; background: #fff7ed;
+		border-radius: 1.25rem; display: flex; align-items: center; justify-content: center;
+		margin: 0 auto 1.5rem;
+	}
+	.waiting-title { font-size: 1.25rem; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; color: #0f172a; margin-bottom: 0.5rem; }
+	.waiting-desc { font-size: 0.875rem; color: #64748b; line-height: 1.6; margin-bottom: 2rem; }
+	
+	.queue-status-box {
+		background: #f8fafc; border-radius: 1.25rem; padding: 1.5rem;
+		display: flex; align-items: center; justify-content: center;
+		margin-bottom: 2rem; border: 1px solid #f1f5f9;
+	}
+	.queue-num-wrap { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+	.queue-label { font-size: 0.625rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; }
+	.queue-val { font-size: 1.5rem; font-weight: 900; color: #0f172a; }
+	.queue-sep { width: 1px; height: 2.5rem; background: #e2e8f0; margin: 0 1.5rem; }
+	
+	.waiting-footer {
+		display: flex; align-items: center; justify-content: center; gap: 8px;
+		font-size: 0.625rem; font-weight: 800; text-transform: uppercase;
+		letter-spacing: 0.05em; color: #94a3b8;
+	}
 
 	/* Toast */
 	.toast {

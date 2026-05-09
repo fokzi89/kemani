@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { supabase } from '$lib/supabase';
 	import { goto } from '$app/navigation';
-	import { Mail, Lock, AlertCircle, Store } from 'lucide-svelte';
+	import { Mail, Lock, AlertCircle, Store, Eye, EyeOff } from 'lucide-svelte';
 
 	let email = $state('');
 	let password = $state('');
 	let loading = $state(false);
 	let error = $state('');
+	let showPassword = $state(false);
 
 	async function handleLogin(e: Event) {
 		e.preventDefault();
@@ -23,17 +24,24 @@
 
 			if (!data.user) throw new Error('Failed to retrieve user data');
 
-			// Fetch user row to check onboarding status
-			const { data: userData } = await supabase
+			// Fetch full user profile to check onboarding status and cache data
+			const { data: userData, error: profileError } = await supabase
 				.from('users')
-				.select('onboarding_done')
+				.select('*, tenants!tenant_id(*), branches!branch_id(*)')
 				.eq('id', data.user.id)
 				.maybeSingle();
 
-			// Route appropriately based on onboarding status
-			if (userData?.onboarding_done) {
-				goto('/');
+			if (profileError) console.error('Failed to fetch profile during login:', profileError);
+			
+			if (userData) {
+				localStorage.setItem('pos_user_profile', JSON.stringify(userData));
+				if (userData.onboarding_done) {
+					goto('/');
+				} else {
+					goto('/onboarding');
+				}
 			} else {
+				// No profile record found
 				goto('/onboarding');
 			}
 			
@@ -103,12 +111,23 @@
 					</div>
 					<input
 						id="password"
-						type="password"
+						type={showPassword ? 'text' : 'password'}
 						bind:value={password}
 						required
 						placeholder="••••••••"
-						class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all outline-none text-sm font-medium"
+						class="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all outline-none text-sm font-medium"
 					/>
+					<button
+						type="button"
+						onclick={() => showPassword = !showPassword}
+						class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-blue-600 transition-colors"
+					>
+						{#if showPassword}
+							<EyeOff class="h-4 w-4" />
+						{:else}
+							<Eye class="h-4 w-4" />
+						{/if}
+					</button>
 				</div>
 			</div>
 

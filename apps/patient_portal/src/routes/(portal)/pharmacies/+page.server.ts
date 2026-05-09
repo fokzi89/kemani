@@ -26,7 +26,7 @@ export async function load({ locals, parent }) {
 
   const { data: tenants, error: tenantErr } = await locals.supabase
     .from('tenants')
-    .select('id, name, slug, logo_url, brand_color, phone')
+    .select('id, name, slug, logo_url, brand_color, phone, preorders_enabled')
     .in('id', tenantIds)
     .is('deleted_at', null);
 
@@ -53,6 +53,7 @@ export async function load({ locals, parent }) {
         slug: t.slug,
         logo_url: t.logo_url,
         brand_color: t.brand_color,
+        preorders_enabled: t.preorders_enabled,
         branch_id: b.id,
         city: b.city || '',
         address: b.address,

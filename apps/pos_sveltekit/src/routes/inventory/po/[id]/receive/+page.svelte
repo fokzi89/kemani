@@ -103,10 +103,18 @@
 			return;
 		}
 
-		// Validation for unit cost and expiry date
+		// Validation: batch, UoM, expiry and unit cost are required for checked items
 		for (const item of itemsToSubmit) {
 			if (!item.unit_cost || item.unit_cost <= 0) {
 				error = `Unit cost is required for ${item.product_name}`;
+				return;
+			}
+			if (!item.batch_no || item.batch_no.trim() === '') {
+				error = `Batch number is required for ${item.product_name}`;
+				return;
+			}
+			if (!item.unit_of_measure || item.unit_of_measure.trim() === '') {
+				error = `Unit of measure is required for ${item.product_name}`;
 				return;
 			}
 			if (!item.expiry_date) {
@@ -217,14 +225,15 @@
 					<thead>
 						<tr class="bg-gray-50/80">
 							<th class="px-4 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b text-center w-12">Rcvd</th>
-							<th class="px-4 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b text-left min-w-[200px]">Product</th>
-							<th class="px-2 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b w-24">Qty</th>
-							<th class="px-2 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b w-28">Batch #</th>
-							<th class="px-2 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b w-28">UoM</th>
-							<th class="px-2 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b w-32">Expiry</th>
-							<th class="px-2 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b w-28">Cost (₦)</th>
-							<th class="px-2 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b w-20">Markup%</th>
-							<th class="px-2 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b w-28 text-right">Selling (₦)</th>
+							<th class="px-4 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b text-left min-w-[180px]">Product</th>
+							<th class="px-2 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b w-20">Qty</th>
+							<th class="px-2 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b w-24">Batch # <span class="text-red-400">*</span></th>
+							<th class="px-2 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b w-20">UoM <span class="text-red-400">*</span></th>
+							<th class="px-2 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b w-28">Expiry <span class="text-red-400">*</span></th>
+							<th class="px-2 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b w-24">Cost (₦)</th>
+							<th class="px-2 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b w-20 text-center">New Total</th>
+							<th class="px-2 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b w-20 text-center">Markup%</th>
+							<th class="px-2 py-4 font-bold uppercase text-[10px] tracking-widest text-gray-400 border-b w-24 text-right">Selling (₦)</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-gray-100">
@@ -256,15 +265,15 @@
 										type="text" 
 										bind:value={item.batch_no} 
 										disabled={!item.is_received}
-										placeholder="Optional"
-										class="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all" 
+										placeholder={item.is_received ? 'Required' : 'Optional'}
+										class="w-full px-2 py-2 bg-white border {item.is_received ? 'border-amber-300 focus:ring-amber-400' : 'border-gray-200 focus:ring-indigo-500'} rounded-lg text-xs font-bold focus:ring-2 outline-none transition-all" 
 									/>
 								</td>
 								<td class="px-2 py-5">
 									<select 
 										bind:value={item.unit_of_measure}
 										disabled={!item.is_received}
-										class="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none"
+										class="w-full px-2 py-2 bg-white border {item.is_received ? 'border-amber-300 focus:ring-amber-400' : 'border-gray-200 focus:ring-indigo-500'} rounded-lg text-xs font-bold focus:ring-2 outline-none transition-all appearance-none"
 									>
 										<option value="unit">Unit</option>
 										<option value="pack">Pack</option>
@@ -276,7 +285,7 @@
 										type="date" 
 										bind:value={item.expiry_date} 
 										disabled={!item.is_received}
-										class="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg text-[10px] font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all" 
+										class="w-full px-2 py-2 bg-white border {item.is_received ? 'border-amber-300 focus:ring-amber-400' : 'border-gray-200 focus:ring-indigo-500'} rounded-lg text-[10px] font-bold focus:ring-2 outline-none transition-all" 
 									/>
 								</td>
 								<td class="px-2 py-5">
@@ -290,7 +299,15 @@
 										class="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold text-right focus:ring-2 focus:ring-indigo-500 outline-none transition-all" 
 									/>
 								</td>
-								<td class="px-2 py-5">
+								<td class="px-2 py-5 text-center">
+									<div class="flex flex-col items-center">
+										<span class="text-[10px] font-black {item.current_received + item.received_qty >= item.expected_qty ? 'text-green-600' : 'text-amber-600'}">
+											{item.current_received + item.received_qty}
+										</span>
+										<span class="text-[8px] text-gray-400 font-bold">/ {item.expected_qty}</span>
+									</div>
+								</td>
+								<td class="px-2 py-5 text-center">
 									<input 
 										type="number" 
 										bind:value={item.markup} 
@@ -343,7 +360,7 @@
 						<span class="text-lg font-bold">{receiveItems.filter(i => i.is_received).length}</span>
 					</div>
 					<div class="flex justify-between items-center">
-						<span class="text-xs text-indigo-200">Total Value</span>
+						<span class="text-xs text-indigo-200">Current Receipt Value</span>
 						<span class="text-xl font-black tabular-nums">₦{receiveItems.filter(i => i.is_received).reduce((sum, i) => sum + (i.received_qty * i.unit_cost), 0).toLocaleString()}</span>
 					</div>
 				</div>

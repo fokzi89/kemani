@@ -189,7 +189,11 @@
 						</div>
 						<div class="stock-status {product.stock_quantity > 0 ? 'in-stock' : 'out-of-stock'}">
 							<div class="status-dot"></div>
-							{product.stock_quantity > 0 ? 'Verified In Stock & Ready' : 'Out of Stock'}
+							{#if product.stock_quantity > 0}
+								Verified In Stock & Ready
+							{:else}
+								Out of Stock
+							{/if}
 						</div>
 					</div>
 
@@ -236,7 +240,7 @@
 							</div>
 
 							<div class="action-buttons">
-								<button onclick={addToCart} class="btn-primary">
+								<button onclick={addToCart} class="btn-primary" style="background: {brandColor}">
 									Add to Bag <ArrowRight class="btn-icon" />
 								</button>
 								<button onclick={handleRxChat} class="btn-consult">

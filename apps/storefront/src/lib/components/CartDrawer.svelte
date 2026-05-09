@@ -86,7 +86,9 @@
 							<div class="flex-1 flex flex-col py-1">
 								<div class="flex justify-between items-start gap-2">
 									<div>
-										<h4 class="text-[11px] font-bold text-gray-900 uppercase tracking-tight leading-tight mb-1">{item.name || item.product_name}</h4>
+										<h4 class="text-[11px] font-bold text-gray-900 uppercase tracking-tight leading-tight mb-1">
+											{item.name || item.product_name}
+										</h4>
 										{#if item.sku}
 											<p class="text-[9px] text-gray-400 font-medium uppercase tracking-widest">{item.sku}</p>
 										{/if}

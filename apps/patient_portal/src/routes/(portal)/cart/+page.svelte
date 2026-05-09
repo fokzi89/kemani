@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { cartStore, cartTotalItems, cartTotalPrice } from '$lib/stores/cart';
+    import { cartStore, cartTotalItems, cartTotalPrice, isMixedCart, hasPreorderItems } from '$lib/stores/cart';
     import { fade } from 'svelte/transition';
     import { 
         ChevronLeft, ShoppingBag, Trash2,
@@ -38,6 +38,29 @@
                 <a href="/pharmacies" class="primary-btn mt-4">Pharmacy Shops</a>
             </div>
         {:else}
+            {#if $hasPreorderItems}
+                <div class="mb-5 p-3 rounded-xl border flex items-start gap-3 {$isMixedCart ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200'}">
+                    <div class="mt-0.5">
+                        <ShoppingBag class="w-4 h-4 {$isMixedCart ? 'text-amber-500' : 'text-blue-500'}" />
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold {$isMixedCart ? 'text-amber-800' : 'text-blue-800'}">
+                            {#if $isMixedCart}
+                                Mixed Cart Notice
+                            {:else}
+                                Pre-Order Notice
+                            {/if}
+                        </h4>
+                        <p class="text-xs mt-1 {$isMixedCart ? 'text-amber-700' : 'text-blue-700'}">
+                            {#if $isMixedCart}
+                                Your cart contains both in-stock items and pre-orders. To ensure you receive available items quickly, we will split this into two separate orders during checkout.
+                            {:else}
+                                Your cart contains pre-order items. We will notify you when these items become available for fulfillment.
+                            {/if}
+                        </p>
+                    </div>
+                </div>
+            {/if}
             <div class="cart-grid">
                 <!-- Main Content: Items List -->
                 <div class="cart-main">
@@ -59,7 +82,14 @@
                                     </div>
                                     <div class="item-info">
                                         <div class="item-top">
-                                            <h4>{item.name}</h4>
+                                            <h4>
+                                                {item.name}
+                                                {#if item.is_preorder}
+                                                    <span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 uppercase tracking-wider">
+                                                        Pre-Order
+                                                    </span>
+                                                {/if}
+                                            </h4>
                                             <span>₦{(item.price * item.quantity).toLocaleString()}</span>
                                         </div>
                                         <div class="item-bottom">
@@ -140,6 +170,8 @@
 
     .remove-btn { display: flex; align-items: center; gap: 0.25rem; color: #ba1a1a; padding: 0.2rem; font-size: 0.75rem; font-weight: 600; opacity: 0.7; transition: opacity 0.2s; cursor: pointer; background: transparent; border: none; }
     .remove-btn:hover { opacity: 1; }
+    
+
 
     .cart-sidebar { position: sticky; top: 80px; }
     .summary-card { background: white; border-radius: 1rem; border: 1px solid var(--outline-variant); padding: 1.25rem; box-shadow: 0 6px 20px -5px rgba(0,0,0,0.06); }

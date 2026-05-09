@@ -24,6 +24,9 @@
 	let lastCategory = 'all';
 	let lastType = 'all';
 
+	// Persistent store for inputs (persists across searches/pagination)
+	let provisioningState = $state<Record<string, any>>({});
+
 	let userRole = $state('');
 	let branches = $state<any[]>([]);
 	let canUpload = $derived(
@@ -123,10 +126,24 @@
 			
 			if (error) throw error;
 			
-			products = (data || []).map(p => ({
-				...p,
-				provisioning: { qty: 0, batch: '', cost: 0, selling: 0, expiry: '', supplier_id: null, unit_of_measure: p.unit_of_measure || 'unit' }
-			}));
+			products = (data || []).map(p => {
+				// Initialize or retrieve persistent state for this product
+				if (!provisioningState[p.id]) {
+					provisioningState[p.id] = { 
+						qty: 0, 
+						batch: '', 
+						cost: 0, 
+						selling: 0, 
+						expiry: '', 
+						supplier_id: null, 
+						unit_of_measure: p.unit_of_measure || 'unit' 
+					};
+				}
+				return {
+					...p,
+					provisioning: provisioningState[p.id]
+				};
+			});
 			totalCount = count || 0;
 		} catch (err) {
 			console.error('Failed to load products:', err);
@@ -273,16 +290,21 @@
 	}
 
 	function toggleSelectAll() {
-		const allInPageSelected = paginated.length > 0 && paginated.every(p => selectedIds.includes(p.id));
+		const allInPageSelected = products.length > 0 && products.every(p => selectedIds.includes(p.id));
 		
 		if (allInPageSelected) {
 			// Deselect current page items
-			const pageIds = paginated.map(p => p.id);
+			const pageIds = products.map(p => p.id);
 			selectedIds = selectedIds.filter(id => !pageIds.includes(id));
+			
+			// Cleanup persistent state for deselected items
+			pageIds.forEach(id => {
+				delete provisioningState[id];
+			});
 		} else {
-			const newInPage = paginated.filter(p => !selectedIds.includes(p.id));
+			const newInPage = products.filter(p => !selectedIds.includes(p.id));
 			if (selectedIds.length + newInPage.length > BATCH_LIMIT) {
-				selectedIds = paginated.map(p => p.id);
+				selectedIds = products.map(p => p.id);
 			} else {
 				selectedIds = [...selectedIds, ...newInPage.map(p => p.id)];
 			}
@@ -292,6 +314,9 @@
 	function toggleSelect(id: string) {
 		if (selectedIds.includes(id)) {
 			selectedIds = selectedIds.filter(i => i !== id);
+			// Optional: We could keep it, but user said "unless i uncheck" 
+			// so we reset it to default or delete to save memory
+			delete provisioningState[id];
 		} else {
 			if (selectedIds.length >= BATCH_LIMIT) {
 				alert(`Maximum limit of ${BATCH_LIMIT} products per batch reached.`);
@@ -301,7 +326,6 @@
 		}
 	}
 
-	$effect(() => { searchQuery; selectedCategory; productTypeFilter; applyFilter(); });
 
 	function stockBadge(qty: number) {
 		if (qty <= 0) return 'bg-red-100 text-red-700';

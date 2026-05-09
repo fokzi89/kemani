@@ -1,4 +1,15 @@
-﻿-- Combined Migrations
+﻿-- ============================================================
+-- Kemani POS - Combined Database Migration
+-- ============================================================
+-- Generated: 2026-05-09 03:18:46
+-- Total Migrations: 200
+--
+-- Instructions:
+-- 1. Copy this entire file
+-- 2. Open Supabase SQL Editor
+-- 3. Paste and run
+-- ============================================================
+
 
 -- File: 000_update_existing_database.sql
 -- ============================================================
@@ -228,6 +239,8 @@ SELECT
 FROM subscriptions
 ORDER BY monthly_fee;
 
+-- End of 000_update_existing_database.sql
+
 
 -- File: 001_extensions_and_enums.sql
 -- ============================================================
@@ -242,31 +255,107 @@ CREATE EXTENSION IF NOT EXISTS "postgis";
 CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
 
 -- Enums
-CREATE TYPE business_type AS ENUM ('supermarket', 'pharmacy', 'grocery', 'mini_mart', 'restaurant');
-CREATE TYPE user_role AS ENUM ('platform_admin', 'tenant_admin', 'branch_manager', 'cashier', 'driver');
-CREATE TYPE payment_method AS ENUM ('cash', 'card', 'bank_transfer', 'mobile_money');
-CREATE TYPE transaction_type AS ENUM ('sale', 'restock', 'adjustment', 'expiry', 'transfer_out', 'transfer_in');
-CREATE TYPE transfer_status AS ENUM ('pending', 'in_transit', 'completed', 'cancelled');
-CREATE TYPE sale_status AS ENUM ('completed', 'voided', 'refunded');
-CREATE TYPE order_type AS ENUM ('marketplace', 'ecommerce_sync', 'ai_chat');
-CREATE TYPE order_status AS ENUM ('pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled');
-CREATE TYPE payment_status AS ENUM ('unpaid', 'paid', 'refunded');
-CREATE TYPE fulfillment_type AS ENUM ('pickup', 'delivery');
-CREATE TYPE delivery_type AS ENUM ('local_bike', 'local_bicycle', 'intercity');
-CREATE TYPE delivery_status AS ENUM ('pending', 'assigned', 'picked_up', 'in_transit', 'delivered', 'failed', 'cancelled');
-CREATE TYPE proof_type AS ENUM ('photo', 'signature', 'recipient_name');
-CREATE TYPE vehicle_type AS ENUM ('bike', 'bicycle');
-CREATE TYPE platform_type AS ENUM ('woocommerce', 'shopify', 'custom');
-CREATE TYPE sync_status AS ENUM ('pending', 'syncing', 'success', 'error');
-CREATE TYPE chat_status AS ENUM ('active', 'completed', 'escalated', 'abandoned');
-CREATE TYPE sender_type AS ENUM ('customer', 'ai_agent', 'staff');
-CREATE TYPE plan_tier AS ENUM ('free', 'basic', 'pro', 'enterprise', 'enterprise_custom');
-CREATE TYPE subscription_status AS ENUM ('active', 'suspended', 'cancelled');
-CREATE TYPE settlement_status AS ENUM ('pending', 'invoiced', 'paid');
-CREATE TYPE message_direction AS ENUM ('outbound', 'inbound');
-CREATE TYPE message_type AS ENUM ('text', 'template', 'media');
-CREATE TYPE whatsapp_delivery_status AS ENUM ('pending', 'sent', 'delivered', 'read', 'failed');
-CREATE TYPE receipt_format AS ENUM ('pdf', 'thermal_print', 'email');
+DO $$ BEGIN
+    CREATE TYPE business_type AS ENUM ('supermarket', 'pharmacy', 'grocery', 'mini_mart', 'restaurant');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE user_role AS ENUM ('platform_admin', 'tenant_admin', 'branch_manager', 'cashier', 'driver');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE payment_method AS ENUM ('cash', 'card', 'bank_transfer', 'mobile_money');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE transaction_type AS ENUM ('sale', 'restock', 'adjustment', 'expiry', 'transfer_out', 'transfer_in');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE transfer_status AS ENUM ('pending', 'in_transit', 'completed', 'cancelled');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE sale_status AS ENUM ('completed', 'voided', 'refunded');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE order_type AS ENUM ('marketplace', 'ecommerce_sync', 'ai_chat');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE order_status AS ENUM ('pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE payment_status AS ENUM ('unpaid', 'paid', 'refunded');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE fulfillment_type AS ENUM ('pickup', 'delivery');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE delivery_type AS ENUM ('local_bike', 'local_bicycle', 'intercity');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE delivery_status AS ENUM ('pending', 'assigned', 'picked_up', 'in_transit', 'delivered', 'failed', 'cancelled');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE proof_type AS ENUM ('photo', 'signature', 'recipient_name');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE vehicle_type AS ENUM ('bike', 'bicycle');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE platform_type AS ENUM ('woocommerce', 'shopify', 'custom');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE sync_status AS ENUM ('pending', 'syncing', 'success', 'error');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE chat_status AS ENUM ('active', 'completed', 'escalated', 'abandoned');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE sender_type AS ENUM ('customer', 'ai_agent', 'staff');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE plan_tier AS ENUM ('free', 'basic', 'pro', 'enterprise', 'enterprise_custom');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE subscription_status AS ENUM ('active', 'suspended', 'cancelled');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE settlement_status AS ENUM ('pending', 'invoiced', 'paid');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE message_direction AS ENUM ('outbound', 'inbound');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE message_type AS ENUM ('text', 'template', 'media');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE whatsapp_delivery_status AS ENUM ('pending', 'sent', 'delivered', 'read', 'failed');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE receipt_format AS ENUM ('pdf', 'thermal_print', 'email');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+-- End of 001_extensions_and_enums.sql
 
 
 -- File: 002_core_tables.sql
@@ -345,6 +434,8 @@ CREATE TABLE users (
     CONSTRAINT email_or_phone_required CHECK (email IS NOT NULL OR phone IS NOT NULL)
 );
 
+-- End of 002_core_tables.sql
+
 
 -- File: 003_product_inventory_tables.sql
 -- ============================================================
@@ -369,6 +460,17 @@ CREATE TABLE products (
     expiry_date DATE,
     expiry_alert_days INTEGER DEFAULT 30 CHECK (expiry_alert_days >= 0),
     image_url TEXT,
+
+    -- Healthcare & Laboratory expansions
+    unit_of_measure VARCHAR(20) DEFAULT 'piece',
+    product_type TEXT, -- 'medication', 'lab_test', 'retail'
+    generic_name TEXT,
+    strength TEXT,
+    dosage_form TEXT,
+    manufacturer TEXT,
+    test_name TEXT,
+    sample_type TEXT,
+
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -420,6 +522,8 @@ CREATE TABLE transfer_items (
     product_id UUID NOT NULL REFERENCES products(id),
     quantity INTEGER NOT NULL CHECK (quantity > 0)
 );
+
+-- End of 003_product_inventory_tables.sql
 
 
 -- File: 004_customer_sales_tables.sql
@@ -499,6 +603,8 @@ CREATE TABLE sale_items (
     subtotal DECIMAL(12,2) NOT NULL CHECK (subtotal >= 0),
     CONSTRAINT valid_subtotal CHECK (subtotal = (unit_price * quantity) - discount_amount)
 );
+
+-- End of 004_customer_sales_tables.sql
 
 
 -- File: 005_order_delivery_tables.sql
@@ -624,6 +730,8 @@ CREATE TABLE staff_attendance (
     )
 );
 
+-- End of 005_order_delivery_tables.sql
+
 
 -- File: 006_additional_tables.sql
 -- ============================================================
@@ -716,6 +824,8 @@ CREATE TABLE receipts (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- End of 006_additional_tables.sql
+
 
 -- File: 007_indexes.sql
 -- ============================================================
@@ -803,6 +913,8 @@ CREATE INDEX idx_commissions_settlement ON commissions(settlement_status, create
 CREATE INDEX idx_whatsapp_tenant_customer ON whatsapp_messages(tenant_id, customer_id, created_at DESC);
 CREATE INDEX idx_whatsapp_order ON whatsapp_messages(order_id) WHERE order_id IS NOT NULL;
 CREATE INDEX idx_whatsapp_delivery ON whatsapp_messages(delivery_status, created_at DESC);
+
+-- End of 007_indexes.sql
 
 
 -- File: 008_rls_policies.sql
@@ -897,6 +1009,8 @@ CREATE POLICY "Delivery rider access" ON deliveries
         current_user_role() IN ('tenant_admin', 'branch_manager') OR
         rider_id IN (SELECT id FROM riders WHERE user_id = auth.uid())
     );
+
+-- End of 008_rls_policies.sql
 
 
 -- File: 009_triggers.sql
@@ -1016,6 +1130,8 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER update_customer_loyalty AFTER INSERT ON sales
     FOR EACH ROW EXECUTE FUNCTION update_customer_loyalty();
+
+-- End of 009_triggers.sql
 
 
 -- File: 010_analytics_schema.sql
@@ -1649,6 +1765,8 @@ COMMENT ON TABLE fact_staff_sales IS 'Daily staff performance metrics';
 COMMENT ON TABLE fact_brand_sales IS 'Daily brand performance metrics';
 COMMENT ON TABLE fact_hourly_sales IS 'Hourly sales patterns';
 
+-- End of 010_analytics_schema.sql
+
 
 -- File: 011_analytics_indexes_partitions.sql
 -- ============================================
@@ -1987,6 +2105,8 @@ COMMENT ON FUNCTION drop_old_partitions IS 'Drops partitions older than retentio
 COMMENT ON FUNCTION refresh_analytics_views IS 'Refreshes all analytics materialized views (run daily via cron)';
 COMMENT ON VIEW v_fact_table_stats IS 'Monitor fact table sizes and statistics';
 COMMENT ON VIEW v_partition_info IS 'View partition information and sizes';
+
+-- End of 011_analytics_indexes_partitions.sql
 
 
 -- File: 012_analytics_etl_functions.sql
@@ -2543,6 +2663,8 @@ COMMENT ON FUNCTION backfill_analytics IS 'Backfill analytics data for a date ra
 COMMENT ON FUNCTION populate_sale_item_details IS 'Trigger function to auto-populate product snapshot details in sale_items';
 COMMENT ON FUNCTION populate_sale_datetime IS 'Trigger function to auto-populate sale_date and sale_time in sales';
 
+-- End of 012_analytics_etl_functions.sql
+
 
 -- File: 013_analytics_seed_dimensions.sql
 -- ============================================
@@ -2996,6 +3118,8 @@ COMMENT ON FUNCTION extend_dim_date IS 'Extends dim_date table into the future';
 COMMENT ON VIEW v_current_period_keys IS 'Helper view to get current period date keys for comparisons';
 COMMENT ON VIEW v_common_date_ranges IS 'Helper view to get common date ranges (this week, last month, etc.)';
 
+-- End of 013_analytics_seed_dimensions.sql
+
 
 -- File: 014_enhance_sales_table.sql
 -- ============================================
@@ -3198,6 +3322,8 @@ CREATE TRIGGER trg_populate_sale_datetime
     EXECUTE FUNCTION populate_sale_datetime();
 
 COMMENT ON TRIGGER trg_populate_sale_datetime ON sales IS 'Auto-populates sale_date and sale_time from completed_at';
+
+-- End of 014_enhance_sales_table.sql
 
 
 -- File: 015_enhance_sale_items_table.sql
@@ -3480,6 +3606,8 @@ CREATE TRIGGER trg_populate_sale_item_details
 
 COMMENT ON TRIGGER trg_populate_sale_item_details ON sale_items IS 'Auto-populates product snapshot details and calculates profit';
 
+-- End of 015_enhance_sale_items_table.sql
+
 
 -- File: 016_create_brands_categories.sql
 -- ============================================
@@ -3576,50 +3704,35 @@ COMMENT ON COLUMN brands.is_house_brand IS 'True if this is the store''s own bra
 
 CREATE TABLE IF NOT EXISTS categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-
     name VARCHAR(255) NOT NULL,
-    code VARCHAR(50),
-    parent_category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-
-    -- Category hierarchy
-    level INTEGER DEFAULT 1, -- 1=main, 2=sub, 3=sub-sub
-    path TEXT, -- Materialized path: /Electronics/Phones/Smartphones/
-
-    description TEXT,
-    sort_order INTEGER DEFAULT 0,
+    path TEXT,
     is_active BOOLEAN DEFAULT true,
-
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-
-    UNIQUE(tenant_id, name, parent_category_id)
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Indexes for categories
-CREATE INDEX IF NOT EXISTS idx_categories_tenant ON categories(tenant_id) WHERE is_active = true;
-CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_category_id) WHERE parent_category_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_categories_level ON categories(tenant_id, level);
-CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active, tenant_id);
+CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_categories_path ON categories(path);
+CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
 
--- RLS for categories
+-- RLS for categories (Global Table)
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can view categories in their tenant" ON categories;
-CREATE POLICY "Users can view categories in their tenant"
+DROP POLICY IF EXISTS "Public can view categories" ON categories;
+CREATE POLICY "Public can view categories"
     ON categories FOR SELECT
-    USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+    USING (true);
 
-DROP POLICY IF EXISTS "Managers can manage categories" ON categories;
-CREATE POLICY "Managers can manage categories"
-    ON categories FOR ALL
-    USING (
-        tenant_id IN (
-            SELECT tenant_id FROM users
-            WHERE id = auth.uid()
-            AND role IN ('tenant_admin', 'branch_manager')
-        )
-    );
+DROP POLICY IF EXISTS "Authenticated users can create categories" ON categories;
+CREATE POLICY "Authenticated users can create categories"
+    ON categories FOR INSERT
+    WITH CHECK (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "Authenticated users can update categories" ON categories;
+CREATE POLICY "Authenticated users can update categories"
+    ON categories FOR UPDATE
+    USING (auth.uid() IS NOT NULL);
 
 -- Trigger to update updated_at
 DROP TRIGGER IF EXISTS set_updated_at ON categories;
@@ -3631,21 +3744,8 @@ CREATE TRIGGER set_updated_at
 -- Trigger to auto-populate category path
 CREATE OR REPLACE FUNCTION update_category_path()
 RETURNS TRIGGER AS $$
-DECLARE
-    v_parent_path TEXT;
 BEGIN
-    IF NEW.parent_category_id IS NULL THEN
-        NEW.path := '/' || NEW.name || '/';
-        NEW.level := 1;
-    ELSE
-        SELECT path, level INTO v_parent_path, NEW.level
-        FROM categories
-        WHERE id = NEW.parent_category_id;
-
-        NEW.path := v_parent_path || NEW.name || '/';
-        NEW.level := NEW.level + 1;
-    END IF;
-
+    NEW.path := '/' || LOWER(REGEXP_REPLACE(NEW.name, '[^a-zA-Z0-9]+', '-', 'g')) || '/';
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -3656,9 +3756,9 @@ CREATE TRIGGER trg_update_category_path
     FOR EACH ROW
     EXECUTE FUNCTION update_category_path();
 
-COMMENT ON TABLE categories IS 'Hierarchical product categories';
-COMMENT ON COLUMN categories.level IS 'Hierarchy level: 1=main, 2=sub, 3=sub-sub';
-COMMENT ON COLUMN categories.path IS 'Materialized path for efficient hierarchy queries';
+-- Global categories classification
+COMMENT ON TABLE categories IS 'Global product categories for classification';
+COMMENT ON COLUMN categories.path IS 'Slug-based path for classification queries';
 
 -- ============================================
 -- ENHANCE PRODUCTS TABLE
@@ -3673,10 +3773,13 @@ BEGIN
     ) THEN
         ALTER TABLE products ADD COLUMN brand_id UUID REFERENCES brands(id) ON DELETE SET NULL;
         COMMENT ON COLUMN products.brand_id IS 'Brand classification for analytics';
-
-        -- Create index
-        CREATE INDEX idx_products_brand ON products(brand_id) WHERE brand_id IS NOT NULL;
     END IF;
+
+    -- Standard project indexes for products
+    CREATE INDEX IF NOT EXISTS idx_products_sku ON products(tenant_id, sku) WHERE sku IS NOT NULL AND deleted_at IS NULL;
+    CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(tenant_id, barcode) WHERE barcode IS NOT NULL AND deleted_at IS NULL;
+    CREATE INDEX IF NOT EXISTS idx_products_name_search ON products USING gin (to_tsvector('english', name));
+    CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand_id) WHERE brand_id IS NOT NULL;
 
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
@@ -3759,7 +3862,7 @@ CREATE OR REPLACE FUNCTION track_product_price_change()
 RETURNS TRIGGER AS $$
 BEGIN
     -- If price changed, archive old price and create new history entry
-    IF (OLD.selling_price IS DISTINCT FROM NEW.selling_price) OR
+    IF (OLD.unit_price IS DISTINCT FROM NEW.unit_price) OR
        (OLD.cost_price IS DISTINCT FROM NEW.cost_price) THEN
 
         -- Mark old price as no longer current
@@ -3783,7 +3886,7 @@ BEGIN
             NEW.id,
             NEW.tenant_id,
             NEW.cost_price,
-            NEW.selling_price,
+            NEW.unit_price,
             'price_update',
             auth.uid(),
             NOW(),
@@ -3803,6 +3906,8 @@ CREATE TRIGGER trg_track_product_price_change
 
 COMMENT ON TABLE product_price_history IS 'Tracks product price changes over time (SCD Type 2)';
 COMMENT ON COLUMN product_price_history.is_current IS 'True if this is the current active price';
+
+-- End of 016_create_brands_categories.sql
 
 
 -- File: 017_analytics_dimensions.sql
@@ -3920,6 +4025,8 @@ COMMENT ON TABLE dim_time IS 'Time dimension for hourly pattern analysis';
 COMMENT ON COLUMN dim_time.time_key IS 'Primary key in HHMMSS format';
 COMMENT ON COLUMN dim_time.time_period IS 'Time period: morning, afternoon, evening, night';
 COMMENT ON COLUMN dim_time.business_hour IS 'Business hour category: pre-open, business, lunch, post-close';
+
+-- End of 017_analytics_dimensions.sql
 
 
 -- File: 018_analytics_fact_tables.sql
@@ -4169,6 +4276,8 @@ CREATE POLICY "Users can view hourly sales in their tenant"
     USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
 
 COMMENT ON TABLE fact_hourly_sales IS 'Hourly sales patterns';
+
+-- End of 018_analytics_fact_tables.sql
 
 
 -- File: 019_rls_helper_functions.sql
@@ -4490,6 +4599,8 @@ GRANT EXECUTE ON FUNCTION can_void_sales() TO authenticated;
 GRANT EXECUTE ON FUNCTION get_accessible_branches() TO authenticated;
 GRANT EXECUTE ON FUNCTION log_audit_event(TEXT, TEXT, UUID, JSONB, JSONB) TO authenticated;
 
+-- End of 019_rls_helper_functions.sql
+
 
 -- File: 020_enable_rls_policies.sql
 -- ============================================
@@ -4759,6 +4870,8 @@ COMMENT ON POLICY "Users can view users in their tenant" ON users IS 'Users see 
 COMMENT ON POLICY "Users can view products in their tenant" ON products IS 'Users see all products in their tenant';
 COMMENT ON POLICY "Users can view sales in their tenant" ON sales IS 'Users see all sales in their tenant';
 
+-- End of 020_enable_rls_policies.sql
+
 
 -- File: 021_add_tenant_id_to_sale_items.sql
 -- ============================================
@@ -4856,6 +4969,8 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- End of 021_add_tenant_id_to_sale_items.sql
 
 
 -- File: 022_seed_data.sql
@@ -5027,6 +5142,8 @@ INSERT INTO subscriptions (plan_tier, monthly_fee, commission_rate, max_branches
         'active'
     );
 
+-- End of 022_seed_data.sql
+
 
 -- File: 023_chat_enhancements.sql
 -- ============================================================
@@ -5162,6 +5279,8 @@ COMMENT ON COLUMN chat_messages.metadata IS
 'Structured data specific to message_type. See migration file for examples.';
 COMMENT ON COLUMN chat_messages.action_data IS
 'Data for interactive actions. Example: {"product_id": "uuid", "quantity": 2, "cart_id": "uuid"}';
+
+-- End of 023_chat_enhancements.sql
 
 
 -- File: 024_ecommerce_enhancements.sql
@@ -5460,6 +5579,8 @@ Example: For Pro plan (1.5% rate, â‚¦500 cap):
 CREATE INDEX idx_products_ecommerce ON products(tenant_id, category, is_active, deleted_at)
     WHERE deleted_at IS NULL AND is_active = TRUE;
 
+-- End of 024_ecommerce_enhancements.sql
+
 
 -- File: 20260125_add_missing_rls_policies.sql
 -- Migration: Add Row Level Security to Unrestricted Tables
@@ -5727,6 +5848,8 @@ CREATE POLICY "spatial_ref_sys_admin_modify" ON spatial_ref_sys
 -- ALTER TABLE dim_date DISABLE ROW LEVEL SECURITY;
 -- ALTER TABLE dim_time DISABLE ROW LEVEL SECURITY;
 -- ALTER TABLE spatial_ref_sys DISABLE ROW LEVEL SECURITY;
+
+-- End of 20260125_add_missing_rls_policies.sql
 
 
 -- File: 20260125001_create_missing_tables.sql
@@ -6142,6 +6265,8 @@ WHERE schemaname = 'public'
 -- DROP FUNCTION IF EXISTS generate_invoice_number();
 -- DROP FUNCTION IF EXISTS cleanup_old_sync_logs();
 -- DROP SEQUENCE IF EXISTS invoice_number_seq;
+
+-- End of 20260125001_create_missing_tables.sql
 
 
 -- File: 20260222194504_healthcare_consultation.sql
@@ -6741,6 +6866,8 @@ $$ LANGUAGE plpgsql;
 -- âœ… Multi-domain branding support (referral_source tracking)
 -- âœ… Seed data for platform commission rate
 
+-- End of 20260222194504_healthcare_consultation.sql
+
 
 -- File: 20260223_tenant_scoped_products.sql
 -- ============================================
@@ -7080,6 +7207,17 @@ SELECT
     bi.expiry_date,
     bi.expiry_alert_days,
     bi.is_active as inventory_active,
+    
+    -- Healthcare & Laboratory expansions
+    p.unit_of_measure,
+    p.product_type,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer,
+    p.test_name,
+    p.sample_type,
+
     CASE
         WHEN bi.stock_quantity <= bi.low_stock_threshold THEN true
         ELSE false
@@ -7137,7 +7275,17 @@ SELECT
     p.unit_price as max_price,
 
     p.created_at,
-    p.updated_at
+    p.updated_at,
+    
+    -- Healthcare & Laboratory expansions
+    p.unit_of_measure,
+    p.product_type,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer,
+    p.test_name,
+    p.sample_type
 FROM products p
 LEFT JOIN branch_inventory bi ON bi.product_id = p.id AND bi.is_active = true
 LEFT JOIN branches b ON bi.branch_id = b.id AND b.deleted_at IS NULL
@@ -7153,7 +7301,17 @@ GROUP BY
     p.image_url,
     p.is_active,
     p.created_at,
-    p.updated_at;
+    p.updated_at,
+    
+    -- Essential group by fields
+    p.unit_of_measure,
+    p.product_type,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer,
+    p.test_name,
+    p.sample_type;
 
 COMMENT ON VIEW ecommerce_products IS
 'Aggregated product view for e-commerce storefront. Shows tenant products across all branches with stock and location information.';
@@ -7257,6 +7415,8 @@ BEGIN
     END IF;
 END $$;
 
+-- End of 20260223_tenant_scoped_products.sql
+
 
 -- File: 20260227_add_country_settings_to_tenants.sql
 -- ============================================================
@@ -7344,6 +7504,8 @@ FROM information_schema.columns
 WHERE table_name = 'tenants'
     AND column_name IN ('country_code', 'dial_code', 'currency_code')
 ORDER BY ordinal_position;
+
+-- End of 20260227_add_country_settings_to_tenants.sql
 
 
 -- File: 20260228_add_reserved_quantity_to_branch_inventory.sql
@@ -7647,6 +7809,8 @@ WHERE p.id = 'product-uuid'
 AND pss.tenant_id = current_tenant_id()
 ORDER BY b.name;
 */
+
+-- End of 20260228_add_reserved_quantity_to_branch_inventory.sql
 
 
 -- File: 20260228_ALL_MIGRATIONS_COMBINED.sql
@@ -8353,6 +8517,8 @@ COMMENT ON VIEW product_stock_status IS 'Real-time view of product stock status 
 -- ============================================================
 -- All 5 migrations applied successfully!
 
+-- End of 20260228_ALL_MIGRATIONS_COMBINED.sql
+
 
 -- File: 20260228_create_analytics_rpc_functions.sql
 -- Analytics RPC Functions for Product Sales Analytics
@@ -8607,6 +8773,8 @@ COMMENT ON FUNCTION get_top_products_by_value IS 'Returns top selling products r
 COMMENT ON FUNCTION get_product_sales_trend IS 'Returns sales trend data for a specific product over time, grouped by period (daily/weekly/monthly/quarterly/yearly). Tenant-scoped.';
 COMMENT ON FUNCTION get_sales_by_category IS 'Returns sales aggregated by product category. Tenant-scoped.';
 
+-- End of 20260228_create_analytics_rpc_functions.sql
+
 
 -- File: 20260228_create_customer_tenants_junction_FIXED.sql
 -- ============================================================
@@ -8817,6 +8985,8 @@ COMMENT ON COLUMN customer_tenants.preferred_branch_id IS 'Customer''s preferred
 
 COMMENT ON TABLE customers IS 'Global customer table - customers can order from multiple tenants';
 COMMENT ON CONSTRAINT customers_email_unique ON customers IS 'Ensures email uniqueness across all customers for smart login detection';
+
+-- End of 20260228_create_customer_tenants_junction_FIXED.sql
 
 
 -- File: 20260228_create_delivery_types.sql
@@ -9074,6 +9244,8 @@ COMMENT ON COLUMN delivery_types.display_order IS 'Order to display options (low
 
 COMMENT ON FUNCTION calculate_delivery_fee(UUID, DECIMAL, DECIMAL) IS 'Calculates delivery fee based on delivery type, distance, and order value';
 
+-- End of 20260228_create_delivery_types.sql
+
 
 -- File: 20260228_create_loyalty_config.sql
 -- ============================================================
@@ -9310,6 +9482,8 @@ COMMENT ON COLUMN loyalty_config.points_expiry_days IS 'Days until earned points
 
 COMMENT ON FUNCTION calculate_loyalty_points(UUID, DECIMAL) IS 'Calculates loyalty points earned for a purchase amount based on tenant config';
 COMMENT ON FUNCTION calculate_redemption_value(UUID, INTEGER) IS 'Calculates currency value of points for redemption based on tenant config';
+
+-- End of 20260228_create_loyalty_config.sql
 
 
 -- File: 20260228_create_storefront_config.sql
@@ -9582,6 +9756,8 @@ COMMENT ON COLUMN storefront_config.is_active IS 'Whether storefront is live and
 
 COMMENT ON FUNCTION is_storefront_open(UUID, TIMESTAMPTZ) IS 'Checks if a tenant storefront is currently open based on operating hours';
 
+-- End of 20260228_create_storefront_config.sql
+
 
 -- File: 20260228_fix_user_registration_rls.sql
 -- Fix RLS policy to allow new user registration
@@ -9603,6 +9779,8 @@ CREATE POLICY "Users can create own account"
 -- 2. Existing "Managers can create users" policy still applies for inviting staff
 
 -- Note: The existing "Managers can create users" policy is kept for staff invitations
+
+-- End of 20260228_fix_user_registration_rls.sql
 
 
 -- File: 20260228_generate_sample_data.sql
@@ -9875,6 +10053,8 @@ EXCEPTION
     RAISE;
 END $$;
 
+-- End of 20260228_generate_sample_data.sql
+
 
 -- File: 20260301_fix_user_registration_rls_v2.sql
 -- Fix RLS policy to allow new user registration (v2 - Comprehensive Fix)
@@ -9935,6 +10115,8 @@ COMMENT ON POLICY "users_insert_own" ON users IS
 
 COMMENT ON POLICY "managers_insert_staff" ON users IS
 'Allows platform_admin, tenant_admin, and branch_manager to create users for staff invites';
+
+-- End of 20260301_fix_user_registration_rls_v2.sql
 
 
 -- File: 20260310_real_time_inventory_sync.sql
@@ -10430,6 +10612,8 @@ POS SALES:
 2. Stock synced â†’ marketplace updated in real-time
 */
 
+-- End of 20260310_real_time_inventory_sync.sql
+
 
 -- File: 20260315_configure_tenant_services.sql
 -- Configure Tenant Services
@@ -10544,6 +10728,8 @@ ORDER BY name;
 -- 2. If referring tenant doesn't offer service â†’ show external directory
 -- 3. Same tenant as provider â†’ self-provider (no referral commission)
 -- 4. Different tenant as provider â†’ referral commission applies
+
+-- End of 20260315_configure_tenant_services.sql
 
 
 -- File: 20260315_tenant_services_routing.sql
@@ -10703,6 +10889,8 @@ COMMENT ON FUNCTION calculate_commission_with_provider_check IS 'Calculates comm
 -- SET services_offered = ARRAY['diagnostic']
 -- WHERE subdomain = 'carelab';
 
+-- End of 20260315_tenant_services_routing.sql
+
 
 -- File: 20260316_add_subdomain_to_tenants.sql
 -- Add subdomain column to tenants table
@@ -10749,6 +10937,8 @@ CREATE TRIGGER sync_subdomain_trigger
 
 -- Comment
 COMMENT ON COLUMN tenants.subdomain IS 'Subdomain for referral tracking (synced with slug)';
+
+-- End of 20260316_add_subdomain_to_tenants.sql
 
 
 -- File: 20260317_multi_tenant_patient_identity.sql
@@ -10963,7 +11153,7 @@ BEGIN
 
     RETURN v_unified_patient_id;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================
 -- Function 2: Link Customer Account to Unified Patient
@@ -11032,7 +11222,7 @@ BEGIN
 
     RETURN v_unified_patient_id;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================
 -- Function 3: Get All Customer IDs for Unified Patient
@@ -11191,7 +11381,7 @@ BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS update_unified_patient_profiles_timestamp ON unified_patient_profiles;
 CREATE TRIGGER update_unified_patient_profiles_timestamp
@@ -11278,6 +11468,8 @@ COMMENT ON FUNCTION link_customer_to_unified_patient IS 'Links a tenant-specific
 COMMENT ON FUNCTION get_all_customer_ids_for_patient IS 'Returns all tenant-specific customer IDs for a unified patient';
 COMMENT ON FUNCTION can_share_patient_data IS 'Checks if patient has consented to share specific data types across tenants';
 COMMENT ON FUNCTION get_unified_patient_history IS 'Returns complete patient history (consultations, purchases) across all linked accounts';
+
+-- End of 20260317_multi_tenant_patient_identity.sql
 
 
 -- File: 20260318_healthcare_chat_system.sql
@@ -11661,6 +11853,8 @@ USING gin(to_tsvector('english', coalesce(participant_name, '')));
 -- âœ… Full-text search indexes
 -- âœ… Trigger to update last message info
 
+-- End of 20260318_healthcare_chat_system.sql
+
 
 -- File: 20260319_add_healthcare_provider_subscription_policy.sql
 -- Add RLS Policy for Healthcare Providers to Create Subscriptions
@@ -11704,6 +11898,8 @@ CREATE POLICY "Healthcare providers can update own subscriptions"
             AND healthcare_providers.user_id = auth.uid()
         )
     );
+
+-- End of 20260319_add_healthcare_provider_subscription_policy.sql
 
 
 -- File: 20260319_create_medic_subscriptions.sql
@@ -11862,6 +12058,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
+-- End of 20260319_create_medic_subscriptions.sql
+
 
 -- File: 20260319_fix_provider_self_read_policy.sql
 -- Fix Healthcare Provider Self-Read RLS Policy
@@ -11882,6 +12080,8 @@ CREATE POLICY "Providers can view own profile"
 -- Note: The existing policy "Anyone can view active verified providers" allows
 -- public viewing of verified providers. This new policy allows self-viewing.
 
+-- End of 20260319_fix_provider_self_read_policy.sql
+
 
 -- File: 20260319_link_healthcare_providers_subscriptions.sql
 -- Link Healthcare Providers to Existing Subscriptions Table
@@ -11900,6 +12100,8 @@ ADD COLUMN IF NOT EXISTS subscription_id UUID REFERENCES subscriptions(id) ON DE
 CREATE INDEX IF NOT EXISTS idx_providers_subscription_id ON healthcare_providers(subscription_id);
 
 COMMENT ON COLUMN healthcare_providers.subscription_id IS 'Links healthcare provider to their subscription plan (shared with POS tenants)';
+
+-- End of 20260319_link_healthcare_providers_subscriptions.sql
 
 
 -- File: 20260320_add_healthcare_provider_patients.sql
@@ -12042,6 +12244,8 @@ COMMENT ON COLUMN customers.profile_photo_url IS 'Patient profile picture URL';
 COMMENT ON COLUMN customers.is_deleted IS 'Soft delete flag for patient records';
 COMMENT ON FUNCTION get_provider_patients IS 'Returns all active patients for a healthcare provider with consultation stats';
 
+-- End of 20260320_add_healthcare_provider_patients.sql
+
 
 -- File: 20260320_add_marked_up_fees_to_providers.sql
 -- Add marked_up_fees column to healthcare_providers table
@@ -12056,6 +12260,8 @@ CREATE INDEX IF NOT EXISTS idx_providers_marked_up_fees ON healthcare_providers 
 
 -- Comment for documentation
 COMMENT ON COLUMN healthcare_providers.marked_up_fees IS 'Customer-facing consultation fees with 10% markup: {chat, video, audio, office_visit}';
+
+-- End of 20260320_add_marked_up_fees_to_providers.sql
 
 
 -- File: 20260320_add_profile_editing_support.sql
@@ -12240,6 +12446,8 @@ COMMENT ON TABLE provider_work_experience IS 'Stores work experience history for
 COMMENT ON TABLE provider_certificates IS 'Stores professional certificates with file attachments for healthcare providers';
 COMMENT ON TABLE provider_licenses IS 'Stores professional licenses with file attachments and verification status for healthcare providers';
 
+-- End of 20260320_add_profile_editing_support.sql
+
 
 -- File: 20260320_add_slot_settings_to_providers.sql
 -- Add slot_settings column to healthcare_providers table
@@ -12255,6 +12463,8 @@ CREATE INDEX IF NOT EXISTS idx_providers_slot_settings ON healthcare_providers U
 -- Comment for documentation
 COMMENT ON COLUMN healthcare_providers.slot_settings IS 'Appointment slot configuration: {duration (minutes), buffer (minutes), breakTimes: [{startTime, endTime}]}';
 
+-- End of 20260320_add_slot_settings_to_providers.sql
+
 
 -- File: 20260320_add_work_schedule_to_providers.sql
 -- Add work_schedule column to healthcare_providers table
@@ -12269,6 +12479,8 @@ CREATE INDEX IF NOT EXISTS idx_providers_work_schedule ON healthcare_providers U
 
 -- Comment for documentation
 COMMENT ON COLUMN healthcare_providers.work_schedule IS 'Array of objects defining working hours per day: [{day, enabled, startTime, endTime}]';
+
+-- End of 20260320_add_work_schedule_to_providers.sql
 
 
 -- File: 20260320_create_healthcare_patients_table.sql
@@ -12503,6 +12715,8 @@ COMMENT ON COLUMN patients.is_deleted IS 'Soft delete flag - keeps historical da
 COMMENT ON FUNCTION link_patient_to_unified_profile IS 'Automatically links new patients to unified patient profiles';
 COMMENT ON FUNCTION get_patient_consultation_stats IS 'Returns consultation statistics for a patient';
 
+-- End of 20260320_create_healthcare_patients_table.sql
+
 
 -- File: 20260320_create_storage_buckets.sql
 -- ============================================================================
@@ -12684,6 +12898,8 @@ CREATE POLICY "Providers can delete own licenses"
         )
     );
 
+-- End of 20260320_create_storage_buckets.sql
+
 
 -- File: 20260320_fix_healthcare_provider_patient_rls.sql
 -- ============================================================
@@ -12813,6 +13029,8 @@ COMMENT ON POLICY "Healthcare providers can update their patients" ON customers 
 COMMENT ON POLICY "Healthcare providers can soft delete patients" ON customers IS
 'Allows healthcare providers to soft delete patients by setting is_deleted=true';
 
+-- End of 20260320_fix_healthcare_provider_patient_rls.sql
+
 
 -- File: 20260320_fix_patients_rls_policy.sql
 -- ============================================================
@@ -12925,4 +13143,10836 @@ COMMENT ON POLICY "Providers can view their patients" ON patients IS
 COMMENT ON POLICY "Providers can delete their patients" ON patients IS
 'Allows providers to delete their own patients';
 
+-- End of 20260320_fix_patients_rls_policy.sql
+
+
+-- File: 20260323_create_diagnostic_tests_table.sql
+-- ============================================================================
+-- CREATE DIAGNOSTIC TESTS CATALOG TABLE
+-- ============================================================================
+-- This table stores a global list of lab tests, imaging, and other 
+-- investigations for predictive search when doctors order tests.
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS diagnostic_tests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    
+    -- Core identification
+    name TEXT NOT NULL, -- Full name (e.g., "Complete Blood Count")
+    code TEXT,          -- Short code/LOINC (e.g., "CBC")
+    category TEXT,      -- Department (e.g., "Hematology", "Radiology")
+    
+    -- Clinical Context
+    specimen_type TEXT,            -- What's collected (e.g., "Blood")
+    preparation_instructions TEXT, -- Patient prep (e.g., "Fast for 12 hours")
+    description TEXT,              -- What it indicates
+    
+    -- System fields
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add indexes for fast predictive autocomplete searches
+CREATE INDEX IF NOT EXISTS idx_diagnostic_tests_name ON diagnostic_tests USING gin (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_diagnostic_tests_code ON diagnostic_tests USING gin (code gin_trgm_ops);
+
+-- ============================================================================
+-- TRIGGERS
+-- ============================================================================
+
+-- Automatically update the updated_at timestamp
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_diagnostic_tests_updated_at') THEN
+        CREATE TRIGGER update_diagnostic_tests_updated_at
+            BEFORE UPDATE ON diagnostic_tests
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
+
+-- ============================================================================
+-- ROW LEVEL SECURITY (RLS)
+-- ============================================================================
+
+ALTER TABLE diagnostic_tests ENABLE ROW LEVEL SECURITY;
+
+-- Allow all authenticated users (Doctors/Providers/Patients) to read the catalog
+DROP POLICY IF EXISTS "Anyone can view active diagnostic tests" ON diagnostic_tests;
+CREATE POLICY "Anyone can view active diagnostic tests"
+    ON diagnostic_tests FOR SELECT
+    TO authenticated
+    USING (is_active = true);
+
+-- Note: INSERT, UPDATE, and DELETE are restricted to Admin/Service Role by default.
+
+-- End of 20260323_create_diagnostic_tests_table.sql
+
+
+-- File: 20260323_create_drugs_table.sql
+-- ============================================================================
+-- CREATE DRUGS CATALOG TABLE
+-- ============================================================================
+-- This table stores a global list of medications to be used in
+-- predictive search during prescription creation by doctors.
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS drugs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    
+    -- Core identification
+    name TEXT NOT NULL, -- Primary display name (e.g., "Paracetamol 500mg Tablet")
+    generic_name TEXT,  -- Active ingredient (e.g., "Acetaminophen")
+    brand_name TEXT,    -- Commercial brand name
+    manufacturer TEXT,  -- Producing company
+    
+    -- Formulation & Dosage
+    dosage_form TEXT,   -- Form (e.g., "Tablet", "Syrup", "Injection")
+    strength TEXT,      -- Concentration (e.g., "500 mg", "10 mg/ml")
+    route_of_administration TEXT,
+    dispense_as TEXT, -- How it's dis (e.g., "unit", "pack")
+    dispense_quantity INT,
+    drug_pic_url TEXT,
+    
+    -- Medical Information
+    description TEXT,
+    side_effects TEXT,
+    contraindications TEXT,
+    
+    -- System fields
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add an index on the name for faster predictive autocomplete searches
+CREATE INDEX IF NOT EXISTS idx_drugs_name ON drugs USING gin (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_drugs_generic_name ON drugs USING gin (generic_name gin_trgm_ops);
+
+-- ============================================================================
+-- TRIGGERS
+-- ============================================================================
+
+-- Automatically update the updated_at timestamp
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_drugs_updated_at') THEN
+        CREATE TRIGGER update_drugs_updated_at
+            BEFORE UPDATE ON drugs
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
+
+-- ============================================================================
+-- ROW LEVEL SECURITY (RLS)
+-- ============================================================================
+
+ALTER TABLE drugs ENABLE ROW LEVEL SECURITY;
+
+-- Allow all authenticated users (Doctors/Providers/Patients) to read the drugs list
+DROP POLICY IF EXISTS "Anyone can view active drugs" ON drugs;
+CREATE POLICY "Anyone can view active drugs"
+    ON drugs FOR SELECT
+    TO authenticated
+    USING (is_active = true);
+
+-- Note: INSERT, UPDATE, and DELETE are intentionally omitted here.
+-- Only the Service Role (Supabase Admin) will be able to modify the drug catalog 
+-- by default unless explicitly granted.
+
+-- End of 20260323_create_drugs_table.sql
+
+
+-- File: 20260323_create_prescribed_drugs_table.sql
+-- ============================================================================
+-- PRESCRIBED DRUGS & PRESCRIPTIONS TABLE UPDATES
+-- ============================================================================
+
+-- 1. Modify the existing `prescriptions` table
+--    - Drop the old JSONB array for medications
+--    - Update the patient_id foreign key constraint to reference the `patients` table instead of `auth.users`
+
+ALTER TABLE prescriptions DROP COLUMN IF EXISTS medications;
+
+-- Dynamically drop the old foreign key constraint if it exists (usually named prescriptions_patient_id_fkey)
+ALTER TABLE prescriptions DROP CONSTRAINT IF EXISTS prescriptions_patient_id_fkey;
+
+-- Add the new foreign key referencing the `patients` table
+ALTER TABLE prescriptions 
+    ADD CONSTRAINT prescriptions_patient_id_fkey 
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE RESTRICT;
+
+-- ============================================================================
+-- 2. CREATE `prescribed_drugs` TABLE
+-- ============================================================================
+-- This table replaces the old JSONB array, normalizing each drug dispensed 
+-- into its own relational row for better tracking and inventory management.
+
+CREATE TABLE IF NOT EXISTS prescribed_drugs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    prescription_id UUID NOT NULL REFERENCES prescriptions(id) ON DELETE CASCADE,
+    drug_id UUID REFERENCES drugs(id) ON DELETE SET NULL, -- References the new global drugs catalog
+    
+    -- Drug Details (Denormalized so the prescription record is immutable even if the catalog changes)
+    name TEXT NOT NULL,
+    generic_name TEXT,
+    
+    -- Instructions & Dispensing
+    dispense_as TEXT,             -- e.g., "pack", "bottle", "unit"
+    dispense_quantity INT,        -- Total amount to give
+    dosage TEXT,                  -- e.g., "500mg"
+    frequency TEXT,  
+    drug_pic_url TEXT,            -- e.g., "Twice daily (BD)"
+    duration TEXT,                -- e.g., "5 days"
+    special_instructions TEXT,    -- e.g., "Take after meals"
+    substitution_allowed BOOLEAN DEFAULT true, -- Allows generic swapping
+    
+    -- Tracking the status of this specific drug
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'dispensed', 'out_of_stock', 'cancelled')),
+    
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_prescribed_drugs_prescription_id ON prescribed_drugs(prescription_id);
+CREATE INDEX IF NOT EXISTS idx_prescribed_drugs_drug_id ON prescribed_drugs(drug_id);
+
+-- ============================================================================
+-- TRIGGERS
+-- ============================================================================
+
+-- Automatically update the updated_at timestamp
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_prescribed_drugs_updated_at') THEN
+        CREATE TRIGGER update_prescribed_drugs_updated_at
+            BEFORE UPDATE ON prescribed_drugs
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
+
+-- ============================================================================
+-- ROW LEVEL SECURITY (RLS)
+-- ============================================================================
+
+ALTER TABLE prescribed_drugs ENABLE ROW LEVEL SECURITY;
+
+-- Allow all authenticated users involved to view the prescribed drugs
+-- Since this references `prescriptions`, anyone who can see the prescription 
+-- should generally be able to see the drugs on it.
+DROP POLICY IF EXISTS "Anyone can view prescribed drugs" ON prescribed_drugs;
+CREATE POLICY "Anyone can view prescribed drugs"
+    ON prescribed_drugs FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- Doctors can create/insert records
+DROP POLICY IF EXISTS "Doctors can insert prescribed drugs" ON prescribed_drugs;
+CREATE POLICY "Doctors can insert prescribed drugs"
+    ON prescribed_drugs FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+-- Allow status updates (e.g., pharmacy fulfilling a specific drug)
+DROP POLICY IF EXISTS "Authenticated users can update prescribed drugs" ON prescribed_drugs;
+CREATE POLICY "Authenticated users can update prescribed drugs"
+    ON prescribed_drugs FOR UPDATE
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+-- End of 20260323_create_prescribed_drugs_table.sql
+
+
+-- File: 20260323_make_consultation_optional.sql
+-- Make consultation_id optional in prescriptions so providers can create 
+-- direct prescriptions without an active consultation session.
+ALTER TABLE prescriptions ALTER COLUMN consultation_id DROP NOT NULL;
+
+-- End of 20260323_make_consultation_optional.sql
+
+
+-- File: 20260323_update_prescription_status.sql
+-- Drop the constraint that prevents 'draft'
+ALTER TABLE prescriptions DROP CONSTRAINT IF EXISTS prescriptions_status_check;
+
+-- Add it back with the 'draft' option
+ALTER TABLE prescriptions 
+ADD CONSTRAINT prescriptions_status_check 
+CHECK (status IN ('draft', 'active', 'expired', 'fulfilled', 'cancelled'));
+
+-- End of 20260323_update_prescription_status.sql
+
+
+-- File: 20260326_add_prescription_code.sql
+-- Add prescription_code to prescriptions table
+ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS prescription_code TEXT;
+
+-- Update the check constraint if we want it to be unique or have a specific format in the future, 
+-- but for now just adding the column.
+
+-- End of 20260326_add_prescription_code.sql
+
+
+-- File: 20260326_fix_prescribed_drugs_rls.sql
+-- ============================================================================
+-- FIX MISSING DELETE POLICY ON PRESCRIBED DRUGS
+-- ============================================================================
+
+-- Without a DELETE policy, the 'sync' logic (delete all then re-insert)
+-- in the edit prescription page fails, resulting in duplicated entries.
+
+ALTER TABLE prescribed_drugs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated users can delete prescribed drugs" ON prescribed_drugs;
+CREATE POLICY "Authenticated users can delete prescribed drugs"
+    ON prescribed_drugs FOR DELETE
+    TO authenticated
+    USING (true);
+
+-- End of 20260326_fix_prescribed_drugs_rls.sql
+
+
+-- File: 20260326_fix_prescriptions_delete_rls.sql
+-- ============================================================================
+-- FIX MISSING DELETE POLICY ON PRESCRIPTIONS
+-- ============================================================================
+
+ALTER TABLE prescriptions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Providers can delete issued prescriptions" ON prescriptions;
+CREATE POLICY "Providers can delete issued prescriptions"
+    ON prescriptions FOR DELETE
+    TO authenticated
+    USING (provider_id IN (SELECT id FROM healthcare_providers WHERE user_id = auth.uid()));
+
+-- End of 20260326_fix_prescriptions_delete_rls.sql
+
+
+-- File: 20260327_create_lab_requests_table.sql
+-- ============================================================
+-- CREATE LAB REQUESTS TABLES
+-- ============================================================
+
+-- 1. Create lab_requests table
+CREATE TABLE IF NOT EXISTS lab_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    
+    -- Link to healthcare provider and patient
+    healthcare_provider_id UUID NOT NULL REFERENCES healthcare_providers(id) ON DELETE CASCADE,
+    patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    
+    -- Clinical Context
+    clinical_notes TEXT,
+    diagnosis TEXT,
+    priority TEXT DEFAULT 'normal' CHECK (priority IN ('normal', 'urgent', 'emergency')),
+    
+    -- Status
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'sample_collected', 'in_progress', 'completed', 'cancelled')),
+    
+    -- Progress tracking
+    is_paid BOOLEAN DEFAULT false,
+    
+    -- Timestamps
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Create lab_request_items table
+CREATE TABLE IF NOT EXISTS lab_request_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lab_request_id UUID NOT NULL REFERENCES lab_requests(id) ON DELETE CASCADE,
+    diagnostic_test_id UUID NOT NULL REFERENCES diagnostic_tests(id) ON DELETE RESTRICT,
+    
+    -- Item status
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'collected', 'processing', 'completed', 'failed')),
+    
+    -- Results
+    result_text TEXT,
+    result_value TEXT,
+    result_unit TEXT,
+    reference_range TEXT,
+    result_file_url TEXT,
+    
+    -- Timestamps
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. Add indexes
+CREATE INDEX idx_lab_requests_provider ON lab_requests(healthcare_provider_id);
+CREATE INDEX idx_lab_requests_patient ON lab_requests(patient_id);
+CREATE INDEX idx_lab_requests_status ON lab_requests(status);
+CREATE INDEX idx_lab_request_items_request ON lab_request_items(lab_request_id);
+CREATE INDEX idx_lab_request_items_test ON lab_request_items(diagnostic_test_id);
+
+-- 4. Enable RLS
+ALTER TABLE lab_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lab_request_items ENABLE ROW LEVEL SECURITY;
+
+-- 5. RLS Policies
+-- Providers can view their own lab requests
+CREATE POLICY "Providers can view their lab requests"
+ON lab_requests FOR SELECT
+USING (
+    healthcare_provider_id IN (
+        SELECT id FROM healthcare_providers WHERE user_id = auth.uid()
+    )
+);
+
+-- Providers can insert lab requests
+CREATE POLICY "Providers can insert lab requests"
+ON lab_requests FOR INSERT
+WITH CHECK (
+    healthcare_provider_id IN (
+        SELECT id FROM healthcare_providers WHERE user_id = auth.uid()
+    )
+);
+
+-- Similar for items
+CREATE POLICY "Providers can view lab request items"
+ON lab_request_items FOR SELECT
+USING (
+    lab_request_id IN (
+        SELECT id FROM lab_requests WHERE healthcare_provider_id IN (
+            SELECT id FROM healthcare_providers WHERE user_id = auth.uid()
+        )
+    )
+);
+
+CREATE POLICY "Providers can insert lab request items"
+ON lab_request_items FOR INSERT
+WITH CHECK (
+    lab_request_id IN (
+        SELECT id FROM lab_requests WHERE healthcare_provider_id IN (
+            SELECT id FROM healthcare_providers WHERE user_id = auth.uid()
+        )
+    )
+);
+
+-- End of 20260327_create_lab_requests_table.sql
+
+
+-- File: 20260327_fix_onboarding_rls.sql
+-- ============================================================
+-- FIX RLS FOR ONBOARDING (V3)
+-- ============================================================
+-- Allow new authenticated users to create and see their tenant, branch, and subscription
+
+-- 1. Tenants: Allow INSERT and SELECT by email
+ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Authenticated users can create tenant" ON tenants;
+CREATE POLICY "Authenticated users can create tenant"
+    ON tenants FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Users can select their own tenant by email" ON tenants;
+CREATE POLICY "Users can select their own tenant by email"
+    ON tenants FOR SELECT
+    TO authenticated
+    USING (email = auth.jwt() ->> 'email');
+
+-- 2. Branches: Allow INSERT and SELECT for the tenant they are creating
+ALTER TABLE branches ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Authenticated users can create branch" ON branches;
+CREATE POLICY "Authenticated users can create branch"
+    ON branches FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Users can view own branch" ON branches;
+CREATE POLICY "Users can view own branch"
+    ON branches FOR SELECT
+    TO authenticated
+    USING (
+        tenant_id IN (
+            SELECT id FROM tenants WHERE email = auth.jwt() ->> 'email'
+        )
+    );
+
+-- 3. Subscriptions: Enable RLS and allow insert/select
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Authenticated users can create subscription" ON subscriptions;
+CREATE POLICY "Authenticated users can create subscription"
+    ON subscriptions FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Users can view own subscription" ON subscriptions;
+CREATE POLICY "Users can view own subscription"
+    ON subscriptions FOR SELECT
+    TO authenticated
+    USING (
+        tenant_id IN (
+            SELECT id FROM tenants WHERE email = auth.jwt() ->> 'email'
+        )
+    );
+
+-- 4. Users: Allow a "SELECT" and "INSERT" for the user themselves
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own profile" ON users;
+CREATE POLICY "Users can view own profile"
+    ON users FOR SELECT
+    USING (id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can create own profile" ON users;
+CREATE POLICY "Users can create own profile"
+    ON users FOR INSERT
+    WITH CHECK (id = auth.uid());
+
+-- End of 20260327_fix_onboarding_rls.sql
+
+
+-- File: 20260328_add_diagnostic_business_type.sql
+-- ============================================================
+-- ADD NEW BUSINESS TYPES
+-- ============================================================
+
+-- Add 'diagnostic_centre' and 'pharmacy_supermarket' to the business_type enum
+-- Since Postgres doesn't allow dropping enum values easily, we'll just add the new ones
+
+ALTER TYPE business_type ADD VALUE IF NOT EXISTS 'diagnostic_centre';
+ALTER TYPE business_type ADD VALUE IF NOT EXISTS 'pharmacy_supermarket';
+
+-- End of 20260328_add_diagnostic_business_type.sql
+
+
+-- File: 20260328_add_invitation_token_to_users.sql
+-- Add invitation_token and invitation fields to users table
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS invitation_token UUID DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS invitation_expires_at TIMESTAMPTZ DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS invitation_accepted_at TIMESTAMPTZ DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS invited_by UUID REFERENCES users(id) ON DELETE SET NULL;
+
+-- Index for fast token lookups
+CREATE INDEX IF NOT EXISTS idx_users_invitation_token ON users(invitation_token) WHERE invitation_token IS NOT NULL;
+
+-- End of 20260328_add_invitation_token_to_users.sql
+
+
+-- File: 20260328_add_onboarding_done_to_users.sql
+-- ============================================================
+-- ADD ONBOARDING_DONE FIELD
+-- ============================================================
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_done BOOLEAN DEFAULT FALSE;
+
+-- Update existing users with a tenant to be onboarding_done = true
+UPDATE users SET onboarding_done = TRUE WHERE tenant_id IS NOT NULL;
+
+-- End of 20260328_add_onboarding_done_to_users.sql
+
+
+-- File: 20260328_fix_user_onboarding.sql
+-- ============================================================
+-- FIX RLS FOR ONBOARDING UPSERT
+-- ============================================================
+
+-- Allow UPDATE on own profile to support UPSERT during onboarding
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can update own profile" ON users;
+CREATE POLICY "Users can update own profile"
+    ON users FOR UPDATE
+    USING (id = auth.uid())
+    WITH CHECK (id = auth.uid());
+
+-- End of 20260328_fix_user_onboarding.sql
+
+
+-- File: 20260328112500_add_user_advanced_fields.sql
+-- Add new profile and permission fields to users table
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS passcode_hash text null,
+  ADD COLUMN IF NOT EXISTS profile_picture_url text null,
+  ADD COLUMN IF NOT EXISTS gender character varying(10) null,
+  ADD COLUMN IF NOT EXISTS onboarding_completed_at timestamp with time zone null,
+  ADD COLUMN IF NOT EXISTS onboarding_done boolean null default false,
+  -- Permission flags
+  ADD COLUMN IF NOT EXISTS "canManagePOS" boolean not null default false,
+  ADD COLUMN IF NOT EXISTS "canManageProducts" boolean not null default false,
+  ADD COLUMN IF NOT EXISTS "canManageCustomers" boolean not null default false,
+  ADD COLUMN IF NOT EXISTS "canManageOrders" boolean not null default false,
+  ADD COLUMN IF NOT EXISTS "canViewMessages" boolean not null default false,
+  ADD COLUMN IF NOT EXISTS "canViewAnalytics" boolean not null default false,
+  ADD COLUMN IF NOT EXISTS "canManageStaff" boolean not null default false,
+  ADD COLUMN IF NOT EXISTS "canManageInventory" boolean not null default false,
+  ADD COLUMN IF NOT EXISTS "canManageTransfer" boolean not null default false,
+  ADD COLUMN IF NOT EXISTS "canManageBranches" boolean not null default false,
+  ADD COLUMN IF NOT EXISTS "canManageRoles" boolean not null default false,
+  ADD COLUMN IF NOT EXISTS "canManageScrap" boolean not null default false,
+  ADD COLUMN IF NOT EXISTS "canTransferProduct" boolean not null default false,
+  ADD COLUMN IF NOT EXISTS "canReturnProducts" boolean not null default false;
+
+-- Add check constraint for gender
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'chk_gender_values' AND conrelid = 'public.users'::regclass
+    ) THEN
+        ALTER TABLE public.users
+            ADD CONSTRAINT chk_gender_values CHECK (
+                gender IS NULL OR gender IN ('male', 'female', 'other')
+            );
+    END IF;
+END $$;
+
+-- Indexes for new fields
+CREATE INDEX IF NOT EXISTS idx_users_passcode_hash ON public.users USING btree (passcode_hash) WHERE (passcode_hash IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_users_onboarding_completed ON public.users USING btree (onboarding_completed_at) WHERE (onboarding_completed_at IS NULL);
+
+-- End of 20260328112500_add_user_advanced_fields.sql
+
+
+-- File: 20260328114500_fix_staff_invitations_rls.sql
+-- Enable RLS on staff_invitations
+ALTER TABLE public.staff_invitations ENABLE ROW LEVEL SECURITY;
+
+-- Allow anyone with the token to read the invitation (required for the pre-login UI in Incognito)
+CREATE POLICY "Allow public read of pending invitations by token"
+ON public.staff_invitations
+FOR SELECT
+TO public
+USING (status = 'pending');
+
+-- Allow securely authenticated users to update their own invitation status to 'accepted'
+CREATE POLICY "Allow authenticated user to accept invitation"
+ON public.staff_invitations
+FOR UPDATE
+TO authenticated
+USING (email = (auth.jwt() ->> 'email') AND status = 'pending')
+WITH CHECK (status = 'accepted');
+
+-- Allow admins (who invited) to read and manage all their invitations
+CREATE POLICY "Allow tenant admins to view invitations"
+ON public.staff_invitations
+FOR ALL
+TO authenticated
+USING (tenant_id IN (
+    SELECT tenant_id FROM public.users WHERE id = auth.uid()
+));
+
+-- End of 20260328114500_fix_staff_invitations_rls.sql
+
+
+-- File: 20260328123500_add_location_fields_to_branches.sql
+ALTER TABLE public.branches
+ADD COLUMN IF NOT EXISTS city VARCHAR(255),
+ADD COLUMN IF NOT EXISTS state VARCHAR(255),
+ADD COLUMN IF NOT EXISTS country VARCHAR(255);
+
+-- End of 20260328123500_add_location_fields_to_branches.sql
+
+
+-- File: 20260329141500_healthcare_product_fields.sql
+-- Expand Products table with Healthcare fields (Medications and Lab Tests)
+-- Date: 2026-03-29
+-- Source: User provided schema update
+
+-- Add columns to products table if they don't exist
+ALTER TABLE products 
+  ADD COLUMN IF NOT EXISTS unit_of_measure VARCHAR(20) DEFAULT 'piece',
+  ADD COLUMN IF NOT EXISTS product_type TEXT,
+  ADD COLUMN IF NOT EXISTS generic_name TEXT,
+  ADD COLUMN IF NOT EXISTS strength TEXT,
+  ADD COLUMN IF NOT EXISTS dosage_form TEXT,
+  ADD COLUMN IF NOT EXISTS manufacturer TEXT,
+  ADD COLUMN IF NOT EXISTS test_name TEXT,
+  ADD COLUMN IF NOT EXISTS sample_type TEXT;
+
+-- Comments for the new fields
+COMMENT ON COLUMN products.unit_of_measure IS 'Unit of measurement (e.g., piece, box, ml)';
+COMMENT ON COLUMN products.product_type IS 'Type categorization (e.g., medication, service, test)';
+COMMENT ON COLUMN products.generic_name IS 'Active pharmaceutical ingredient name';
+COMMENT ON COLUMN products.strength IS 'Concentration or potency (e.g., 500mg, 10mg/ml)';
+COMMENT ON COLUMN products.dosage_form IS 'Physical form (e.g., tablet, syrup, injection)';
+COMMENT ON COLUMN products.manufacturer IS 'Producing company or laboratory';
+COMMENT ON COLUMN products.test_name IS 'Full descriptive name of laboratory test';
+COMMENT ON COLUMN products.sample_type IS 'Specimen requirement for tests (e.g., blood, urine)';
+
+-- Re-syncing triggers and indexes as specified in the provided schema
+-- Note: Some of these may already exist, so we use IF NOT EXISTS or DROP/CREATE
+
+-- Indexes as specified in prompt
+CREATE INDEX IF NOT EXISTS idx_products_brand ON public.products(brand_id) WHERE (brand_id is not null);
+CREATE INDEX IF NOT EXISTS idx_products_category ON public.products(category_id) WHERE (category_id is not null);
+
+-- Ensure sync triggers are active on products (standard project triggers)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'increment_sync_version' AND tgrelid = 'public.products'::regclass) THEN
+        CREATE TRIGGER increment_sync_version BEFORE UPDATE ON products
+            FOR EACH ROW EXECUTE FUNCTION increment_sync_version();
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'set_updated_at' AND tgrelid = 'public.products'::regclass) THEN
+        CREATE TRIGGER set_updated_at BEFORE UPDATE ON products
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_track_product_price_change' AND tgrelid = 'public.products'::regclass) THEN
+        CREATE TRIGGER trg_track_product_price_change AFTER UPDATE ON products
+            FOR EACH ROW EXECUTE FUNCTION track_product_price_change();
+    END IF;
+END $$;
+
+-- End of 20260329141500_healthcare_product_fields.sql
+
+
+-- File: 20260329150000_allow_staff_manage_categories.sql
+-- Update Categories RLS to allow staff with POS management privileges to create categories
+-- Date: 2026-03-29
+
+DROP POLICY IF EXISTS "Managers can insert categories" ON categories;
+CREATE POLICY "Managers and Staff can insert categories"
+    ON categories FOR INSERT
+    WITH CHECK (
+        tenant_id IN (
+            SELECT tenant_id FROM users
+            WHERE id = auth.uid()
+            AND (role IN ('tenant_admin', 'branch_manager') OR canManagePOS = true)
+        )
+    );
+
+DROP POLICY IF EXISTS "Managers can update categories" ON categories;
+CREATE POLICY "Managers and Staff can update categories"
+    ON categories FOR UPDATE
+    USING (
+        tenant_id IN (
+            SELECT tenant_id FROM users
+            WHERE id = auth.uid()
+            AND (role IN ('tenant_admin', 'branch_manager') OR canManagePOS = true)
+        )
+    );
+
+-- End of 20260329150000_allow_staff_manage_categories.sql
+
+
+-- File: 20260329150500_fix_category_path_trigger.sql
+-- Fix Category Path Trigger Function
+-- Removed references to non-existent parent_category_id and level columns
+-- Date: 2026-03-29
+
+CREATE OR REPLACE FUNCTION update_category_path()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Generate a clean slug-based path from the name
+    NEW.path := '/' || LOWER(REGEXP_REPLACE(NEW.name, '[^a-zA-Z0-9]+', '-', 'g')) || '/';
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Re-apply trigger to ensure it uses the latest function logic
+DROP TRIGGER IF EXISTS trg_update_category_path ON categories;
+CREATE TRIGGER trg_update_category_path
+    BEFORE INSERT OR UPDATE ON categories
+    FOR EACH ROW
+    EXECUTE FUNCTION update_category_path();
+
+-- End of 20260329150500_fix_category_path_trigger.sql
+
+
+-- File: 20260329151500_delete_category_path_trigger.sql
+-- Delete Category Path Trigger and Function
+-- Transitioning to manual path generation in the application layer
+-- Date: 2026-03-29
+
+DROP TRIGGER IF EXISTS trg_update_category_path ON categories;
+DROP FUNCTION IF EXISTS update_category_path();
+
+-- End of 20260329151500_delete_category_path_trigger.sql
+
+
+-- File: 20260329152000_restore_category_path_trigger.sql
+-- Restore Category Path Trigger and Function
+-- Re-introducing automated hierarchical/slugged path generation in the database
+-- Date: 2026-03-29
+
+CREATE OR REPLACE FUNCTION update_category_path()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.path := '/' || LOWER(REGEXP_REPLACE(NEW.name, '[^a-zA-Z0-9]+', '-', 'g')) || '/';
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_update_category_path ON categories;
+CREATE TRIGGER trg_update_category_path
+    BEFORE INSERT OR UPDATE ON categories
+    FOR EACH ROW
+    EXECUTE FUNCTION update_category_path();
+
+-- End of 20260329152000_restore_category_path_trigger.sql
+
+
+-- File: 20260329160000_final_category_fix_aggressive.sql
+-- Aggressive cleanup and restoration of Category Path Trigger
+-- This script ensures no old versions of the trigger or function remain.
+-- Date: 2026-03-29
+
+-- 1. Correct the table schema aggressively (ensure no old columns remain)
+DO $$ 
+BEGIN 
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'categories' AND column_name = 'code') THEN
+        ALTER TABLE public.categories DROP COLUMN code;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'categories' AND column_name = 'description') THEN
+        ALTER TABLE public.categories DROP COLUMN description;
+    END IF;
+END $$;
+
+-- 2. Drop the trigger from the table aggressively
+DROP TRIGGER IF EXISTS trg_update_category_path ON public.categories CASCADE;
+
+-- 2. Drop the function with a cascade to remove any dependent objects
+DROP FUNCTION IF EXISTS public.update_category_path() CASCADE;
+
+-- 3. Redefine the function cleanly with the NEW flat schema logic
+-- Note: NEW.name and NEW.path must exist for this to work.
+CREATE OR REPLACE FUNCTION public.update_category_path()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Log for debugging (found in Supabase logs)
+    -- RAISE NOTICE 'Generating path for category: %', NEW.name;
+    
+    NEW.path := '/' || LOWER(REGEXP_REPLACE(NEW.name, '[^a-zA-Z0-9]+', '-', 'g')) || '/';
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 4. Re-create the trigger on the table
+CREATE TRIGGER trg_update_category_path
+    BEFORE INSERT OR UPDATE ON public.categories
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_category_path();
+
+-- 5. Ensure RLS is still open as requested
+ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public can view categories" ON public.categories;
+CREATE POLICY "Public can view categories" ON public.categories FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Authenticated users can create categories" ON public.categories;
+CREATE POLICY "Authenticated users can create categories" ON public.categories FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "Authenticated users can update categories" ON public.categories;
+CREATE POLICY "Authenticated users can update categories" ON public.categories FOR UPDATE USING (auth.uid() IS NOT NULL);
+
+-- End of 20260329160000_final_category_fix_aggressive.sql
+
+
+-- File: 20260329161000_drop_obsolete_stock_trigger.sql
+-- Drop the obsolete trigger that tries to sync stock to the 'products' table
+DROP TRIGGER IF EXISTS auto_sync_product_stock ON branch_inventory;
+
+-- Drop the underlying obsolete function since the 'products' table no longer tracks stock
+DROP FUNCTION IF EXISTS trigger_sync_product_stock();
+
+-- End of 20260329161000_drop_obsolete_stock_trigger.sql
+
+
+-- File: 20260329161500_drop_obsolete_price_trigger.sql
+-- Since pricing has migrated off the global 'products' table and into 'branch_inventory',
+-- the legacy trigger tracking price changes directly on the 'products' table crashes
+-- whenever any product is updated because the 'selling_price'/'unit_price' fields are gone.
+
+-- Drop the obsolete trigger from the 'products' table
+DROP TRIGGER IF EXISTS trg_track_product_price_change ON products;
+
+-- Optionally, drop the obsolete function that caused the crash
+DROP FUNCTION IF EXISTS track_product_price_change();
+
+-- End of 20260329161500_drop_obsolete_price_trigger.sql
+
+
+-- File: 20260330000000_create_product_images_bucket.sql
+-- ============================================================================
+-- CREATE STORAGE BUCKET FOR PRODUCT IMAGES
+-- ============================================================================
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+    'product-images',
+    'product-images',
+    true, -- Publicly accessible
+    5242880, -- 5MB limit
+    ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/jpg']
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- STORAGE RLS POLICIES
+
+-- Anyone can view product images
+DROP POLICY IF EXISTS "Anyone can view product images" ON storage.objects;
+CREATE POLICY "Anyone can view product images"
+    ON storage.objects FOR SELECT
+    TO public
+    USING (bucket_id = 'product-images');
+
+-- Authenticated users can upload product images
+DROP POLICY IF EXISTS "Authenticated users can upload product images" ON storage.objects;
+CREATE POLICY "Authenticated users can upload product images"
+    ON storage.objects FOR INSERT
+    TO authenticated
+    WITH CHECK (bucket_id = 'product-images');
+
+-- Authenticated users can update their own uploads or any (simplified for products)
+DROP POLICY IF EXISTS "Authenticated users can update product images" ON storage.objects;
+CREATE POLICY "Authenticated users can update product images"
+    ON storage.objects FOR UPDATE
+    TO authenticated
+    USING (bucket_id = 'product-images');
+
+-- Authenticated users can delete product images
+DROP POLICY IF EXISTS "Authenticated users can delete product images" ON storage.objects;
+CREATE POLICY "Authenticated users can delete product images"
+    ON storage.objects FOR DELETE
+    TO authenticated
+    USING (bucket_id = 'product-images');
+
+-- End of 20260330000000_create_product_images_bucket.sql
+
+
+-- File: 20260330010000_add_batch_support.sql
+-- ============================================================
+-- Migration: Batch Number and Multi-Inventory Lot Support
+-- ============================================================
+-- Description: Adds batch_no support and allows multiple inventory 
+--              records per product per branch (to track lots).
+-- ============================================================
+
+-- 1. Add batch_no column if it doesn't exist
+ALTER TABLE branch_inventory
+ADD COLUMN IF NOT EXISTS batch_no VARCHAR(100);
+
+-- 2. Refactor unique constraints to allow lot-based tracking
+-- Drop the legacy one-record-per-product constraint
+ALTER TABLE branch_inventory 
+DROP CONSTRAINT IF EXISTS branch_inventory_branch_id_product_id_key;
+
+-- Drop any previous attempts at this constraint
+ALTER TABLE branch_inventory
+DROP CONSTRAINT IF EXISTS branch_inventory_branch_product_batch_unique;
+
+-- Add new composite unique constraint including batch_no
+-- Note: PostgreSQL allows multiple NULLs in UNIQUE constraints, 
+-- but we'll use empty string as default to ensure predictability if needed.
+ALTER TABLE branch_inventory
+ADD CONSTRAINT branch_inventory_branch_product_batch_unique 
+UNIQUE (branch_id, product_id, batch_no);
+
+COMMENT ON COLUMN branch_inventory.batch_no IS 'Batch or Lot identifying number for this specific stock entry';
+
+-- End of 20260330010000_add_batch_support.sql
+
+
+-- File: 20260330020000_add_suppliers_table.sql
+-- ============================================================
+-- Migration: Add Suppliers Table and Inventory Integration
+-- ============================================================
+-- Description: Creates a suppliers management table and links 
+--              it to branch inventory lots for procurement tracking.
+-- ============================================================
+
+-- 1. Create Suppliers table
+CREATE TABLE IF NOT EXISTS suppliers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    contact_person VARCHAR(255),
+    email VARCHAR(255),
+    phone VARCHAR(50),
+    address TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 2. Add supplier_id to branch_inventory
+ALTER TABLE branch_inventory
+ADD COLUMN IF NOT EXISTS supplier_id UUID REFERENCES suppliers(id) ON DELETE SET NULL;
+
+-- 3. Enable RLS for suppliers
+ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view suppliers in their tenant" ON suppliers;
+CREATE POLICY "Users can view suppliers in their tenant"
+    ON suppliers FOR SELECT
+    USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+DROP POLICY IF EXISTS "Admins can manage suppliers" ON suppliers;
+CREATE POLICY "Admins can manage suppliers"
+    ON suppliers FOR ALL
+    USING (
+        tenant_id IN (
+            SELECT tenant_id FROM users
+            WHERE id = auth.uid()
+            AND role IN ('tenant_admin', 'branch_manager')
+        )
+    );
+
+-- 4. Sample Data (Optional first entry)
+-- INSERT INTO suppliers (tenant_id, name) VALUES ('your-tenant-uuid', 'General Supplier');
+
+COMMENT ON TABLE suppliers IS 'Table for managing product suppliers/vendors.';
+COMMENT ON COLUMN branch_inventory.supplier_id IS 'Reference to the supplier from whom this batch was purchased.';
+
+-- End of 20260330020000_add_suppliers_table.sql
+
+
+-- File: 20260330130000_stock_balance_tracking.sql
+-- 1. Update branch_inventory schema (Safely add columns if they don't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'branch_inventory' AND column_name = 'purchase_invoice') THEN
+        ALTER TABLE branch_inventory ADD COLUMN purchase_invoice TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'branch_inventory' AND column_name = 'purchase_code') THEN
+        ALTER TABLE branch_inventory ADD COLUMN purchase_code TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'branch_inventory' AND column_name = 'added_by') THEN
+        ALTER TABLE branch_inventory ADD COLUMN added_by TEXT;
+    END IF;
+END $$;
+
+-- 2. Create product_stock_balance table to track aggregated stock per product/branch
+CREATE TABLE IF NOT EXISTS product_stock_balance (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+    branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
+    product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+    stock_balance DECIMAL(12,2) DEFAULT 0,
+    reserved_balance DECIMAL(12,2) DEFAULT 0,
+    available_balance DECIMAL(12,2) DEFAULT 0,
+    low_stock_threshold DECIMAL(12,2) DEFAULT 5,
+    last_updated TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(branch_id, product_id)
+);
+
+-- 3. Trigger function to keep product_stock_balance in sync with branch_inventory batches
+-- SECURITY DEFINER allows the trigger to update the rollup table even if the user lacks direct write permissions.
+CREATE OR REPLACE FUNCTION sync_product_stock_balance()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_tenant_id UUID;
+BEGIN
+    -- Get tenant_id from the affected row
+    IF (TG_OP = 'DELETE') THEN
+        v_tenant_id := OLD.tenant_id;
+    ELSE
+        v_tenant_id := NEW.tenant_id;
+    END IF;
+
+    -- Update or Insert the aggregated balance
+    INSERT INTO product_stock_balance (
+        tenant_id, 
+        branch_id, 
+        product_id, 
+        stock_balance, 
+        reserved_balance,
+        available_balance,
+        last_updated
+    )
+    SELECT 
+        v_tenant_id,
+        COALESCE(NEW.branch_id, OLD.branch_id),
+        COALESCE(NEW.product_id, OLD.product_id),
+        COALESCE(SUM(stock_quantity), 0),
+        COALESCE(SUM(reserved_quantity), 0),
+        COALESCE(SUM(stock_quantity - reserved_quantity), 0),
+        NOW()
+    FROM branch_inventory
+    WHERE branch_id = COALESCE(NEW.branch_id, OLD.branch_id)
+      AND product_id = COALESCE(NEW.product_id, OLD.product_id)
+      AND is_active = true
+    ON CONFLICT (branch_id, product_id) 
+    DO UPDATE SET 
+        stock_balance = EXCLUDED.stock_balance,
+        reserved_balance = EXCLUDED.reserved_balance,
+        available_balance = EXCLUDED.available_balance,
+        last_updated = EXCLUDED.last_updated;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- 4. Apply triggers to branch_inventory (Remove then re-add for safety)
+DROP TRIGGER IF EXISTS trg_sync_stock_balance ON branch_inventory;
+CREATE TRIGGER trg_sync_stock_balance
+AFTER INSERT OR UPDATE OR DELETE ON branch_inventory
+FOR EACH ROW EXECUTE FUNCTION sync_product_stock_balance();
+
+-- 5. Helper for purchase order sequences
+CREATE TABLE IF NOT EXISTS purchase_sequences (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+    branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
+    last_serial INTEGER DEFAULT 0,
+    UNIQUE(tenant_id, branch_id)
+);
+
+-- Enable RLS for the new tables
+ALTER TABLE product_stock_balance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE purchase_sequences ENABLE ROW LEVEL SECURITY;
+
+-- Product Stock Balance Policies  (Grant ALL to branch members via trigger or direct if needed)
+DROP POLICY IF EXISTS "Users can manage stock balance for their branch" ON product_stock_balance;
+CREATE POLICY "Users can manage stock balance for their branch" 
+ON product_stock_balance FOR ALL
+USING (branch_id IN (SELECT branch_id FROM users WHERE id = auth.uid()))
+WITH CHECK (branch_id IN (SELECT branch_id FROM users WHERE id = auth.uid()));
+
+-- Purchase Sequences Policies
+DROP POLICY IF EXISTS "Users can manage purchase sequences for their branch" ON purchase_sequences;
+CREATE POLICY "Users can manage purchase sequences for their branch" 
+ON purchase_sequences FOR ALL
+USING (branch_id IN (SELECT branch_id FROM users WHERE id = auth.uid()))
+WITH CHECK (branch_id IN (SELECT branch_id FROM users WHERE id = auth.uid()));
+
+-- End of 20260330130000_stock_balance_tracking.sql
+
+
+-- File: 20260331000000_add_cash_received_to_sales.sql
+-- Migration: Add missing columns to sales table for POS checkout
+-- Created: 2026-03-31
+
+ALTER TABLE public.sales 
+ADD COLUMN IF NOT EXISTS cash_received DECIMAL(12,2),
+ADD COLUMN IF NOT EXISTS change_given DECIMAL(12,2),
+ADD COLUMN IF NOT EXISTS customer_name VARCHAR(255);
+
+-- Also ensure sale_items has consistent columns if any were missed
+-- total_price was used in code but subtotal is in schema.
+-- We fixed the code to use subtotal, so no change needed here 
+-- unless we want to rename it. Keeping subtotal as per schema.
+
+-- End of 20260331000000_add_cash_received_to_sales.sql
+
+
+-- File: 20260331010000_fix_loyalty_trigger_status.sql
+-- Migration: Fix customer loyalty trigger
+-- Description: Updates the 'update_customer_loyalty' trigger function to reference 'sale_status' instead of 'status'
+
+CREATE OR REPLACE FUNCTION update_customer_loyalty()
+RETURNS TRIGGER AS $$
+DECLARE
+    points_earned INTEGER;
+BEGIN
+    -- Fixed: Using 'sale_status' instead of 'status' according to the sales schema definition
+    IF NEW.customer_id IS NOT NULL AND NEW.sale_status = 'completed' THEN
+        -- 1 point per â‚¦100 spent
+        points_earned = FLOOR(NEW.total_amount / 100);
+
+        UPDATE customers
+        SET
+            loyalty_points = loyalty_points + points_earned,
+            total_purchases = total_purchases + NEW.total_amount,
+            purchase_count = purchase_count + 1,
+            last_purchase_at = NEW.created_at
+        WHERE id = NEW.customer_id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- End of 20260331010000_fix_loyalty_trigger_status.sql
+
+
+-- File: 20260401_allow_public_tenant_view.sql
+-- Allow public/anonymous users to view basic tenant information for the storefront
+-- This is necessary for slug-based routing to resolve the tenant without authentication
+DROP POLICY IF EXISTS "Public can view basic tenant info" ON public.tenants;
+CREATE POLICY "Public can view basic tenant info"
+  ON public.tenants
+  FOR SELECT
+  TO public
+  USING (deleted_at IS NULL);
+
+-- Allow public/anonymous users to view branch metadata for the storefront
+-- Necessary for branch-based product filtering at the storefront
+DROP POLICY IF EXISTS "Public can view branches for storefront" ON public.branches;
+CREATE POLICY "Public can view branches for storefront"
+  ON public.branches
+  FOR SELECT
+  TO public
+  USING (deleted_at IS NULL);
+
+-- Allow public/anonymous users to view products catalog for the storefront
+DROP POLICY IF EXISTS "Public can view products for storefront" ON public.products;
+CREATE POLICY "Public can view products for storefront"
+  ON public.products
+  FOR SELECT
+  TO public
+  USING (is_active IS NOT FALSE AND _sync_is_deleted IS NOT TRUE);
+
+-- Allow public/anonymous users to view branch inventory for the storefront
+-- This fulfills the requirement to fetch products via branch_inventory
+DROP POLICY IF EXISTS "Public can view inventory for storefront" ON public.branch_inventory;
+CREATE POLICY "Public can view inventory for storefront"
+  ON public.branch_inventory
+  FOR SELECT
+  TO public
+  USING (is_active IS NOT FALSE AND _sync_is_deleted IS NOT TRUE);
+
+-- Allow authenticated customers to update stock quantities in branch inventory
+DROP POLICY IF EXISTS "Customers can update branch inventory" ON public.branch_inventory;
+CREATE POLICY "Customers can update branch inventory"
+  ON public.branch_inventory
+  FOR UPDATE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.customers
+      WHERE customers.id = auth.uid()
+      AND customers.tenant_id = branch_inventory.tenant_id
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.customers
+      WHERE customers.id = auth.uid()
+      AND customers.tenant_id = branch_inventory.tenant_id
+    )
+  );
+
+-- Allow public/anonymous users to view verified healthcare professionals (Relaxed for initial setup)
+DROP POLICY IF EXISTS "Public can view healthcare providers" ON public.healthcare_providers;
+CREATE POLICY "Public can view healthcare providers"
+  ON public.healthcare_providers
+  FOR SELECT
+  TO public
+  USING (is_active IS NOT FALSE);
+
+-- End of 20260401_allow_public_tenant_view.sql
+
+
+-- File: 20260401140000_add_business_type_to_categories.sql
+-- Add 'diagnostics' to business_type enum
+ALTER TYPE business_type ADD VALUE IF NOT EXISTS 'diagnostics';
+
+-- Add business_type column to categories
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS business_type business_type;
+
+COMMENT ON COLUMN categories.business_type IS 'The type of business this category belongs to (e.g., pharmacy, supermarket, diagnostics).';
+
+-- End of 20260401140000_add_business_type_to_categories.sql
+
+
+-- File: 20260404_checkout_rpc.sql
+-- ============================================
+-- Migration: E-Commerce Storefront RPCs for Checkout and Cancellation
+-- Description: Adds batch allocation tracking, checkout logic, and cancellation logic
+-- ============================================
+
+-- 1. Add batch_allocations to order_items to support accurately releasing reservations
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'order_items' AND column_name = 'batch_allocations'
+    ) THEN
+        ALTER TABLE order_items ADD COLUMN batch_allocations JSONB DEFAULT '[]'::jsonb;
+        COMMENT ON COLUMN order_items.batch_allocations IS 'Array of allocations: {batch_id: "uuid", quantity: number} to track reserved stock for cancellations.';
+    END IF;
+END $$;
+
+-- 2. Drop existing functions if they exist to prevent signature conflicts
+DROP FUNCTION IF EXISTS checkout_storefront_order(UUID, UUID, UUID, order_type, fulfillment_type, DECIMAL, DECIMAL, DECIMAL, DECIMAL, UUID, TEXT, JSONB);
+DROP FUNCTION IF EXISTS cancel_storefront_order(UUID);
+
+-- 3. Create checkout_storefront_order RPC
+CREATE OR REPLACE FUNCTION checkout_storefront_order(
+    p_tenant_id UUID,
+    p_branch_id UUID,
+    p_customer_id UUID,
+    p_order_type order_type,
+    p_fulfillment_type fulfillment_type,
+    p_subtotal DECIMAL,
+    p_delivery_fee DECIMAL,
+    p_tax_amount DECIMAL,
+    p_total_amount DECIMAL,
+    p_delivery_address_id UUID,
+    p_special_instructions TEXT,
+    p_items JSONB -- Array of { product_id, product_name, quantity, unit_price, subtotal }
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER -- Runs with elevated privileges to securely handle stock
+AS $$
+DECLARE
+    v_order_id UUID;
+    v_item RECORD;
+    v_batch RECORD;
+    v_req_qty INTEGER;
+    v_available_qty INTEGER;
+    v_allocated_qty INTEGER;
+    v_allocations JSONB;
+BEGIN
+    -- Input validation
+    IF p_total_amount != (p_subtotal + p_delivery_fee + p_tax_amount) THEN
+        RAISE EXCEPTION 'Total amount does not match subtotal + fees + tax';
+    END IF;
+
+    -- Create the order
+    INSERT INTO orders (
+        tenant_id,
+        branch_id,
+        order_number,
+        customer_id,
+        order_type,
+        order_status,
+        payment_status,
+        subtotal,
+        delivery_fee,
+        tax_amount,
+        total_amount,
+        fulfillment_type,
+        delivery_address_id,
+        special_instructions
+    ) VALUES (
+        p_tenant_id,
+        p_branch_id,
+        'ORD-' || FLOOR(EXTRACT(EPOCH FROM NOW()))::TEXT || '-' || SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 4),
+        p_customer_id,
+        p_order_type,
+        'pending'::order_status,
+        'unpaid'::payment_status,
+        p_subtotal,
+        p_delivery_fee,
+        p_tax_amount,
+        p_total_amount,
+        p_fulfillment_type,
+        p_delivery_address_id,
+        p_special_instructions
+    ) RETURNING id INTO v_order_id;
+
+    -- Process each item in the order
+    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(
+        product_id UUID, product_name TEXT, quantity INTEGER, unit_price DECIMAL, subtotal DECIMAL
+    )
+    LOOP
+        v_req_qty := v_item.quantity;
+        v_allocations := '[]'::jsonb;
+
+        -- Perform FIFO Allocation against branch_inventory batches where (stock_quantity - reserved_quantity) > 0
+        FOR v_batch IN 
+            SELECT id, (stock_quantity - COALESCE(reserved_quantity, 0)) AS available_balance
+            FROM branch_inventory
+            WHERE branch_id = p_branch_id 
+              AND product_id = v_item.product_id 
+              AND is_active = true
+              AND (stock_quantity - COALESCE(reserved_quantity, 0)) > 0
+            ORDER BY expiry_date ASC NULLS LAST, created_at ASC
+            FOR UPDATE -- Lock rows to prevent race conditions during concurrent checkouts
+        LOOP
+            IF v_req_qty <= 0 THEN
+                EXIT; -- Allocation complete
+            END IF;
+
+            v_available_qty := v_batch.available_balance;
+            
+            -- Determine how much we can allocate from this batch
+            IF v_available_qty >= v_req_qty THEN
+                v_allocated_qty := v_req_qty;
+            ELSE
+                v_allocated_qty := v_available_qty;
+            END IF;
+
+            -- Update reserved_quantity for this batch
+            UPDATE branch_inventory
+            SET reserved_quantity = COALESCE(reserved_quantity, 0) + v_allocated_qty,
+                updated_at = NOW()
+            WHERE id = v_batch.id;
+
+            -- Record this allocation
+            v_allocations := v_allocations || jsonb_build_object(
+                'batch_id', v_batch.id,
+                'quantity', v_allocated_qty
+            );
+
+            v_req_qty := v_req_qty - v_allocated_qty;
+        END LOOP;
+
+        -- Check if we successfully fulfilled the requested quantity
+        IF v_req_qty > 0 THEN
+            RAISE EXCEPTION 'Insufficient stock available for product: % (Missing: %)', v_item.product_name, v_req_qty;
+        END IF;
+
+        -- Insert the order_items row with the tracked allocations
+        INSERT INTO order_items (
+            order_id,
+            product_id,
+            product_name,
+            quantity,
+            unit_price,
+            subtotal,
+            batch_allocations
+        ) VALUES (
+            v_order_id,
+            v_item.product_id,
+            v_item.product_name,
+            v_item.quantity,
+            v_item.unit_price,
+            v_item.subtotal,
+            v_allocations
+        );
+    END LOOP;
+
+    RETURN v_order_id;
+END;
+$$;
+
+
+-- 4. Create cancel_storefront_order RPC
+CREATE OR REPLACE FUNCTION cancel_storefront_order(
+    p_order_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_order RECORD;
+    v_item RECORD;
+    v_allocation RECORD;
+    v_user_id UUID;
+    v_tenant_id UUID;
+BEGIN
+    v_user_id := auth.uid();
+    
+    -- Retrieve the order and verify ownership/status
+    SELECT * INTO v_order FROM orders WHERE id = p_order_id;
+    
+    IF v_order.id IS NULL THEN
+        RAISE EXCEPTION 'Order not found';
+    END IF;
+
+    -- We allow cancellation if it's pending, or by tenants. For simplicity, only check status
+    IF v_order.order_status = 'delivered'::order_status THEN
+        RAISE EXCEPTION 'Cannot cancel an order that has already been delivered';
+    END IF;
+    IF v_order.order_status = 'cancelled'::order_status THEN
+        RAISE EXCEPTION 'Order is already cancelled';
+    END IF;
+
+    -- Update order status
+    UPDATE orders 
+    SET order_status = 'cancelled'::order_status,
+        updated_at = NOW()
+    WHERE id = p_order_id;
+
+    -- Loop through order items and un-reserve the allocated batches
+    FOR v_item IN SELECT * FROM order_items WHERE order_id = p_order_id
+    LOOP
+        -- Loop through allocations inside the JSONB array
+        FOR v_allocation IN SELECT * FROM jsonb_to_recordset(v_item.batch_allocations) AS x(batch_id UUID, quantity INTEGER)
+        LOOP
+            -- Decrement reserved_quantity
+            UPDATE branch_inventory
+            SET reserved_quantity = GREATEST(COALESCE(reserved_quantity, 0) - v_allocation.quantity, 0),
+                updated_at = NOW()
+            WHERE id = v_allocation.batch_id;
+        END LOOP;
+    END LOOP;
+
+    RETURN TRUE;
+END;
+$$;
+
+-- End of 20260404_checkout_rpc.sql
+
+
+-- File: 20260404222300_healthcare_reviews.sql
+-- Migration: Update Healthcare Provider Enhancements
+-- Created: 2026-04-04
+
+-- 1. Add missing columns to healthcare_providers table
+ALTER TABLE public.healthcare_providers
+ADD COLUMN IF NOT EXISTS medic_subscription_id UUID REFERENCES public.medic_subscriptions(id) ON DELETE SET NULL,
+ADD COLUMN IF NOT EXISTS work_schedule JSONB DEFAULT '[]'::JSONB,
+ADD COLUMN IF NOT EXISTS slot_settings JSONB DEFAULT '{"buffer": 0, "duration": 30, "breakTimes": []}'::JSONB,
+ADD COLUMN IF NOT EXISTS marked_up_fees JSONB DEFAULT '{"chat": 0, "audio": 0, "video": 0, "office_visit": 0}'::JSONB,
+ADD COLUMN IF NOT EXISTS sub_specialty TEXT,
+ADD COLUMN IF NOT EXISTS preferred_languages TEXT[];
+
+-- 2. Create the healthcare_reviews table
+CREATE TABLE IF NOT EXISTS public.healthcare_reviews (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    provider_id UUID NOT NULL REFERENCES public.healthcare_providers(id) ON DELETE CASCADE,
+    patient_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    consultation_id UUID REFERENCES public.consultations(id) ON DELETE SET NULL,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    is_verified BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+    -- Constraints
+    CONSTRAINT unique_patient_provider_review UNIQUE (patient_id, provider_id)
+);
+
+-- 3. Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_reviews_provider_id ON public.healthcare_reviews(provider_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_patient_id ON public.healthcare_reviews(patient_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_rating ON public.healthcare_reviews(rating);
+CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON public.healthcare_reviews(created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_providers_medic_subscription_id ON public.healthcare_providers(medic_subscription_id);
+CREATE INDEX IF NOT EXISTS idx_providers_work_schedule ON public.healthcare_providers USING GIN (work_schedule);
+CREATE INDEX IF NOT EXISTS idx_providers_slot_settings ON public.healthcare_providers USING GIN (slot_settings);
+CREATE INDEX IF NOT EXISTS idx_providers_marked_up_fees ON public.healthcare_providers USING GIN (marked_up_fees);
+CREATE INDEX IF NOT EXISTS idx_providers_languages ON public.healthcare_providers USING GIN (preferred_languages);
+
+-- 4. Row-Level Security (RLS)
+ALTER TABLE public.healthcare_reviews ENABLE ROW LEVEL SECURITY;
+
+-- Public read access for verified reviews
+DROP POLICY IF EXISTS "Anyone can view verified reviews" ON public.healthcare_reviews;
+CREATE POLICY "Anyone can view verified reviews"
+    ON public.healthcare_reviews FOR SELECT
+    USING (is_verified = TRUE);
+
+-- Patients can manage their own reviews
+DROP POLICY IF EXISTS "Patients can create own reviews" ON public.healthcare_reviews;
+CREATE POLICY "Patients can create own reviews"
+    ON public.healthcare_reviews FOR INSERT
+    WITH CHECK (auth.uid() = patient_id);
+
+DROP POLICY IF EXISTS "Patients can update own reviews" ON public.healthcare_reviews;
+CREATE POLICY "Patients can update own reviews"
+    ON public.healthcare_reviews FOR UPDATE
+    USING (auth.uid() = patient_id);
+
+DROP POLICY IF EXISTS "Patients can delete own reviews" ON public.healthcare_reviews;
+CREATE POLICY "Patients can delete own reviews"
+    ON public.healthcare_reviews FOR DELETE
+    USING (auth.uid() = patient_id);
+
+-- 5. Synchronization Functions & Triggers
+-- Automatically update provider stats (average_rating, total_reviews)
+CREATE OR REPLACE FUNCTION update_provider_review_stats()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        UPDATE public.healthcare_providers
+        SET 
+            total_reviews = total_reviews + 1,
+            average_rating = (
+                SELECT ROUND(AVG(rating)::NUMERIC, 2)
+                FROM public.healthcare_reviews
+                WHERE provider_id = NEW.provider_id
+            )
+        WHERE id = NEW.provider_id;
+    ELSIF (TG_OP = 'UPDATE') THEN
+        UPDATE public.healthcare_providers
+        SET 
+            average_rating = (
+                SELECT ROUND(AVG(rating)::NUMERIC, 2)
+                FROM public.healthcare_reviews
+                WHERE provider_id = NEW.provider_id
+            )
+        WHERE id = NEW.provider_id;
+    ELSIF (TG_OP = 'DELETE') THEN
+        UPDATE public.healthcare_providers
+        SET 
+            total_reviews = GREATEST(0, total_reviews - 1),
+            average_rating = (
+                SELECT COALESCE(ROUND(AVG(rating)::NUMERIC, 2), 0.00)
+                FROM public.healthcare_reviews
+                WHERE provider_id = OLD.provider_id
+            )
+        WHERE id = OLD.provider_id;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create the trigger
+DROP TRIGGER IF EXISTS trg_update_provider_stats ON public.healthcare_reviews;
+CREATE TRIGGER trg_update_provider_stats
+    AFTER INSERT OR UPDATE OR DELETE ON public.healthcare_reviews
+    FOR EACH ROW
+    EXECUTE FUNCTION update_provider_review_stats();
+
+-- 6. Comments
+COMMENT ON TABLE public.healthcare_reviews IS 'Patient reviews and ratings for healthcare providers.';
+COMMENT ON COLUMN public.healthcare_reviews.rating IS 'Numerical rating from 1 to 5.';
+COMMENT ON COLUMN public.healthcare_reviews.is_verified IS 'Whether the review is verified (e.g. following a completed consultation).';
+
+-- End of 20260404222300_healthcare_reviews.sql
+
+
+-- File: 20260405173900_doctor_aliases.sql
+-- Doctor Aliases Table
+-- Creates system-generated aliases for secondary doctors to protect their identity
+-- Format: "Afoke A. (Kome Clinic)" - First name + Last initial + (Clinic Name)
+
+-- Create the doctor_aliases table
+CREATE TABLE public.doctor_aliases (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  doctor_id uuid NOT NULL REFERENCES public.healthcare_providers (id) ON DELETE CASCADE,
+  primary_doctor_id uuid NOT NULL REFERENCES public.healthcare_providers (id) ON DELETE CASCADE,
+  alias character varying(100) NOT NULL,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  accepted boolean NOT NULL DEFAULT false,
+  clinic_name text NULL,
+  CONSTRAINT doctor_aliases_pkey PRIMARY KEY (id),
+  CONSTRAINT doctor_aliases_unique_active UNIQUE (doctor_id, primary_doctor_id, is_active)
+) TABLESPACE pg_default;
+
+COMMENT ON TABLE public.doctor_aliases IS 'Links secondary doctors to primary doctors with system-generated aliases to protect identity during patient consultations';
+
+-- Index for finding consultants by primary doctor
+CREATE INDEX idx_doctor_aliases_primary_doctor 
+ON public.doctor_aliases USING btree (primary_doctor_id, is_active) 
+WHERE is_active = true;
+
+-- Index for finding primary doctor by consultant
+CREATE INDEX idx_doctor_aliases_doctor 
+ON public.doctor_aliases USING btree (doctor_id, is_active) 
+WHERE is_active = true;
+
+-- Enable RLS
+ALTER TABLE public.doctor_aliases ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for the table (not for the view)
+
+-- Policy: Primary doctor can see their consultants' aliases
+CREATE POLICY "Primary doctor sees consultants" 
+ON public.doctor_aliases FOR SELECT 
+USING (
+  primary_doctor_id IN (
+    SELECT id FROM public.healthcare_providers 
+    WHERE user_id = auth.uid()
+  )
+);
+
+-- Policy: Consultant can see their own alias
+CREATE POLICY "Consultant sees own alias" 
+ON public.doctor_aliases FOR SELECT 
+USING (
+  doctor_id IN (
+    SELECT id FROM public.healthcare_providers 
+    WHERE user_id = auth.uid()
+  )
+);
+
+-- Helper function to generate alias from provider data
+-- Format: "FirstName L. (Clinic Name)" e.g., "Afoke A. (Kome Clinic)"
+CREATE OR REPLACE FUNCTION public.generate_doctor_alias(
+  p_doctor_first_name TEXT,
+  p_doctor_last_name TEXT,
+  p_clinic_name TEXT
+) RETURNS TEXT AS $$
+DECLARE
+  v_first_name TEXT;
+  v_last_initial TEXT;
+  v_clean_clinic_name TEXT;
+BEGIN
+  -- Get first name (full)
+  v_first_name := INITCAP(TRIM(p_doctor_first_name));
+  
+  -- Get last name initial
+  v_last_initial := UPPER(LEFT(TRIM(p_doctor_last_name), 1));
+  
+  -- Clean clinic name: remove special chars, limit to 30 chars
+  v_clean_clinic_name := INITCAP(
+    TRIM(
+      SUBSTRING(
+        regexp_replace(p_clinic_name, '[^a-zA-Z0-9\s]', '', 'g'),
+        1,
+        30
+      )
+    )
+  );
+  
+  -- Format: Afoke A. (Kome Clinic)
+  RETURN v_first_name || ' ' || v_last_initial || '. (' || v_clean_clinic_name || ')';
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+COMMENT ON FUNCTION public.generate_doctor_alias IS 'Generates a system alias in format: FirstName L. (Clinic Name)';
+
+-- Function to create alias for a secondary doctor
+-- Note: Uses "clinic name" with double quotes to reference column with space
+CREATE OR REPLACE FUNCTION public.create_doctor_alias(
+  p_doctor_id UUID,
+  p_primary_doctor_id UUID
+) RETURNS UUID AS $$
+DECLARE
+  v_alias TEXT;
+  v_doctor_first_name TEXT;
+  v_doctor_last_name TEXT;
+  v_clinic_name TEXT;
+  v_alias_id UUID;
+BEGIN
+  -- Get secondary doctor full name
+  SELECT hp.full_name INTO v_doctor_first_name
+  FROM public.healthcare_providers hp
+  WHERE hp.id = p_doctor_id;
+
+  -- Split name into first and last
+  v_doctor_first_name := SPLIT_PART(v_doctor_first_name, ' ', 1);
+  v_doctor_last_name := COALESCE(
+    SPLIT_PART(v_doctor_first_name, ' ', 2),
+    SPLIT_PART(v_doctor_first_name, ' ', 1)
+  );
+
+  -- Get clinic name from primary doctor (use quoted column name "clinic name")
+  SELECT COALESCE(hp."clinic name", hp.full_name) INTO v_clinic_name
+  FROM public.healthcare_providers hp
+  WHERE hp.id = p_primary_doctor_id;
+
+  -- Generate alias
+  v_alias := public.generate_doctor_alias(
+    v_doctor_first_name,
+    v_doctor_last_name,
+    v_clinic_name
+  );
+
+  -- Insert or update alias (idempotent)
+  INSERT INTO public.doctor_aliases (
+    doctor_id,
+    primary_doctor_id,
+    alias,
+    is_active,
+    created_at
+  )
+  VALUES (
+    p_doctor_id,
+    p_primary_doctor_id,
+    v_alias,
+    true,
+    NOW()
+  )
+  ON CONFLICT (doctor_id, primary_doctor_id, is_active) 
+  DO UPDATE SET alias = EXCLUDED.alias
+  RETURNING id INTO v_alias_id;
+
+  RETURN v_alias_id;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION public.create_doctor_alias IS 'Creates or updates a system-generated alias for a secondary doctor';
+
+-- View to display alias info with provider details (read-only, RLS inherited from base table)
+-- Uses quoted column name "clinic name" 
+CREATE OR REPLACE VIEW public.doctor_aliases_with_details AS
+SELECT
+  da.id,
+  da.doctor_id,
+  da.primary_doctor_id,
+  da.alias,
+  da.is_active,
+  da.created_at,
+  -- Provider details from healthcare_providers
+  hp.full_name AS doctor_name,
+  hp.profile_photo_url,
+  hp.specialization,
+  hp.sub_specialty,
+  hp.years_of_experience,
+  hp.consultation_types,
+  hp.marked_up_fees AS consultation_fees,
+  hp.preferred_languages,
+  hp.average_rating,
+  hp.total_consultations,
+  hp.total_reviews,
+  hp.is_verified,
+  -- Primary doctor info (using quoted column name "clinic name")
+  hp_primary.full_name AS primary_doctor_name,
+  COALESCE(hp_primary."clinic name", hp_primary.full_name) AS clinic_name
+FROM public.doctor_aliases da
+JOIN public.healthcare_providers hp 
+  ON da.doctor_id = hp.id
+JOIN public.healthcare_providers hp_primary 
+  ON da.primary_doctor_id = hp_primary.id
+WHERE da.is_active = true;
+
+COMMENT ON VIEW public.doctor_aliases_with_details IS 'Doctor aliases with full provider details for display in consultations';
+
+-- Grant permissions (views don't need RLS policies)
+GRANT SELECT ON public.doctor_aliases TO authenticated;
+GRANT SELECT ON public.doctor_aliases_with_details TO authenticated;
+GRANT SELECT ON public.doctor_aliases TO anon;
+GRANT SELECT ON public.doctor_aliases_with_details TO anon;
+GRANT EXECUTE ON FUNCTION public.generate_doctor_alias TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_doctor_alias TO authenticated;
+
+-- Add foreign key indexes
+CREATE INDEX idx_doctor_aliases_doctor_fkey 
+ON public.doctor_aliases USING btree (doctor_id);
+
+CREATE INDEX idx_doctor_aliases_primary_fkey 
+ON public.doctor_aliases USING btree (primary_doctor_id);
+
+-- End of 20260405173900_doctor_aliases.sql
+
+
+-- File: 20260406000000_doctor_strike_logs.sql
+-- Doctor Strike Logs Table
+-- Logs reasons for strikes given to partner doctors
+CREATE TABLE public.doctor_strike_logs (
+    id uuid NOT NULL DEFAULT gen_random_uuid(),
+    doctor_id uuid NOT NULL REFERENCES public.healthcare_providers(id) ON DELETE CASCADE,
+    primary_doctor_id uuid NOT NULL REFERENCES public.healthcare_providers(id) ON DELETE CASCADE,
+    reason text NOT NULL,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT doctor_strike_logs_pkey PRIMARY KEY (id)
+);
+
+-- Index for searching log history
+CREATE INDEX idx_doctor_strike_logs_doctor ON public.doctor_strike_logs (doctor_id);
+CREATE INDEX idx_doctor_strike_logs_primary ON public.doctor_strike_logs (primary_doctor_id);
+
+-- Enable RLS
+ALTER TABLE public.doctor_strike_logs ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policy: Primary doctors can see their own logs, admins can see all
+CREATE POLICY "Primary doctors see their own strike logs" 
+ON public.doctor_strike_logs FOR SELECT 
+USING (
+    primary_doctor_id IN (
+        SELECT id FROM public.healthcare_providers 
+        WHERE user_id = auth.uid()
+    )
+);
+
+CREATE POLICY "Primary doctors can create strike logs"
+ON public.doctor_strike_logs FOR INSERT
+WITH CHECK (
+    primary_doctor_id IN (
+        SELECT id FROM public.healthcare_providers 
+        WHERE user_id = auth.uid()
+    )
+);
+
+-- Grant permissions
+GRANT ALL ON public.doctor_strike_logs TO authenticated;
+GRANT ALL ON public.doctor_strike_logs TO service_role;
+
+-- End of 20260406000000_doctor_strike_logs.sql
+
+
+-- File: 20260406000001_doctor_aliases_rls.sql
+-- 5. PUBLIC SELECT policy (refining existing if any)
+DROP POLICY IF EXISTS "Anyone can see healthcare providers" ON public.healthcare_providers;
+CREATE POLICY "Anyone can see healthcare providers"
+ON public.healthcare_providers FOR SELECT
+USING (true);
+
+-- 1. SELECT policies (already exist but refined)
+DROP POLICY IF EXISTS "Primary doctor sees consultants" ON public.doctor_aliases;
+CREATE POLICY "Primary doctor sees consultants" 
+ON public.doctor_aliases FOR SELECT 
+USING (
+  primary_doctor_id IN (
+    SELECT id FROM public.healthcare_providers 
+    WHERE user_id = auth.uid()
+  )
+);
+
+DROP POLICY IF EXISTS "Consultant sees own alias" ON public.doctor_aliases;
+CREATE POLICY "Consultant sees own alias" 
+ON public.doctor_aliases FOR SELECT 
+USING (
+  doctor_id IN (
+    SELECT id FROM public.healthcare_providers 
+    WHERE user_id = auth.uid()
+  )
+);
+
+-- 2. INSERT policy
+-- Allows primary doctor to invite other doctors
+DROP POLICY IF EXISTS "Primary doctor can invite consultants" ON public.doctor_aliases;
+CREATE POLICY "Primary doctor can invite consultants"
+ON public.doctor_aliases FOR INSERT
+WITH CHECK (
+  primary_doctor_id IN (
+    SELECT id FROM public.healthcare_providers 
+    WHERE user_id = auth.uid()
+  )
+);
+
+-- 3. UPDATE policy
+-- Allows primary doctor to manage their consultants (e.g. toggle active state)
+DROP POLICY IF EXISTS "Primary doctor can update consultants" ON public.doctor_aliases;
+CREATE POLICY "Primary doctor can update consultants"
+ON public.doctor_aliases FOR UPDATE
+USING (
+  primary_doctor_id IN (
+    SELECT id FROM public.healthcare_providers 
+    WHERE user_id = auth.uid()
+  )
+)
+WITH CHECK (
+  primary_doctor_id IN (
+    SELECT id FROM public.healthcare_providers 
+    WHERE user_id = auth.uid()
+  )
+);
+
+-- 4. DELETE policy
+-- Allows primary doctor to remove consultants from their clinic
+DROP POLICY IF EXISTS "Primary doctor can delete consultants" ON public.doctor_aliases;
+CREATE POLICY "Primary doctor can delete consultants"
+ON public.doctor_aliases FOR DELETE
+USING (
+  primary_doctor_id IN (
+    SELECT id FROM public.healthcare_providers 
+    WHERE user_id = auth.uid()
+  )
+);
+
+-- 5. PUBLIC SELECT policy
+-- Allows anyone (patients) to see accepted and active consultants for a clinic
+DROP POLICY IF EXISTS "Public can see active consultants" ON public.doctor_aliases;
+CREATE POLICY "Public can see active consultants"
+ON public.doctor_aliases FOR SELECT
+USING (accepted = true AND (is_active IS NOT FALSE));
+
+-- Grant the table to authenticated and anon users
+GRANT ALL ON public.doctor_aliases TO authenticated;
+GRANT SELECT ON public.doctor_aliases TO anon;
+
+-- End of 20260406000001_doctor_aliases_rls.sql
+
+
+-- File: 20260406000002_normalize_provider_schedule.sql
+-- Migration: Refactor Scheduling Fields
+-- 1. Add individual columns for duration and buffer to healthcare_providers
+ALTER TABLE public.healthcare_providers 
+ADD COLUMN IF NOT EXISTS slot_duration_minutes INTEGER DEFAULT 30,
+ADD COLUMN IF NOT EXISTS buffer_time_minutes INTEGER DEFAULT 0;
+
+-- 2. Migrate data from slot_settings JSONB if exists
+UPDATE public.healthcare_providers
+SET 
+  slot_duration_minutes = COALESCE((slot_settings->>'duration')::integer, 30),
+  buffer_time_minutes = COALESCE((slot_settings->>'buffer')::integer, 0)
+WHERE slot_settings IS NOT NULL;
+
+-- 3. Remove the redundant JSONB columns
+ALTER TABLE public.healthcare_providers 
+DROP COLUMN IF EXISTS work_schedule,
+DROP COLUMN IF EXISTS slot_settings;
+
+-- 4. Ensure RLS for the provider_availability_templates table
+-- (Assuming the table was just created by the user)
+ALTER TABLE public.provider_availability_templates ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Providers can manage their own templates"
+ON public.provider_availability_templates
+FOR ALL
+USING (
+  provider_id IN (
+    SELECT id FROM public.healthcare_providers WHERE user_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Anyone can view active availability templates"
+ON public.provider_availability_templates
+FOR SELECT
+USING (is_active = true);
+
+-- End of 20260406000002_normalize_provider_schedule.sql
+
+
+-- File: 20260406000003_fix_availability_rls.sql
+-- Migration: Fix Availability Template RLS
+-- Replacing the monolithic 'FOR ALL' policy with explicit ones to ensure DELETE works reliably with subqueries.
+
+-- 1. Drop the old unified policy
+DROP POLICY IF EXISTS "Providers can manage their own templates" ON public.provider_availability_templates;
+DROP POLICY IF EXISTS "Anyone can view active availability templates" ON public.provider_availability_templates;
+
+-- 2. Add explicit granular policies
+CREATE POLICY "Provider Select" ON public.provider_availability_templates
+FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1 FROM public.healthcare_providers 
+    WHERE id = provider_availability_templates.provider_id 
+    AND (user_id = auth.uid())
+  )
+  OR is_active = true
+);
+
+CREATE POLICY "Provider Insert" ON public.provider_availability_templates
+FOR INSERT
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.healthcare_providers 
+    WHERE id = provider_id 
+    AND user_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Provider Update" ON public.provider_availability_templates
+FOR UPDATE
+USING (
+  EXISTS (
+    SELECT 1 FROM public.healthcare_providers 
+    WHERE id = provider_availability_templates.provider_id 
+    AND user_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Provider Delete" ON public.provider_availability_templates
+FOR DELETE
+USING (
+  EXISTS (
+    SELECT 1 FROM public.healthcare_providers 
+    WHERE id = provider_availability_templates.provider_id 
+    AND user_id = auth.uid()
+  )
+);
+
+GRANT ALL ON public.provider_availability_templates TO authenticated;
+GRANT SELECT ON public.provider_availability_templates TO anon;
+
+-- End of 20260406000003_fix_availability_rls.sql
+
+
+-- File: 20260406000004_soft_delete_scheduling.sql
+-- Migration: Implement Soft-Delete for Availability Templates
+-- Adding is_closed column and making provider_id + day_of_week unique for reliable upserting.
+
+-- 1. Add the is_closed column
+ALTER TABLE public.provider_availability_templates 
+ADD COLUMN IF NOT EXISTS is_closed BOOLEAN DEFAULT FALSE;
+
+-- 2. Add a unique constraint to prevent duplicate day entries for a single provider
+-- This allows us to use 'ON CONFLICT' to simply toggle is_closed state.
+ALTER TABLE public.provider_availability_templates 
+ADD CONSTRAINT unique_provider_day UNIQUE (provider_id, day_of_week);
+
+-- 3. Pre-populate is_closed for existing records that might be logically inactive
+UPDATE public.provider_availability_templates 
+SET is_closed = NOT is_active 
+WHERE is_active IS NOT NULL;
+
+-- End of 20260406000004_soft_delete_scheduling.sql
+
+
+-- File: 20260406000005_add_day_name_to_templates.sql
+-- Migration: Add Human-Readable Day Names to Availability Templates
+-- This improves database readability for manual queries and reporting.
+
+ALTER TABLE public.provider_availability_templates 
+ADD COLUMN IF NOT EXISTS day_name TEXT;
+
+-- Update existing records with the correct day name based on day_of_week
+UPDATE public.provider_availability_templates 
+SET day_name = CASE 
+    WHEN day_of_week = 0 THEN 'Sunday'
+    WHEN day_of_week = 1 THEN 'Monday'
+    WHEN day_of_week = 2 THEN 'Tuesday'
+    WHEN day_of_week = 3 THEN 'Wednesday'
+    WHEN day_of_week = 4 THEN 'Thursday'
+    WHEN day_of_week = 5 THEN 'Friday'
+    WHEN day_of_week = 6 THEN 'Saturday'
+END
+WHERE day_name IS NULL;
+
+-- End of 20260406000005_add_day_name_to_templates.sql
+
+
+-- File: 20260406204500_healthcare_review_replies.sql
+-- Migration: Create healthcare_review_replies table
+-- Created: 2026-04-06
+
+CREATE TABLE IF NOT EXISTS public.healthcare_review_replies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    review_id UUID NOT NULL REFERENCES public.healthcare_reviews(id) ON DELETE CASCADE,
+    provider_id UUID NOT NULL REFERENCES public.healthcare_providers(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+    -- Constraints: Only one reply per review
+    CONSTRAINT unique_review_reply UNIQUE (review_id)
+);
+
+-- Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_review_replies_review_id ON public.healthcare_review_replies(review_id);
+CREATE INDEX IF NOT EXISTS idx_review_replies_provider_id ON public.healthcare_review_replies(provider_id);
+
+-- Row-Level Security (RLS)
+ALTER TABLE public.healthcare_review_replies ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can view replies to verified reviews
+DROP POLICY IF EXISTS "Anyone can view replies" ON public.healthcare_review_replies;
+CREATE POLICY "Anyone can view replies"
+    ON public.healthcare_review_replies FOR SELECT
+    USING (EXISTS (
+        SELECT 1 FROM public.healthcare_reviews 
+        WHERE id = review_id AND is_verified = TRUE
+    ));
+
+-- Providers can manage their own replies
+DROP POLICY IF EXISTS "Providers can create own replies" ON public.healthcare_review_replies;
+CREATE POLICY "Providers can create own replies"
+    ON public.healthcare_review_replies FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.healthcare_providers
+            WHERE id = provider_id AND user_id = auth.uid()
+        )
+    );
+
+DROP POLICY IF EXISTS "Providers can update own replies" ON public.healthcare_review_replies;
+CREATE POLICY "Providers can update own replies"
+    ON public.healthcare_review_replies FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.healthcare_providers
+            WHERE id = provider_id AND user_id = auth.uid()
+        )
+    );
+
+DROP POLICY IF EXISTS "Providers can delete own replies" ON public.healthcare_review_replies;
+CREATE POLICY "Providers can delete own replies"
+    ON public.healthcare_review_replies FOR DELETE
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.healthcare_providers
+            WHERE id = provider_id AND user_id = auth.uid()
+        )
+    );
+
+-- Functions
+CREATE OR REPLACE FUNCTION update_review_reply_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger
+CREATE TRIGGER trg_update_review_reply_timestamp
+    BEFORE UPDATE ON public.healthcare_review_replies
+    FOR EACH ROW
+    EXECUTE FUNCTION update_review_reply_timestamp();
+
+-- End of 20260406204500_healthcare_review_replies.sql
+
+
+-- File: 20260406205000_seed_healthcare_reviews.sql
+-- Migration: Seed healthcare reviews for testing
+-- Created: 2026-04-06
+
+DO $$
+DECLARE
+    v_provider_id UUID;
+    v_patient_id UUID;
+    v_count INT;
+BEGIN
+    -- Get the first provider
+    SELECT id INTO v_provider_id FROM public.healthcare_providers LIMIT 1;
+    
+    IF v_provider_id IS NOT NULL THEN
+        -- Check if reviews already exist
+        SELECT COUNT(*) INTO v_count FROM public.healthcare_reviews WHERE provider_id = v_provider_id;
+        
+        IF v_count = 0 THEN
+            -- Create a few reviews
+            -- We try to find users from auth.users (excluding the provider's user_id if possible)
+            FOR i IN 0..4 LOOP
+                SELECT id INTO v_patient_id 
+                FROM auth.users 
+                WHERE id NOT IN (SELECT user_id FROM public.healthcare_providers WHERE id = v_provider_id)
+                OFFSET i LIMIT 1;
+                
+                IF v_patient_id IS NOT NULL THEN
+                    INSERT INTO public.healthcare_reviews (
+                        provider_id,
+                        patient_id,
+                        rating,
+                        comment,
+                        is_verified,
+                        created_at
+                    )
+                    VALUES (
+                        v_provider_id,
+                        v_patient_id,
+                        CASE (i % 5)
+                            WHEN 0 THEN 5 
+                            WHEN 1 THEN 4 
+                            WHEN 2 THEN 5 
+                            WHEN 3 THEN 3 
+                            ELSE 5 
+                        END,
+                        CASE (i % 5)
+                            WHEN 0 THEN 'Excellent doctor, very attentive and professional. The consultation was thorough.'
+                            WHEN 1 THEN 'Good experience overall. The doctor was knowledgeable, though the clinic was quite busy.'
+                            WHEN 2 THEN 'Very helpful consultation. All my questions were answered clearly. Highly recommended!'
+                            WHEN 3 THEN 'Decent service, but I felt the appointment was a bit rushed.'
+                            ELSE 'Five stars! Best medical professional I have visited in a long time.'
+                        END,
+                        TRUE,
+                        NOW() - (i || ' days')::interval
+                    )
+                    ON CONFLICT (patient_id, provider_id) DO NOTHING;
+                END IF;
+            END LOOP;
+            
+            -- Add one sample reply
+            DECLARE
+                v_review_id UUID;
+            BEGIN
+                SELECT id INTO v_review_id 
+                FROM public.healthcare_reviews 
+                WHERE provider_id = v_provider_id 
+                LIMIT 1;
+                
+                IF v_review_id IS NOT NULL THEN
+                    INSERT INTO public.healthcare_review_replies (
+                        review_id,
+                        provider_id,
+                        content,
+                        created_at
+                    )
+                    VALUES (
+                        v_review_id,
+                        v_provider_id,
+                        'Thank you so much for your positive feedback! I''m glad I could help with your recovery.',
+                        NOW()
+                    )
+                    ON CONFLICT (review_id) DO NOTHING;
+                END IF;
+            END;
+        END IF;
+    END IF;
+END $$;
+
+-- End of 20260406205000_seed_healthcare_reviews.sql
+
+
+-- File: 20260406210000_fix_provider_settings_columns.sql
+-- Migration: Add missing provider settings columns and fix constraints
+-- 1. Add follow_up_duration to healthcare_providers
+ALTER TABLE public.healthcare_providers 
+ADD COLUMN IF NOT EXISTS follow_up_duration INTEGER DEFAULT 24;
+
+-- 2. Relax slot_duration check on provider_availability_templates to allow more flexible scheduling
+-- First find the existing constraint name if possible, or just drop it if it matches the standard pattern
+-- Typical name for inline check is provider_availability_templates_slot_duration_check
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.constraint_column_usage 
+        WHERE table_name = 'provider_availability_templates' 
+        AND column_name = 'slot_duration'
+    ) THEN
+        BEGIN
+            ALTER TABLE public.provider_availability_templates DROP CONSTRAINT IF EXISTS provider_availability_templates_slot_duration_check;
+        EXCEPTION WHEN undefined_object THEN
+            -- Ignore if name is different, we can't easily guess it without information_schema
+            NULL;
+        END;
+    END IF;
+END $$;
+
+-- Add updated check constraint to support 15, 30, 45, 60, 90, 120 minutes as per UI
+-- We also ensure it handles existing values
+ALTER TABLE public.provider_availability_templates
+ADD CONSTRAINT provider_availability_templates_slot_duration_check_v2 
+CHECK (slot_duration IN (15, 30, 45, 60, 90, 120));
+
+-- 3. Ensure RLS for the healthcare_providers table allows updating these new columns
+-- (Standard UPDATE policy usually covers all columns, so this is just a sanity check)
+-- No changes needed if the existing policy is 'user_id = auth.uid()'
+
+-- End of 20260406210000_fix_provider_settings_columns.sql
+
+
+-- File: 20260406211500_fix_naming_and_constraints_final.sql
+-- Migration: Correct column naming and update constraints
+-- 1. Rename "clinic name" to "clinic_name" to avoid spacing issues
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'healthcare_providers' 
+        AND column_name = 'clinic name'
+    ) THEN
+        ALTER TABLE public.healthcare_providers RENAME COLUMN "clinic name" TO clinic_name;
+    END IF;
+END $$;
+
+-- 2. Ensure follow_up_duration is present (it was in the schema but just in case)
+ALTER TABLE public.healthcare_providers 
+ADD COLUMN IF NOT EXISTS follow_up_duration INTEGER DEFAULT 24;
+
+-- 3. Update the slot_duration check constraint name to be more robust and allow new values
+-- We use a name that is less likely to conflict and handles the new options
+ALTER TABLE public.provider_availability_templates 
+DROP CONSTRAINT IF EXISTS provider_availability_templates_slot_duration_check;
+
+ALTER TABLE public.provider_availability_templates 
+DROP CONSTRAINT IF EXISTS provider_availability_templates_slot_duration_check_v2;
+
+ALTER TABLE public.provider_availability_templates
+ADD CONSTRAINT prov_avail_slot_duration_valid 
+CHECK (slot_duration IN (15, 30, 45, 60, 90, 120));
+
+-- 4. Set defaults for any NULL values in critical columns to prevent update failures
+UPDATE public.healthcare_providers SET strike = 0 WHERE strike IS NULL;
+UPDATE public.healthcare_providers SET accept_invite = true WHERE accept_invite IS NULL;
+UPDATE public.healthcare_providers SET slot_duration_minutes = 30 WHERE slot_duration_minutes IS NULL;
+UPDATE public.healthcare_providers SET buffer_time_minutes = 0 WHERE buffer_time_minutes IS NULL;
+UPDATE public.healthcare_providers SET follow_up_duration = 24 WHERE follow_up_duration IS NULL;
+
+-- End of 20260406211500_fix_naming_and_constraints_final.sql
+
+
+-- File: 20260406211502_allow_booking_slot.sql
+-- Allow authenticated users (patients) to insert provider time slots for booking
+-- Also ensure they can reserve a slot
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'provider_time_slots' 
+        AND policyname = 'Authenticated users can create slots'
+    ) THEN
+        CREATE POLICY "Authenticated users can create slots"
+            ON provider_time_slots FOR INSERT
+            WITH CHECK (auth.uid() IS NOT NULL);
+    END IF;
+END $$;
+
+-- End of 20260406211502_allow_booking_slot.sql
+
+
+-- File: 20260416000000_add_provider_onboarding_fields.sql
+-- Add missing onboarding fields to healthcare_providers table
+ALTER TABLE healthcare_providers
+ADD COLUMN IF NOT EXISTS license_document_url TEXT;
+
+-- End of 20260416000000_add_provider_onboarding_fields.sql
+
+
+-- File: 20260417210000_add_idle_timeout_to_providers.sql
+-- Add idle_timeout_minutes column to healthcare_providers
+ALTER TABLE healthcare_providers 
+ADD COLUMN IF NOT EXISTS idle_timeout_minutes INTEGER DEFAULT 30;
+
+-- Add check constraint to cap at 60 minutes and minimum 1 minute
+ALTER TABLE healthcare_providers
+ADD CONSTRAINT check_idle_timeout_range 
+CHECK (idle_timeout_minutes >= 1 AND idle_timeout_minutes <= 60);
+
+-- Comment for documentation
+COMMENT ON COLUMN healthcare_providers.idle_timeout_minutes IS 'Inactivity timeout in minutes for auto-logout (min 1, max 60)';
+
+-- End of 20260417210000_add_idle_timeout_to_providers.sql
+
+
+-- File: 20260417215300_remove_unique_phone_constraint.sql
+-- ============================================================
+-- Migration: Remove Unique Phone Constraint on Patients
+-- ============================================================
+-- Purpose: Allow healthcare providers to register multiple patients 
+-- with the same phone number (e.g., family members, minors).
+-- Also clarifies that patients can already be associated with
+-- multiple different providers (the previous constraint was per-provider).
+
+ALTER TABLE patients 
+DROP CONSTRAINT IF EXISTS patients_healthcare_provider_id_phone_key;
+
+-- We still keep the index on phone for search performance, 
+-- but it is no longer unique.
+COMMENT ON TABLE patients IS 'Updated: Removed unique constraint on phone per provider to allow family registration.';
+
+-- End of 20260417215300_remove_unique_phone_constraint.sql
+
+
+-- File: 20260417223200_fix_patients_rls_visibility.sql
+-- ============================================================
+-- Migration: Fix Patient Deletion RLS Conflicts
+-- ============================================================
+-- Purpose: Allow owners to view their own records even if marked as deleted.
+-- This ensures that soft-delete updates can be confirmed by the database
+-- while maintaining privacy. The UI already filters these out via queries.
+
+-- 1. Drop the old restrictive select policy
+DROP POLICY IF EXISTS "Providers can view their patients" ON patients;
+
+-- 2. Create a new select policy that only checks for ownership
+CREATE POLICY "Providers can view their patients"
+ON patients FOR SELECT
+USING (
+    healthcare_provider_id IN (
+        SELECT id FROM healthcare_providers
+        WHERE user_id = auth.uid()
+    )
+    -- Remove the 'AND is_deleted = FALSE' so providers can see their own deleted records
+);
+
+-- Note: The UI query should still explicitly filter with .eq('is_deleted', false)
+-- to keep the patient list clean.
+COMMENT ON POLICY "Providers can view their patients" ON patients IS 'Allowed owners to see their own records, even if deleted, to prevent soft-delete confirmation hangs.';
+
+-- End of 20260417223200_fix_patients_rls_visibility.sql
+
+
+-- File: 20260417235800_sync_prescribed_drugs.sql
+-- ============================================================================
+-- Sync prescribed_drugs table with user specifications
+-- ============================================================================
+
+-- 1. Rename drug_id to product_id if it exists
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'prescribed_drugs' AND column_name = 'drug_id'
+    ) THEN
+        ALTER TABLE prescribed_drugs RENAME COLUMN drug_id TO product_id;
+    END IF;
+END $$;
+
+-- 2. Drop existing foreign key on product_id/drug_id if it exists to clean up
+DO $$
+DECLARE
+    v_constraint_name TEXT;
+BEGIN
+    SELECT constraint_name INTO v_constraint_name
+    FROM information_schema.key_column_usage
+    WHERE table_name = 'prescribed_drugs' AND column_name = 'product_id';
+    
+    IF v_constraint_name IS NOT NULL THEN
+        EXECUTE 'ALTER TABLE prescribed_drugs DROP CONSTRAINT IF EXISTS ' || v_constraint_name;
+    END IF;
+END $$;
+
+-- 3. Add proper foreign key to products
+ALTER TABLE prescribed_drugs 
+    ADD CONSTRAINT prescribed_drugs_product_id_fkey 
+    FOREIGN KEY (product_id) REFERENCES products(id);
+
+-- 4. Ensure all columns from the user's spec exist
+ALTER TABLE prescribed_drugs ADD COLUMN IF NOT EXISTS generic_name TEXT;
+ALTER TABLE prescribed_drugs ADD COLUMN IF NOT EXISTS dispense_as TEXT;
+ALTER TABLE prescribed_drugs ADD COLUMN IF NOT EXISTS dispense_quantity INTEGER;
+ALTER TABLE prescribed_drugs ADD COLUMN IF NOT EXISTS dosage TEXT;
+ALTER TABLE prescribed_drugs ADD COLUMN IF NOT EXISTS frequency TEXT;
+ALTER TABLE prescribed_drugs ADD COLUMN IF NOT EXISTS drug_pic_url TEXT;
+ALTER TABLE prescribed_drugs ADD COLUMN IF NOT EXISTS duration TEXT;
+ALTER TABLE prescribed_drugs ADD COLUMN IF NOT EXISTS special_instructions TEXT;
+ALTER TABLE prescribed_drugs ADD COLUMN IF NOT EXISTS substitution_allowed BOOLEAN DEFAULT true;
+ALTER TABLE prescribed_drugs ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+
+-- 5. Update status check constraint
+ALTER TABLE prescribed_drugs DROP CONSTRAINT IF EXISTS prescribed_drugs_status_check;
+ALTER TABLE prescribed_drugs ADD CONSTRAINT prescribed_drugs_status_check 
+    CHECK (status IN ('pending', 'dispensed', 'out_of_stock', 'cancelled'));
+
+-- 6. Ensure updated_at trigger exists
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_prescribed_drugs_updated_at') THEN
+        CREATE TRIGGER update_prescribed_drugs_updated_at
+            BEFORE UPDATE ON prescribed_drugs
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
+
+-- End of 20260417235800_sync_prescribed_drugs.sql
+
+
+-- File: 20260418000000_create_review_reports.sql
+-- Migration: Create healthcare_review_reports table
+-- Created: 2026-04-18
+
+CREATE TABLE IF NOT EXISTS public.healthcare_review_reports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    review_id UUID NOT NULL REFERENCES public.healthcare_reviews(id) ON DELETE CASCADE,
+    reporter_id UUID NOT NULL REFERENCES public.healthcare_providers(id) ON DELETE CASCADE,
+    reason TEXT NOT NULL,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'resolved', 'dismissed')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_review_reports_review_id ON public.healthcare_review_reports(review_id);
+CREATE INDEX IF NOT EXISTS idx_review_reports_reporter_id ON public.healthcare_review_reports(reporter_id);
+
+-- Row-Level Security (RLS)
+ALTER TABLE public.healthcare_review_reports ENABLE ROW LEVEL SECURITY;
+
+-- Providers can manage their own reports
+DROP POLICY IF EXISTS "Providers can create own reports" ON public.healthcare_review_reports;
+CREATE POLICY "Providers can create own reports"
+    ON public.healthcare_review_reports FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.healthcare_providers
+            WHERE id = reporter_id AND user_id = auth.uid()
+        )
+    );
+
+DROP POLICY IF EXISTS "Providers can view own reports" ON public.healthcare_review_reports;
+CREATE POLICY "Providers can view own reports"
+    ON public.healthcare_review_reports FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.healthcare_providers
+            WHERE id = reporter_id AND user_id = auth.uid()
+        )
+    );
+
+-- Functions
+CREATE OR REPLACE FUNCTION update_review_report_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger
+CREATE TRIGGER trg_update_review_report_timestamp
+    BEFORE UPDATE ON public.healthcare_review_reports
+    FOR EACH ROW
+    EXECUTE FUNCTION update_review_report_timestamp();
+
+-- End of 20260418000000_create_review_reports.sql
+
+
+-- File: 20260418000001_create_chat_system.sql
+-- Harmonized Chat System Migration
+-- This aligns with the user's existing schema while adding medical capabilities.
+
+-- 1. Extend Enums (if they don't already have 'medic')
+-- We use a DO block to safely add types if they don't exist
+DO $$
+BEGIN
+    -- Check if 'medic' exists in sender_type
+    IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'sender_type' AND e.enumlabel = 'medic') THEN
+        ALTER TYPE public.sender_type ADD VALUE 'medic';
+    END IF;
+    
+    -- Check if 'medic' exists in user_type (used by typing indicators in some schemas)
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_type') THEN
+        IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'user_type' AND e.enumlabel = 'medic') THEN
+            ALTER TYPE public.user_type ADD VALUE 'medic';
+        END IF;
+    END IF;
+END
+$$;
+
+-- 2. Ensure Conversations Table supports Consultations
+-- The user's snippet provided 'chat_conversations'
+ALTER TABLE public.chat_conversations 
+ADD COLUMN IF NOT EXISTS consultation_id UUID REFERENCES public.consultations(id) ON DELETE CASCADE,
+ADD COLUMN IF NOT EXISTS consultation_code VARCHAR(20);
+
+-- Table structure harmonization (referencing the user's snippet)
+-- We assume these tables exist as per user's prompt, but we ensure the columns and links are there.
+
+-- 3. Typing Indicators (Clinical version)
+CREATE TABLE IF NOT EXISTS public.chat_typing_indicators (
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+    conversation_id UUID NOT NULL REFERENCES public.chat_conversations(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL,
+    user_type TEXT NOT NULL CHECK (user_type IN ('medic', 'customer', 'staff', 'ai_agent')),
+    is_typing BOOLEAN DEFAULT TRUE,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '10 seconds'),
+    UNIQUE (conversation_id, user_id)
+);
+
+-- 4. RLS Policies for Harmonized Schema
+ALTER TABLE public.chat_conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.chat_attachments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.chat_typing_indicators ENABLE ROW LEVEL SECURITY;
+
+-- Conversations Access
+DROP POLICY IF EXISTS "Participants can view conversations" ON public.chat_conversations;
+CREATE POLICY "Participants can view conversations"
+ON public.chat_conversations FOR SELECT
+USING (
+    customer_id = auth.uid() OR 
+    auth.uid() IN (SELECT user_id FROM public.healthcare_providers) OR
+    tenant_id IN (SELECT tenant_id FROM public.users WHERE id = auth.uid() AND role IN ('tenant_admin', 'platform_admin'))
+);
+
+-- Messages Access
+DROP POLICY IF EXISTS "Participants can view messages" ON public.chat_messages;
+CREATE POLICY "Participants can view messages"
+ON public.chat_messages FOR SELECT
+USING (
+    conversation_id IN (
+        SELECT id FROM public.chat_conversations
+        WHERE customer_id = auth.uid() OR 
+              auth.uid() IN (SELECT user_id FROM public.healthcare_providers)
+    )
+);
+
+DROP POLICY IF EXISTS "Participants can insert messages" ON public.chat_messages;
+CREATE POLICY "Participants can insert messages"
+ON public.chat_messages FOR INSERT
+WITH CHECK (
+    conversation_id IN (
+        SELECT id FROM public.chat_conversations
+        WHERE customer_id = auth.uid() OR 
+              auth.uid() IN (SELECT user_id FROM public.healthcare_providers)
+    )
+);
+
+-- Trigger to automatically generate consultation_code if it's a medical chat
+CREATE OR REPLACE FUNCTION generate_consultation_code()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.consultation_id IS NOT NULL AND NEW.consultation_code IS NULL THEN
+        NEW.consultation_code := 'CONS-' || UPPER(SUBSTRING(REPLACE(NEW.consultation_id::text, '-', ''), 1, 4));
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_generate_consultation_code ON public.chat_conversations;
+CREATE TRIGGER trigger_generate_consultation_code
+    BEFORE INSERT OR UPDATE ON public.chat_conversations
+    FOR EACH ROW
+    EXECUTE FUNCTION generate_consultation_code();
+
+-- End of 20260418000001_create_chat_system.sql
+
+
+-- File: 20260418000002_fix_chat_rls_policies.sql
+-- Migration: Fix Chat RLS Policies
+-- Purpose: Allow medics and patients to initialize and update chat conversations
+
+-- 1. Ensure RLS is enabled
+ALTER TABLE public.chat_conversations ENABLE ROW LEVEL SECURITY;
+
+-- 2. INSERT Policy
+-- Allows medics to create a conversation if they are part of a registered healthcare provider clinic
+DROP POLICY IF EXISTS "Medics can create conversations" ON public.chat_conversations;
+CREATE POLICY "Medics can create conversations"
+ON public.chat_conversations FOR INSERT
+WITH CHECK (
+    auth.uid() IN (SELECT user_id FROM public.healthcare_providers)
+);
+
+-- 3. SELECT Policy (Harmonized)
+-- Allows participants (patient or medic) to view the conversation
+DROP POLICY IF EXISTS "Participants can view conversations" ON public.chat_conversations;
+CREATE POLICY "Participants can view conversations"
+ON public.chat_conversations FOR SELECT
+USING (
+    customer_id = auth.uid() OR 
+    auth.uid() IN (SELECT user_id FROM public.healthcare_providers)
+);
+
+-- 4. UPDATE Policy
+-- Allows participants to update status or metadata (like last_message_time)
+DROP POLICY IF EXISTS "Participants can update conversations" ON public.chat_conversations;
+CREATE POLICY "Participants can update conversations"
+ON public.chat_conversations FOR UPDATE
+USING (
+    customer_id = auth.uid() OR 
+    auth.uid() IN (SELECT user_id FROM public.healthcare_providers)
+);
+
+-- 5. DELETE Policy (Safety)
+-- Only admins should delete, but we prevent accidental deletions by standard users
+DROP POLICY IF EXISTS "Admins can delete conversations" ON public.chat_conversations;
+CREATE POLICY "Admins can delete conversations"
+ON public.chat_conversations FOR DELETE
+USING (
+    auth.uid() IN (SELECT id FROM public.users WHERE role IN ('tenant_admin', 'platform_admin'))
+);
+
+-- End of 20260418000002_fix_chat_rls_policies.sql
+
+
+-- File: 20260418000003_make_chat_columns_nullable.sql
+-- Migration: Make Retail Columns Nullable in Chat Conversations
+-- Purpose: Support clinical consultations that are not tied to a specific retail tenant or branch
+
+-- 1. Alter tenant_id to be nullable
+ALTER TABLE public.chat_conversations 
+ALTER COLUMN tenant_id DROP NOT NULL;
+
+-- 2. Alter branch_id to be nullable
+ALTER TABLE public.chat_conversations 
+ALTER COLUMN branch_id DROP NOT NULL;
+
+-- 3. Alter customer_id to be nullable
+-- Clinical patients reference auth.users(id) instead of customers(id)
+ALTER TABLE public.chat_conversations 
+ALTER COLUMN customer_id DROP NOT NULL;
+
+-- 4. Update RLS policies to handle NULLs if necessary
+-- (The existing policies in 20260418000002 already use auth.uid() or healthcare_providers check, so they are robust)
+
+-- 5. Add comments
+COMMENT ON COLUMN public.chat_conversations.tenant_id IS 'Optional for clinical chats not tied to a retail tenant';
+COMMENT ON COLUMN public.chat_conversations.branch_id IS 'Optional for clinical chats not tied to a retail branch';
+COMMENT ON COLUMN public.chat_conversations.customer_id IS 'Optional for clinical chats where patient is identified by auth.uid directly';
+
+-- End of 20260418000003_make_chat_columns_nullable.sql
+
+
+-- File: 20260418000004_fix_message_constraints.sql
+-- Relax constraints for clinical messaging
+-- Medical users (clinicians) are authenticated via auth.users but may not have a matching record 
+-- in the retail-focused public.users table. We make the sender_id foreign key nullable 
+-- or remove the strict link to the retail table if it blocks healthcare functionality.
+
+DO $$
+BEGIN
+    -- Drop the strict foreign key to retail users if it exists
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'chat_messages_sender_id_fkey'
+    ) THEN
+        ALTER TABLE public.chat_messages DROP CONSTRAINT chat_messages_sender_id_fkey;
+    END IF;
+
+    -- Add a more flexible link or ensure it's just a UUID for the sender
+    -- We keep it as a UUID but don't force it to be in the retail table.
+    -- It still links via auth.uid() in RLS policies.
+END $$;
+
+-- End of 20260418000004_fix_message_constraints.sql
+
+
+-- File: 20260419143000_unify_transaction_items.sql
+-- ============================================================
+-- Migration: Unify Order and Sale Items with Analytics (FINAL VERIFIED)
+-- Description: Recreates sale_items with granular analytics and drops order_items.
+-- Optimized for: PostgreSQL compatibility and SQL Editor runners.
+-- ============================================================
+
+-- 1. CLEANUP: Drop old tables and all their dependencies
+DROP TABLE IF EXISTS public.order_items CASCADE;
+DROP TABLE IF EXISTS public.sale_items CASCADE;
+
+-- 2. CREATE: Create the Unified sale_items Table
+CREATE TABLE public.sale_items (
+  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4 (),
+  tenant_id uuid NOT NULL,
+  sale_id uuid NULL, 
+  order_id uuid NULL, 
+  inventory_id uuid NULL, 
+  product_id uuid NOT NULL,
+  product_name character varying(255) NOT NULL,
+  product_sku character varying(100) NULL,
+  category_id uuid NULL,
+  category_name character varying(255) NULL,
+  quantity integer NOT NULL,
+  unit_of_measure character varying(20) NULL DEFAULT 'piece'::character varying,
+  strength text NULL,
+  
+  -- Price & Discount
+  unit_price numeric(12, 2) NOT NULL,
+  original_price numeric(15, 2) NULL,
+  discount_percent numeric(5, 2) NULL DEFAULT 0,
+  discount_amount numeric(12, 2) NULL DEFAULT 0,
+  discount_percentage numeric(5, 2) NULL DEFAULT 0,
+  discount_type character varying(50) NULL,
+  discount_code character varying(50) NULL,
+  
+  -- Tax
+  tax_percentage numeric(5, 2) NULL DEFAULT 0,
+  tax_amount numeric(15, 2) NULL DEFAULT 0,
+  
+  -- Totals
+  subtotal numeric(12, 2) NOT NULL,
+  
+  -- Cost & Profit
+  unit_cost numeric(15, 2) NULL,
+  total_cost numeric(15, 2) NULL,
+  gross_profit numeric(15, 2) NULL,
+  profit_margin numeric(5, 2) NULL,
+  
+  -- Context
+  branch_id uuid NULL,
+  cashier_id uuid NULL,
+  health_care_provider uuid NULL,
+  customer_id uuid NULL,
+  
+  -- Audit
+  sale_date timestamp with time zone NOT NULL DEFAULT now(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  
+  -- Generated Analytics Columns (Stored for performance)
+  sale_hour integer GENERATED ALWAYS AS (EXTRACT(HOUR FROM (sale_date AT TIME ZONE 'UTC'))) STORED,
+  sale_day integer GENERATED ALWAYS AS (EXTRACT(DAY FROM (sale_date AT TIME ZONE 'UTC'))) STORED,
+  sale_week integer GENERATED ALWAYS AS (EXTRACT(WEEK FROM (sale_date AT TIME ZONE 'UTC'))) STORED,
+  sale_month integer GENERATED ALWAYS AS (EXTRACT(MONTH FROM (sale_date AT TIME ZONE 'UTC'))) STORED,
+  sale_quarter integer GENERATED ALWAYS AS (EXTRACT(QUARTER FROM (sale_date AT TIME ZONE 'UTC'))) STORED,
+  sale_year integer GENERATED ALWAYS AS (EXTRACT(YEAR FROM (sale_date AT TIME ZONE 'UTC'))) STORED,
+
+  -- Primary Key
+  PRIMARY KEY (id),
+  
+  -- Foreign Keys
+  FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+  FOREIGN KEY (sale_id) REFERENCES sales (id) ON DELETE CASCADE,
+  FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE,
+  FOREIGN KEY (product_id) REFERENCES products (id),
+  FOREIGN KEY (inventory_id) REFERENCES branch_inventory (id),
+  FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE SET NULL,
+  FOREIGN KEY (branch_id) REFERENCES branches (id),
+  FOREIGN KEY (cashier_id) REFERENCES users (id),
+  FOREIGN KEY (customer_id) REFERENCES customers (id),
+  FOREIGN KEY (health_care_provider) REFERENCES healthcare_providers (id),
+  
+  -- Validations
+  CHECK (quantity > 0),
+  CHECK (unit_price > 0),
+  CHECK (subtotal >= 0),
+  CONSTRAINT valid_subtotal_logic CHECK (subtotal = (unit_price * quantity) - discount_amount)
+) TABLESPACE pg_default;
+
+-- 3. INDEXES: Create Performance Indices
+CREATE INDEX IF NOT EXISTS idx_sale_items_tenant_final ON public.sale_items(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_sale_items_branch_final ON public.sale_items(branch_id);
+CREATE INDEX IF NOT EXISTS idx_sale_items_created_at_final ON public.sale_items(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sale_items_category_final ON public.sale_items(category_id) WHERE (category_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_sale_items_product_final ON public.sale_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_sale_items_sale_order_final ON public.sale_items(sale_id, order_id);
+
+-- 4. LOGIC: Update Populate Details Function
+CREATE OR REPLACE FUNCTION populate_sale_item_details()
+RETURNS TRIGGER AS $$
+DECLARE
+    r_prod RECORD;
+    v_branch_id UUID;
+    v_tenant_id UUID;
+BEGIN
+    -- Get product details from catalog
+    SELECT p.name, p.barcode as sku, p.category_id, c.name as category_name
+    INTO r_prod
+    FROM public.products p
+    LEFT JOIN public.categories c ON c.id = p.category_id
+    WHERE p.id = NEW.product_id;
+
+    -- Get transaction context from Sale or Order
+    IF NEW.sale_id IS NOT NULL THEN
+        SELECT branch_id, tenant_id INTO v_branch_id, v_tenant_id FROM public.sales WHERE id = NEW.sale_id;
+    ELSIF NEW.order_id IS NOT NULL THEN
+        SELECT branch_id, tenant_id INTO v_branch_id, v_tenant_id FROM public.orders WHERE id = NEW.order_id;
+    END IF;
+
+    -- Populate metadata snapshots if product found
+    IF r_prod IS NOT NULL THEN
+        NEW.product_name := COALESCE(NEW.product_name, r_prod.name);
+        NEW.product_sku := COALESCE(NEW.product_sku, r_prod.sku);
+        NEW.category_id := COALESCE(NEW.category_id, r_prod.category_id);
+        NEW.category_name := COALESCE(NEW.category_name, r_prod.category_name);
+        NEW.unit_of_measure := COALESCE(NEW.unit_of_measure, 'piece');
+    END IF;
+
+    -- Populate tenant and branch
+    NEW.tenant_id := COALESCE(NEW.tenant_id, v_tenant_id);
+    NEW.branch_id := COALESCE(NEW.branch_id, v_branch_id);
+
+    -- Cost & Profit Calculation
+    IF NEW.unit_cost IS NOT NULL THEN
+        NEW.total_cost := NEW.unit_cost * NEW.quantity;
+        NEW.gross_profit := NEW.subtotal - NEW.total_cost;
+        IF NEW.subtotal > 0 THEN
+            NEW.profit_margin := (NEW.gross_profit / NEW.subtotal) * 100;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 5. TRIGGER: Enable Trigger
+DROP TRIGGER IF EXISTS trg_populate_sale_item_details ON public.sale_items;
+CREATE TRIGGER trg_populate_sale_item_details
+    BEFORE INSERT OR UPDATE ON public.sale_items
+    FOR EACH ROW
+    EXECUTE FUNCTION populate_sale_item_details();
+
+-- End of 20260419143000_unify_transaction_items.sql
+
+
+-- File: 20260419200000_update_checkout_rpc_for_unified_items.sql
+-- ============================================================
+-- Migration: Update Checkout RPC for Unified sale_items Table
+-- Description: Rewrites checkout_storefront_order and cancel_storefront_order
+--              to use the unified sale_items table instead of the dropped order_items.
+-- ============================================================
+
+-- 1. Add batch_allocations to sale_items (used by online orders for stock reservation rollback on cancel)
+ALTER TABLE public.sale_items
+    ADD COLUMN IF NOT EXISTS batch_allocations JSONB DEFAULT '[]'::jsonb;
+
+COMMENT ON COLUMN public.sale_items.batch_allocations IS
+    'For online orders: stores FIFO batch reservation details [{batch_id, quantity}] to allow accurate stock release on cancellation.';
+
+-- 2. Drop old RPC signatures to avoid conflicts
+DROP FUNCTION IF EXISTS checkout_storefront_order(UUID, UUID, UUID, order_type, fulfillment_type, DECIMAL, DECIMAL, DECIMAL, DECIMAL, UUID, TEXT, JSONB);
+DROP FUNCTION IF EXISTS cancel_storefront_order(UUID);
+
+-- 3. Recreate checkout_storefront_order â€” now inserts into sale_items
+CREATE OR REPLACE FUNCTION checkout_storefront_order(
+    p_tenant_id UUID,
+    p_branch_id UUID,
+    p_customer_id UUID,
+    p_order_type order_type,
+    p_fulfillment_type fulfillment_type,
+    p_subtotal DECIMAL,
+    p_delivery_fee DECIMAL,
+    p_tax_amount DECIMAL,
+    p_total_amount DECIMAL,
+    p_delivery_address_id UUID,
+    p_special_instructions TEXT,
+    p_items JSONB -- Array of { product_id, product_name, quantity, unit_price, subtotal }
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_order_id UUID;
+    v_item RECORD;
+    v_batch RECORD;
+    v_req_qty INTEGER;
+    v_available_qty INTEGER;
+    v_allocated_qty INTEGER;
+    v_allocations JSONB;
+    v_primary_batch_id UUID;
+BEGIN
+    -- Validate totals
+    IF p_total_amount != (p_subtotal + p_delivery_fee + p_tax_amount) THEN
+        RAISE EXCEPTION 'Total amount does not match subtotal + fees + tax';
+    END IF;
+
+    -- Create the order header
+    INSERT INTO orders (
+        tenant_id, branch_id, order_number, customer_id,
+        order_type, order_status, payment_status,
+        subtotal, delivery_fee, tax_amount, total_amount,
+        fulfillment_type, delivery_address_id, special_instructions
+    ) VALUES (
+        p_tenant_id,
+        p_branch_id,
+        'ORD-' || FLOOR(EXTRACT(EPOCH FROM NOW()))::TEXT || '-' || SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 4),
+        p_customer_id,
+        p_order_type,
+        'pending'::order_status,
+        'unpaid'::payment_status,
+        p_subtotal, p_delivery_fee, p_tax_amount, p_total_amount,
+        p_fulfillment_type,
+        p_delivery_address_id,
+        p_special_instructions
+    ) RETURNING id INTO v_order_id;
+
+    -- Process each item: FIFO batch allocation + insert into sale_items
+    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(
+        product_id UUID, product_name TEXT, quantity INTEGER, unit_price DECIMAL, subtotal DECIMAL
+    )
+    LOOP
+        v_req_qty := v_item.quantity;
+        v_allocations := '[]'::jsonb;
+        v_primary_batch_id := NULL;
+
+        -- FIFO batch allocation (locks rows to prevent race conditions)
+        FOR v_batch IN 
+            SELECT id, (stock_quantity - COALESCE(reserved_quantity, 0)) AS available_balance
+            FROM branch_inventory
+            WHERE branch_id = p_branch_id 
+              AND product_id = v_item.product_id 
+              AND is_active = true
+              AND (stock_quantity - COALESCE(reserved_quantity, 0)) > 0
+            ORDER BY expiry_date ASC NULLS LAST, created_at ASC
+            FOR UPDATE
+        LOOP
+            IF v_req_qty <= 0 THEN EXIT; END IF;
+
+            v_available_qty := v_batch.available_balance;
+            v_allocated_qty := LEAST(v_available_qty, v_req_qty);
+
+            -- Reserve stock in the batch
+            UPDATE branch_inventory
+            SET reserved_quantity = COALESCE(reserved_quantity, 0) + v_allocated_qty,
+                updated_at = NOW()
+            WHERE id = v_batch.id;
+
+            -- Track the primary batch (first FIFO batch) for inventory_id
+            IF v_primary_batch_id IS NULL THEN
+                v_primary_batch_id := v_batch.id;
+            END IF;
+
+            v_allocations := v_allocations || jsonb_build_object(
+                'batch_id', v_batch.id,
+                'quantity', v_allocated_qty
+            );
+
+            v_req_qty := v_req_qty - v_allocated_qty;
+        END LOOP;
+
+        -- Raise if stock was insufficient
+        IF v_req_qty > 0 THEN
+            RAISE EXCEPTION 'Insufficient stock for product: % (short by %)', v_item.product_name, v_req_qty;
+        END IF;
+
+        -- Insert into unified sale_items (trigger will auto-populate cost/profit/category)
+        INSERT INTO public.sale_items (
+            tenant_id,
+            order_id,
+            branch_id,
+            inventory_id,
+            product_id,
+            product_name,
+            quantity,
+            unit_price,
+            subtotal,
+            discount_amount,
+            batch_allocations
+        ) VALUES (
+            p_tenant_id,
+            v_order_id,
+            p_branch_id,
+            v_primary_batch_id,
+            v_item.product_id,
+            v_item.product_name,
+            v_item.quantity,
+            v_item.unit_price,
+            v_item.subtotal,
+            0,
+            v_allocations
+        );
+    END LOOP;
+
+    RETURN v_order_id;
+END;
+$$;
+
+
+-- 4. Recreate cancel_storefront_order â€” now reads from sale_items
+CREATE OR REPLACE FUNCTION cancel_storefront_order(
+    p_order_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_order_status order_status;
+    v_item RECORD;
+    v_allocation RECORD;
+BEGIN
+    -- Use subquery assignment to avoid SELECT INTO relation confusion
+    v_order_status := (SELECT order_status FROM orders WHERE id = p_order_id LIMIT 1);
+
+    IF v_order_status IS NULL THEN
+        RAISE EXCEPTION 'Order not found';
+    END IF;
+
+    IF v_order_status = 'delivered'::order_status THEN
+        RAISE EXCEPTION 'Cannot cancel an order that has already been delivered';
+    END IF;
+
+    IF v_order_status = 'cancelled'::order_status THEN
+        RAISE EXCEPTION 'Order is already cancelled';
+    END IF;
+
+    -- Cancel the order
+    UPDATE orders 
+    SET order_status = 'cancelled'::order_status, updated_at = NOW()
+    WHERE id = p_order_id;
+
+    -- Release reserved stock using batch_allocations from sale_items
+    FOR v_item IN SELECT batch_allocations FROM public.sale_items WHERE order_id = p_order_id
+    LOOP
+        FOR v_allocation IN 
+            SELECT * FROM jsonb_to_recordset(v_item.batch_allocations) AS x(batch_id UUID, quantity INTEGER)
+        LOOP
+            UPDATE branch_inventory
+            SET reserved_quantity = GREATEST(COALESCE(reserved_quantity, 0) - v_allocation.quantity, 0),
+                updated_at = NOW()
+            WHERE id = v_allocation.batch_id;
+        END LOOP;
+    END LOOP;
+
+    RETURN TRUE;
+END;
+$$;
+
+-- End of 20260419200000_update_checkout_rpc_for_unified_items.sql
+
+
+-- File: 20260419210000_sale_items_rls_and_trigger_fix.sql
+-- ============================================================
+-- Migration: RLS Policies and Corrected Trigger for Unified sale_items
+-- Description: Adds RLS policies for the recreated sale_items table
+--              and corrects the populate_sale_item_details trigger to
+--              match the actual live products table schema.
+-- ============================================================
+
+-- 1. Enable RLS
+ALTER TABLE public.sale_items ENABLE ROW LEVEL SECURITY;
+
+-- 2. INSERT â€” any authenticated user of the same tenant
+CREATE POLICY "sale_items_insert_own_tenant"
+ON public.sale_items FOR INSERT TO authenticated
+WITH CHECK (
+    tenant_id IN (SELECT tenant_id FROM public.users WHERE id = auth.uid())
+);
+
+-- 3. SELECT â€” any authenticated user of the same tenant
+CREATE POLICY "sale_items_select_own_tenant"
+ON public.sale_items FOR SELECT TO authenticated
+USING (
+    tenant_id IN (SELECT tenant_id FROM public.users WHERE id = auth.uid())
+);
+
+-- 4. UPDATE â€” any authenticated user of the same tenant
+CREATE POLICY "sale_items_update_own_tenant"
+ON public.sale_items FOR UPDATE TO authenticated
+USING (
+    tenant_id IN (SELECT tenant_id FROM public.users WHERE id = auth.uid())
+);
+
+-- 5. DELETE â€” tenant admins and managers only
+CREATE POLICY "sale_items_delete_managers"
+ON public.sale_items FOR DELETE TO authenticated
+USING (
+    tenant_id IN (
+        SELECT tenant_id FROM public.users
+        WHERE id = auth.uid()
+        AND role IN ('tenant_admin', 'branch_manager', 'platform_admin')
+    )
+);
+
+-- 6. Corrected trigger function â€” matches actual live products table schema
+--    (products has: name, barcode, category_id â€” NO sku, cost_price, unit_of_measure)
+CREATE OR REPLACE FUNCTION populate_sale_item_details()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_prod_name     VARCHAR;
+    v_prod_barcode  VARCHAR;
+    v_prod_cat_id   UUID;
+    v_prod_cat_name VARCHAR;
+    v_branch_id     UUID;
+    v_tenant_id     UUID;
+BEGIN
+    v_prod_name    := (SELECT p.name        FROM public.products p WHERE p.id = NEW.product_id LIMIT 1);
+    v_prod_barcode := (SELECT p.barcode     FROM public.products p WHERE p.id = NEW.product_id LIMIT 1);
+    v_prod_cat_id  := (SELECT p.category_id FROM public.products p WHERE p.id = NEW.product_id LIMIT 1);
+
+    IF v_prod_cat_id IS NOT NULL THEN
+        v_prod_cat_name := (SELECT c.name FROM public.categories c WHERE c.id = v_prod_cat_id LIMIT 1);
+    END IF;
+
+    IF NEW.sale_id IS NOT NULL THEN
+        v_branch_id := (SELECT s.branch_id FROM public.sales s WHERE s.id = NEW.sale_id LIMIT 1);
+        v_tenant_id := (SELECT s.tenant_id FROM public.sales s WHERE s.id = NEW.sale_id LIMIT 1);
+    ELSIF NEW.order_id IS NOT NULL THEN
+        v_branch_id := (SELECT o.branch_id FROM public.orders o WHERE o.id = NEW.order_id LIMIT 1);
+        v_tenant_id := (SELECT o.tenant_id FROM public.orders o WHERE o.id = NEW.order_id LIMIT 1);
+    END IF;
+
+    NEW.tenant_id       := COALESCE(NEW.tenant_id,       v_tenant_id);
+    NEW.branch_id       := COALESCE(NEW.branch_id,       v_branch_id);
+    NEW.product_name    := COALESCE(NEW.product_name,    v_prod_name);
+    NEW.product_sku     := COALESCE(NEW.product_sku,     v_prod_barcode);
+    NEW.category_id     := COALESCE(NEW.category_id,     v_prod_cat_id);
+    NEW.category_name   := COALESCE(NEW.category_name,   v_prod_cat_name);
+    NEW.unit_of_measure := COALESCE(NEW.unit_of_measure, 'piece');
+
+    -- Cost & profit only if unit_cost is explicitly provided
+    IF NEW.unit_cost IS NOT NULL THEN
+        NEW.total_cost    := NEW.unit_cost * NEW.quantity;
+        NEW.gross_profit  := NEW.subtotal - NEW.total_cost;
+        IF NEW.subtotal > 0 THEN
+            NEW.profit_margin := (NEW.gross_profit / NEW.subtotal) * 100;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- End of 20260419210000_sale_items_rls_and_trigger_fix.sql
+
+
+-- File: 20260420100000_add_pom_flag.sql
+-- Migration: Add isPOM flag to products and branch_inventory
+-- Description: Standardizes the Prescription Only Medicine flag for visibility control.
+
+-- 1. Update products table
+ALTER TABLE public.products 
+ADD COLUMN IF NOT EXISTS "isPOM" boolean NOT NULL DEFAULT false;
+
+-- 2. Update branch_inventory table
+ALTER TABLE public.branch_inventory 
+ADD COLUMN IF NOT EXISTS "isPOM" boolean NOT NULL DEFAULT false;
+
+-- 3. Update indices for optimized storefront queries
+CREATE INDEX IF NOT EXISTS idx_branch_inventory_not_pom ON public.branch_inventory (tenant_id, branch_id) 
+WHERE ("isPOM" = false AND is_active = true AND _sync_is_deleted = false);
+
+CREATE INDEX IF NOT EXISTS idx_products_not_pom ON public.products (is_active) 
+WHERE ("isPOM" = false AND deleted_at IS NULL);
+
+-- End of 20260420100000_add_pom_flag.sql
+
+
+-- File: 20260422000002_fix_doctor_aliases_final_rls.sql
+-- Unified RLS Policies for Doctor Aliases
+-- Allows both Clinical (Primary Doctors) and Pharmacy (Tenants) partners to manage relationships.
+
+-- 1. DROP OLD POLICIES
+DROP POLICY IF EXISTS "Primary doctor sees consultants" ON public.doctor_aliases;
+DROP POLICY IF EXISTS "Consultant sees own alias" ON public.doctor_aliases;
+DROP POLICY IF EXISTS "Primary doctor can invite consultants" ON public.doctor_aliases;
+DROP POLICY IF EXISTS "Primary doctor can update consultants" ON public.doctor_aliases;
+DROP POLICY IF EXISTS "Primary doctor can delete consultants" ON public.doctor_aliases;
+DROP POLICY IF EXISTS "Public can see active consultants" ON public.doctor_aliases;
+DROP POLICY IF EXISTS "Tenants can invite partners" ON public.doctor_aliases;
+
+-- 2. CREATE UNIFIED POLICIES
+
+-- SELECT: Allow stakeholders and public (if accepted)
+CREATE POLICY "Select doctor aliases" ON public.doctor_aliases
+FOR SELECT TO authenticated, anon
+USING (
+    -- Public can see accepted/active
+    (accepted = true AND is_active = true) OR
+    -- Owner/Partner can see all their records
+    (
+        auth.uid() IN (
+            SELECT id FROM public.users 
+            WHERE tenant_id = doctor_aliases.tenant_partner
+        ) OR
+        primary_doctor_id IN (
+            SELECT id FROM public.healthcare_providers 
+            WHERE user_id = auth.uid()
+        ) OR
+        doctor_id IN (
+            SELECT id FROM public.healthcare_providers 
+            WHERE user_id = auth.uid()
+        )
+    )
+);
+
+-- INSERT: Allow primary doctors or tenant admins/staff
+CREATE POLICY "Insert doctor aliases" ON public.doctor_aliases
+FOR INSERT TO authenticated
+WITH CHECK (
+    (
+        tenant_partner IS NOT NULL AND
+        tenant_partner IN (SELECT tenant_id FROM public.users WHERE id = auth.uid())
+    ) OR
+    (
+        primary_doctor_id IS NOT NULL AND
+        primary_doctor_id IN (SELECT id FROM public.healthcare_providers WHERE user_id = auth.uid())
+    )
+);
+
+-- UPDATE: Allow the "inviter" (tenant or primary doctor)
+CREATE POLICY "Update doctor aliases" ON public.doctor_aliases
+FOR UPDATE TO authenticated
+USING (
+    (
+        tenant_partner IS NOT NULL AND
+        tenant_partner IN (SELECT tenant_id FROM public.users WHERE id = auth.uid())
+    ) OR
+    (
+        primary_doctor_id IS NOT NULL AND
+        primary_doctor_id IN (SELECT id FROM public.healthcare_providers WHERE user_id = auth.uid())
+    )
+)
+WITH CHECK (
+    (
+        tenant_partner IS NOT NULL AND
+        tenant_partner IN (SELECT tenant_id FROM public.users WHERE id = auth.uid())
+    ) OR
+    (
+        primary_doctor_id IS NOT NULL AND
+        primary_doctor_id IN (SELECT id FROM public.healthcare_providers WHERE user_id = auth.uid())
+    )
+);
+
+-- DELETE: Allow the "inviter"
+CREATE POLICY "Delete doctor aliases" ON public.doctor_aliases
+FOR DELETE TO authenticated
+USING (
+    (
+        tenant_partner IS NOT NULL AND
+        tenant_partner IN (SELECT tenant_id FROM public.users WHERE id = auth.uid())
+    ) OR
+    (
+        primary_doctor_id IS NOT NULL AND
+        primary_doctor_id IN (SELECT id FROM public.healthcare_providers WHERE user_id = auth.uid())
+    )
+);
+
+-- Ensure table has RLS enabled
+ALTER TABLE public.doctor_aliases ENABLE ROW LEVEL SECURITY;
+
+-- Refine grants
+GRANT ALL ON public.doctor_aliases TO authenticated;
+GRANT SELECT ON public.doctor_aliases TO anon;
+
+-- End of 20260422000002_fix_doctor_aliases_final_rls.sql
+
+
+-- File: 20260422000005_drop_can_manage_scrap.sql
+-- Drop the unused canManageScrap privilege from staff permission tables
+ALTER TABLE public.users 
+DROP COLUMN IF EXISTS "canManageScrap";
+
+ALTER TABLE public.staff_invitations 
+DROP COLUMN IF EXISTS "canManageScrap";
+
+-- End of 20260422000005_drop_can_manage_scrap.sql
+
+
+-- File: 20260423000000_process_sale_return.sql
+-- ============================================================
+-- Migration: Process Sale Returns
+-- Description: Adds RPC to safely process a sale return, updating sales table, sale_items table, and restoring inventory
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION process_sale_return(
+    p_sale_id UUID,
+    p_items JSONB,
+    p_staff_id UUID
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_sale RECORD;
+    v_item RECORD;
+    v_batch_id UUID;
+    v_return_value DECIMAL := 0;
+    v_new_subtotal DECIMAL;
+    v_new_total DECIMAL;
+BEGIN
+    -- 1. Fetch sale
+    SELECT * INTO v_sale FROM sales WHERE id = p_sale_id FOR UPDATE;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Sale not found';
+    END IF;
+
+    -- 2. Process items
+    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(sale_item_id UUID, product_id UUID, return_qty INTEGER)
+    LOOP
+        -- Process only if return_qty > 0
+        IF v_item.return_qty <= 0 THEN
+            CONTINUE;
+        END IF;
+
+        DECLARE
+            v_sale_item RECORD;
+            v_previous_stock INTEGER;
+            v_new_stock INTEGER;
+            v_new_item_qty INTEGER;
+            v_new_item_discount DECIMAL;
+            v_new_item_subtotal DECIMAL;
+        BEGIN
+            -- Fetch sale_item
+            SELECT * INTO v_sale_item FROM sale_items 
+            WHERE id = v_item.sale_item_id AND sale_id = p_sale_id FOR UPDATE;
+
+            IF NOT FOUND THEN
+                RAISE EXCEPTION 'Sale item not found %', v_item.sale_item_id;
+            END IF;
+
+            IF v_item.return_qty > v_sale_item.quantity THEN
+                RAISE EXCEPTION 'Return quantity exceeds purchased quantity';
+            END IF;
+
+            -- Calculate proportional refund value (before item update)
+            v_return_value := v_return_value + (v_sale_item.unit_price * v_item.return_qty);
+
+            -- Recalculate item fields to satisfy CHECK constraints
+            v_new_item_qty := v_sale_item.quantity - v_item.return_qty;
+            
+            -- Proportional discount reduction
+            IF v_sale_item.quantity > 0 THEN
+                v_new_item_discount := (v_sale_item.discount_amount * v_new_item_qty) / v_sale_item.quantity;
+            ELSE
+                v_new_item_discount := 0;
+            END IF;
+            
+            v_new_item_subtotal := (v_sale_item.unit_price * v_new_item_qty) - v_new_item_discount;
+
+            -- Update sale_item with consistent values
+            UPDATE public.sale_items 
+            SET quantity = v_new_item_qty,
+                discount_amount = v_new_item_discount,
+                subtotal = v_new_item_subtotal
+            WHERE id = v_item.sale_item_id;
+
+            -- Find latest active batch assigned to this branch to restore inventory
+            SELECT id INTO v_batch_id
+            FROM branch_inventory
+            WHERE branch_id = v_sale.branch_id AND product_id = v_item.product_id
+            ORDER BY created_at DESC LIMIT 1 FOR UPDATE;
+
+            -- Increment inventory and Log
+            IF v_batch_id IS NOT NULL THEN
+                -- Capture stock before incrementing
+                SELECT stock_quantity INTO v_previous_stock FROM branch_inventory WHERE id = v_batch_id;
+                v_new_stock := COALESCE(v_previous_stock, 0) + v_item.return_qty;
+
+                UPDATE branch_inventory
+                SET stock_quantity = v_new_stock,
+                    updated_at = NOW()
+                WHERE id = v_batch_id;
+
+                -- Log transaction securely
+                INSERT INTO inventory_transactions (
+                    tenant_id, branch_id, product_id, transaction_type, 
+                    quantity_delta, previous_quantity, new_quantity, reference_id, reference_type, staff_id, notes
+                ) VALUES (
+                    v_sale.tenant_id, v_sale.branch_id, v_item.product_id, 'adjustment',
+                    v_item.return_qty, v_previous_stock, v_new_stock, p_sale_id, 'sale_return', 
+                    p_staff_id, 'Item returned by customer and restored to inventory'
+                );
+            END IF;
+        END;
+    END LOOP;
+
+    -- 3. Adjust Sale master totals
+    v_new_subtotal := GREATEST(0, v_sale.subtotal - v_return_value);
+    
+    -- Adjust total_amount identically
+    v_new_total := GREATEST(0, v_sale.total_amount - v_return_value);
+
+    IF v_new_subtotal <= 0 THEN
+        UPDATE sales 
+        SET subtotal = 0, 
+            total_amount = GREATEST(0, v_sale.total_amount - v_sale.subtotal), -- Keep tax if any? Or just 0
+            sale_status = 'refunded',
+            updated_at = NOW()
+        WHERE id = p_sale_id;
+    ELSE
+        UPDATE sales 
+        SET subtotal = v_new_subtotal, 
+            total_amount = v_new_total,
+            updated_at = NOW()
+        WHERE id = p_sale_id;
+    END IF;
+
+END;
+$$;
+
+-- End of 20260423000000_process_sale_return.sql
+
+
+-- File: 20260423000001_create_chat_storage.sql
+-- Migration: Create Chat Attachments Storage
+-- Purpose: Enable file uploads (images, PDFs, voice notes) for the chat system
+
+-- 1. Create the bucket
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+    'chat-attachments',
+    'chat-attachments',
+    true, -- Publicly accessible (medical data should ideally be private, but for simplicity in storefront we use public URLs)
+    10485760, -- 10MB limit
+    ARRAY[
+        'image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'image/gif',
+        'application/pdf',
+        'audio/webm', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/aac'
+    ]
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- 2. Storage RLS Policies
+
+-- Anyone can view chat attachments (needed for simple public URL sharing)
+DROP POLICY IF EXISTS "Anyone can view chat attachments" ON storage.objects;
+CREATE POLICY "Anyone can view chat attachments"
+    ON storage.objects FOR SELECT
+    TO public
+    USING (bucket_id = 'chat-attachments');
+
+-- Authenticated users can upload to their own chat folders
+-- We use a folder structure: chat/{conversation_id}/{filename}
+DROP POLICY IF EXISTS "Users can upload chat attachments" ON storage.objects;
+CREATE POLICY "Users can upload chat attachments"
+    ON storage.objects FOR INSERT
+    TO authenticated
+    WITH CHECK (
+        bucket_id = 'chat-attachments' AND
+        (storage.foldername(name))[1] = 'chat'
+    );
+
+-- Allow deletion by owner if needed (optional)
+DROP POLICY IF EXISTS "Users can delete own chat attachments" ON storage.objects;
+CREATE POLICY "Users can delete own chat attachments"
+    ON storage.objects FOR DELETE
+    TO authenticated
+    USING (
+        bucket_id = 'chat-attachments' AND
+        (storage.foldername(name))[1] = 'chat'
+    );
+
+-- End of 20260423000001_create_chat_storage.sql
+
+
+-- File: 20260423000002_enable_chat_typing_realtime.sql
+-- Migration: Enable Real-time for Typing Indicators
+-- Purpose: Support real-time typing indicators in the chat UI
+
+-- 1. Enable real-time for the table
+ALTER PUBLICATION supabase_realtime ADD TABLE chat_typing_indicators;
+
+-- 2. Ensure RLS allows participants to manage their status
+-- (Already handled by 20260418000001, but we ensure it's robust here)
+DROP POLICY IF EXISTS "Participants can manage typing status" ON public.chat_typing_indicators;
+CREATE POLICY "Participants can manage typing status"
+ON public.chat_typing_indicators FOR ALL
+USING (
+    user_id = auth.uid() OR
+    conversation_id IN (
+        SELECT id FROM public.chat_conversations
+        WHERE customer_id = auth.uid() OR 
+              auth.uid() IN (SELECT user_id FROM public.healthcare_providers)
+    )
+);
+
+-- 3. Add a function to automatically refresh expires_at on update
+CREATE OR REPLACE FUNCTION refresh_typing_expiry()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.expires_at := NOW() + INTERVAL '10 seconds';
+    NEW.updated_at := NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_refresh_typing_expiry ON public.chat_typing_indicators;
+CREATE TRIGGER trigger_refresh_typing_expiry
+    BEFORE UPDATE ON public.chat_typing_indicators
+    FOR EACH ROW
+    EXECUTE FUNCTION refresh_typing_expiry();
+
+-- End of 20260423000002_enable_chat_typing_realtime.sql
+
+
+-- File: 20260423010000_update_sale_items_schema.sql
+-- ============================================================
+-- Migration: Update sale_items with Batch Allocations and Final Constraints
+-- Description: Adds missing columns and ensures the schema matches the requested state.
+-- ============================================================
+
+-- 1. Add missing columns safely
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'sale_items' AND column_name = 'batch_allocations') THEN
+        ALTER TABLE public.sale_items ADD COLUMN batch_allocations jsonb DEFAULT '[]'::jsonb;
+    END IF;
+END $$;
+
+-- 2. Update/Ensure Constraints
+-- First drop existing ones to avoid conflicts if they were named differently
+ALTER TABLE public.sale_items DROP CONSTRAINT IF EXISTS sale_items_subtotal_check;
+ALTER TABLE public.sale_items DROP CONSTRAINT IF EXISTS valid_subtotal_logic;
+ALTER TABLE public.sale_items DROP CONSTRAINT IF EXISTS sale_items_quantity_check;
+ALTER TABLE public.sale_items DROP CONSTRAINT IF EXISTS sale_items_unit_price_check;
+
+ALTER TABLE public.sale_items ADD CONSTRAINT sale_items_subtotal_check CHECK (subtotal >= 0);
+ALTER TABLE public.sale_items ADD CONSTRAINT valid_subtotal_logic CHECK (subtotal = (unit_price * quantity) - discount_amount);
+ALTER TABLE public.sale_items ADD CONSTRAINT sale_items_quantity_check CHECK (quantity > 0);
+ALTER TABLE public.sale_items ADD CONSTRAINT sale_items_unit_price_check CHECK (unit_price > 0);
+
+-- 3. Ensure Indexes match requested state
+CREATE INDEX IF NOT EXISTS idx_sale_items_tenant_final ON public.sale_items USING btree (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_sale_items_branch_final ON public.sale_items USING btree (branch_id);
+CREATE INDEX IF NOT EXISTS idx_sale_items_created_at_final ON public.sale_items USING btree (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sale_items_category_final ON public.sale_items USING btree (category_id) WHERE (category_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_sale_items_product_final ON public.sale_items USING btree (product_id);
+CREATE INDEX IF NOT EXISTS idx_sale_items_sale_order_final ON public.sale_items USING btree (sale_id, order_id);
+
+-- 4. Trigger is already handled in 20260419210000_sale_items_rls_and_trigger_fix.sql
+-- but we ensure it's still attached.
+DROP TRIGGER IF EXISTS trg_populate_sale_item_details ON public.sale_items;
+CREATE TRIGGER trg_populate_sale_item_details
+    BEFORE INSERT OR UPDATE ON public.sale_items
+    FOR EACH ROW
+    EXECUTE FUNCTION populate_sale_item_details();
+
+-- End of 20260423010000_update_sale_items_schema.sql
+
+
+-- File: 20260424000000_add_chat_type_to_conversations.sql
+-- Add chatType column to chat_conversations
+ALTER TABLE public.chat_conversations 
+ADD COLUMN IF NOT EXISTS "chatType" text DEFAULT 'Customer Support' 
+CHECK ("chatType" IN ('Customer Support', 'Consultation'));
+
+-- End of 20260424000000_add_chat_type_to_conversations.sql
+
+
+-- File: 20260424000001_fix_unified_patient_rls.sql
+-- ============================================================
+-- Fix RLS Policies for Unified Patient Profiles
+-- ============================================================
+-- Purpose: Allow authenticated users to create their unified profiles and links
+-- during the signup or first-time login flow.
+
+-- 1. Unified Patient Profiles
+DROP POLICY IF EXISTS "Allow authenticated insert for unified profile" ON unified_patient_profiles;
+CREATE POLICY "Allow authenticated insert for unified profile"
+ON unified_patient_profiles FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
+-- 2. Patient Account Links
+DROP POLICY IF EXISTS "Users can insert own account links" ON patient_account_links;
+CREATE POLICY "Users can insert own account links"
+ON patient_account_links FOR INSERT
+TO authenticated
+WITH CHECK (customer_id = auth.uid());
+
+-- 3. Cross-Tenant Consents
+DROP POLICY IF EXISTS "Users can insert own consents" ON cross_tenant_consents;
+CREATE POLICY "Users can insert own consents"
+ON cross_tenant_consents FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
+-- Also ensure the SECURITY DEFINER functions are owned by a role that can bypass RLS if possible,
+-- but adding policies is safer for general compatibility.
+
+-- End of 20260424000001_fix_unified_patient_rls.sql
+
+
+-- File: 20260424000002_add_metadata_to_chat_conversations.sql
+-- Add metadata column to chat_conversations
+ALTER TABLE public.chat_conversations 
+ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
+
+-- Add metadata column to chat_messages
+ALTER TABLE public.chat_messages 
+ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
+
+
+-- End of 20260424000002_add_metadata_to_chat_conversations.sql
+
+
+-- File: 20260424000003_fix_chat_insert_rls.sql
+-- Allow authenticated customers to create conversations
+DROP POLICY IF EXISTS "Customers can create conversations" ON public.chat_conversations;
+CREATE POLICY "Customers can create conversations"
+ON public.chat_conversations FOR INSERT
+TO authenticated
+WITH CHECK (customer_id = auth.uid());
+
+-- End of 20260424000003_fix_chat_insert_rls.sql
+
+
+-- File: 20260425223000_add_location_columns_to_branches.sql
+-- Add missing location columns to branches table
+ALTER TABLE public.branches
+ADD COLUMN IF NOT EXISTS latitude DECIMAL(10,8) CHECK (latitude >= -90 AND latitude <= 90),
+ADD COLUMN IF NOT EXISTS longitude DECIMAL(11,8) CHECK (longitude >= -180 AND longitude <= 180);
+
+-- Also add state, city, country if they are somehow missing
+ALTER TABLE public.branches
+ADD COLUMN IF NOT EXISTS city VARCHAR(255),
+ADD COLUMN IF NOT EXISTS state VARCHAR(255),
+ADD COLUMN IF NOT EXISTS country VARCHAR(255);
+
+-- End of 20260425223000_add_location_columns_to_branches.sql
+
+
+-- File: 20260427000000_create_clock_out_rpc.sql
+-- ============================================================
+-- Migration 20260427000000: Create Clock Out RPC and Attendance RLS
+-- ============================================================
+
+-- RLS Policies for staff_attendance
+CREATE POLICY "Staff can view own attendance" ON staff_attendance
+    FOR SELECT USING (staff_id = auth.uid());
+
+CREATE POLICY "Managers can view branch attendance" ON staff_attendance
+    FOR SELECT USING (
+        current_user_role() IN ('tenant_admin', 'branch_manager') AND
+        tenant_id = current_tenant_id() AND 
+        (current_user_role() = 'tenant_admin' OR branch_id = current_user_branch_id())
+    );
+
+CREATE POLICY "Staff can insert own attendance" ON staff_attendance
+    FOR INSERT WITH CHECK (
+        staff_id = auth.uid() AND
+        tenant_id = current_tenant_id()
+    );
+
+CREATE POLICY "Staff can update own attendance" ON staff_attendance
+    FOR UPDATE USING (
+        staff_id = auth.uid()
+    ) WITH CHECK (
+        staff_id = auth.uid()
+    );
+
+-- Clock Out RPC
+CREATE OR REPLACE FUNCTION clock_out_staff(p_attendance_id UUID)
+RETURNS staff_attendance AS $$
+DECLARE
+    v_attendance staff_attendance;
+BEGIN
+    UPDATE staff_attendance
+    SET 
+        clock_out_at = NOW(),
+        total_hours = EXTRACT(EPOCH FROM (NOW() - clock_in_at)) / 3600
+    WHERE id = p_attendance_id
+      AND clock_out_at IS NULL
+    RETURNING * INTO v_attendance;
+
+    RETURN v_attendance;
+END;
+$$ LANGUAGE plpgsql SECURITY INVOKER;
+
+-- End of 20260427000000_create_clock_out_rpc.sql
+
+
+-- File: 20260427000001_create_branch_shifts.sql
+-- ============================================================
+-- Migration 20260427000001: Create Branch Shifts and Update Attendance
+-- ============================================================
+
+CREATE TABLE branch_shifts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+    shift_name VARCHAR(255) NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    grace_period_minutes INTEGER DEFAULT 0 CHECK (grace_period_minutes >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT valid_shift_times CHECK (start_time != end_time)
+);
+
+-- RLS policies for branch_shifts
+ALTER TABLE branch_shifts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Staff can view branch shifts" ON branch_shifts
+    FOR SELECT USING (tenant_id = current_tenant_id());
+
+CREATE POLICY "Managers can manage branch shifts" ON branch_shifts
+    FOR ALL USING (
+        current_user_role() IN ('tenant_admin', 'branch_manager') AND
+        tenant_id = current_tenant_id()
+    );
+
+-- Alter staff_attendance
+ALTER TABLE staff_attendance
+ADD COLUMN IF NOT EXISTS shift_id UUID REFERENCES branch_shifts(id) ON DELETE SET NULL,
+ADD COLUMN IF NOT EXISTS shift_status VARCHAR(50) DEFAULT 'on_time' CHECK (shift_status IN ('on_time', 'late', 'out_of_schedule'));
+
+-- Update trigger for updated_at
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON branch_shifts
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- End of 20260427000001_create_branch_shifts.sql
+
+
+-- File: 20260427000002_fix_staff_attendance_rls.sql
+-- ============================================================
+-- Migration 20260427000002: Fix Staff Attendance RLS
+-- ============================================================
+
+-- Ensure the policies exist (in case the first migration was missed or failed)
+DROP POLICY IF EXISTS "Staff can view own attendance" ON staff_attendance;
+CREATE POLICY "Staff can view own attendance" ON staff_attendance
+    FOR SELECT USING (staff_id = auth.uid());
+
+DROP POLICY IF EXISTS "Managers can view branch attendance" ON staff_attendance;
+CREATE POLICY "Managers can view branch attendance" ON staff_attendance
+    FOR SELECT USING (
+        current_user_role() IN ('tenant_admin', 'branch_manager') AND
+        tenant_id = current_tenant_id() AND 
+        (current_user_role() = 'tenant_admin' OR branch_id = current_user_branch_id())
+    );
+
+DROP POLICY IF EXISTS "Staff can insert own attendance" ON staff_attendance;
+CREATE POLICY "Staff can insert own attendance" ON staff_attendance
+    FOR INSERT WITH CHECK (
+        staff_id = auth.uid() AND
+        tenant_id = current_tenant_id()
+    );
+
+DROP POLICY IF EXISTS "Staff can update own attendance" ON staff_attendance;
+CREATE POLICY "Staff can update own attendance" ON staff_attendance
+    FOR UPDATE USING (
+        staff_id = auth.uid()
+    ) WITH CHECK (
+        staff_id = auth.uid()
+    );
+
+-- Clock Out RPC (Redefining it here just to be safe)
+CREATE OR REPLACE FUNCTION clock_out_staff(p_attendance_id UUID)
+RETURNS staff_attendance AS $$
+DECLARE
+    v_attendance staff_attendance;
+BEGIN
+    UPDATE staff_attendance
+    SET 
+        clock_out_at = NOW(),
+        total_hours = EXTRACT(EPOCH FROM (NOW() - clock_in_at)) / 3600
+    WHERE id = p_attendance_id
+      AND clock_out_at IS NULL
+    RETURNING * INTO v_attendance;
+
+    RETURN v_attendance;
+END;
+$$ LANGUAGE plpgsql SECURITY INVOKER;
+
+-- End of 20260427000002_fix_staff_attendance_rls.sql
+
+
+-- File: 20260428131000_populate_sale_item_names.sql
+-- ============================================================
+-- Migration: Populate Sale Item Names
+-- Description: Updates the populate_sale_item_details function to fetch and snapshot
+--              customer_name, cashier_name, and healthcare_provider_name.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION populate_sale_item_details()
+RETURNS TRIGGER AS $$
+DECLARE
+    r_prod RECORD;
+    v_branch_id UUID;
+    v_tenant_id UUID;
+    v_customer_id UUID;
+    v_cashier_id UUID;
+    v_customer_name TEXT;
+    v_cashier_name TEXT;
+    v_provider_name TEXT;
+BEGIN
+    -- 1. Get product details from catalog
+    SELECT p.name, p.barcode as sku, p.category_id, c.name as category_name
+    INTO r_prod
+    FROM public.products p
+    LEFT JOIN public.categories c ON c.id = p.category_id
+    WHERE p.id = NEW.product_id;
+
+    -- 2. Get transaction context from Sale or Order if IDs are missing in NEW
+    IF NEW.sale_id IS NOT NULL THEN
+        SELECT 
+            branch_id, tenant_id, customer_id, cashier_id, customer_name
+        INTO 
+            v_branch_id, v_tenant_id, v_customer_id, v_cashier_id, v_customer_name
+        FROM public.sales WHERE id = NEW.sale_id;
+    ELSIF NEW.order_id IS NOT NULL THEN
+        SELECT 
+            branch_id, tenant_id, customer_id
+        INTO 
+            v_branch_id, v_tenant_id, v_customer_id
+        FROM public.orders WHERE id = NEW.order_id;
+    END IF;
+
+    -- 3. Consolidate IDs (Priority: NEW > Context from Sale/Order)
+    NEW.tenant_id := COALESCE(NEW.tenant_id, v_tenant_id);
+    NEW.branch_id := COALESCE(NEW.branch_id, v_branch_id);
+    NEW.customer_id := COALESCE(NEW.customer_id, v_customer_id);
+    NEW.cashier_id := COALESCE(NEW.cashier_id, v_cashier_id);
+
+    -- 4. Fetch Names for the consolidated IDs if they aren't already provided in NEW
+    -- Customer Name
+    IF NEW.customer_name IS NULL THEN
+        IF NEW.customer_id IS NOT NULL THEN
+            SELECT full_name INTO v_customer_name FROM public.customers WHERE id = NEW.customer_id;
+            NEW.customer_name := v_customer_name;
+        END IF;
+        -- Fallback to the name on the sale record if customer_id doesn't yield a name (e.g. walk-in)
+        IF NEW.customer_name IS NULL THEN
+            NEW.customer_name := v_customer_name; -- This v_customer_name came from the sales table SELECT above
+        END IF;
+    END IF;
+
+    -- Cashier Name
+    IF NEW.cashier_name IS NULL AND NEW.cashier_id IS NOT NULL THEN
+        SELECT full_name INTO v_cashier_name FROM public.users WHERE id = NEW.cashier_id;
+        NEW.cashier_name := v_cashier_name;
+    END IF;
+
+    -- Healthcare Provider Name
+    IF NEW.healthcare_provider_name IS NULL AND NEW.health_care_provider IS NOT NULL THEN
+        SELECT full_name INTO v_provider_name FROM public.healthcare_providers WHERE id = NEW.health_care_provider;
+        NEW.healthcare_provider_name := v_provider_name;
+    END IF;
+
+    -- 5. Populate metadata snapshots for product
+    IF r_prod IS NOT NULL THEN
+        NEW.product_name := COALESCE(NEW.product_name, r_prod.name);
+        NEW.product_sku := COALESCE(NEW.product_sku, r_prod.sku);
+        NEW.category_id := COALESCE(NEW.category_id, r_prod.category_id);
+        NEW.category_name := COALESCE(NEW.category_name, r_prod.category_name);
+        NEW.unit_of_measure := COALESCE(NEW.unit_of_measure, 'piece');
+
+        -- 5b. Fetch unit_cost from branch_inventory if missing
+        IF NEW.unit_cost IS NULL AND NEW.inventory_id IS NOT NULL THEN
+            SELECT cost_price INTO NEW.unit_cost FROM public.branch_inventory WHERE id = NEW.inventory_id;
+        END IF;
+    END IF;
+
+    -- 6. Cost & Profit Calculation
+    IF NEW.unit_cost IS NOT NULL THEN
+        NEW.total_cost := NEW.unit_cost * NEW.quantity;
+        NEW.gross_profit := NEW.subtotal - NEW.total_cost;
+        IF NEW.subtotal > 0 THEN
+            NEW.profit_margin := (NEW.gross_profit / NEW.subtotal) * 100;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- End of 20260428131000_populate_sale_item_names.sql
+
+
+-- File: 20260428133000_fix_users_typos.sql
+-- ============================================================
+-- Migration: Fix Users Table Typos
+-- Description: Renames misspelled columns in the users table to align with the codebase
+--              and staff_invitations table.
+-- ============================================================
+
+ALTER TABLE public.users RENAME COLUMN "canMangeStaff" TO "canManageStaff";
+ALTER TABLE public.users RENAME COLUMN "canReferToDoctor" TO "canReferDoctor";
+
+-- End of 20260428133000_fix_users_typos.sql
+
+
+-- File: 20260428140000_fix_customer_schema.sql
+-- Migration: Fix Customer Schema
+-- Description: Adds missing columns to the customers table to match the POS frontend requirements.
+
+ALTER TABLE public.customers
+ADD COLUMN IF NOT EXISTS first_name VARCHAR(255),
+ADD COLUMN IF NOT EXISTS last_name VARCHAR(255),
+ADD COLUMN IF NOT EXISTS address TEXT,
+ADD COLUMN IF NOT EXISTS date_of_birth DATE,
+ADD COLUMN IF NOT EXISTS notes TEXT,
+ADD COLUMN IF NOT EXISTS loyalty_points INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS total_spent DECIMAL(12,2) DEFAULT 0;
+
+-- Simple index for address search
+CREATE INDEX IF NOT EXISTS idx_customers_address_search ON public.customers(address) WHERE address IS NOT NULL;
+
+-- Trigger to automatically update full_name from first_name and last_name
+CREATE OR REPLACE FUNCTION update_customer_full_name()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.full_name := TRIM(CONCAT(NEW.first_name, ' ', NEW.last_name));
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_customer_full_name ON public.customers;
+CREATE TRIGGER trigger_update_customer_full_name
+    BEFORE INSERT OR UPDATE OF first_name, last_name ON public.customers
+    FOR EACH ROW
+    EXECUTE FUNCTION update_customer_full_name();
+
+-- End of 20260428140000_fix_customer_schema.sql
+
+
+-- File: 20260428150000_relax_sale_total_constraint.sql
+-- Migration: Relax Sale Total Constraint
+-- Description: Changes total_amount check from > 0 to >= 0 to support full returns/refunds.
+
+-- 1. Drop the existing strict constraint
+-- The error message confirmed the name is 'sales_total_amount_check'
+ALTER TABLE public.sales DROP CONSTRAINT IF EXISTS sales_total_amount_check;
+
+-- 2. Add the relaxed constraint
+ALTER TABLE public.sales ADD CONSTRAINT sales_total_amount_check CHECK (total_amount >= 0);
+
+-- 3. Update the item-level quantity constraint if necessary
+-- (Currently sale_items.quantity > 0, which is correct as we delete or zero-out items)
+-- But in the RPC, we set quantity to 0 for returned items.
+-- Let's check sale_items quantity constraint.
+ALTER TABLE public.sale_items DROP CONSTRAINT IF EXISTS sale_items_quantity_check;
+ALTER TABLE public.sale_items ADD CONSTRAINT sale_items_quantity_check CHECK (quantity >= 0);
+
+-- End of 20260428150000_relax_sale_total_constraint.sql
+
+
+-- File: 20260428160000_expand_user_roles.sql
+-- Migration: Expand User Roles
+-- Description: Adds 'pharmacist' and 'doctor' to the user_role enum.
+
+-- Using individual statements as ADD VALUE often fails inside DO blocks or multi-statement transactions
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'pharmacist';
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'doctor';
+
+-- End of 20260428160000_expand_user_roles.sql
+
+
+-- File: 20260429184500_update_sale_item_population_logic.sql
+-- ============================================================
+-- Migration: Update Sale Item Population Logic
+-- Description: Updates the populate_sale_item_details function to fetch and snapshot
+--              city, state, country (from branch) and generic_name (from product).
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION populate_sale_item_details()
+RETURNS TRIGGER AS $$
+DECLARE
+    r_prod RECORD;
+    v_branch_id UUID;
+    v_tenant_id UUID;
+    v_customer_id UUID;
+    v_cashier_id UUID;
+    v_customer_name TEXT;
+    v_cashier_name TEXT;
+    v_provider_name TEXT;
+    v_city TEXT;
+    v_state TEXT;
+    v_country TEXT;
+BEGIN
+    -- 1. Get product details from catalog (including generic_name)
+    SELECT p.name, p.barcode as sku, p.category_id, c.name as category_name, p.generic_name
+    INTO r_prod
+    FROM public.products p
+    LEFT JOIN public.categories c ON c.id = p.category_id
+    WHERE p.id = NEW.product_id;
+
+    -- 2. Get transaction context from Sale or Order if IDs are missing in NEW
+    IF NEW.sale_id IS NOT NULL THEN
+        SELECT 
+            branch_id, tenant_id, customer_id, cashier_id, customer_name
+        INTO 
+            v_branch_id, v_tenant_id, v_customer_id, v_cashier_id, v_customer_name
+        FROM public.sales WHERE id = NEW.sale_id;
+    ELSIF NEW.order_id IS NOT NULL THEN
+        SELECT 
+            branch_id, tenant_id, customer_id
+        INTO 
+            v_branch_id, v_tenant_id, v_customer_id
+        FROM public.orders WHERE id = NEW.order_id;
+    END IF;
+
+    -- 3. Consolidate IDs (Priority: NEW > Context from Sale/Order)
+    NEW.tenant_id := COALESCE(NEW.tenant_id, v_tenant_id);
+    NEW.branch_id := COALESCE(NEW.branch_id, v_branch_id);
+    NEW.customer_id := COALESCE(NEW.customer_id, v_customer_id);
+    NEW.cashier_id := COALESCE(NEW.cashier_id, v_cashier_id);
+
+    -- 4. Fetch Names and Locations for the consolidated IDs
+    -- Customer Name
+    IF NEW.customer_name IS NULL THEN
+        IF NEW.customer_id IS NOT NULL THEN
+            SELECT full_name INTO v_customer_name FROM public.customers WHERE id = NEW.customer_id;
+            NEW.customer_name := v_customer_name;
+        END IF;
+        -- Fallback to the name on the sale record if customer_id doesn't yield a name (e.g. walk-in)
+        IF NEW.customer_name IS NULL THEN
+            NEW.customer_name := v_customer_name; 
+        END IF;
+    END IF;
+
+    -- Cashier Name
+    IF NEW.cashier_name IS NULL AND NEW.cashier_id IS NOT NULL THEN
+        SELECT full_name INTO v_cashier_name FROM public.users WHERE id = NEW.cashier_id;
+        NEW.cashier_name := v_cashier_name;
+    END IF;
+
+    -- Healthcare Provider Name
+    IF NEW.healthcare_provider_name IS NULL AND NEW.health_care_provider IS NOT NULL THEN
+        SELECT full_name INTO v_provider_name FROM public.healthcare_providers WHERE id = NEW.health_care_provider;
+        NEW.healthcare_provider_name := v_provider_name;
+    END IF;
+
+    -- Location Details (from branch)
+    IF (NEW.city IS NULL OR NEW.state IS NULL OR NEW.country IS NULL) AND NEW.branch_id IS NOT NULL THEN
+        SELECT city, state, country 
+        INTO v_city, v_state, v_country 
+        FROM public.branches 
+        WHERE id = NEW.branch_id;
+        
+        NEW.city := COALESCE(NEW.city, v_city);
+        NEW.state := COALESCE(NEW.state, v_state);
+        NEW.country := COALESCE(NEW.country, v_country);
+    END IF;
+
+    -- 5. Populate metadata snapshots for product
+    IF r_prod IS NOT NULL THEN
+        NEW.product_name := COALESCE(NEW.product_name, r_prod.name);
+        NEW.product_sku := COALESCE(NEW.product_sku, r_prod.sku);
+        NEW.category_id := COALESCE(NEW.category_id, r_prod.category_id);
+        NEW.category_name := COALESCE(NEW.category_name, r_prod.category_name);
+        NEW.generic_name := COALESCE(NEW.generic_name, r_prod.generic_name);
+        NEW.unit_of_measure := COALESCE(NEW.unit_of_measure, 'piece');
+
+        -- 5b. Fetch unit_cost from branch_inventory if missing
+        IF NEW.unit_cost IS NULL AND NEW.inventory_id IS NOT NULL THEN
+            SELECT cost_price INTO NEW.unit_cost FROM public.branch_inventory WHERE id = NEW.inventory_id;
+        END IF;
+    END IF;
+
+    -- 6. Cost & Profit Calculation
+    IF NEW.unit_cost IS NOT NULL THEN
+        NEW.total_cost := NEW.unit_cost * NEW.quantity;
+        NEW.gross_profit := NEW.subtotal - NEW.total_cost;
+        IF NEW.subtotal > 0 THEN
+            NEW.profit_margin := (NEW.gross_profit / NEW.subtotal) * 100;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION populate_sale_item_details IS 'Trigger function to auto-populate product snapshot details, location context, and names in sale_items';
+
+-- End of 20260429184500_update_sale_item_population_logic.sql
+
+
+-- File: 20260429190000_inventory_and_sale_analytics_sync.sql
+-- ============================================================
+-- Migration: Inventory and Sale Analytics Sync
+-- Description: Snapshots product details into branch_inventory and 
+--              updates sale_items trigger to pull generic_name from inventory.
+-- ============================================================
+
+-- 1. Ensure products table has necessary analytics columns
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS unit_of_measure VARCHAR(20) DEFAULT 'piece';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS product_type TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS generic_name TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+-- 2. Ensure branch_inventory table has snapshot columns
+ALTER TABLE public.branch_inventory ADD COLUMN IF NOT EXISTS product_name TEXT;
+ALTER TABLE public.branch_inventory ADD COLUMN IF NOT EXISTS sku TEXT;
+ALTER TABLE public.branch_inventory ADD COLUMN IF NOT EXISTS barcode TEXT;
+ALTER TABLE public.branch_inventory ADD COLUMN IF NOT EXISTS product_type TEXT;
+ALTER TABLE public.branch_inventory ADD COLUMN IF NOT EXISTS generic_name TEXT;
+ALTER TABLE public.branch_inventory ADD COLUMN IF NOT EXISTS unit_of_measure TEXT;
+ALTER TABLE public.branch_inventory ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+-- 3. Ensure sale_items table has location snapshot columns
+ALTER TABLE public.sale_items ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+ALTER TABLE public.sale_items ADD COLUMN IF NOT EXISTS state VARCHAR(100);
+ALTER TABLE public.sale_items ADD COLUMN IF NOT EXISTS country VARCHAR(100);
+
+-- 4. Inventory Trigger Function: Populate snapshots from products
+CREATE OR REPLACE FUNCTION populate_branch_inventory_details()
+RETURNS TRIGGER AS $$
+DECLARE
+    r_prod RECORD;
+BEGIN
+    SELECT name, barcode as sku, barcode, product_type, generic_name, unit_of_measure, image_url
+    INTO r_prod
+    FROM public.products WHERE id = NEW.product_id;
+
+    IF r_prod IS NOT NULL THEN
+        NEW.product_name := COALESCE(NEW.product_name, r_prod.name);
+        NEW.sku := COALESCE(NEW.sku, r_prod.sku);
+        NEW.barcode := COALESCE(NEW.barcode, r_prod.barcode);
+        NEW.product_type := COALESCE(NEW.product_type, r_prod.product_type);
+        NEW.unit_of_measure := COALESCE(NEW.unit_of_measure, r_prod.unit_of_measure);
+        NEW.image_url := COALESCE(NEW.image_url, r_prod.image_url);
+        
+        -- Capture generic_name only if it's a drug/medication
+        IF r_prod.product_type IN ('drug', 'medication') THEN
+            NEW.generic_name := COALESCE(NEW.generic_name, r_prod.generic_name);
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_populate_branch_inventory_details ON public.branch_inventory;
+CREATE TRIGGER trg_populate_branch_inventory_details
+    BEFORE INSERT ON public.branch_inventory
+    FOR EACH ROW
+    EXECUTE FUNCTION populate_branch_inventory_details();
+
+COMMENT ON FUNCTION populate_branch_inventory_details() IS 'Auto-populates product snapshots in branch_inventory';
+
+
+-- 2. Update Sale Item Trigger Function: Pull generic_name from inventory snapshots
+CREATE OR REPLACE FUNCTION populate_sale_item_details()
+RETURNS TRIGGER AS $$
+DECLARE
+    r_prod RECORD;
+    r_inv RECORD;
+    v_branch_id UUID;
+    v_tenant_id UUID;
+    v_customer_id UUID;
+    v_cashier_id UUID;
+    v_customer_name TEXT;
+    v_cashier_name TEXT;
+    v_provider_name TEXT;
+BEGIN
+    -- 1. Get snapshot details from Branch Inventory if inventory_id is provided
+    IF NEW.inventory_id IS NOT NULL THEN
+        SELECT product_id, product_name, sku, barcode, product_type, generic_name, selling_price, cost_price
+        INTO r_inv
+        FROM public.branch_inventory WHERE id = NEW.inventory_id;
+        
+        IF r_inv IS NOT NULL THEN
+            NEW.product_id := COALESCE(NEW.product_id, r_inv.product_id);
+            NEW.product_name := COALESCE(NEW.product_name, r_inv.product_name);
+            NEW.product_sku := COALESCE(NEW.product_sku, r_inv.sku);
+            NEW.generic_name := COALESCE(NEW.generic_name, r_inv.generic_name);
+            NEW.unit_cost := COALESCE(NEW.unit_cost, CAST(r_inv.cost_price AS NUMERIC));
+        END IF;
+    END IF;
+
+    -- 2. Fallback to products catalog if details are still missing (e.g. non-inventory items)
+    IF NEW.product_name IS NULL OR (NEW.generic_name IS NULL AND NEW.product_id IS NOT NULL) THEN
+        SELECT p.name, p.barcode as sku, p.category_id, c.name as category_name, p.generic_name, p.product_type
+        INTO r_prod
+        FROM public.products p
+        LEFT JOIN public.categories c ON c.id = p.category_id
+        WHERE p.id = NEW.product_id;
+
+        IF r_prod IS NOT NULL THEN
+            NEW.product_name := COALESCE(NEW.product_name, r_prod.name);
+            NEW.product_sku := COALESCE(NEW.product_sku, r_prod.sku);
+            NEW.category_id := COALESCE(NEW.category_id, r_prod.category_id);
+            NEW.category_name := COALESCE(NEW.category_name, r_prod.category_name);
+            
+            -- Only pull generic_name if it's a drug and we don't have it yet
+            IF NEW.generic_name IS NULL AND r_prod.product_type IN ('drug', 'medication') THEN
+                NEW.generic_name := r_prod.generic_name;
+            END IF;
+        END IF;
+    END IF;
+
+    -- 3. Get transaction context from Sale or Order if IDs are missing in NEW
+    IF NEW.sale_id IS NOT NULL THEN
+        SELECT 
+            branch_id, tenant_id, customer_id, cashier_id, customer_name
+        INTO 
+            v_branch_id, v_tenant_id, v_customer_id, v_cashier_id, v_customer_name
+        FROM public.sales WHERE id = NEW.sale_id;
+    ELSIF NEW.order_id IS NOT NULL THEN
+        SELECT 
+            branch_id, tenant_id, customer_id
+        INTO 
+            v_branch_id, v_tenant_id, v_customer_id
+        FROM public.orders WHERE id = NEW.order_id;
+    END IF;
+
+    -- 4. Consolidate IDs (Priority: NEW > Context from Sale/Order)
+    NEW.tenant_id := COALESCE(NEW.tenant_id, v_tenant_id);
+    NEW.branch_id := COALESCE(NEW.branch_id, v_branch_id);
+    NEW.customer_id := COALESCE(NEW.customer_id, v_customer_id);
+    NEW.cashier_id := COALESCE(NEW.cashier_id, v_cashier_id);
+
+    -- 5. Fetch Names for the consolidated IDs
+    -- Customer Name
+    IF NEW.customer_name IS NULL THEN
+        IF NEW.customer_id IS NOT NULL THEN
+            SELECT full_name INTO v_customer_name FROM public.customers WHERE id = NEW.customer_id;
+            NEW.customer_name := v_customer_name;
+        END IF;
+        IF NEW.customer_name IS NULL THEN
+            NEW.customer_name := v_customer_name; 
+        END IF;
+    END IF;
+
+    -- Cashier Name
+    IF NEW.cashier_name IS NULL AND NEW.cashier_id IS NOT NULL THEN
+        SELECT full_name INTO v_cashier_name FROM public.users WHERE id = NEW.cashier_id;
+        NEW.cashier_name := v_cashier_name;
+    END IF;
+
+    -- Healthcare Provider Name
+    IF NEW.healthcare_provider_name IS NULL AND NEW.health_care_provider IS NOT NULL THEN
+        SELECT full_name INTO v_provider_name FROM public.healthcare_providers WHERE id = NEW.health_care_provider;
+        NEW.healthcare_provider_name := v_provider_name;
+    END IF;
+
+    -- 6. Cost & Profit Calculation
+    IF NEW.unit_cost IS NOT NULL THEN
+        NEW.total_cost := NEW.unit_cost * NEW.quantity;
+        NEW.gross_profit := NEW.subtotal - NEW.total_cost;
+        IF NEW.subtotal > 0 THEN
+            NEW.profit_margin := (NEW.gross_profit / NEW.subtotal) * 100;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- End of 20260429190000_inventory_and_sale_analytics_sync.sql
+
+
+-- File: 20260429210000_fix_staff_rls_access.sql
+-- 1. Ensure the current_tenant_id helper is robust and bypassing RLS
+CREATE OR REPLACE FUNCTION current_tenant_id() 
+RETURNS UUID AS $$
+    SELECT u.tenant_id FROM public.users u WHERE u.id = auth.uid();
+$$ LANGUAGE SQL SECURITY DEFINER;
+
+-- 2. Tenants Table: Allow staff to see their assigned tenant
+DROP POLICY IF EXISTS "Users can view own tenant" ON public.tenants;
+DROP POLICY IF EXISTS "Users can view their own tenant" ON public.tenants;
+DROP POLICY IF EXISTS "Users can select their own tenant by email" ON public.tenants;
+DROP POLICY IF EXISTS "Public can view basic tenant info" ON public.tenants;
+
+-- Restore public view for storefront slug resolution
+CREATE POLICY "Public can view basic tenant info"
+    ON public.tenants FOR SELECT
+    USING (deleted_at IS NULL);
+
+-- Add explicit staff access
+CREATE POLICY "Staff can view their own tenant"
+    ON public.tenants FOR SELECT
+    USING (id = current_tenant_id());
+
+-- 3. Branches Table: Allow staff to see branches in their tenant
+DROP POLICY IF EXISTS "Tenant branch isolation" ON public.branches;
+DROP POLICY IF EXISTS "Users can view branches in their tenant" ON public.branches;
+DROP POLICY IF EXISTS "Users can view own branch" ON public.branches;
+DROP POLICY IF EXISTS "Public can view branches for storefront" ON public.branches;
+
+CREATE POLICY "Public can view branches for storefront"
+    ON public.branches FOR SELECT
+    USING (deleted_at IS NULL);
+
+CREATE POLICY "Staff can view branches in their tenant"
+    ON public.branches FOR SELECT
+    USING (tenant_id = current_tenant_id());
+
+-- 4. Users Table: Allow staff to see colleagues
+DROP POLICY IF EXISTS "Users can view users in their tenant" ON public.users;
+CREATE POLICY "Users can view users in their tenant"
+    ON public.users FOR SELECT
+    USING (tenant_id = current_tenant_id());
+
+-- 5. Products Table: Ensure staff can see products
+DROP POLICY IF EXISTS "Users can view products in their tenant" ON public.products;
+CREATE POLICY "Users can view products in their tenant"
+    ON public.products FOR SELECT
+    USING (tenant_id = current_tenant_id());
+
+-- End of 20260429210000_fix_staff_rls_access.sql
+
+
+-- File: 20260429233000_add_service_charge_to_orders.sql
+-- ============================================================
+-- Migration: Add service_charge to orders
+-- Description: Adds service_charge column to orders table and updates the valid_total constraint.
+-- ============================================================
+
+-- 1. Add service_charge column
+ALTER TABLE public.orders 
+ADD COLUMN IF NOT EXISTS service_charge DECIMAL(12,2) DEFAULT 0 CHECK (service_charge >= 0);
+
+-- 2. Update valid_total constraint
+ALTER TABLE public.orders DROP CONSTRAINT IF EXISTS valid_total;
+ALTER TABLE public.orders ADD CONSTRAINT valid_total CHECK (total_amount = subtotal + delivery_fee + tax_amount + service_charge);
+
+-- 3. Update checkout_storefront_order RPC to support service_charge
+CREATE OR REPLACE FUNCTION checkout_storefront_order(
+    p_tenant_id UUID,
+    p_branch_id UUID,
+    p_customer_id UUID,
+    p_order_type order_type,
+    p_fulfillment_type fulfillment_type,
+    p_subtotal DECIMAL,
+    p_delivery_fee DECIMAL,
+    p_tax_amount DECIMAL,
+    p_total_amount DECIMAL,
+    p_delivery_address_id UUID,
+    p_special_instructions TEXT,
+    p_items JSONB, -- Array of { product_id, product_name, quantity, unit_price, subtotal }
+    p_service_charge DECIMAL DEFAULT 0
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_order_id UUID;
+    v_item RECORD;
+    v_batch RECORD;
+    v_req_qty INTEGER;
+    v_available_qty INTEGER;
+    v_allocated_qty INTEGER;
+    v_allocations JSONB;
+    v_primary_batch_id UUID;
+BEGIN
+    -- Validate totals (including service charge)
+    IF p_total_amount != (p_subtotal + p_delivery_fee + p_tax_amount + p_service_charge) THEN
+        RAISE EXCEPTION 'Total amount does not match subtotal + fees + tax + service charge';
+    END IF;
+
+    -- Create the order header
+    INSERT INTO orders (
+        tenant_id, branch_id, order_number, customer_id,
+        order_type, order_status, payment_status,
+        subtotal, delivery_fee, tax_amount, service_charge, total_amount,
+        fulfillment_type, delivery_address_id, special_instructions
+    ) VALUES (
+        p_tenant_id,
+        p_branch_id,
+        'ORD-' || FLOOR(EXTRACT(EPOCH FROM NOW()))::TEXT || '-' || SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 4),
+        p_customer_id,
+        p_order_type,
+        'pending'::order_status,
+        'unpaid'::payment_status,
+        p_subtotal, p_delivery_fee, p_tax_amount, p_service_charge, p_total_amount,
+        p_fulfillment_type,
+        p_delivery_address_id,
+        p_special_instructions
+    ) RETURNING id INTO v_order_id;
+
+    -- Process each item: FIFO batch allocation + insert into sale_items
+    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(
+        product_id UUID, product_name TEXT, quantity INTEGER, unit_price DECIMAL, subtotal DECIMAL
+    )
+    LOOP
+        v_req_qty := v_item.quantity;
+        v_allocations := '[]'::jsonb;
+        v_primary_batch_id := NULL;
+
+        -- FIFO batch allocation
+        FOR v_batch IN 
+            SELECT id, (stock_quantity - COALESCE(reserved_quantity, 0)) AS available_balance
+            FROM branch_inventory
+            WHERE branch_id = p_branch_id 
+              AND product_id = v_item.product_id 
+              AND is_active = true
+              AND (stock_quantity - COALESCE(reserved_quantity, 0)) > 0
+            ORDER BY expiry_date ASC NULLS LAST, created_at ASC
+            FOR UPDATE
+        LOOP
+            IF v_req_qty <= 0 THEN EXIT; END IF;
+
+            v_available_qty := v_batch.available_balance;
+            v_allocated_qty := LEAST(v_available_qty, v_req_qty);
+
+            -- Reserve stock in the batch
+            UPDATE branch_inventory
+            SET reserved_quantity = COALESCE(reserved_quantity, 0) + v_allocated_qty,
+                updated_at = NOW()
+            WHERE id = v_batch.id;
+
+            IF v_primary_batch_id IS NULL THEN
+                v_primary_batch_id := v_batch.id;
+            END IF;
+
+            v_allocations := v_allocations || jsonb_build_object(
+                'batch_id', v_batch.id,
+                'quantity', v_allocated_qty
+            );
+
+            v_req_qty := v_req_qty - v_allocated_qty;
+        END LOOP;
+
+        IF v_req_qty > 0 THEN
+            RAISE EXCEPTION 'Insufficient stock for product: % (short by %)', v_item.product_name, v_req_qty;
+        END IF;
+
+        INSERT INTO public.sale_items (
+            tenant_id,
+            order_id,
+            branch_id,
+            inventory_id,
+            product_id,
+            product_name,
+            quantity,
+            unit_price,
+            subtotal,
+            discount_amount,
+            batch_allocations
+        ) VALUES (
+            p_tenant_id,
+            v_order_id,
+            p_branch_id,
+            v_primary_batch_id,
+            v_item.product_id,
+            v_item.product_name,
+            v_item.quantity,
+            v_item.unit_price,
+            v_item.subtotal,
+            0,
+            v_allocations
+        );
+    END LOOP;
+
+    RETURN v_order_id;
+END;
+$$;
+
+-- End of 20260429233000_add_service_charge_to_orders.sql
+
+
+-- File: 20260430150000_update_checkout_rpc_with_payment_ref.sql
+-- ============================================================
+-- Migration: Update checkout_storefront_order with Payment Reference
+-- Description: Updates the RPC to accept a payment reference and set status to paid.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION checkout_storefront_order(
+    p_tenant_id UUID,
+    p_branch_id UUID,
+    p_customer_id UUID,
+    p_order_type order_type,
+    p_fulfillment_type fulfillment_type,
+    p_subtotal DECIMAL,
+    p_delivery_fee DECIMAL,
+    p_tax_amount DECIMAL,
+    p_total_amount DECIMAL,
+    p_delivery_address_id UUID,
+    p_special_instructions TEXT,
+    p_items JSONB, -- Array of { product_id, product_name, quantity, unit_price, subtotal }
+    p_service_charge DECIMAL DEFAULT 0,
+    p_payment_reference TEXT DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_order_id UUID;
+    v_item RECORD;
+    v_batch RECORD;
+    v_req_qty INTEGER;
+    v_available_qty INTEGER;
+    v_allocated_qty INTEGER;
+    v_allocations JSONB;
+    v_primary_batch_id UUID;
+BEGIN
+    -- Validate totals (including service charge)
+    IF p_total_amount != (p_subtotal + p_delivery_fee + p_tax_amount + p_service_charge) THEN
+        RAISE EXCEPTION 'Total amount does not match subtotal + fees + tax + service charge';
+    END IF;
+
+    -- Create the order header
+    INSERT INTO orders (
+        tenant_id, branch_id, order_number, customer_id,
+        order_type, order_status, payment_status, payment_method, payment_reference,
+        subtotal, delivery_fee, tax_amount, service_charge, total_amount,
+        fulfillment_type, delivery_address_id, special_instructions
+    ) VALUES (
+        p_tenant_id,
+        p_branch_id,
+        'ORD-' || FLOOR(EXTRACT(EPOCH FROM NOW()))::TEXT || '-' || SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 4),
+        p_customer_id,
+        p_order_type,
+        'pending'::order_status,
+        CASE WHEN p_payment_reference IS NOT NULL THEN 'paid'::payment_status ELSE 'unpaid'::payment_status END,
+        'card'::payment_method, -- Default to card if payment reference is provided
+        p_payment_reference,
+        p_subtotal, p_delivery_fee, p_tax_amount, p_service_charge, p_total_amount,
+        p_fulfillment_type,
+        p_delivery_address_id,
+        p_special_instructions
+    ) RETURNING id INTO v_order_id;
+
+    -- Process each item: FIFO batch allocation + insert into sale_items
+    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(
+        product_id UUID, product_name TEXT, quantity INTEGER, unit_price DECIMAL, subtotal DECIMAL
+    )
+    LOOP
+        v_req_qty := v_item.quantity;
+        v_allocations := '[]'::jsonb;
+        v_primary_batch_id := NULL;
+
+        -- FIFO batch allocation
+        FOR v_batch IN 
+            SELECT id, (stock_quantity - COALESCE(reserved_quantity, 0)) AS available_balance
+            FROM branch_inventory
+            WHERE branch_id = p_branch_id 
+              AND product_id = v_item.product_id 
+              AND is_active = true
+              AND (stock_quantity - COALESCE(reserved_quantity, 0)) > 0
+            ORDER BY expiry_date ASC NULLS LAST, created_at ASC
+            FOR UPDATE
+        LOOP
+            IF v_req_qty <= 0 THEN EXIT; END IF;
+
+            v_available_qty := v_batch.available_balance;
+            v_allocated_qty := LEAST(v_available_qty, v_req_qty);
+
+            -- Reserve stock in the batch
+            UPDATE branch_inventory
+            SET reserved_quantity = COALESCE(reserved_quantity, 0) + v_allocated_qty,
+                updated_at = NOW()
+            WHERE id = v_batch.id;
+
+            IF v_primary_batch_id IS NULL THEN
+                v_primary_batch_id := v_batch.id;
+            END IF;
+
+            v_allocations := v_allocations || jsonb_build_object(
+                'batch_id', v_batch.id,
+                'quantity', v_allocated_qty
+            );
+
+            v_req_qty := v_req_qty - v_allocated_qty;
+        END LOOP;
+
+        IF v_req_qty > 0 THEN
+            RAISE EXCEPTION 'Insufficient stock for product: % (short by %)', v_item.product_name, v_req_qty;
+        END IF;
+
+        INSERT INTO public.sale_items (
+            tenant_id,
+            order_id,
+            branch_id,
+            inventory_id,
+            product_id,
+            product_name,
+            quantity,
+            unit_price,
+            subtotal,
+            discount_amount,
+            batch_allocations
+        ) VALUES (
+            p_tenant_id,
+            v_order_id,
+            p_branch_id,
+            v_primary_batch_id,
+            v_item.product_id,
+            v_item.product_name,
+            v_item.quantity,
+            v_item.unit_price,
+            v_item.subtotal,
+            0,
+            v_allocations
+        );
+    END LOOP;
+
+    RETURN v_order_id;
+END;
+$$;
+
+-- End of 20260430150000_update_checkout_rpc_with_payment_ref.sql
+
+
+-- File: 20260501073500_add_order_addresses.sql
+-- Migration: Add billing and shipping addresses to orders
+-- Description: Adds billing_address and shipping_address text columns to orders table.
+
+ALTER TABLE public.orders 
+ADD COLUMN IF NOT EXISTS billing_address TEXT,
+ADD COLUMN IF NOT EXISTS shipping_address TEXT;
+
+-- Update checkout_storefront_order RPC to support these addresses
+CREATE OR REPLACE FUNCTION checkout_storefront_order(
+    p_tenant_id UUID,
+    p_branch_id UUID,
+    p_customer_id UUID,
+    p_order_type order_type,
+    p_fulfillment_type fulfillment_type,
+    p_subtotal DECIMAL,
+    p_delivery_fee DECIMAL,
+    p_tax_amount DECIMAL,
+    p_total_amount DECIMAL,
+    p_delivery_address_id UUID,
+    p_special_instructions TEXT,
+    p_items JSONB, -- Array of { product_id, product_name, quantity, unit_price, subtotal }
+    p_service_charge DECIMAL DEFAULT 0,
+    p_payment_reference TEXT DEFAULT NULL,
+    p_billing_address TEXT DEFAULT NULL,
+    p_shipping_address TEXT DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_order_id UUID;
+    v_item RECORD;
+    v_batch RECORD;
+    v_req_qty INTEGER;
+    v_available_qty INTEGER;
+    v_allocated_qty INTEGER;
+    v_allocations JSONB;
+    v_primary_batch_id UUID;
+BEGIN
+    -- Validate totals (including service charge)
+    IF p_total_amount != (p_subtotal + p_delivery_fee + p_tax_amount + p_service_charge) THEN
+        RAISE EXCEPTION 'Total amount does not match subtotal + fees + tax + service charge';
+    END IF;
+
+    -- Create the order header
+    INSERT INTO orders (
+        tenant_id, branch_id, order_number, customer_id,
+        order_type, order_status, payment_status, payment_method, payment_reference,
+        subtotal, delivery_fee, tax_amount, service_charge, total_amount,
+        fulfillment_type, delivery_address_id, special_instructions,
+        billing_address, shipping_address
+    ) VALUES (
+        p_tenant_id,
+        p_branch_id,
+        'ORD-' || FLOOR(EXTRACT(EPOCH FROM NOW()))::TEXT || '-' || SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 4),
+        p_customer_id,
+        p_order_type,
+        'pending'::order_status,
+        CASE WHEN p_payment_reference IS NOT NULL THEN 'paid'::payment_status ELSE 'unpaid'::payment_status END,
+        'card'::payment_method,
+        p_payment_reference,
+        p_subtotal, p_delivery_fee, p_tax_amount, p_service_charge, p_total_amount,
+        p_fulfillment_type,
+        p_delivery_address_id,
+        p_special_instructions,
+        p_billing_address,
+        p_shipping_address
+    ) RETURNING id INTO v_order_id;
+
+    -- Process each item: FIFO batch allocation
+    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(
+        product_id UUID, product_name TEXT, quantity INTEGER, unit_price DECIMAL, subtotal DECIMAL
+    )
+    LOOP
+        v_req_qty := v_item.quantity;
+        v_allocations := '[]'::jsonb;
+        v_primary_batch_id := NULL;
+
+        -- FIFO batch allocation
+        FOR v_batch IN 
+            SELECT id, (stock_quantity - COALESCE(reserved_quantity, 0)) AS available_balance
+            FROM branch_inventory
+            WHERE branch_id = p_branch_id 
+              AND product_id = v_item.product_id 
+              AND is_active = true
+              AND (stock_quantity - COALESCE(reserved_quantity, 0)) > 0
+            ORDER BY expiry_date ASC NULLS LAST, created_at ASC
+            FOR UPDATE
+        LOOP
+            IF v_req_qty <= 0 THEN EXIT; END IF;
+
+            v_available_qty := v_batch.available_balance;
+            v_allocated_qty := LEAST(v_available_qty, v_req_qty);
+
+            -- Reserve stock in the batch
+            UPDATE branch_inventory
+            SET reserved_quantity = COALESCE(reserved_quantity, 0) + v_allocated_qty,
+                updated_at = NOW()
+            WHERE id = v_batch.id;
+
+            IF v_primary_batch_id IS NULL THEN
+                v_primary_batch_id := v_batch.id;
+            END IF;
+
+            v_allocations := v_allocations || jsonb_build_object(
+                'batch_id', v_batch.id,
+                'quantity', v_allocated_qty
+            );
+
+            v_req_qty := v_req_qty - v_allocated_qty;
+        END LOOP;
+
+        IF v_req_qty > 0 THEN
+            RAISE EXCEPTION 'Insufficient stock for product: % (short by %)', v_item.product_name, v_req_qty;
+        END IF;
+
+        INSERT INTO public.sale_items (
+            tenant_id,
+            order_id,
+            branch_id,
+            inventory_id,
+            product_id,
+            product_name,
+            quantity,
+            unit_price,
+            subtotal,
+            discount_amount,
+            batch_allocations
+        ) VALUES (
+            p_tenant_id,
+            v_order_id,
+            p_branch_id,
+            v_primary_batch_id,
+            v_item.product_id,
+            v_item.product_name,
+            v_item.quantity,
+            v_item.unit_price,
+            v_item.subtotal,
+            0,
+            v_allocations
+        );
+    END LOOP;
+
+    RETURN v_order_id;
+END;
+$$;
+
+-- End of 20260501073500_add_order_addresses.sql
+
+
+-- File: 20260501074300_ai_and_delivery_toggles.sql
+-- Migration: Add AI enablement and delivery options
+-- Description: Adds AI_is_enabled to tenants and delivery_enabled to branches.
+
+ALTER TABLE public.tenants 
+ADD COLUMN IF NOT EXISTS AI_is_enabled BOOLEAN DEFAULT false;
+
+ALTER TABLE public.branches 
+ADD COLUMN IF NOT EXISTS delivery_enabled BOOLEAN DEFAULT true;
+
+-- End of 20260501074300_ai_and_delivery_toggles.sql
+
+
+-- File: 20260501081200_enable_ai_test_tenant.sql
+-- Migration: Enable AI for test tenant
+-- Description: Sets ai_is_enabled to true for the ade-ventures tenant.
+
+UPDATE public.tenants 
+SET ai_is_enabled = true 
+WHERE slug = 'ade-ventures' OR name ILIKE '%Ade Ventures%';
+
+-- End of 20260501081200_enable_ai_test_tenant.sql
+
+
+-- File: 20260502000000_add_product_flags.sql
+-- ============================================
+-- Migration: Add Product Flags to Branch Inventory
+-- Description: Adds is_on_sale, is_featured, and is_new_arrival flags to branch_inventory
+--              to support storefront categories.
+-- Created: 2026-05-02
+-- ============================================
+
+ALTER TABLE branch_inventory 
+ADD COLUMN IF NOT EXISTS is_on_sale BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS is_new_arrival BOOLEAN DEFAULT FALSE;
+
+COMMENT ON COLUMN branch_inventory.is_on_sale IS 'Whether the product is currently on sale in this branch';
+COMMENT ON COLUMN branch_inventory.is_featured IS 'Whether the product should be featured on the storefront';
+COMMENT ON COLUMN branch_inventory.is_new_arrival IS 'Whether the product is a new arrival';
+
+-- Update the ecommerce_products view to include these flags
+-- We use bool_or() to see if ANY branch has the flag set for a product within a tenant
+CREATE OR REPLACE VIEW ecommerce_products AS
+SELECT
+    p.id,
+    bi.tenant_id,
+    p.name,
+    p.description,
+    p.category,
+    bi.selling_price,
+    bi.sale_price,
+    p.image_url,
+    p.is_active,
+
+    -- Aggregate stock across all branches for this tenant
+    COALESCE(SUM(bi.stock_quantity), 0) as total_stock,
+
+    -- Count how many branches have this product
+    COUNT(DISTINCT bi.branch_id) as branch_count,
+
+    -- Collect branch information
+    COALESCE(
+        jsonb_agg(
+            jsonb_build_object(
+                'branch_id', b.id,
+                'branch_name', b.name,
+                'branch_address', b.address,
+                'branch_phone', b.phone,
+                'latitude', b.latitude,
+                'longitude', b.longitude,
+                'stock_quantity', bi.stock_quantity,
+                'in_stock', bi.stock_quantity > 0,
+                'is_on_sale', bi.is_on_sale,
+                'is_featured', bi.is_featured,
+                'is_new_arrival', bi.is_new_arrival,
+                'selling_price', bi.selling_price,
+                'sale_price', bi.sale_price
+            ) ORDER BY b.name
+        ) FILTER (WHERE bi.id IS NOT NULL),
+        '[]'::jsonb
+    ) as branches,
+
+    -- Flags aggregated across branches
+    bool_or(bi.is_on_sale) as is_on_sale,
+    bool_or(bi.is_featured) as is_featured,
+    bool_or(bi.is_new_arrival) as is_new_arrival,
+
+    -- Min and max price (using branch-specific selling_price)
+    MIN(bi.selling_price) as min_price,
+    MAX(bi.selling_price) as max_price,
+
+    p.created_at,
+    p.updated_at,
+    
+    -- Healthcare & Laboratory expansions
+    p.unit_of_measure,
+    p.product_type,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer
+FROM products p
+JOIN branch_inventory bi ON bi.product_id = p.id AND bi.is_active = true
+LEFT JOIN branches b ON bi.branch_id = b.id AND b.deleted_at IS NULL
+WHERE p._sync_is_deleted = false
+  AND p.is_active = TRUE
+GROUP BY
+    p.id,
+    bi.tenant_id,
+    p.name,
+    p.description,
+    p.category,
+    bi.selling_price,
+    bi.sale_price,
+    p.image_url,
+    p.is_active,
+    p.created_at,
+    p.updated_at,
+    
+    -- Essential group by fields
+    p.unit_of_measure,
+    p.product_type,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer;
+
+-- End of 20260502000000_add_product_flags.sql
+
+
+-- File: 20260502010000_promotional_tables.sql
+-- ============================================
+-- Migration: Promotional Product Tables
+-- Description: Creates featured_products and sale_products tables
+--              to replace boolean flags for curated lists.
+-- Created: 2026-05-02
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS featured_products (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    inventory_id UUID REFERENCES branch_inventory(id) ON DELETE CASCADE,
+    display_order INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(tenant_id, product_id)
+);
+
+CREATE TABLE IF NOT EXISTS sale_products (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    inventory_id UUID REFERENCES branch_inventory(id) ON DELETE CASCADE,
+    sale_price DECIMAL(15, 2),
+    discount_percentage DECIMAL(5, 2),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(tenant_id, product_id)
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_featured_tenant ON featured_products(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_sale_tenant ON sale_products(tenant_id);
+
+-- RLS Policies
+ALTER TABLE featured_products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sale_products ENABLE ROW LEVEL SECURITY;
+
+-- Featured Products Policies
+DROP POLICY IF EXISTS "Anyone can view featured products" ON featured_products;
+CREATE POLICY "Anyone can view featured products" ON featured_products
+    FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Tenants can manage featured products" ON featured_products;
+CREATE POLICY "Tenants can manage featured products" ON featured_products
+    FOR ALL USING (tenant_id = (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+-- Sale Products Policies
+DROP POLICY IF EXISTS "Anyone can view sale products" ON sale_products;
+CREATE POLICY "Anyone can view sale products" ON sale_products
+    FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Tenants can manage sale products" ON sale_products;
+CREATE POLICY "Tenants can manage sale products" ON sale_products
+    FOR ALL USING (tenant_id = (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+-- Migrate data from branch_inventory flags (one-way)
+INSERT INTO featured_products (tenant_id, product_id, inventory_id)
+SELECT DISTINCT ON (tenant_id, product_id) tenant_id, product_id, id
+FROM branch_inventory
+WHERE is_featured = true
+ON CONFLICT DO NOTHING;
+
+INSERT INTO sale_products (tenant_id, product_id, inventory_id, sale_price)
+SELECT DISTINCT ON (tenant_id, product_id) tenant_id, product_id, id, sale_price
+FROM branch_inventory
+WHERE is_on_sale = true
+ON CONFLICT DO NOTHING;
+
+-- Note: We keep the columns on branch_inventory for now to avoid breaking existing code
+-- but we update the view to prioritize the new tables.
+
+CREATE OR REPLACE VIEW ecommerce_products AS
+SELECT
+    p.id,
+    bi.tenant_id,
+    p.name,
+    p.description,
+    p.category,
+    bi.selling_price,
+    COALESCE(sp.sale_price, bi.sale_price) as sale_price,
+    p.image_url,
+    p.is_active,
+
+    -- Aggregate stock across all branches for this tenant
+    COALESCE(SUM(bi.stock_quantity), 0) as total_stock,
+
+    -- Count how many branches have this product
+    COUNT(DISTINCT bi.branch_id) as branch_count,
+
+    -- Collect branch information
+    COALESCE(
+        jsonb_agg(
+            jsonb_build_object(
+                'branch_id', b.id,
+                'branch_name', b.name,
+                'branch_address', b.address,
+                'branch_phone', b.phone,
+                'latitude', b.latitude,
+                'longitude', b.longitude,
+                'stock_quantity', bi.stock_quantity,
+                'in_stock', bi.stock_quantity > 0,
+                'is_on_sale', EXISTS (SELECT 1 FROM sale_products sp2 WHERE sp2.product_id = p.id AND sp2.tenant_id = bi.tenant_id),
+                'is_featured', EXISTS (SELECT 1 FROM featured_products fp2 WHERE fp2.product_id = p.id AND fp2.tenant_id = bi.tenant_id),
+                'is_new_arrival', bi.is_new_arrival,
+                'is_pom', p."isPOM",
+                'selling_price', bi.selling_price,
+                'sale_price', COALESCE(sp.sale_price, bi.sale_price)
+            ) ORDER BY b.name
+        ) FILTER (WHERE bi.id IS NOT NULL),
+        '[]'::jsonb
+    ) as branches,
+
+    -- Flags
+    EXISTS (SELECT 1 FROM sale_products sp2 WHERE sp2.product_id = p.id AND sp2.tenant_id = bi.tenant_id) as is_on_sale,
+    EXISTS (SELECT 1 FROM featured_products fp2 WHERE fp2.product_id = p.id AND fp2.tenant_id = bi.tenant_id) as is_featured,
+    bool_or(bi.is_new_arrival) as is_new_arrival,
+
+    -- Min and max price (using branch-specific selling_price)
+    MIN(bi.selling_price) as min_price,
+    MAX(bi.selling_price) as max_price,
+
+    p.created_at,
+    p.updated_at,
+    
+    -- Healthcare & Laboratory expansions
+    p.unit_of_measure,
+    p.product_type,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer
+FROM products p
+JOIN branch_inventory bi ON bi.product_id = p.id AND bi.is_active = true
+LEFT JOIN branches b ON bi.branch_id = b.id AND b.deleted_at IS NULL
+LEFT JOIN sale_products sp ON sp.product_id = p.id AND sp.tenant_id = bi.tenant_id
+WHERE p._sync_is_deleted = false
+  AND p.is_active = TRUE
+GROUP BY
+    p.id,
+    bi.tenant_id,
+    p.name,
+    p.description,
+    p.category,
+    bi.selling_price,
+    bi.sale_price,
+    sp.sale_price,
+    p.image_url,
+    p.is_active,
+    p.created_at,
+    p.updated_at,
+    p."isPOM",
+    p.unit_of_measure,
+    p.product_type,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer;
+
+-- End of 20260502010000_promotional_tables.sql
+
+
+-- File: 20260502020000_tenant_branding_fields.sql
+-- ============================================
+-- Migration: Tenant Branding Fields
+-- Description: Adds logo_url (ensure exists), slogan, hero_title, 
+--              hero_subtitle, and about_us to tenants table.
+-- Created: 2026-05-02
+-- ============================================
+
+ALTER TABLE tenants 
+ADD COLUMN IF NOT EXISTS slogan TEXT,
+ADD COLUMN IF NOT EXISTS hero_title TEXT,
+ADD COLUMN IF NOT EXISTS hero_subtitle TEXT,
+ADD COLUMN IF NOT EXISTS about_us TEXT;
+
+-- Update comments for clarity
+COMMENT ON COLUMN tenants.logo_url IS 'URL to the tenant business logo';
+COMMENT ON COLUMN tenants.slogan IS 'Short company slogan or catchphrase';
+COMMENT ON COLUMN tenants.hero_title IS 'Main title displayed on the storefront hero section';
+COMMENT ON COLUMN tenants.hero_subtitle IS 'Subtitle or description displayed below the hero title';
+COMMENT ON COLUMN tenants.about_us IS 'Detailed information about the business for the footer/about page';
+
+-- End of 20260502020000_tenant_branding_fields.sql
+
+
+-- File: 20260503000000_final_chat_rls_fix.sql
+-- Final Chat and Identity RLS Harmonization
+-- Purpose: Resolve 42501 (Permission Denied) errors for images and patient profiles
+
+-- 1. Ensure Storage Visibility for Chat Attachments
+-- The 'chat-attachments' bucket is public, but storage.objects policies might be restrictive.
+-- We ensure anyone can SELECT objects from this bucket.
+DROP POLICY IF EXISTS "Public chat attachments access" ON storage.objects;
+CREATE POLICY "Public chat attachments access"
+ON storage.objects FOR SELECT
+TO public
+USING (bucket_id = 'chat-attachments');
+
+-- 2. Fix Unified Patient Profile Creation
+-- During social login, the system tries to link the user to a unified profile.
+-- We must allow authenticated users to INSERT their own profile and link.
+ALTER TABLE public.unified_patient_profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated users can create profiles" ON public.unified_patient_profiles;
+CREATE POLICY "Authenticated users can create profiles"
+ON public.unified_patient_profiles FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Users can view own profiles" ON public.unified_patient_profiles;
+CREATE POLICY "Users can view own profiles"
+ON public.unified_patient_profiles FOR SELECT
+TO authenticated
+USING (
+    id IN (
+        SELECT unified_patient_id FROM public.patient_account_links 
+        WHERE customer_id = auth.uid()
+    )
+);
+
+-- 3. Ensure Chat Messages are visible to the conversation participants
+-- Double check policies on chat_messages
+DROP POLICY IF EXISTS "Participants can view conversation messages" ON public.chat_messages;
+CREATE POLICY "Participants can view conversation messages"
+ON public.chat_messages FOR SELECT
+TO authenticated
+USING (
+    conversation_id IN (
+        SELECT id FROM public.chat_conversations
+        WHERE customer_id = auth.uid() OR 
+              auth.uid() IN (SELECT user_id FROM public.healthcare_providers)
+    )
+);
+
+-- End of 20260503000000_final_chat_rls_fix.sql
+
+
+-- File: 20260503000001_relax_storage_rls.sql
+-- Relax storage.objects policies for chat-attachments to fix upload errors
+-- The previous policy using storage.foldername() might have been failing or evaluated incorrectly
+
+-- 1. Allow authenticated users to INSERT into chat-attachments
+DROP POLICY IF EXISTS "Users can upload chat attachments" ON storage.objects;
+CREATE POLICY "Users can upload chat attachments"
+    ON storage.objects FOR INSERT
+    TO authenticated
+    WITH CHECK (bucket_id = 'chat-attachments');
+
+-- 2. Allow authenticated users to UPDATE their own attachments
+DROP POLICY IF EXISTS "Users can update chat attachments" ON storage.objects;
+CREATE POLICY "Users can update chat attachments"
+    ON storage.objects FOR UPDATE
+    TO authenticated
+    USING (bucket_id = 'chat-attachments');
+
+-- 3. Ensure SELECT is still public
+DROP POLICY IF EXISTS "Public chat attachments access" ON storage.objects;
+CREATE POLICY "Public chat attachments access"
+    ON storage.objects FOR SELECT
+    TO public
+    USING (bucket_id = 'chat-attachments');
+
+-- End of 20260503000001_relax_storage_rls.sql
+
+
+-- File: 20260503010100_update_chat_schema_and_access.sql
+-- Migration: Update Chat Schema and Access
+-- Purpose: Align chat_conversations with the user's provided schema and allow tenant staff to access chats.
+
+-- 1. Harmonize chat_conversations table
+DO $$
+BEGIN
+    -- Add columns if they don't exist
+    ALTER TABLE public.chat_conversations 
+    ADD COLUMN IF NOT EXISTS "isConsulatation" boolean NOT NULL DEFAULT false,
+    ADD COLUMN IF NOT EXISTS service_provider uuid REFERENCES auth.users(id),
+    ADD COLUMN IF NOT EXISTS customer_name text,
+    ADD COLUMN IF NOT EXISTS customer_pic text,
+    ADD COLUMN IF NOT EXISTS service_provider_name text,
+    ADD COLUMN IF NOT EXISTS service_provider_pic text,
+    ADD COLUMN IF NOT EXISTS "chatType" text DEFAULT 'Customer Support',
+    ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}'::jsonb;
+
+    -- Ensure chatType constraint exists
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chat_conversations_chatType_check') THEN
+        ALTER TABLE public.chat_conversations 
+        ADD CONSTRAINT chat_conversations_chatType_check 
+        CHECK ("chatType" = ANY (ARRAY['Customer Support'::text, 'Consultation'::text]));
+    END IF;
+END
+$$;
+
+-- 2. Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_chat_tenant_branch ON public.chat_conversations (tenant_id, branch_id, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_customer ON public.chat_conversations (customer_id, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_status ON public.chat_conversations (status) WHERE (status = 'active');
+
+-- 3. RLS Policies for chat_conversations
+-- Allow participants (customer/medic) AND tenant staff to view/update/create
+ALTER TABLE public.chat_conversations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Participants and staff can view conversations" ON public.chat_conversations;
+CREATE POLICY "Participants and staff can view conversations"
+ON public.chat_conversations FOR SELECT
+TO authenticated
+USING (
+    customer_id = auth.uid() OR 
+    service_provider = auth.uid() OR
+    tenant_id IN (SELECT tenant_id FROM public.users WHERE id = auth.uid())
+);
+
+DROP POLICY IF EXISTS "Participants and staff can update conversations" ON public.chat_conversations;
+CREATE POLICY "Participants and staff can update conversations"
+ON public.chat_conversations FOR UPDATE
+TO authenticated
+USING (
+    customer_id = auth.uid() OR 
+    service_provider = auth.uid() OR
+    tenant_id IN (SELECT tenant_id FROM public.users WHERE id = auth.uid())
+);
+
+DROP POLICY IF EXISTS "Participants and staff can insert conversations" ON public.chat_conversations;
+CREATE POLICY "Participants and staff can insert conversations"
+ON public.chat_conversations FOR INSERT
+TO authenticated
+WITH CHECK (
+    customer_id = auth.uid() OR 
+    service_provider = auth.uid() OR
+    tenant_id IN (SELECT tenant_id FROM public.users WHERE id = auth.uid())
+);
+
+-- 4. RLS Policies for chat_messages
+-- Access follows conversation access
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Participants and staff can view messages" ON public.chat_messages;
+CREATE POLICY "Participants and staff can view messages"
+ON public.chat_messages FOR SELECT
+TO authenticated
+USING (
+    conversation_id IN (
+        SELECT id FROM public.chat_conversations
+        WHERE customer_id = auth.uid() OR 
+              service_provider = auth.uid() OR
+              tenant_id IN (SELECT tenant_id FROM public.users WHERE id = auth.uid())
+    )
+);
+
+DROP POLICY IF EXISTS "Participants and staff can insert messages" ON public.chat_messages;
+CREATE POLICY "Participants and staff can insert messages"
+ON public.chat_messages FOR INSERT
+TO authenticated
+WITH CHECK (
+    conversation_id IN (
+        SELECT id FROM public.chat_conversations
+        WHERE customer_id = auth.uid() OR 
+              service_provider = auth.uid() OR
+              tenant_id IN (SELECT tenant_id FROM public.users WHERE id = auth.uid())
+    )
+);
+
+-- End of 20260503010100_update_chat_schema_and_access.sql
+
+
+-- File: 20260503010200_update_chat_messages_schema.sql
+-- Migration: Update Chat Messages Schema for Media Support
+-- Purpose: Add columns to support image, video, pdf, and voice attachments as expected by the POS UI.
+
+ALTER TABLE public.chat_messages 
+ADD COLUMN IF NOT EXISTS attachment_type text,
+ADD COLUMN IF NOT EXISTS attachment_url text,
+ADD COLUMN IF NOT EXISTS attachment_name text,
+ADD COLUMN IF NOT EXISTS voice_duration integer;
+
+-- Add comment for clarity
+COMMENT ON COLUMN public.chat_messages.attachment_type IS 'Type of media: image, video, pdf, or audio/voice';
+
+-- End of 20260503010200_update_chat_messages_schema.sql
+
+
+-- File: 20260503020000_add_open_chat_status.sql
+-- Migration: Add 'open' status to chat_status enum
+-- Purpose: Support unassigned chats that staff can join.
+
+ALTER TYPE public.chat_status ADD VALUE IF NOT EXISTS 'open';
+ALTER TABLE public.chat_conversations ALTER COLUMN status SET DEFAULT 'open';
+UPDATE public.chat_conversations SET status = 'open' WHERE status = 'active' AND service_provider IS NULL;
+
+-- End of 20260503020000_add_open_chat_status.sql
+
+
+-- File: 20260506000000_purchase_orders_and_preorders.sql
+-- ============================================================
+-- Migration: Add Purchase Orders and Preorders
+-- ============================================================
+-- Description: Creates the PO workflow tables, sequence generator,
+-- and preorder tracking fields for products/inventory.
+-- ============================================================
+
+-- 1. Add tenant settings for PO and Preorders
+ALTER TABLE tenants
+ADD COLUMN IF NOT EXISTS po_enabled BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS preorders_enabled BOOLEAN DEFAULT FALSE;
+
+-- 2. Create Enums
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'po_status') THEN
+        CREATE TYPE po_status AS ENUM ('draft', 'pending', 'partially_received', 'completed', 'cancelled');
+    END IF;
+END$$;
+
+-- 3. Create PO Number Sequence tracking table
+-- A separate table to track the last PO number for each tenant
+CREATE TABLE IF NOT EXISTS tenant_po_sequences (
+    tenant_id UUID PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
+    last_sequence_number INTEGER DEFAULT 0,
+    prefix VARCHAR(10) DEFAULT 'PO-',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE tenant_po_sequences ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their tenant sequence" ON tenant_po_sequences;
+CREATE POLICY "Users can view their tenant sequence"
+    ON tenant_po_sequences FOR SELECT
+    USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+-- Function to generate the next PO number for a tenant
+CREATE OR REPLACE FUNCTION generate_po_number(p_tenant_id UUID)
+RETURNS VARCHAR
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_next_val INTEGER;
+    v_prefix VARCHAR(10);
+    v_po_number VARCHAR(50);
+BEGIN
+    -- Insert tracking record if not exists
+    INSERT INTO tenant_po_sequences (tenant_id, last_sequence_number, prefix)
+    VALUES (p_tenant_id, 0, 'PO-')
+    ON CONFLICT (tenant_id) DO NOTHING;
+
+    -- Update and get next value
+    UPDATE tenant_po_sequences
+    SET last_sequence_number = last_sequence_number + 1,
+        updated_at = NOW()
+    WHERE tenant_id = p_tenant_id
+    RETURNING last_sequence_number, prefix INTO v_next_val, v_prefix;
+
+    -- Format PO number (e.g., PO-1001)
+    -- Padding to 4 digits min
+    v_po_number := v_prefix || LPAD(v_next_val::TEXT, 4, '0');
+    
+    RETURN v_po_number;
+END;
+$$;
+
+-- 4. Create Purchase Orders Table
+CREATE TABLE IF NOT EXISTS purchase_orders (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+    supplier_id UUID REFERENCES suppliers(id) ON DELETE SET NULL,
+    po_number VARCHAR(50), -- Only set when status changes from draft
+    status po_status DEFAULT 'draft',
+    total_cost DECIMAL(12,2) DEFAULT 0 CHECK (total_cost >= 0),
+    expected_delivery_date DATE,
+    notes TEXT,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- RLS for purchase_orders
+ALTER TABLE purchase_orders ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view POs in their tenant" ON purchase_orders;
+CREATE POLICY "Users can view POs in their tenant"
+    ON purchase_orders FOR SELECT
+    USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+DROP POLICY IF EXISTS "Branch managers can manage POs" ON purchase_orders;
+CREATE POLICY "Branch managers can manage POs"
+    ON purchase_orders FOR ALL
+    USING (
+        tenant_id IN (
+            SELECT tenant_id FROM users
+            WHERE id = auth.uid()
+            AND role IN ('tenant_admin', 'branch_manager')
+        )
+    );
+
+-- 5. Create Purchase Order Items Table
+CREATE TABLE IF NOT EXISTS purchase_order_items (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    po_id UUID NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    expected_qty INTEGER NOT NULL CHECK (expected_qty > 0),
+    received_qty INTEGER NOT NULL DEFAULT 0 CHECK (received_qty >= 0),
+    unit_cost DECIMAL(12,2) NOT NULL CHECK (unit_cost >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- RLS for purchase_order_items
+ALTER TABLE purchase_order_items ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view PO items in their tenant" ON purchase_order_items;
+CREATE POLICY "Users can view PO items in their tenant"
+    ON purchase_order_items FOR SELECT
+    USING (po_id IN (SELECT id FROM purchase_orders WHERE tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid())));
+
+DROP POLICY IF EXISTS "Branch managers can manage PO items" ON purchase_order_items;
+CREATE POLICY "Branch managers can manage PO items"
+    ON purchase_order_items FOR ALL
+    USING (
+        po_id IN (
+            SELECT id FROM purchase_orders WHERE tenant_id IN (
+                SELECT tenant_id FROM users
+                WHERE id = auth.uid()
+                AND role IN ('tenant_admin', 'branch_manager')
+            )
+        )
+    );
+
+-- 6. Add preorder fields to products and branch_inventory
+ALTER TABLE products
+ADD COLUMN IF NOT EXISTS allow_preorder BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE branch_inventory
+ADD COLUMN IF NOT EXISTS allow_preorder BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS preorder_quantity INTEGER DEFAULT 0 CHECK (preorder_quantity >= 0);
+
+-- Update triggers for updated_at
+CREATE OR REPLACE FUNCTION trigger_set_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS set_updated_at ON tenant_po_sequences;
+CREATE TRIGGER set_updated_at
+BEFORE UPDATE ON tenant_po_sequences
+FOR EACH ROW
+EXECUTE FUNCTION trigger_set_timestamp();
+
+DROP TRIGGER IF EXISTS set_updated_at ON purchase_orders;
+CREATE TRIGGER set_updated_at
+BEFORE UPDATE ON purchase_orders
+FOR EACH ROW
+EXECUTE FUNCTION trigger_set_timestamp();
+
+DROP TRIGGER IF EXISTS set_updated_at ON purchase_order_items;
+CREATE TRIGGER set_updated_at
+BEFORE UPDATE ON purchase_order_items
+FOR EACH ROW
+EXECUTE FUNCTION trigger_set_timestamp();
+
+-- End of 20260506000000_purchase_orders_and_preorders.sql
+
+
+-- File: 20260506000001_purchase_order_rpcs.sql
+-- ============================================================
+-- Migration: Purchase Order RPCs (Fixed Schema)
+-- ============================================================
+-- Description: RPC functions for confirming and receiving POs,
+-- and handling preorder fulfillment. Corrected for schema.
+-- ============================================================
+
+-- 1. Confirm Purchase Order
+CREATE OR REPLACE FUNCTION confirm_purchase_order(p_po_id UUID)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po purchase_orders;
+BEGIN
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    
+    IF v_po.id IS NULL THEN
+        RAISE EXCEPTION 'Purchase Order not found';
+    END IF;
+
+    IF v_po.status != 'draft' THEN
+        RAISE EXCEPTION 'Only draft Purchase Orders can be confirmed';
+    END IF;
+
+    -- Generate PO Number
+    v_po.po_number := generate_po_number(v_po.tenant_id);
+    v_po.status := 'pending';
+    v_po.updated_at := NOW();
+
+    UPDATE purchase_orders
+    SET po_number = v_po.po_number,
+        status = v_po.status,
+        updated_at = v_po.updated_at
+    WHERE id = p_po_id
+    RETURNING * INTO v_po;
+
+    RETURN v_po;
+END;
+$$;
+
+-- 2. Receive Purchase Order
+-- p_received_items: JSONB array of { product_id, received_qty, batch_no, expiry_date, unit_cost, unit_price }
+CREATE OR REPLACE FUNCTION receive_purchase_order(
+    p_po_id UUID,
+    p_received_items JSONB
+)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po purchase_orders;
+    v_item RECORD;
+    v_received_item RECORD;
+    v_total_preorder_qty INTEGER;
+    v_to_fulfill INTEGER;
+    v_remaining_received INTEGER;
+    v_batch_id UUID;
+    v_staff_id UUID;
+BEGIN
+    -- Get current user ID (staff_id)
+    v_staff_id := auth.uid();
+
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    
+    IF v_po.id IS NULL THEN
+        RAISE EXCEPTION 'Purchase Order not found';
+    END IF;
+
+    IF v_po.status NOT IN ('pending', 'partially_received') THEN
+        RAISE EXCEPTION 'Purchase Order must be pending or partially received to receive stock';
+    END IF;
+
+    FOR v_received_item IN SELECT * FROM jsonb_to_recordset(p_received_items) AS x(
+        product_id UUID, received_qty INTEGER, batch_no TEXT, expiry_date DATE, unit_cost DECIMAL, unit_price DECIMAL
+    )
+    LOOP
+        -- 1. Calculate total preorder_quantity for this product in this branch
+        SELECT SUM(preorder_quantity) INTO v_total_preorder_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id;
+
+        v_total_preorder_qty := COALESCE(v_total_preorder_qty, 0);
+        
+        -- 2. Determine fulfillment
+        v_to_fulfill := LEAST(v_received_item.received_qty, v_total_preorder_qty);
+        v_remaining_received := v_received_item.received_qty - v_to_fulfill;
+
+        -- 3. Fulfill preorders (decrement preorder_quantity)
+        IF v_to_fulfill > 0 THEN
+            WITH fulfilled AS (
+                SELECT id, LEAST(preorder_quantity, v_to_fulfill) as current_fulfill
+                FROM branch_inventory
+                WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id AND preorder_quantity > 0
+                ORDER BY created_at ASC
+            )
+            UPDATE branch_inventory bi
+            SET preorder_quantity = bi.preorder_quantity - f.current_fulfill,
+                updated_at = NOW()
+            FROM fulfilled f
+            WHERE bi.id = f.id;
+        END IF;
+
+        -- 4. Create/Update Batch in branch_inventory
+        INSERT INTO branch_inventory (
+            tenant_id, branch_id, product_id, stock_quantity, 
+            batch_no, expiry_date, cost_price, selling_price, 
+            purchase_invoice, purchase_code, added_by, 
+            is_active
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_remaining_received,
+            v_received_item.batch_no, v_received_item.expiry_date, v_received_item.unit_cost, v_received_item.unit_price,
+            v_po.po_number, v_po.po_number, v_staff_id::text,
+            TRUE
+        ) RETURNING id INTO v_batch_id;
+
+        -- 5. Record Inventory Transaction
+        INSERT INTO inventory_transactions (
+            tenant_id, branch_id, product_id, branch_inventory_id,
+            transaction_type, quantity_delta, previous_quantity, new_quantity,
+            unit_cost, reference_id, reference_type, staff_id
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_batch_id,
+            'restock'::transaction_type, v_received_item.received_qty, 0, v_remaining_received,
+            v_received_item.unit_cost, v_po.id, 'purchase_order', v_staff_id
+        );
+
+        -- 6. Update purchase_order_items.received_qty
+        UPDATE purchase_order_items
+        SET received_qty = received_qty + v_received_item.received_qty,
+            updated_at = NOW()
+        WHERE po_id = p_po_id AND product_id = v_received_item.product_id;
+
+    END LOOP;
+
+    -- 7. Update PO status
+    IF NOT EXISTS (
+        SELECT 1 FROM purchase_order_items 
+        WHERE po_id = p_po_id AND received_qty < expected_qty
+    ) THEN
+        UPDATE purchase_orders SET status = 'completed', updated_at = NOW() WHERE id = p_po_id;
+    ELSE
+        UPDATE purchase_orders SET status = 'partially_received', updated_at = NOW() WHERE id = p_po_id;
+    END IF;
+
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    RETURN v_po;
+END;
+$$;
+
+-- End of 20260506000001_purchase_order_rpcs.sql
+
+
+-- File: 20260506000002_patch_inventory_functions_for_preorders.sql
+-- ============================================================
+-- Migration: Patch Inventory Functions for Preorders (Fixed Schema)
+-- ============================================================
+-- Description: Updates checkout and POS triggers to handle
+-- preorder_quantity when stock is insufficient.
+-- Corrected for schema where tenant-specific product details (price, allow_preorder)
+-- reside in branch_inventory.
+-- ============================================================
+
+-- 1. Update checkout_storefront_order to support preorders
+CREATE OR REPLACE FUNCTION checkout_storefront_order(
+    p_tenant_id UUID,
+    p_branch_id UUID,
+    p_customer_id UUID,
+    p_order_type order_type,
+    p_fulfillment_type fulfillment_type,
+    p_subtotal DECIMAL,
+    p_delivery_fee DECIMAL,
+    p_tax_amount DECIMAL,
+    p_total_amount DECIMAL,
+    p_delivery_address_id UUID,
+    p_special_instructions TEXT,
+    p_items JSONB, -- Array of { product_id, product_name, quantity, unit_price, subtotal }
+    p_service_charge DECIMAL DEFAULT 0,
+    p_payment_reference TEXT DEFAULT NULL,
+    p_billing_address TEXT DEFAULT NULL,
+    p_shipping_address TEXT DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_order_id UUID;
+    v_item RECORD;
+    v_batch RECORD;
+    v_req_qty INTEGER;
+    v_available_qty INTEGER;
+    v_allocated_qty INTEGER;
+    v_allocations JSONB;
+    v_primary_batch_id UUID;
+    v_preorders_enabled BOOLEAN;
+    v_allow_preorder BOOLEAN;
+BEGIN
+    -- Check if preorders are enabled for the tenant
+    SELECT preorders_enabled INTO v_preorders_enabled FROM tenants WHERE id = p_tenant_id;
+
+    -- Validate totals
+    IF p_total_amount != (p_subtotal + p_delivery_fee + p_tax_amount + p_service_charge) THEN
+        RAISE EXCEPTION 'Total amount does not match subtotal + fees + tax + service charge';
+    END IF;
+
+    -- Create the order header
+    INSERT INTO orders (
+        tenant_id, branch_id, order_number, customer_id,
+        order_type, order_status, payment_status, payment_method, payment_reference,
+        subtotal, delivery_fee, tax_amount, service_charge, total_amount,
+        fulfillment_type, delivery_address_id, special_instructions,
+        billing_address, shipping_address
+    ) VALUES (
+        p_tenant_id,
+        p_branch_id,
+        'ORD-' || FLOOR(EXTRACT(EPOCH FROM NOW()))::TEXT || '-' || SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 4),
+        p_customer_id,
+        p_order_type,
+        'pending'::order_status,
+        CASE WHEN p_payment_reference IS NOT NULL THEN 'paid'::payment_status ELSE 'unpaid'::payment_status END,
+        'card'::payment_method,
+        p_payment_reference,
+        p_subtotal, p_delivery_fee, p_tax_amount, p_service_charge, p_total_amount,
+        p_fulfillment_type,
+        p_delivery_address_id,
+        p_special_instructions,
+        p_billing_address,
+        p_shipping_address
+    ) RETURNING id INTO v_order_id;
+
+    -- Process each item
+    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(
+        product_id UUID, product_name TEXT, quantity INTEGER, unit_price DECIMAL, subtotal DECIMAL
+    )
+    LOOP
+        v_req_qty := v_item.quantity;
+        v_allocations := '[]'::jsonb;
+        v_primary_batch_id := NULL;
+
+        -- 1. Try to allocate from stock (FIFO)
+        FOR v_batch IN 
+            SELECT id, (stock_quantity - COALESCE(reserved_quantity, 0)) AS available_balance, allow_preorder
+            FROM branch_inventory
+            WHERE branch_id = p_branch_id 
+              AND product_id = v_item.product_id 
+              AND is_active = true
+              AND (stock_quantity - COALESCE(reserved_quantity, 0)) > 0
+            ORDER BY expiry_date ASC NULLS LAST, created_at ASC
+            FOR UPDATE
+        LOOP
+            IF v_req_qty <= 0 THEN EXIT; END IF;
+
+            v_available_qty := v_batch.available_balance;
+            v_allocated_qty := LEAST(v_available_qty, v_req_qty);
+
+            UPDATE branch_inventory
+            SET reserved_quantity = COALESCE(reserved_quantity, 0) + v_allocated_qty,
+                updated_at = NOW()
+            WHERE id = v_batch.id;
+
+            IF v_primary_batch_id IS NULL THEN
+                v_primary_batch_id := v_batch.id;
+            END IF;
+
+            v_allocations := v_allocations || jsonb_build_object(
+                'batch_id', v_batch.id,
+                'quantity', v_allocated_qty,
+                'is_preorder', false
+            );
+
+            v_req_qty := v_req_qty - v_allocated_qty;
+        END LOOP;
+
+        -- 2. Handle remaining as preorder if enabled
+        IF v_req_qty > 0 THEN
+            -- Check allow_preorder from any branch_inventory record for this product/tenant
+            SELECT allow_preorder INTO v_allow_preorder 
+            FROM branch_inventory 
+            WHERE branch_id = p_branch_id AND product_id = v_item.product_id 
+            LIMIT 1;
+            
+            IF COALESCE(v_preorders_enabled, false) AND COALESCE(v_allow_preorder, false) THEN
+                -- Find or create a branch_inventory record to hold the preorder count
+                SELECT id INTO v_primary_batch_id 
+                FROM branch_inventory 
+                WHERE branch_id = p_branch_id AND product_id = v_item.product_id 
+                LIMIT 1 FOR UPDATE;
+
+                IF v_primary_batch_id IS NULL THEN
+                    INSERT INTO branch_inventory (
+                        tenant_id, branch_id, product_id, stock_quantity, preorder_quantity, cost_price
+                    ) VALUES (
+                        p_tenant_id, p_branch_id, v_item.product_id, 0, v_req_qty, 0
+                    ) RETURNING id INTO v_primary_batch_id;
+                ELSE
+                    UPDATE branch_inventory 
+                    SET preorder_quantity = COALESCE(preorder_quantity, 0) + v_req_qty,
+                        updated_at = NOW()
+                    WHERE id = v_primary_batch_id;
+                END IF;
+
+                v_allocations := v_allocations || jsonb_build_object(
+                    'batch_id', v_primary_batch_id,
+                    'quantity', v_req_qty,
+                    'is_preorder', true
+                );
+                v_req_qty := 0;
+            ELSE
+                RAISE EXCEPTION 'Insufficient stock for product: % (short by %)', v_item.product_name, v_req_qty;
+            END IF;
+        END IF;
+
+        INSERT INTO public.sale_items (
+            tenant_id, order_id, branch_id, inventory_id,
+            product_id, product_name, quantity, unit_price, subtotal,
+            discount_amount, batch_allocations
+        ) VALUES (
+            p_tenant_id, v_order_id, p_branch_id, v_primary_batch_id,
+            v_item.product_id, v_item.product_name, v_item.quantity, v_item.unit_price, v_item.subtotal,
+            0, v_allocations
+        );
+    END LOOP;
+
+    RETURN v_order_id;
+END;
+$$;
+
+-- 2. Update trigger_sync_inventory_on_sale for POS preorders
+CREATE OR REPLACE FUNCTION trigger_sync_inventory_on_sale()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_item RECORD;
+    v_batch RECORD;
+    v_req_qty INTEGER;
+    v_available INTEGER;
+    v_deducted INTEGER;
+    v_preorders_enabled BOOLEAN;
+    v_allow_preorder BOOLEAN;
+BEGIN
+    IF NEW.sale_status = 'completed' THEN
+        SELECT preorders_enabled INTO v_preorders_enabled FROM tenants WHERE id = NEW.tenant_id;
+
+        FOR v_item IN
+            SELECT product_id, quantity
+            FROM sale_items
+            WHERE sale_id = NEW.id
+        LOOP
+            v_req_qty := v_item.quantity;
+
+            -- 1. Deduct from available stock batches first
+            FOR v_batch IN 
+                SELECT id, stock_quantity 
+                FROM branch_inventory 
+                WHERE branch_id = NEW.branch_id AND product_id = v_item.product_id AND stock_quantity > 0
+                ORDER BY created_at ASC 
+                FOR UPDATE
+            LOOP
+                IF v_req_qty <= 0 THEN EXIT; END IF;
+                v_deducted := LEAST(v_batch.stock_quantity, v_req_qty);
+                
+                UPDATE branch_inventory 
+                SET stock_quantity = stock_quantity - v_deducted,
+                    updated_at = NOW()
+                WHERE id = v_batch.id;
+                
+                v_req_qty := v_req_qty - v_deducted;
+            END LOOP;
+
+            -- 2. Handle remainder as preorder if enabled
+            IF v_req_qty > 0 THEN
+                SELECT allow_preorder INTO v_allow_preorder 
+                FROM branch_inventory 
+                WHERE branch_id = NEW.branch_id AND product_id = v_item.product_id 
+                LIMIT 1;
+                
+                IF COALESCE(v_preorders_enabled, false) AND COALESCE(v_allow_preorder, false) THEN
+                    -- Update preorder_quantity on any branch record (or create one)
+                    UPDATE branch_inventory 
+                    SET preorder_quantity = COALESCE(preorder_quantity, 0) + v_req_qty,
+                        updated_at = NOW()
+                    WHERE id = (SELECT id FROM branch_inventory WHERE branch_id = NEW.branch_id AND product_id = v_item.product_id LIMIT 1 FOR UPDATE);
+                    
+                    IF NOT FOUND THEN
+                        INSERT INTO branch_inventory (
+                            tenant_id, branch_id, product_id, stock_quantity, preorder_quantity, cost_price
+                        ) VALUES (
+                            NEW.tenant_id, NEW.branch_id, v_item.product_id, 0, v_req_qty, 0
+                        );
+                    END IF;
+                ELSE
+                    RAISE WARNING 'Insufficient stock for product % in sale %. Stock is 0 and preorders disabled.',
+                        v_item.product_id, NEW.id;
+                END IF;
+            END IF;
+        END LOOP;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 3. Update complete_sale_transaction to support preorders
+CREATE OR REPLACE FUNCTION complete_sale_transaction(
+    p_tenant_id UUID,
+    p_branch_id UUID,
+    p_cashier_id UUID,
+    p_customer_id UUID,
+    p_cart_items JSONB,
+    p_subtotal DECIMAL,
+    p_tax_amount DECIMAL,
+    p_discount_amount DECIMAL,
+    p_total_amount DECIMAL,
+    p_payment_method payment_method,
+    p_payment_reference TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+    sale_id UUID,
+    sale_number VARCHAR,
+    success BOOLEAN,
+    error_message TEXT
+) AS $$
+DECLARE
+    v_sale_id UUID;
+    v_sale_number VARCHAR;
+    v_item JSONB;
+    v_product_id UUID;
+    v_quantity INTEGER;
+    v_available_stock INTEGER;
+    v_preorders_enabled BOOLEAN;
+    v_allow_preorder BOOLEAN;
+    v_req_qty INTEGER;
+    v_deducted INTEGER;
+    v_batch RECORD;
+BEGIN
+    -- Check if preorders are enabled for the tenant
+    SELECT preorders_enabled INTO v_preorders_enabled FROM tenants WHERE id = p_tenant_id;
+
+    -- Start transaction
+    BEGIN
+        -- Verify stock availability (unless preorder is allowed)
+        FOR v_item IN SELECT * FROM jsonb_array_elements(p_cart_items)
+        LOOP
+            v_product_id := (v_item->>'product_id')::UUID;
+            v_quantity := (v_item->>'quantity')::INTEGER;
+
+            SELECT (stock_quantity - reserved_quantity), allow_preorder 
+            INTO v_available_stock, v_allow_preorder
+            FROM branch_inventory
+            WHERE branch_id = p_branch_id AND product_id = v_product_id;
+
+            IF (v_available_stock IS NULL OR v_available_stock < v_quantity) 
+               AND NOT (COALESCE(v_preorders_enabled, false) AND COALESCE(v_allow_preorder, false)) THEN
+                RETURN QUERY SELECT
+                    NULL::UUID as sale_id,
+                    NULL::VARCHAR as sale_number,
+                    FALSE as success,
+                    'Insufficient stock for product: ' || (v_item->>'product_name') as error_message;
+                RETURN;
+            END IF;
+        END LOOP;
+
+        -- Create sale record
+        INSERT INTO sales (
+            tenant_id, branch_id, cashier_id, customer_id,
+            subtotal, tax_amount, discount_amount, total_amount,
+            payment_method, payment_reference, status
+        ) VALUES (
+            p_tenant_id, p_branch_id, p_cashier_id, p_customer_id,
+            p_subtotal, p_tax_amount, p_discount_amount, p_total_amount,
+            p_payment_method, p_payment_reference, 'completed'
+        )
+        RETURNING id, sale_number INTO v_sale_id, v_sale_number;
+
+        -- Insert sale items
+        INSERT INTO sale_items (
+            sale_id, tenant_id, product_id, product_name, quantity, unit_price, discount_amount, subtotal
+        )
+        SELECT
+            v_sale_id, p_tenant_id, (item->>'product_id')::UUID, item->>'product_name',
+            (item->>'quantity')::INTEGER, (item->>'unit_price')::DECIMAL,
+            COALESCE((item->>'discount_amount')::DECIMAL, 0), (item->>'subtotal')::DECIMAL
+        FROM jsonb_array_elements(p_cart_items) AS item;
+
+        -- Deduct stock / Increment preorders
+        FOR v_item IN SELECT * FROM jsonb_array_elements(p_cart_items)
+        LOOP
+            v_product_id := (v_item->>'product_id')::UUID;
+            v_req_qty := (v_item->>'quantity')::INTEGER;
+
+            -- Deduct from available stock batches first
+            FOR v_batch IN 
+                SELECT id, stock_quantity 
+                FROM branch_inventory 
+                WHERE branch_id = p_branch_id AND product_id = v_product_id AND stock_quantity > 0
+                ORDER BY created_at ASC 
+                FOR UPDATE
+            LOOP
+                IF v_req_qty <= 0 THEN EXIT; END IF;
+                v_deducted := LEAST(v_batch.stock_quantity, v_req_qty);
+                
+                UPDATE branch_inventory 
+                SET stock_quantity = stock_quantity - v_deducted,
+                    updated_at = NOW()
+                WHERE id = v_batch.id;
+
+                -- Create inventory transaction
+                INSERT INTO inventory_transactions (
+                    tenant_id, branch_id, product_id, branch_inventory_id,
+                    transaction_type, quantity_delta, previous_quantity, new_quantity,
+                    reference_id, reference_type, staff_id
+                ) VALUES (
+                    p_tenant_id, p_branch_id, v_product_id, v_batch.id,
+                    'sale'::transaction_type, -v_deducted, v_batch.stock_quantity, v_batch.stock_quantity - v_deducted,
+                    v_sale_id, 'sale', p_cashier_id
+                );
+                
+                v_req_qty := v_req_qty - v_deducted;
+            END LOOP;
+
+            -- Handle remainder as preorder
+            IF v_req_qty > 0 THEN
+                UPDATE branch_inventory 
+                SET preorder_quantity = COALESCE(preorder_quantity, 0) + v_req_qty,
+                    updated_at = NOW()
+                WHERE id = (SELECT id FROM branch_inventory WHERE branch_id = p_branch_id AND product_id = v_product_id LIMIT 1 FOR UPDATE);
+                
+                IF NOT FOUND THEN
+                    INSERT INTO branch_inventory (
+                        tenant_id, branch_id, product_id, stock_quantity, preorder_quantity, cost_price
+                    ) VALUES (
+                        p_tenant_id, p_branch_id, v_product_id, 0, v_req_qty, 0
+                    );
+                END IF;
+
+                -- Create inventory transaction for preorder part
+                INSERT INTO inventory_transactions (
+                    tenant_id, branch_id, product_id,
+                    transaction_type, quantity_delta, previous_quantity, new_quantity,
+                    reference_id, reference_type, notes, staff_id
+                ) VALUES (
+                    p_tenant_id, p_branch_id, v_product_id,
+                    'sale'::transaction_type, -v_req_qty, 0, 0,
+                    v_sale_id, 'sale', 'Preorder recorded', p_cashier_id
+                );
+            END IF;
+        END LOOP;
+
+        RETURN QUERY SELECT v_sale_id, v_sale_number, TRUE, NULL::TEXT;
+    EXCEPTION WHEN OTHERS THEN
+        RETURN QUERY SELECT NULL::UUID, NULL::VARCHAR, FALSE, SQLERRM;
+    END;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 4. Update search_products_for_pos to include out-of-stock items that allow preorder
+CREATE OR REPLACE FUNCTION search_products_for_pos(
+    p_tenant_id UUID,
+    p_branch_id UUID,
+    p_search_term TEXT,
+    p_limit INTEGER DEFAULT 20
+)
+RETURNS TABLE (
+    product_id UUID,
+    product_name VARCHAR,
+    sku VARCHAR,
+    barcode VARCHAR,
+    category VARCHAR,
+    unit_price DECIMAL,
+    cost_price DECIMAL,
+    image_url TEXT,
+    stock_quantity INTEGER,
+    reserved_quantity INTEGER,
+    available_quantity INTEGER,
+    low_stock_threshold INTEGER,
+    allow_preorder BOOLEAN
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        bi.product_id,
+        bi.product_name,
+        bi.sku,
+        bi.barcode,
+        p.category,
+        bi.selling_price as unit_price,
+        bi.cost_price,
+        bi.image_url,
+        bi.stock_quantity,
+        bi.reserved_quantity,
+        (bi.stock_quantity - bi.reserved_quantity) as available_quantity,
+        bi.low_stock_threshold,
+        bi.allow_preorder
+    FROM branch_inventory bi
+    JOIN products p ON p.id = bi.product_id
+    WHERE bi.tenant_id = p_tenant_id
+        AND bi.branch_id = p_branch_id
+        AND p.is_active = TRUE
+        AND bi.is_active = TRUE
+        AND p.deleted_at IS NULL
+        AND (
+            (bi.stock_quantity - bi.reserved_quantity) > 0
+            OR (bi.allow_preorder = TRUE)
+        )
+        AND (
+            bi.product_name ILIKE '%' || p_search_term || '%'
+            OR bi.sku ILIKE '%' || p_search_term || '%'
+            OR bi.barcode = p_search_term
+        )
+    ORDER BY bi.product_name
+    LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 5. Update marketplace_products_with_stock view
+-- Using INNER JOIN because we only want products actually listed in a tenant's branch_inventory
+CREATE OR REPLACE VIEW marketplace_products_with_stock AS
+SELECT
+    bi.product_id as id,
+    bi.tenant_id,
+    bi.product_name as name,
+    p.description,
+    bi.sku,
+    bi.barcode,
+    p.category,
+    bi.selling_price AS price,
+    bi.image_url,
+    COALESCE(SUM(bi.stock_quantity - bi.reserved_quantity), 0)::INTEGER AS stock_quantity,
+    (COALESCE(SUM(bi.stock_quantity - bi.reserved_quantity), 0) > 0 OR bi.allow_preorder = TRUE) AS is_available,
+    bi.allow_preorder,
+    p.created_at,
+    p.updated_at
+FROM branch_inventory bi
+JOIN products p ON p.id = bi.product_id
+WHERE p.is_active = TRUE
+  AND bi.is_active = TRUE
+  AND p.deleted_at IS NULL
+GROUP BY bi.product_id, bi.tenant_id, bi.product_name, p.description, bi.sku, bi.barcode,
+         p.category, bi.selling_price, bi.image_url, bi.allow_preorder, p.created_at, p.updated_at;
+
+-- End of 20260506000002_patch_inventory_functions_for_preorders.sql
+
+
+-- File: 20260506000003_expense_tracker_system.sql
+-- ============================================================
+-- Migration: Expense Tracker System
+-- ============================================================
+-- Description: Implements comprehensive expense tracking, 
+-- recurring bills, and delegated financial permissions.
+-- ============================================================
+
+-- 1. Update Users Table for Permission Delegation
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS can_manage_expenses BOOLEAN DEFAULT FALSE;
+
+-- 2. Create Enums
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'expense_status') THEN
+        CREATE TYPE expense_status AS ENUM ('pending', 'approved', 'rejected', 'paid', 'cancelled');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'recurrence_interval') THEN
+        CREATE TYPE recurrence_interval AS ENUM ('none', 'weekly', 'monthly', 'quarterly', 'yearly');
+    END IF;
+END$$;
+
+-- 3. Create Expense Types Table
+CREATE TABLE IF NOT EXISTS expense_types (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE, -- NULL for global defaults
+    name VARCHAR(100) NOT NULL,
+    is_auto_approve BOOLEAN DEFAULT FALSE,
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- RLS for expense_types
+ALTER TABLE expense_types ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view relevant expense types" ON expense_types;
+CREATE POLICY "Users can view relevant expense types"
+    ON expense_types FOR SELECT
+    USING (tenant_id IS NULL OR tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+DROP POLICY IF EXISTS "Admins can manage expense types" ON expense_types;
+CREATE POLICY "Admins can manage expense types"
+    ON expense_types FOR ALL
+    USING (
+        tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid() AND role = 'tenant_admin')
+    );
+
+-- 4. Create Expenses Table
+CREATE TABLE IF NOT EXISTS expenses (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+    expense_type_id UUID NOT NULL REFERENCES expense_types(id),
+    
+    -- Basic Info
+    amount DECIMAL(12,2) NOT NULL CHECK (amount >= 0),
+    description TEXT NOT NULL,
+    expense_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    status expense_status DEFAULT 'pending',
+    
+    -- Tracking
+    raised_by UUID NOT NULL REFERENCES users(id),
+    approved_by UUID REFERENCES users(id),
+    paid_by UUID REFERENCES users(id),
+    rejection_reason TEXT,
+    
+    -- Supplier & PO Link
+    supplier_id UUID REFERENCES suppliers(id) ON DELETE SET NULL,
+    po_id UUID REFERENCES purchase_orders(id) ON DELETE SET NULL,
+    invoice_number VARCHAR(100),
+    raised_date DATE,
+    due_date DATE,
+    payment_terms TEXT,
+    
+    -- Payment Details
+    payment_collected_by TEXT,
+    bank_name TEXT,
+    bank_account_number TEXT,
+    receipt_url TEXT, -- Path to original bill in storage
+    payment_evidence_url TEXT, -- Path to proof of payment in storage
+    
+    -- Recurrence Logic
+    is_recurring BOOLEAN DEFAULT FALSE,
+    recur_interval recurrence_interval DEFAULT 'none',
+    next_recur_date DATE,
+    parent_recurring_id UUID REFERENCES expenses(id) ON DELETE SET NULL,
+    
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- RLS for expenses
+ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view expenses in their tenant" ON expenses;
+CREATE POLICY "Users can view expenses in their tenant"
+    ON expenses FOR SELECT
+    USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+DROP POLICY IF EXISTS "Staff can insert expenses" ON expenses;
+CREATE POLICY "Staff can insert expenses"
+    ON expenses FOR INSERT
+    WITH CHECK (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+DROP POLICY IF EXISTS "Admins and managers can update expenses" ON expenses;
+CREATE POLICY "Admins and managers can update expenses"
+    ON expenses FOR UPDATE
+    USING (
+        tenant_id IN (
+            SELECT tenant_id FROM users 
+            WHERE id = auth.uid() 
+            AND (role = 'tenant_admin' OR can_manage_expenses = TRUE)
+        )
+    );
+
+-- 5. Auto-Approval Trigger
+CREATE OR REPLACE FUNCTION trigger_auto_approve_expense()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_auto BOOLEAN;
+BEGIN
+    SELECT is_auto_approve INTO v_auto FROM expense_types WHERE id = NEW.expense_type_id;
+    
+    IF v_auto THEN
+        NEW.status := 'approved';
+        NEW.approved_by := NEW.raised_by; -- Self-approved if category allows
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER auto_approve_expense_trigger
+BEFORE INSERT ON expenses
+FOR EACH ROW
+EXECUTE FUNCTION trigger_auto_approve_expense();
+
+-- 6. Seed Default Expense Types
+INSERT INTO expense_types (name, is_auto_approve, is_default) VALUES
+('Product Purchase', FALSE, TRUE),
+('Rent', FALSE, TRUE),
+('Utilities', FALSE, TRUE),
+('Salaries', FALSE, TRUE),
+('Maintenance', FALSE, TRUE),
+('Marketing', FALSE, TRUE),
+('Internet', TRUE, TRUE),
+('Petty Cash', TRUE, TRUE);
+
+-- 7. Recurring Expense Generation Function
+-- To be called by a cron job or manual trigger
+CREATE OR REPLACE FUNCTION generate_recurring_expenses()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_count INTEGER := 0;
+    v_expense RECORD;
+    v_new_date DATE;
+BEGIN
+    FOR v_expense IN 
+        SELECT * FROM expenses 
+        WHERE is_recurring = TRUE 
+          AND next_recur_date <= CURRENT_DATE
+          AND parent_recurring_id IS NULL -- Only original templates
+    LOOP
+        -- Calculate next date
+        v_new_date := CASE v_expense.recur_interval
+            WHEN 'weekly' THEN v_expense.next_recur_date + INTERVAL '7 days'
+            WHEN 'monthly' THEN v_expense.next_recur_date + INTERVAL '1 month'
+            WHEN 'quarterly' THEN v_expense.next_recur_date + INTERVAL '3 months'
+            WHEN 'yearly' THEN v_expense.next_recur_date + INTERVAL '1 year'
+            ELSE NULL
+        END;
+
+        -- Create new pending instance
+        INSERT INTO expenses (
+            tenant_id, branch_id, expense_type_id, amount, description, 
+            expense_date, status, raised_by, supplier_id, po_id, 
+            is_recurring, recur_interval, parent_recurring_id
+        ) VALUES (
+            v_expense.tenant_id, v_expense.branch_id, v_expense.expense_type_id, v_expense.amount, v_expense.description,
+            v_expense.next_recur_date, 'pending', v_expense.raised_by, v_expense.supplier_id, v_expense.po_id,
+            FALSE, 'none', v_expense.id
+        );
+
+        -- Update the template's next date
+        UPDATE expenses 
+        SET next_recur_date = v_new_date,
+            updated_at = NOW()
+        WHERE id = v_expense.id;
+
+        v_count := v_count + 1;
+    END LOOP;
+
+    RETURN v_count;
+END;
+$$;
+
+-- Standard updated_at trigger
+DROP TRIGGER IF EXISTS set_updated_at ON expense_types;
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON expense_types FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+
+DROP TRIGGER IF EXISTS set_updated_at ON expenses;
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON expenses FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+
+-- End of 20260506000003_expense_tracker_system.sql
+
+
+-- File: 20260506000004_create_expense_storage.sql
+-- ============================================================================
+-- CREATE STORAGE BUCKET FOR EXPENSES
+-- ============================================================================
+
+-- Expense Documents Bucket (Private)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+    'expense-documents',
+    'expense-documents',
+    false, -- Private access
+    5242880, -- 5MB limit
+    ARRAY['application/pdf', 'image/jpeg', 'image/png', 'image/jpg']
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- STORAGE RLS POLICIES
+-- ============================================================================
+
+-- POLICY: Staff can upload documents to their tenant's folder
+-- Folder structure: /tenant_id/staff_id/filename.ext
+DROP POLICY IF EXISTS "Staff can upload expense documents" ON storage.objects;
+CREATE POLICY "Staff can upload expense documents"
+    ON storage.objects FOR INSERT
+    TO authenticated
+    WITH CHECK (
+        bucket_id = 'expense-documents' AND
+        (storage.foldername(name))[1] IN (SELECT tenant_id::text FROM users WHERE id = auth.uid())
+    );
+
+-- POLICY: Users can view documents in their tenant
+DROP POLICY IF EXISTS "Users can view tenant expense documents" ON storage.objects;
+CREATE POLICY "Users can view tenant expense documents"
+    ON storage.objects FOR SELECT
+    TO authenticated
+    USING (
+        bucket_id = 'expense-documents' AND
+        (storage.foldername(name))[1] IN (SELECT tenant_id::text FROM users WHERE id = auth.uid())
+    );
+
+-- POLICY: Admins/Delegated Staff can delete documents in their tenant
+DROP POLICY IF EXISTS "Admins can delete tenant expense documents" ON storage.objects;
+CREATE POLICY "Admins can delete tenant expense documents"
+    ON storage.objects FOR DELETE
+    TO authenticated
+    USING (
+        bucket_id = 'expense-documents' AND
+        (storage.foldername(name))[1] IN (
+            SELECT tenant_id::text FROM users 
+            WHERE id = auth.uid() 
+            AND (role = 'tenant_admin' OR can_manage_expenses = TRUE)
+        )
+    );
+
+-- End of 20260506000004_create_expense_storage.sql
+
+
+-- File: 20260507000000_po_receipt_groups.sql
+-- ============================================================
+-- Migration: Add Purchase Order Receipt Groups
+-- ============================================================
+-- Description: Creates tables to group PO receiving events, 
+--              enabling better history tracking and reporting.
+-- ============================================================
+
+-- 1. Create Receipt Groups
+CREATE TABLE IF NOT EXISTS purchase_order_receipts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    po_id UUID NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+    staff_id UUID NOT NULL REFERENCES users(id),
+    received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 2. Create Receipt Items
+CREATE TABLE IF NOT EXISTS purchase_order_receipt_items (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    receipt_id UUID NOT NULL REFERENCES purchase_order_receipts(id) ON DELETE CASCADE,
+    product_id UUID NOT NULL REFERENCES products(id),
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    unit_cost DECIMAL(12,2) NOT NULL,
+    batch_no VARCHAR(100),
+    expiry_date DATE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 3. RLS Policies
+ALTER TABLE purchase_order_receipts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE purchase_order_receipt_items ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view PO receipts in their tenant" ON purchase_order_receipts;
+CREATE POLICY "Users can view PO receipts in their tenant"
+    ON purchase_order_receipts FOR SELECT
+    USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+DROP POLICY IF EXISTS "Users can view PO receipt items in their tenant" ON purchase_order_receipt_items;
+CREATE POLICY "Users can view PO receipt items in their tenant"
+    ON purchase_order_receipt_items FOR SELECT
+    USING (receipt_id IN (SELECT id FROM purchase_order_receipts WHERE tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid())));
+
+-- 4. Update the Receive RPC to include these tables
+CREATE OR REPLACE FUNCTION receive_purchase_order(
+    p_po_id UUID,
+    p_received_items JSONB,
+    p_notes TEXT DEFAULT NULL
+)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po purchase_orders;
+    v_item RECORD;
+    v_received_item RECORD;
+    v_total_preorder_qty INTEGER;
+    v_to_fulfill INTEGER;
+    v_remaining_received INTEGER;
+    v_batch_id UUID;
+    v_staff_id UUID;
+    v_receipt_id UUID;
+BEGIN
+    -- Get current user ID (staff_id)
+    v_staff_id := auth.uid();
+
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    
+    IF v_po.id IS NULL THEN
+        RAISE EXCEPTION 'Purchase Order not found';
+    END IF;
+
+    IF v_po.status NOT IN ('pending', 'partially_received') THEN
+        RAISE EXCEPTION 'Purchase Order must be pending or partially received to receive stock';
+    END IF;
+
+    -- A. Create the Receipt Group record
+    INSERT INTO purchase_order_receipts (tenant_id, po_id, staff_id, notes)
+    VALUES (v_po.tenant_id, v_po.id, v_staff_id, p_notes)
+    RETURNING id INTO v_receipt_id;
+
+    -- B. Process each item
+    FOR v_received_item IN SELECT * FROM jsonb_to_recordset(p_received_items) AS x(
+        product_id UUID, received_qty INTEGER, batch_no TEXT, expiry_date DATE, unit_cost DECIMAL, unit_price DECIMAL
+    )
+    LOOP
+        -- 1. Create Receipt Item record for history
+        INSERT INTO purchase_order_receipt_items (
+            receipt_id, product_id, quantity, unit_cost, batch_no, expiry_date
+        ) VALUES (
+            v_receipt_id, v_received_item.product_id, v_received_item.received_qty, 
+            v_received_item.unit_cost, v_received_item.batch_no, v_received_item.expiry_date
+        );
+
+        -- 2. Calculate total preorder_quantity for this product in this branch
+        SELECT SUM(preorder_quantity) INTO v_total_preorder_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id;
+
+        v_total_preorder_qty := COALESCE(v_total_preorder_qty, 0);
+        
+        -- 3. Determine fulfillment
+        v_to_fulfill := LEAST(v_received_item.received_qty, v_total_preorder_qty);
+        v_remaining_received := v_received_item.received_qty - v_to_fulfill;
+
+        -- 4. Fulfill preorders (decrement preorder_quantity)
+        IF v_to_fulfill > 0 THEN
+            WITH fulfilled AS (
+                SELECT id, LEAST(preorder_quantity, v_to_fulfill) as current_fulfill
+                FROM branch_inventory
+                WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id AND preorder_quantity > 0
+                ORDER BY created_at ASC
+            )
+            UPDATE branch_inventory bi
+            SET preorder_quantity = bi.preorder_quantity - f.current_fulfill,
+                updated_at = NOW()
+            FROM fulfilled f
+            WHERE bi.id = f.id;
+        END IF;
+
+        -- 5. Create/Update Batch in branch_inventory
+        INSERT INTO branch_inventory (
+            tenant_id, branch_id, product_id, stock_quantity, 
+            batch_no, expiry_date, cost_price, selling_price, 
+            purchase_invoice, purchase_code, added_by, 
+            is_active
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_remaining_received,
+            v_received_item.batch_no, v_received_item.expiry_date, v_received_item.unit_cost, v_received_item.unit_price,
+            v_po.po_number, v_po.po_number, v_staff_id::text,
+            TRUE
+        ) RETURNING id INTO v_batch_id;
+
+        -- 6. Record Inventory Transaction
+        INSERT INTO inventory_transactions (
+            tenant_id, branch_id, product_id, branch_inventory_id,
+            transaction_type, quantity_delta, previous_quantity, new_quantity,
+            unit_cost, reference_id, reference_type, staff_id
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_batch_id,
+            'restock'::transaction_type, v_received_item.received_qty, 0, v_remaining_received,
+            v_received_item.unit_cost, v_po.id, 'purchase_order', v_staff_id
+        );
+
+        -- 7. Update purchase_order_items.received_qty
+        UPDATE purchase_order_items
+        SET received_qty = received_qty + v_received_item.received_qty,
+            updated_at = NOW()
+        WHERE po_id = p_po_id AND product_id = v_received_item.product_id;
+
+    END LOOP;
+
+    -- 8. Update PO status
+    IF NOT EXISTS (
+        SELECT 1 FROM purchase_order_items 
+        WHERE po_id = p_po_id AND received_qty < expected_qty
+    ) THEN
+        UPDATE purchase_orders SET status = 'completed', updated_at = NOW() WHERE id = p_po_id;
+    ELSE
+        UPDATE purchase_orders SET status = 'partially_received', updated_at = NOW() WHERE id = p_po_id;
+    END IF;
+
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    RETURN v_po;
+END;
+$$;
+
+-- End of 20260507000000_po_receipt_groups.sql
+
+
+-- File: 20260507000001_fix_po_overloading.sql
+-- ============================================================
+-- Migration: Fix Receive PO Function Overloading
+-- ============================================================
+-- Description: Drops the legacy 2-parameter receive_purchase_order
+--              to resolve PostgREST ambiguity with the new 
+--              3-parameter version.
+-- ============================================================
+
+-- 1. Drop the legacy version (2 parameters)
+DROP FUNCTION IF EXISTS public.receive_purchase_order(UUID, JSONB);
+
+-- 2. Ensure the new version (3 parameters) is correctly defined
+-- We recreate it here just to be certain it's the primary one
+CREATE OR REPLACE FUNCTION public.receive_purchase_order(
+    p_po_id UUID,
+    p_received_items JSONB,
+    p_notes TEXT DEFAULT NULL
+)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po purchase_orders;
+    v_item RECORD;
+    v_received_item RECORD;
+    v_total_preorder_qty INTEGER;
+    v_to_fulfill INTEGER;
+    v_remaining_received INTEGER;
+    v_batch_id UUID;
+    v_staff_id UUID;
+    v_receipt_id UUID;
+BEGIN
+    -- Get current user ID (staff_id)
+    v_staff_id := auth.uid();
+
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    
+    IF v_po.id IS NULL THEN
+        RAISE EXCEPTION 'Purchase Order not found';
+    END IF;
+
+    IF v_po.status NOT IN ('pending', 'partially_received') THEN
+        RAISE EXCEPTION 'Purchase Order must be pending or partially received to receive stock';
+    END IF;
+
+    -- A. Create the Receipt Group record
+    INSERT INTO purchase_order_receipts (tenant_id, po_id, staff_id, notes)
+    VALUES (v_po.tenant_id, v_po.id, v_staff_id, p_notes)
+    RETURNING id INTO v_receipt_id;
+
+    -- B. Process each item
+    FOR v_received_item IN SELECT * FROM jsonb_to_recordset(p_received_items) AS x(
+        product_id UUID, received_qty INTEGER, batch_no TEXT, expiry_date DATE, unit_cost DECIMAL, unit_price DECIMAL
+    )
+    LOOP
+        -- 1. Create Receipt Item record for history
+        INSERT INTO purchase_order_receipt_items (
+            receipt_id, product_id, quantity, unit_cost, batch_no, expiry_date
+        ) VALUES (
+            v_receipt_id, v_received_item.product_id, v_received_item.received_qty, 
+            v_received_item.unit_cost, v_received_item.batch_no, v_received_item.expiry_date
+        );
+
+        -- 2. Calculate total preorder_quantity for this product in this branch
+        SELECT SUM(preorder_quantity) INTO v_total_preorder_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id;
+
+        v_total_preorder_qty := COALESCE(v_total_preorder_qty, 0);
+        
+        -- 3. Determine fulfillment
+        v_to_fulfill := LEAST(v_received_item.received_qty, v_total_preorder_qty);
+        v_remaining_received := v_received_item.received_qty - v_to_fulfill;
+
+        -- 4. Fulfill preorders (decrement preorder_quantity)
+        IF v_to_fulfill > 0 THEN
+            WITH fulfilled AS (
+                SELECT id, LEAST(preorder_quantity, v_to_fulfill) as current_fulfill
+                FROM branch_inventory
+                WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id AND preorder_quantity > 0
+                ORDER BY created_at ASC
+            )
+            UPDATE branch_inventory bi
+            SET preorder_quantity = bi.preorder_quantity - f.current_fulfill,
+                updated_at = NOW()
+            FROM fulfilled f
+            WHERE bi.id = f.id;
+        END IF;
+
+        -- 5. Create/Update Batch in branch_inventory
+        INSERT INTO branch_inventory (
+            tenant_id, branch_id, product_id, stock_quantity, 
+            batch_no, expiry_date, cost_price, selling_price, 
+            purchase_invoice, purchase_code, added_by, 
+            is_active
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_remaining_received,
+            v_received_item.batch_no, v_received_item.expiry_date, v_received_item.unit_cost, v_received_item.unit_price,
+            v_po.po_number, v_po.po_number, v_staff_id::text,
+            TRUE
+        ) RETURNING id INTO v_batch_id;
+
+        -- 6. Record Inventory Transaction
+        INSERT INTO inventory_transactions (
+            tenant_id, branch_id, product_id, branch_inventory_id,
+            transaction_type, quantity_delta, previous_quantity, new_quantity,
+            unit_cost, reference_id, reference_type, staff_id
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_batch_id,
+            'restock'::transaction_type, v_received_item.received_qty, 0, v_remaining_received,
+            v_received_item.unit_cost, v_po.id, 'purchase_order', v_staff_id
+        );
+
+        -- 7. Update purchase_order_items.received_qty
+        UPDATE purchase_order_items
+        SET received_qty = received_qty + v_received_item.received_qty,
+            updated_at = NOW()
+        WHERE po_id = p_po_id AND product_id = v_received_item.product_id;
+
+    END LOOP;
+
+    -- 8. Update PO status
+    IF NOT EXISTS (
+        SELECT 1 FROM purchase_order_items 
+        WHERE po_id = p_po_id AND received_qty < expected_qty
+    ) THEN
+        UPDATE purchase_orders SET status = 'completed', updated_at = NOW() WHERE id = p_po_id;
+    ELSE
+        UPDATE purchase_orders SET status = 'partially_received', updated_at = NOW() WHERE id = p_po_id;
+    END IF;
+
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    RETURN v_po;
+END;
+$$;
+
+-- End of 20260507000001_fix_po_overloading.sql
+
+
+-- File: 20260507000002_add_is_received_to_receipt_items.sql
+-- ============================================================
+-- Migration: Add is_received to PO Receipt Items
+-- ============================================================
+-- Description: Adds is_received column and updates the 
+--              receive_purchase_order function to handle it.
+-- ============================================================
+
+-- 1. Add column to purchase_order_receipt_items
+ALTER TABLE purchase_order_receipt_items 
+ADD COLUMN IF NOT EXISTS is_received BOOLEAN DEFAULT FALSE;
+
+-- 2. Update the RPC to handle is_received and ensure expiry_date is handled
+CREATE OR REPLACE FUNCTION public.receive_purchase_order(
+    p_po_id UUID,
+    p_received_items JSONB,
+    p_notes TEXT DEFAULT NULL
+)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po purchase_orders;
+    v_item RECORD;
+    v_received_item RECORD;
+    v_total_preorder_qty INTEGER;
+    v_to_fulfill INTEGER;
+    v_remaining_received INTEGER;
+    v_batch_id UUID;
+    v_staff_id UUID;
+    v_receipt_id UUID;
+BEGIN
+    -- Get current user ID (staff_id)
+    v_staff_id := auth.uid();
+
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    
+    IF v_po.id IS NULL THEN
+        RAISE EXCEPTION 'Purchase Order not found';
+    END IF;
+
+    IF v_po.status NOT IN ('pending', 'partially_received') THEN
+        RAISE EXCEPTION 'Purchase Order must be pending or partially received to receive stock';
+    END IF;
+
+    -- A. Create the Receipt Group record
+    INSERT INTO purchase_order_receipts (tenant_id, po_id, staff_id, notes)
+    VALUES (v_po.tenant_id, v_po.id, v_staff_id, p_notes)
+    RETURNING id INTO v_receipt_id;
+
+    -- B. Process each item
+    FOR v_received_item IN SELECT * FROM jsonb_to_recordset(p_received_items) AS x(
+        product_id UUID, received_qty INTEGER, batch_no TEXT, expiry_date DATE, unit_cost DECIMAL, unit_price DECIMAL, is_received BOOLEAN
+    )
+    LOOP
+        -- 1. Create Receipt Item record for history
+        INSERT INTO purchase_order_receipt_items (
+            receipt_id, product_id, quantity, unit_cost, batch_no, expiry_date, is_received
+        ) VALUES (
+            v_receipt_id, v_received_item.product_id, v_received_item.received_qty, 
+            v_received_item.unit_cost, v_received_item.batch_no, v_received_item.expiry_date,
+            COALESCE(v_received_item.is_received, TRUE)
+        );
+
+        -- 2. Calculate total preorder_quantity for this product in this branch
+        SELECT SUM(preorder_quantity) INTO v_total_preorder_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id;
+
+        v_total_preorder_qty := COALESCE(v_total_preorder_qty, 0);
+        
+        -- 3. Determine fulfillment
+        v_to_fulfill := LEAST(v_received_item.received_qty, v_total_preorder_qty);
+        v_remaining_received := v_received_item.received_qty - v_to_fulfill;
+
+        -- 4. Fulfill preorders (decrement preorder_quantity)
+        IF v_to_fulfill > 0 THEN
+            WITH fulfilled AS (
+                SELECT id, LEAST(preorder_quantity, v_to_fulfill) as current_fulfill
+                FROM branch_inventory
+                WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id AND preorder_quantity > 0
+                ORDER BY created_at ASC
+            )
+            UPDATE branch_inventory bi
+            SET preorder_quantity = bi.preorder_quantity - f.current_fulfill,
+                updated_at = NOW()
+            FROM fulfilled f
+            WHERE bi.id = f.id;
+        END IF;
+
+        -- 5. Create/Update Batch in branch_inventory
+        INSERT INTO branch_inventory (
+            tenant_id, branch_id, product_id, stock_quantity, 
+            batch_no, expiry_date, cost_price, selling_price, 
+            purchase_invoice, purchase_code, added_by, 
+            is_active
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_remaining_received,
+            v_received_item.batch_no, v_received_item.expiry_date, v_received_item.unit_cost, v_received_item.unit_price,
+            v_po.po_number, v_po.po_number, v_staff_id::text,
+            TRUE
+        ) RETURNING id INTO v_batch_id;
+
+        -- 6. Record Inventory Transaction
+        INSERT INTO inventory_transactions (
+            tenant_id, branch_id, product_id, branch_inventory_id,
+            transaction_type, quantity_delta, previous_quantity, new_quantity,
+            unit_cost, reference_id, reference_type, staff_id
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_batch_id,
+            'restock'::transaction_type, v_received_item.received_qty, 0, v_remaining_received,
+            v_received_item.unit_cost, v_po.id, 'purchase_order', v_staff_id
+        );
+
+        -- 7. Update purchase_order_items.received_qty
+        UPDATE purchase_order_items
+        SET received_qty = received_qty + v_received_item.received_qty,
+            updated_at = NOW()
+        WHERE po_id = p_po_id AND product_id = v_received_item.product_id;
+
+    END LOOP;
+
+    -- 8. Update PO status
+    IF NOT EXISTS (
+        SELECT 1 FROM purchase_order_items 
+        WHERE po_id = p_po_id AND received_qty < expected_qty
+    ) THEN
+        UPDATE purchase_orders SET status = 'completed', updated_at = NOW() WHERE id = p_po_id;
+    ELSE
+        UPDATE purchase_orders SET status = 'partially_received', updated_at = NOW() WHERE id = p_po_id;
+    END IF;
+
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    RETURN v_po;
+END;
+$$;
+
+-- End of 20260507000002_add_is_received_to_receipt_items.sql
+
+
+-- File: 20260507000003_add_po_sync_function.sql
+-- ============================================================
+-- Migration: Add PO Quantity Sync Function
+-- ============================================================
+-- Description: Adds a function to recalculate received_qty 
+--              from the actual receipt history to fix data
+--              inconsistencies.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.sync_purchase_order_quantities(p_po_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    -- Reset all received_qty for this PO to 0 first
+    UPDATE purchase_order_items
+    SET received_qty = 0,
+        updated_at = NOW()
+    WHERE po_id = p_po_id;
+
+    -- Recalculate from receipt items
+    WITH actual_received AS (
+        SELECT 
+            ri.product_id,
+            SUM(ri.quantity) as total_qty
+        FROM purchase_order_receipt_items ri
+        JOIN purchase_order_receipts r ON ri.receipt_id = r.id
+        WHERE r.po_id = p_po_id
+        GROUP BY ri.product_id
+    )
+    UPDATE purchase_order_items poi
+    SET received_qty = ar.total_qty,
+        updated_at = NOW()
+    FROM actual_received ar
+    WHERE poi.po_id = p_po_id 
+    AND poi.product_id = ar.product_id;
+
+    -- Update PO status based on new quantities
+    IF NOT EXISTS (
+        SELECT 1 FROM purchase_order_items 
+        WHERE po_id = p_po_id AND received_qty < expected_qty
+    ) THEN
+        UPDATE purchase_orders SET status = 'completed', updated_at = NOW() WHERE id = p_po_id;
+    ELSIF EXISTS (
+        SELECT 1 FROM purchase_order_items 
+        WHERE po_id = p_po_id AND received_qty > 0
+    ) THEN
+        UPDATE purchase_orders SET status = 'partially_received', updated_at = NOW() WHERE id = p_po_id;
+    ELSE
+        UPDATE purchase_orders SET status = 'pending', updated_at = NOW() WHERE id = p_po_id;
+    END IF;
+END;
+$$;
+
+-- End of 20260507000003_add_po_sync_function.sql
+
+
+-- File: 20260507000004_automate_po_sync.sql
+-- ============================================================
+-- Migration: Automate PO Quantity Tracking via Triggers
+-- ============================================================
+-- Description: Creates a trigger that automatically updates
+--              purchase_order_items.received_qty whenever a
+--              receipt item is inserted, updated, or deleted.
+-- ============================================================
+
+-- 1. Create the Trigger Function
+CREATE OR REPLACE FUNCTION public.fn_sync_po_item_received_qty()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_po_id UUID;
+    v_product_id UUID;
+BEGIN
+    -- Determine the PO ID and Product ID to sync
+    IF (TG_OP = 'DELETE') THEN
+        v_product_id := OLD.product_id;
+        SELECT po_id INTO v_po_id FROM purchase_order_receipts WHERE id = OLD.receipt_id;
+    ELSE
+        v_product_id := NEW.product_id;
+        SELECT po_id INTO v_po_id FROM purchase_order_receipts WHERE id = NEW.receipt_id;
+    END IF;
+
+    -- Recalculate total received for this specific product in this PO
+    UPDATE purchase_order_items
+    SET received_qty = COALESCE((
+        SELECT SUM(ri.quantity)
+        FROM purchase_order_receipt_items ri
+        JOIN purchase_order_receipts r ON ri.receipt_id = r.id
+        WHERE r.po_id = v_po_id AND ri.product_id = v_product_id
+    ), 0),
+    updated_at = NOW()
+    WHERE po_id = v_po_id AND product_id = v_product_id;
+
+    -- Update PO status based on the new totals
+    IF NOT EXISTS (
+        SELECT 1 FROM purchase_order_items 
+        WHERE po_id = v_po_id AND received_qty < expected_qty
+    ) THEN
+        UPDATE purchase_orders SET status = 'completed', updated_at = NOW() WHERE id = v_po_id;
+    ELSIF EXISTS (
+        SELECT 1 FROM purchase_order_items 
+        WHERE po_id = v_po_id AND received_qty > 0
+    ) THEN
+        UPDATE purchase_orders SET status = 'partially_received', updated_at = NOW() WHERE id = v_po_id;
+    ELSE
+        UPDATE purchase_orders SET status = 'pending', updated_at = NOW() WHERE id = v_po_id;
+    END IF;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 2. Create the Trigger
+DROP TRIGGER IF EXISTS tr_sync_po_item_received_qty ON purchase_order_receipt_items;
+CREATE TRIGGER tr_sync_po_item_received_qty
+AFTER INSERT OR UPDATE OR DELETE ON purchase_order_receipt_items
+FOR EACH ROW
+EXECUTE FUNCTION public.fn_sync_po_item_received_qty();
+
+-- 3. Cleanup: Remove the manual update from the main RPC to prevent double processing
+-- Note: We keep the sync logic in the trigger for absolute accuracy.
+CREATE OR REPLACE FUNCTION public.receive_purchase_order(
+    p_po_id UUID,
+    p_received_items JSONB,
+    p_notes TEXT DEFAULT NULL
+)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po purchase_orders;
+    v_received_item RECORD;
+    v_total_preorder_qty INTEGER;
+    v_to_fulfill INTEGER;
+    v_remaining_received INTEGER;
+    v_batch_id UUID;
+    v_staff_id UUID;
+    v_receipt_id UUID;
+BEGIN
+    v_staff_id := auth.uid();
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    
+    IF v_po.id IS NULL THEN RAISE EXCEPTION 'Purchase Order not found'; END IF;
+    IF v_po.status NOT IN ('pending', 'partially_received') THEN
+        RAISE EXCEPTION 'Purchase Order must be pending or partially received to receive stock';
+    END IF;
+
+    INSERT INTO purchase_order_receipts (tenant_id, po_id, staff_id, notes)
+    VALUES (v_po.tenant_id, v_po.id, v_staff_id, p_notes)
+    RETURNING id INTO v_receipt_id;
+
+    FOR v_received_item IN SELECT * FROM jsonb_to_recordset(p_received_items) AS x(
+        product_id UUID, received_qty INTEGER, batch_no TEXT, expiry_date DATE, unit_cost DECIMAL, unit_price DECIMAL, is_received BOOLEAN
+    )
+    LOOP
+        -- 1. Create Receipt Item (The trigger will now handle updating purchase_order_items)
+        INSERT INTO purchase_order_receipt_items (
+            receipt_id, product_id, quantity, unit_cost, batch_no, expiry_date, is_received
+        ) VALUES (
+            v_receipt_id, v_received_item.product_id, v_received_item.received_qty, 
+            v_received_item.unit_cost, v_received_item.batch_no, v_received_item.expiry_date,
+            COALESCE(v_received_item.is_received, TRUE)
+        );
+
+        -- 2. Calculate total preorder_quantity
+        SELECT SUM(preorder_quantity) INTO v_total_preorder_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id;
+        v_total_preorder_qty := COALESCE(v_total_preorder_qty, 0);
+        
+        -- 3. Determine fulfillment
+        v_to_fulfill := LEAST(v_received_item.received_qty, v_total_preorder_qty);
+        v_remaining_received := v_received_item.received_qty - v_to_fulfill;
+
+        -- 4. Fulfill preorders
+        IF v_to_fulfill > 0 THEN
+            WITH fulfilled AS (
+                SELECT id, LEAST(preorder_quantity, v_to_fulfill) as current_fulfill
+                FROM branch_inventory
+                WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id AND preorder_quantity > 0
+                ORDER BY created_at ASC
+            )
+            UPDATE branch_inventory bi
+            SET preorder_quantity = bi.preorder_quantity - f.current_fulfill, updated_at = NOW()
+            FROM fulfilled f WHERE bi.id = f.id;
+        END IF;
+
+        -- 5. Create/Update Batch
+        INSERT INTO branch_inventory (
+            tenant_id, branch_id, product_id, stock_quantity, 
+            batch_no, expiry_date, cost_price, selling_price, 
+            purchase_invoice, purchase_code, added_by, is_active
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_remaining_received,
+            v_received_item.batch_no, v_received_item.expiry_date, v_received_item.unit_cost, v_received_item.unit_price,
+            v_po.po_number, v_po.po_number, v_staff_id::text, TRUE
+        ) RETURNING id INTO v_batch_id;
+
+        -- 6. Record Inventory Transaction
+        INSERT INTO inventory_transactions (
+            tenant_id, branch_id, product_id, branch_inventory_id,
+            transaction_type, quantity_delta, previous_quantity, new_quantity,
+            unit_cost, reference_id, reference_type, staff_id
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_batch_id,
+            'restock'::transaction_type, v_received_item.received_qty, 0, v_remaining_received,
+            v_received_item.unit_cost, v_po.id, 'purchase_order', v_staff_id
+        );
+
+        -- REMOVED: Manual update of purchase_order_items.received_qty
+        -- (Now handled automatically by the trigger on purchase_order_receipt_items)
+    END LOOP;
+
+    -- PO Status is also handled by the trigger now
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    RETURN v_po;
+END;
+$$;
+
+-- 4. Run a one-time sync for all existing POs to ensure consistency
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN SELECT id FROM purchase_orders LOOP
+        PERFORM sync_purchase_order_quantities(r.id);
+    END LOOP;
+END$$;
+
+-- End of 20260507000004_automate_po_sync.sql
+
+
+-- File: 20260507000005_merge_po_stock.sql
+-- ============================================================
+-- Migration: Merge PO Receipts into Existing Stock
+-- ============================================================
+-- Description: Updates receive_purchase_order to add quantities
+--              to existing branch_inventory rows for the same
+--              product instead of always creating new rows.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.receive_purchase_order(
+    p_po_id UUID,
+    p_received_items JSONB,
+    p_notes TEXT DEFAULT NULL
+)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po purchase_orders;
+    v_received_item RECORD;
+    v_total_preorder_qty INTEGER;
+    v_to_fulfill INTEGER;
+    v_remaining_received INTEGER;
+    v_batch_id UUID;
+    v_staff_id UUID;
+    v_receipt_id UUID;
+    v_old_qty INTEGER;
+BEGIN
+    v_staff_id := auth.uid();
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    
+    IF v_po.id IS NULL THEN RAISE EXCEPTION 'Purchase Order not found'; END IF;
+    IF v_po.status NOT IN ('pending', 'partially_received') THEN
+        RAISE EXCEPTION 'Purchase Order must be pending or partially received to receive stock';
+    END IF;
+
+    -- 1. Create the Receipt Group for history
+    INSERT INTO purchase_order_receipts (tenant_id, po_id, staff_id, notes)
+    VALUES (v_po.tenant_id, v_po.id, v_staff_id, p_notes)
+    RETURNING id INTO v_receipt_id;
+
+    -- 2. Process each received item
+    FOR v_received_item IN SELECT * FROM jsonb_to_recordset(p_received_items) AS x(
+        product_id UUID, received_qty INTEGER, batch_no TEXT, expiry_date DATE, unit_cost DECIMAL, unit_price DECIMAL, is_received BOOLEAN
+    )
+    LOOP
+        -- A. Record in receipt history (Trigger handles PO dashboard sync)
+        INSERT INTO purchase_order_receipt_items (
+            receipt_id, product_id, quantity, unit_cost, batch_no, expiry_date, is_received
+        ) VALUES (
+            v_receipt_id, v_received_item.product_id, v_received_item.received_qty, 
+            v_received_item.unit_cost, v_received_item.batch_no, v_received_item.expiry_date,
+            COALESCE(v_received_item.is_received, TRUE)
+        );
+
+        -- B. Handle Preorders
+        SELECT SUM(preorder_quantity) INTO v_total_preorder_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id;
+        v_total_preorder_qty := COALESCE(v_total_preorder_qty, 0);
+        
+        v_to_fulfill := LEAST(v_received_item.received_qty, v_total_preorder_qty);
+        v_remaining_received := v_received_item.received_qty - v_to_fulfill;
+
+        IF v_to_fulfill > 0 THEN
+            WITH fulfilled AS (
+                SELECT id, LEAST(preorder_quantity, v_to_fulfill) as current_fulfill
+                FROM branch_inventory
+                WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id AND preorder_quantity > 0
+                ORDER BY created_at ASC
+            )
+            UPDATE branch_inventory bi
+            SET preorder_quantity = bi.preorder_quantity - f.current_fulfill, updated_at = NOW()
+            FROM fulfilled f WHERE bi.id = f.id;
+        END IF;
+
+        -- C. Update or Create Branch Inventory (Merging into existing stock)
+        SELECT id, stock_quantity INTO v_batch_id, v_old_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id
+        ORDER BY created_at DESC -- Merge into most recent if multiples exist
+        LIMIT 1;
+
+        IF v_batch_id IS NOT NULL THEN
+            -- Merge into existing row
+            UPDATE branch_inventory
+            SET stock_quantity = stock_quantity + v_remaining_received,
+                batch_no = COALESCE(v_received_item.batch_no, batch_no),
+                expiry_date = COALESCE(v_received_item.expiry_date, expiry_date),
+                cost_price = v_received_item.unit_cost,
+                selling_price = v_received_item.unit_price,
+                purchase_invoice = v_po.po_number,
+                updated_at = NOW()
+            WHERE id = v_batch_id;
+        ELSE
+            -- Create new row if no stock exists for this product in this branch
+            v_old_qty := 0;
+            INSERT INTO branch_inventory (
+                tenant_id, branch_id, product_id, stock_quantity, 
+                batch_no, expiry_date, cost_price, selling_price, 
+                purchase_invoice, purchase_code, added_by, is_active
+            ) VALUES (
+                v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_remaining_received,
+                v_received_item.batch_no, v_received_item.expiry_date, v_received_item.unit_cost, v_received_item.unit_price,
+                v_po.po_number, v_po.po_number, v_staff_id::text, TRUE
+            ) RETURNING id INTO v_batch_id;
+        END IF;
+
+        -- D. Record Inventory Transaction
+        INSERT INTO inventory_transactions (
+            tenant_id, branch_id, product_id, branch_inventory_id,
+            transaction_type, quantity_delta, previous_quantity, new_quantity,
+            unit_cost, reference_id, reference_type, staff_id
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_batch_id,
+            'restock'::transaction_type, v_remaining_received, v_old_qty, v_old_qty + v_remaining_received,
+            v_received_item.unit_cost, v_po.id, 'purchase_order', v_staff_id
+        );
+    END LOOP;
+
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    RETURN v_po;
+END;
+$$;
+
+-- End of 20260507000005_merge_po_stock.sql
+
+
+-- File: 20260507000006_update_inventory_view.sql
+-- ============================================================
+-- Migration: Update Inventory View with Name and Strength
+-- ============================================================
+-- Description: Redefines v_branch_products to include all
+--              necessary fields for the inventory dashboard,
+--              including product name, strength, and batches.
+-- ============================================================
+
+CREATE OR REPLACE VIEW public.v_branch_products AS
+SELECT
+    bi.id as inv_id,
+    bi.tenant_id,
+    bi.branch_id,
+    bi.product_id,
+    bi.stock_quantity,
+    bi.reserved_quantity,
+    bi.batch_no,
+    bi.expiry_date,
+    bi.low_stock_threshold,
+    bi.cost_price,
+    bi.selling_price,
+    bi."isPOM",
+    bi.is_active as inventory_active,
+    bi.updated_at,
+    
+    -- Product details from the master catalog
+    p.name as product_name,
+    p.sku,
+    p.barcode,
+    p.image_url,
+    p.strength,
+    p.product_type,
+    p.unit_of_measure,
+    p.is_active as product_active,
+    
+    -- Status flags
+    CASE
+        WHEN bi.stock_quantity <= bi.low_stock_threshold THEN true
+        ELSE false
+    END as is_low_stock,
+    CASE
+        WHEN bi.expiry_date IS NOT NULL
+        AND bi.expiry_date <= CURRENT_DATE + INTERVAL '90 days'
+        THEN true
+        ELSE false
+    END as is_expiring_soon
+FROM branch_inventory bi
+JOIN products p ON bi.product_id = p.id;
+
+COMMENT ON VIEW v_branch_products IS 'Comprehensive view joining branch inventory with product master data';
+
+-- End of 20260507000006_update_inventory_view.sql
+
+
+-- File: 20260507000007_fix_inventory_snapshots.sql
+-- ============================================================
+-- Migration: Ensure Product Snapshots in Branch Inventory (FINAL)
+-- ============================================================
+-- Description: Adds strength column and updates the trigger
+--              to ensure product details are synced on every 
+--              inventory update (including PO receives).
+-- ============================================================
+
+-- 1. Ensure strength column exists in branch_inventory
+ALTER TABLE public.branch_inventory 
+ADD COLUMN IF NOT EXISTS strength TEXT;
+
+-- 2. Update the populate function to include strength and be more robust
+CREATE OR REPLACE FUNCTION public.populate_branch_inventory_details()
+RETURNS TRIGGER AS $$
+DECLARE
+    r_prod RECORD;
+BEGIN
+    SELECT name, barcode as sku, barcode, product_type, generic_name, unit_of_measure, image_url, strength
+    INTO r_prod
+    FROM public.products WHERE id = NEW.product_id;
+
+    IF r_prod IS NOT NULL THEN
+        NEW.product_name := COALESCE(NEW.product_name, r_prod.name);
+        NEW.sku := COALESCE(NEW.sku, r_prod.sku);
+        NEW.barcode := COALESCE(NEW.barcode, r_prod.barcode);
+        NEW.product_type := COALESCE(NEW.product_type, r_prod.product_type);
+        NEW.unit_of_measure := COALESCE(NEW.unit_of_measure, r_prod.unit_of_measure);
+        NEW.image_url := COALESCE(NEW.image_url, r_prod.image_url);
+        NEW.strength := COALESCE(NEW.strength, r_prod.strength);
+        
+        IF r_prod.product_type IN ('drug', 'medication') THEN
+            NEW.generic_name := COALESCE(NEW.generic_name, r_prod.generic_name);
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 3. Update trigger to fire on INSERT and UPDATE
+DROP TRIGGER IF EXISTS trg_populate_branch_inventory_details ON public.branch_inventory;
+CREATE TRIGGER trg_populate_branch_inventory_details
+    BEFORE INSERT OR UPDATE ON public.branch_inventory
+    FOR EACH ROW
+    EXECUTE FUNCTION public.populate_branch_inventory_details();
+
+-- 4. Sync existing data
+UPDATE public.branch_inventory bi
+SET product_name = p.name,
+    sku = p.barcode,
+    strength = p.strength,
+    product_type = p.product_type,
+    image_url = p.image_url
+FROM public.products p
+WHERE bi.product_id = p.id
+AND (bi.product_name IS NULL OR bi.strength IS NULL);
+
+-- End of 20260507000007_fix_inventory_snapshots.sql
+
+
+-- File: 20260507000008_explicit_po_snapshots.sql
+-- ============================================================
+-- Migration: Explicit Details in PO Receipt
+-- ============================================================
+-- Description: Updates the receiving RPC to explicitly fetch 
+--              and save product name and strength, ensuring
+--              high reliability for the inventory dashboard.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.receive_purchase_order(
+    p_po_id UUID,
+    p_received_items JSONB,
+    p_notes TEXT DEFAULT NULL
+)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po purchase_orders;
+    v_received_item RECORD;
+    v_prod RECORD;
+    v_total_preorder_qty INTEGER;
+    v_to_fulfill INTEGER;
+    v_remaining_received INTEGER;
+    v_batch_id UUID;
+    v_staff_id UUID;
+    v_receipt_id UUID;
+    v_old_qty INTEGER;
+BEGIN
+    v_staff_id := auth.uid();
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    
+    IF v_po.id IS NULL THEN RAISE EXCEPTION 'Purchase Order not found'; END IF;
+    IF v_po.status NOT IN ('pending', 'partially_received') THEN
+        RAISE EXCEPTION 'Purchase Order must be pending or partially received to receive stock';
+    END IF;
+
+    -- 1. Create the Receipt Group for history
+    INSERT INTO purchase_order_receipts (tenant_id, po_id, staff_id, notes)
+    VALUES (v_po.tenant_id, v_po.id, v_staff_id, p_notes)
+    RETURNING id INTO v_receipt_id;
+
+    -- 2. Process each received item
+    FOR v_received_item IN SELECT * FROM jsonb_to_recordset(p_received_items) AS x(
+        product_id UUID, received_qty INTEGER, batch_no TEXT, expiry_date DATE, unit_cost DECIMAL, unit_price DECIMAL, is_received BOOLEAN
+    )
+    LOOP
+        -- Fetch current master product details to ensure snapshots are accurate
+        SELECT name, barcode as sku, strength, product_type, image_url 
+        INTO v_prod 
+        FROM public.products WHERE id = v_received_item.product_id;
+
+        -- A. Record in receipt history (Trigger handles PO dashboard sync)
+        INSERT INTO purchase_order_receipt_items (
+            receipt_id, product_id, quantity, unit_cost, batch_no, expiry_date, is_received
+        ) VALUES (
+            v_receipt_id, v_received_item.product_id, v_received_item.received_qty, 
+            v_received_item.unit_cost, v_received_item.batch_no, v_received_item.expiry_date,
+            COALESCE(v_received_item.is_received, TRUE)
+        );
+
+        -- B. Handle Preorders
+        SELECT SUM(preorder_quantity) INTO v_total_preorder_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id;
+        v_total_preorder_qty := COALESCE(v_total_preorder_qty, 0);
+        
+        v_to_fulfill := LEAST(v_received_item.received_qty, v_total_preorder_qty);
+        v_remaining_received := v_received_item.received_qty - v_to_fulfill;
+
+        IF v_to_fulfill > 0 THEN
+            WITH fulfilled AS (
+                SELECT id, LEAST(preorder_quantity, v_to_fulfill) as current_fulfill
+                FROM branch_inventory
+                WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id AND preorder_quantity > 0
+                ORDER BY created_at ASC
+            )
+            UPDATE branch_inventory bi
+            SET preorder_quantity = bi.preorder_quantity - f.current_fulfill, updated_at = NOW()
+            FROM fulfilled f WHERE bi.id = f.id;
+        END IF;
+
+        -- C. Update or Create Branch Inventory (Explicitly setting snapshots)
+        SELECT id, stock_quantity INTO v_batch_id, v_old_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id
+        ORDER BY created_at DESC
+        LIMIT 1;
+
+        IF v_batch_id IS NOT NULL THEN
+            -- Merge into existing row (Updating all metadata)
+            UPDATE branch_inventory
+            SET stock_quantity = stock_quantity + v_remaining_received,
+                batch_no = COALESCE(v_received_item.batch_no, batch_no),
+                expiry_date = COALESCE(v_received_item.expiry_date, expiry_date),
+                cost_price = v_received_item.unit_cost,
+                selling_price = v_received_item.unit_price,
+                purchase_invoice = v_po.po_number,
+                -- Snapshot details
+                product_name = v_prod.name,
+                strength = v_prod.strength,
+                sku = v_prod.sku,
+                product_type = v_prod.product_type,
+                image_url = v_prod.image_url,
+                updated_at = NOW()
+            WHERE id = v_batch_id;
+        ELSE
+            -- Create new row (Setting all metadata)
+            v_old_qty := 0;
+            INSERT INTO branch_inventory (
+                tenant_id, branch_id, product_id, stock_quantity, 
+                batch_no, expiry_date, cost_price, selling_price, 
+                purchase_invoice, purchase_code, added_by, is_active,
+                product_name, strength, sku, product_type, image_url
+            ) VALUES (
+                v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_remaining_received,
+                v_received_item.batch_no, v_received_item.expiry_date, v_received_item.unit_cost, v_received_item.unit_price,
+                v_po.po_number, v_po.po_number, v_staff_id::text, TRUE,
+                v_prod.name, v_prod.strength, v_prod.sku, v_prod.product_type, v_prod.image_url
+            ) RETURNING id INTO v_batch_id;
+        END IF;
+
+        -- D. Record Inventory Transaction
+        INSERT INTO inventory_transactions (
+            tenant_id, branch_id, product_id, branch_inventory_id,
+            transaction_type, quantity_delta, previous_quantity, new_quantity,
+            unit_cost, reference_id, reference_type, staff_id
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_batch_id,
+            'restock'::transaction_type, v_remaining_received, v_old_qty, v_old_qty + v_remaining_received,
+            v_received_item.unit_cost, v_po.id, 'purchase_order', v_staff_id
+        );
+    END LOOP;
+
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    RETURN v_po;
+END;
+$$;
+
+-- End of 20260507000008_explicit_po_snapshots.sql
+
+
+-- File: 20260507000009_po_early_snapshot.sql
+-- ============================================================
+-- Migration: Early Snapshot for Purchase Orders
+-- ============================================================
+-- Description: Adds product_name and strength to PO items.
+--              Ensures details are captured at order time and
+--              carried through to inventory.
+-- ============================================================
+
+-- 1. Add snapshot columns to purchase_order_items
+ALTER TABLE public.purchase_order_items 
+ADD COLUMN IF NOT EXISTS product_name TEXT,
+ADD COLUMN IF NOT EXISTS strength TEXT;
+
+-- 2. Create Trigger Function to snapshot details on PO Item creation
+CREATE OR REPLACE FUNCTION public.populate_po_item_details()
+RETURNS TRIGGER AS $$
+BEGIN
+    SELECT name, strength 
+    INTO NEW.product_name, NEW.strength
+    FROM public.products WHERE id = NEW.product_id;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 3. Create the trigger
+DROP TRIGGER IF EXISTS trg_populate_po_item_details ON public.purchase_order_items;
+CREATE TRIGGER trg_populate_po_item_details
+    BEFORE INSERT ON public.purchase_order_items
+    FOR EACH ROW
+    EXECUTE FUNCTION public.populate_po_item_details();
+
+-- 4. One-time sync for existing PO items
+UPDATE public.purchase_order_items poi
+SET product_name = p.name,
+    strength = p.strength
+FROM public.products p
+WHERE poi.product_id = p.id
+AND poi.product_name IS NULL;
+
+-- End of 20260507000009_po_early_snapshot.sql
+
+
+-- File: 20260507000010_po_to_inventory_flow.sql
+-- ============================================================
+-- Migration: Direct Flow from PO to Inventory
+-- ============================================================
+-- Description: Updates the receiving RPC to pull snapshots 
+--              from purchase_order_items and pass them to 
+--              branch_inventory.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.receive_purchase_order(
+    p_po_id UUID,
+    p_received_items JSONB,
+    p_notes TEXT DEFAULT NULL
+)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po purchase_orders;
+    v_received_item RECORD;
+    v_po_item RECORD; -- Holds the snapshots from the PO
+    v_total_preorder_qty INTEGER;
+    v_to_fulfill INTEGER;
+    v_remaining_received INTEGER;
+    v_batch_id UUID;
+    v_staff_id UUID;
+    v_receipt_id UUID;
+    v_old_qty INTEGER;
+BEGIN
+    v_staff_id := auth.uid();
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    
+    IF v_po.id IS NULL THEN RAISE EXCEPTION 'Purchase Order not found'; END IF;
+    IF v_po.status NOT IN ('pending', 'partially_received') THEN
+        RAISE EXCEPTION 'Purchase Order must be pending or partially received to receive stock';
+    END IF;
+
+    -- 1. Create the Receipt Group for history
+    INSERT INTO purchase_order_receipts (tenant_id, po_id, staff_id, notes)
+    VALUES (v_po.tenant_id, v_po.id, v_staff_id, p_notes)
+    RETURNING id INTO v_receipt_id;
+
+    -- 2. Process each received item
+    FOR v_received_item IN SELECT * FROM jsonb_to_recordset(p_received_items) AS x(
+        product_id UUID, received_qty INTEGER, batch_no TEXT, expiry_date DATE, unit_cost DECIMAL, unit_price DECIMAL, is_received BOOLEAN
+    )
+    LOOP
+        -- Retrieve the snapshots from the Purchase Order Item (Early Snapshot)
+        -- Fallback to products catalog ONLY if the PO snapshot is missing
+        SELECT poi.product_name, poi.strength, p.barcode as sku, p.product_type, p.image_url
+        INTO v_po_item
+        FROM purchase_order_items poi
+        JOIN products p ON poi.product_id = p.id
+        WHERE poi.po_id = p_po_id AND poi.product_id = v_received_item.product_id;
+
+        -- A. Record in receipt history
+        INSERT INTO purchase_order_receipt_items (
+            receipt_id, product_id, quantity, unit_cost, batch_no, expiry_date, is_received
+        ) VALUES (
+            v_receipt_id, v_received_item.product_id, v_received_item.received_qty, 
+            v_received_item.unit_cost, v_received_item.batch_no, v_received_item.expiry_date,
+            COALESCE(v_received_item.is_received, TRUE)
+        );
+
+        -- B. Handle Preorders
+        SELECT SUM(preorder_quantity) INTO v_total_preorder_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id;
+        v_total_preorder_qty := COALESCE(v_total_preorder_qty, 0);
+        
+        v_to_fulfill := LEAST(v_received_item.received_qty, v_total_preorder_qty);
+        v_remaining_received := v_received_item.received_qty - v_to_fulfill;
+
+        IF v_to_fulfill > 0 THEN
+            WITH fulfilled AS (
+                SELECT id, LEAST(preorder_quantity, v_to_fulfill) as current_fulfill
+                FROM branch_inventory
+                WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id AND preorder_quantity > 0
+                ORDER BY created_at ASC
+            )
+            UPDATE branch_inventory bi
+            SET preorder_quantity = bi.preorder_quantity - f.current_fulfill, updated_at = NOW()
+            FROM fulfilled f WHERE bi.id = f.id;
+        END IF;
+
+        -- C. Update or Create Branch Inventory (Using the flow: PO -> Inventory)
+        SELECT id, stock_quantity INTO v_batch_id, v_old_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id
+        ORDER BY created_at DESC
+        LIMIT 1;
+
+        IF v_batch_id IS NOT NULL THEN
+            UPDATE branch_inventory
+            SET stock_quantity = stock_quantity + v_remaining_received,
+                batch_no = COALESCE(v_received_item.batch_no, batch_no),
+                expiry_date = COALESCE(v_received_item.expiry_date, expiry_date),
+                cost_price = v_received_item.unit_cost,
+                selling_price = v_received_item.unit_price,
+                purchase_invoice = v_po.po_number,
+                -- Snapshot details passed from PO
+                product_name = COALESCE(v_po_item.product_name, product_name),
+                strength = COALESCE(v_po_item.strength, strength),
+                sku = COALESCE(v_po_item.sku, sku),
+                product_type = COALESCE(v_po_item.product_type, product_type),
+                image_url = COALESCE(v_po_item.image_url, image_url),
+                updated_at = NOW()
+            WHERE id = v_batch_id;
+        ELSE
+            v_old_qty := 0;
+            INSERT INTO branch_inventory (
+                tenant_id, branch_id, product_id, stock_quantity, 
+                batch_no, expiry_date, cost_price, selling_price, 
+                purchase_invoice, purchase_code, added_by, is_active,
+                product_name, strength, sku, product_type, image_url
+            ) VALUES (
+                v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_remaining_received,
+                v_received_item.batch_no, v_received_item.expiry_date, v_received_item.unit_cost, v_received_item.unit_price,
+                v_po.po_number, v_po.po_number, v_staff_id::text, TRUE,
+                v_po_item.product_name, v_po_item.strength, v_po_item.sku, v_po_item.product_type, v_po_item.image_url
+            ) RETURNING id INTO v_batch_id;
+        END IF;
+
+        -- D. Record Inventory Transaction
+        INSERT INTO inventory_transactions (
+            tenant_id, branch_id, product_id, branch_inventory_id,
+            transaction_type, quantity_delta, previous_quantity, new_quantity,
+            unit_cost, reference_id, reference_type, staff_id
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_batch_id,
+            'restock'::transaction_type, v_remaining_received, v_old_qty, v_old_qty + v_remaining_received,
+            v_received_item.unit_cost, v_po.id, 'purchase_order', v_staff_id
+        );
+    END LOOP;
+
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    RETURN v_po;
+END;
+$$;
+
+-- End of 20260507000010_po_to_inventory_flow.sql
+
+
+-- File: 20260507000011_cleanup_triggers.sql
+-- ============================================================
+-- Migration: Cleanup Irrelevant Triggers
+-- ============================================================
+-- Description: Removes redundant snapshot triggers that have 
+--              been replaced by direct RPC logic and early
+--              PO snapshots.
+-- ============================================================
+
+-- 1. Remove the redundant detail population trigger on branch_inventory
+-- Reason: This is now handled directly by the receive_purchase_order RPC
+-- for accuracy and to prevent overwriting PO-time snapshots.
+DROP TRIGGER IF EXISTS trg_populate_branch_inventory_details ON public.branch_inventory;
+
+-- 2. Optional: Clean up the function if it's not used anywhere else
+-- (We'll keep it for now in case other modules rely on it, but the trigger is gone)
+
+-- Note: We are KEEPING these essential triggers:
+-- - tr_sync_po_item_received_qty (Essential for PO Dashboard sync)
+-- - trg_sync_stock_balance (Essential for real-time inventory totals)
+-- - trigger_check_reorder_alert (Essential for low stock notifications)
+-- - trg_populate_po_item_details (Essential for the new Early Snapshot logic)
+
+-- End of 20260507000011_cleanup_triggers.sql
+
+
+-- File: 20260508000000_branch_markups_and_fixes.sql
+-- ============================================================
+-- Migration: Branch Markups and PO Fixes
+-- ============================================================
+-- Description: Adds markup configuration to branches and 
+--              ensures PO receiving always pulls product details.
+-- ============================================================
+
+-- 1. Add markup columns to branches
+ALTER TABLE public.branches 
+ADD COLUMN IF NOT EXISTS drug_markup DECIMAL(5,2) DEFAULT 30, -- 30% default
+ADD COLUMN IF NOT EXISTS supermarket_markup DECIMAL(5,2) DEFAULT 20; -- 20% default
+
+-- 2. Update receiving RPC to be more robust for names and prices
+CREATE OR REPLACE FUNCTION public.receive_purchase_order(
+    p_po_id UUID,
+    p_received_items JSONB,
+    p_notes TEXT DEFAULT NULL
+)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po purchase_orders;
+    v_received_item RECORD;
+    v_po_item RECORD;
+    v_total_preorder_qty INTEGER;
+    v_to_fulfill INTEGER;
+    v_remaining_received INTEGER;
+    v_batch_id UUID;
+    v_staff_id UUID;
+    v_receipt_id UUID;
+    v_old_qty INTEGER;
+BEGIN
+    v_staff_id := auth.uid();
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    
+    IF v_po.id IS NULL THEN RAISE EXCEPTION 'Purchase Order not found'; END IF;
+    
+    -- 1. Create the Receipt Group
+    INSERT INTO purchase_order_receipts (tenant_id, po_id, staff_id, notes)
+    VALUES (v_po.tenant_id, v_po.id, v_staff_id, p_notes)
+    RETURNING id INTO v_receipt_id;
+
+    -- 2. Process each received item
+    FOR v_received_item IN SELECT * FROM jsonb_to_recordset(p_received_items) AS x(
+        product_id UUID, received_qty INTEGER, batch_no TEXT, expiry_date DATE, unit_cost DECIMAL, unit_price DECIMAL, is_received BOOLEAN
+    )
+    LOOP
+        -- Robust retrieval of product details (Fallback to products catalog if PO snapshot is missing)
+        SELECT 
+            COALESCE(poi.product_name, p.name) as product_name, 
+            COALESCE(poi.strength, p.strength) as strength, 
+            p.barcode as sku, 
+            p.product_type, 
+            p.image_url,
+            p.unit_of_measure
+        INTO v_po_item
+        FROM products p
+        LEFT JOIN purchase_order_items poi ON poi.product_id = p.id AND poi.po_id = p_po_id
+        WHERE p.id = v_received_item.product_id;
+
+        -- A. Record in receipt history
+        INSERT INTO purchase_order_receipt_items (
+            receipt_id, product_id, quantity, unit_cost, batch_no, expiry_date, is_received
+        ) VALUES (
+            v_receipt_id, v_received_item.product_id, v_received_item.received_qty, 
+            v_received_item.unit_cost, v_received_item.batch_no, v_received_item.expiry_date,
+            COALESCE(v_received_item.is_received, TRUE)
+        );
+
+        -- B. Handle Preorders
+        SELECT SUM(preorder_quantity) INTO v_total_preorder_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id;
+        v_total_preorder_qty := COALESCE(v_total_preorder_qty, 0);
+        
+        v_to_fulfill := LEAST(v_received_item.received_qty, v_total_preorder_qty);
+        v_remaining_received := v_received_item.received_qty - v_to_fulfill;
+
+        IF v_to_fulfill > 0 THEN
+            WITH fulfilled AS (
+                SELECT id, LEAST(preorder_quantity, v_to_fulfill) as current_fulfill
+                FROM branch_inventory
+                WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id AND preorder_quantity > 0
+                ORDER BY created_at ASC
+            )
+            UPDATE branch_inventory bi
+            SET preorder_quantity = bi.preorder_quantity - f.current_fulfill, updated_at = NOW()
+            FROM fulfilled f WHERE bi.id = f.id;
+        END IF;
+
+        -- C. Update or Create Branch Inventory
+        SELECT id, stock_quantity INTO v_batch_id, v_old_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id
+        ORDER BY created_at DESC
+        LIMIT 1;
+
+        IF v_batch_id IS NOT NULL THEN
+            UPDATE branch_inventory
+            SET stock_quantity = stock_quantity + v_remaining_received,
+                batch_no = COALESCE(v_received_item.batch_no, batch_no),
+                expiry_date = COALESCE(v_received_item.expiry_date, expiry_date),
+                cost_price = v_received_item.unit_cost,
+                selling_price = COALESCE(v_received_item.unit_price, selling_price),
+                purchase_invoice = v_po.po_number,
+                -- Snapshot details
+                product_name = COALESCE(v_po_item.product_name, product_name),
+                strength = COALESCE(v_po_item.strength, strength),
+                sku = COALESCE(v_po_item.sku, sku),
+                product_type = COALESCE(v_po_item.product_type, product_type),
+                image_url = COALESCE(v_po_item.image_url, image_url),
+                unit_of_measure = COALESCE(unit_of_measure, v_po_item.unit_of_measure),
+                updated_at = NOW()
+            WHERE id = v_batch_id;
+        ELSE
+            v_old_qty := 0;
+            INSERT INTO branch_inventory (
+                tenant_id, branch_id, product_id, stock_quantity, 
+                batch_no, expiry_date, cost_price, selling_price, 
+                purchase_invoice, purchase_code, added_by, is_active,
+                product_name, strength, sku, product_type, image_url, unit_of_measure
+            ) VALUES (
+                v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_remaining_received,
+                v_received_item.batch_no, v_received_item.expiry_date, v_received_item.unit_cost, v_received_item.unit_price,
+                v_po.po_number, v_po.po_number, v_staff_id::text, TRUE,
+                v_po_item.product_name, v_po_item.strength, v_po_item.sku, v_po_item.product_type, v_po_item.image_url, v_po_item.unit_of_measure
+            ) RETURNING id INTO v_batch_id;
+        END IF;
+
+        -- D. Record Transaction
+        INSERT INTO inventory_transactions (
+            tenant_id, branch_id, product_id, branch_inventory_id,
+            transaction_type, quantity_delta, previous_quantity, new_quantity,
+            unit_cost, reference_id, reference_type, staff_id
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_batch_id,
+            'restock'::transaction_type, v_remaining_received, v_old_qty, v_old_qty + v_remaining_received,
+            v_received_item.unit_cost, v_po.id, 'purchase_order', v_staff_id
+        );
+    END LOOP;
+
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    RETURN v_po;
+END;
+$$;
+
+-- End of 20260508000000_branch_markups_and_fixes.sql
+
+
+-- File: 20260508000001_fix_po_receiving_error.sql
+-- ============================================================
+-- Migration: Clean PO Receiving and Branch Markups
+-- ============================================================
+-- Description: Adds markup config to branches (if missing) 
+--              and applies the robust receiving RPC fix.
+-- ============================================================
+
+-- 1. Add markup columns to branches table (if not already there)
+ALTER TABLE public.branches 
+ADD COLUMN IF NOT EXISTS drug_markup DECIMAL(5,2) DEFAULT 30,
+ADD COLUMN IF NOT EXISTS supermarket_markup DECIMAL(5,2) DEFAULT 20;
+
+-- 2. Update the receiving RPC with robust metadata and fulfillment logic
+CREATE OR REPLACE FUNCTION public.receive_purchase_order(
+    p_po_id UUID,
+    p_received_items JSONB,
+    p_notes TEXT DEFAULT NULL
+)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po purchase_orders;
+    v_received_item RECORD;
+    v_po_item RECORD;
+    v_total_preorder_qty INTEGER;
+    v_to_fulfill INTEGER;
+    v_remaining_received INTEGER;
+    v_batch_id UUID;
+    v_staff_id UUID;
+    v_receipt_id UUID;
+    v_old_qty INTEGER;
+BEGIN
+    v_staff_id := auth.uid();
+    
+    -- Fetch and Lock PO to prevent race conditions
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id FOR UPDATE;
+    IF v_po.id IS NULL THEN RAISE EXCEPTION 'Purchase Order not found'; END IF;
+    
+    -- 1. Create the Receipt Group for history tracking
+    INSERT INTO purchase_order_receipts (tenant_id, po_id, staff_id, notes)
+    VALUES (v_po.tenant_id, v_po.id, v_staff_id, p_notes)
+    RETURNING id INTO v_receipt_id;
+
+    -- 2. Process each received item in the batch
+    FOR v_received_item IN SELECT * FROM jsonb_to_recordset(p_received_items) AS x(
+        product_id UUID, received_qty INTEGER, batch_no TEXT, expiry_date DATE, unit_cost DECIMAL, unit_price DECIMAL, is_received BOOLEAN
+    )
+    LOOP
+        -- Safely retrieve product details (Fallback to products catalog if PO snapshot is missing)
+        SELECT 
+            COALESCE(poi.product_name, p.name) as product_name, 
+            COALESCE(poi.strength, p.strength) as strength, 
+            p.barcode as sku, 
+            p.product_type, 
+            p.image_url,
+            COALESCE(p.unit_of_measure, 'unit') as unit_of_measure
+        INTO v_po_item
+        FROM products p
+        LEFT JOIN purchase_order_items poi ON poi.product_id = p.id AND poi.po_id = p_po_id
+        WHERE p.id = v_received_item.product_id;
+
+        -- A. Record Receipt History
+        INSERT INTO purchase_order_receipt_items (
+            receipt_id, product_id, quantity, unit_cost, batch_no, expiry_date, is_received
+        ) VALUES (
+            v_receipt_id, v_received_item.product_id, v_received_item.received_qty, 
+            v_received_item.unit_cost, v_received_item.batch_no, v_received_item.expiry_date,
+            COALESCE(v_received_item.is_received, TRUE)
+        );
+
+        -- B. Preorder Fulfillment
+        SELECT COALESCE(SUM(preorder_quantity), 0) INTO v_total_preorder_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id;
+        
+        v_to_fulfill := LEAST(v_received_item.received_qty, v_total_preorder_qty);
+        v_remaining_received := v_received_item.received_qty - v_to_fulfill;
+
+        IF v_to_fulfill > 0 THEN
+            UPDATE branch_inventory
+            SET preorder_quantity = preorder_quantity - sub.fulfill_amt,
+                updated_at = NOW()
+            FROM (
+                SELECT id, LEAST(preorder_quantity, v_to_fulfill) as fulfill_amt
+                FROM branch_inventory
+                WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id AND preorder_quantity > 0
+                ORDER BY created_at ASC
+                LIMIT 1
+            ) sub
+            WHERE branch_inventory.id = sub.id;
+        END IF;
+
+        -- C. Upsert Inventory Batch (Matches on Branch + Product + Batch #)
+        SELECT id, stock_quantity INTO v_batch_id, v_old_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id 
+          AND product_id = v_received_item.product_id
+          AND COALESCE(batch_no, '') = COALESCE(v_received_item.batch_no, '')
+        LIMIT 1;
+
+        IF v_batch_id IS NOT NULL THEN
+            UPDATE branch_inventory
+            SET stock_quantity = stock_quantity + v_remaining_received,
+                expiry_date = COALESCE(v_received_item.expiry_date, expiry_date),
+                cost_price = v_received_item.unit_cost,
+                selling_price = COALESCE(v_received_item.unit_price, selling_price),
+                product_name = COALESCE(v_po_item.product_name, product_name),
+                strength = COALESCE(v_po_item.strength, strength),
+                sku = COALESCE(v_po_item.sku, sku),
+                unit_of_measure = COALESCE(unit_of_measure, v_po_item.unit_of_measure),
+                updated_at = NOW()
+            WHERE id = v_batch_id;
+        ELSE
+            v_old_qty := 0;
+            INSERT INTO branch_inventory (
+                tenant_id, branch_id, product_id, stock_quantity, 
+                batch_no, expiry_date, cost_price, selling_price, 
+                purchase_invoice, added_by, is_active,
+                product_name, strength, sku, product_type, image_url, unit_of_measure
+            ) VALUES (
+                v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_remaining_received,
+                v_received_item.batch_no, v_received_item.expiry_date, v_received_item.unit_cost, 
+                COALESCE(v_received_item.unit_price, v_received_item.unit_cost * 1.3),
+                v_po.po_number, v_staff_id::text, TRUE,
+                v_po_item.product_name, v_po_item.strength, v_po_item.sku, v_po_item.product_type, v_po_item.image_url, v_po_item.unit_of_measure
+            ) RETURNING id INTO v_batch_id;
+        END IF;
+
+        -- D. Record Inventory Transaction
+        INSERT INTO inventory_transactions (
+            tenant_id, branch_id, product_id, branch_inventory_id,
+            transaction_type, quantity_delta, previous_quantity, new_quantity,
+            unit_cost, reference_id, reference_type, staff_id
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_batch_id,
+            'restock'::transaction_type, v_remaining_received, v_old_qty, v_old_qty + v_remaining_received,
+            v_received_item.unit_cost, v_po.id, 'purchase_order', v_staff_id
+        );
+    END LOOP;
+
+    -- Refresh final PO object for return
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    RETURN v_po;
+END;
+$$;
+
+-- End of 20260508000001_fix_po_receiving_error.sql
+
+
+-- File: 20260508000002_simplified_po_receiving.sql
+-- ============================================================
+-- Migration: Flexible PO Receiving with UoM
+-- ============================================================
+-- Description: Updates the receiving RPC to accept unit_of_measure
+--              from the frontend during receipt.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.receive_purchase_order(
+    p_po_id UUID,
+    p_received_items JSONB,
+    p_notes TEXT DEFAULT NULL
+)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po purchase_orders;
+    v_received_item RECORD;
+    v_po_item RECORD;
+    v_total_preorder_qty INTEGER;
+    v_to_fulfill INTEGER;
+    v_remaining_received INTEGER;
+    v_batch_id UUID;
+    v_staff_id UUID;
+    v_receipt_id UUID;
+    v_old_qty INTEGER;
+BEGIN
+    v_staff_id := auth.uid();
+    
+    -- 1. Fetch and Lock PO
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id FOR UPDATE;
+    IF v_po.id IS NULL THEN RAISE EXCEPTION 'Purchase Order not found'; END IF;
+    
+    -- 2. Create the Receipt Group
+    INSERT INTO purchase_order_receipts (tenant_id, po_id, staff_id, notes)
+    VALUES (v_po.tenant_id, v_po.id, v_staff_id, p_notes)
+    RETURNING id INTO v_receipt_id;
+
+    -- 3. Process each received item
+    FOR v_received_item IN SELECT * FROM jsonb_to_recordset(p_received_items) AS x(
+        product_id UUID, 
+        received_qty INTEGER, 
+        batch_no TEXT, 
+        expiry_date DATE, 
+        unit_cost DECIMAL, 
+        unit_price DECIMAL, 
+        is_received BOOLEAN,
+        unit_of_measure TEXT
+    )
+    LOOP
+        -- Safely retrieve product details (Fallback to products catalog)
+        SELECT 
+            COALESCE(poi.product_name, p.name) as product_name, 
+            COALESCE(poi.strength, p.strength) as strength, 
+            p.barcode as sku, 
+            p.product_type, 
+            p.image_url
+        INTO v_po_item
+        FROM products p
+        LEFT JOIN purchase_order_items poi ON poi.product_id = p.id AND poi.po_id = p_po_id
+        WHERE p.id = v_received_item.product_id;
+
+        -- A. Record Receipt History
+        INSERT INTO purchase_order_receipt_items (
+            receipt_id, product_id, quantity, unit_cost, batch_no, expiry_date, is_received
+        ) VALUES (
+            v_receipt_id, v_received_item.product_id, v_received_item.received_qty, 
+            v_received_item.unit_cost, v_received_item.batch_no, v_received_item.expiry_date,
+            COALESCE(v_received_item.is_received, TRUE)
+        );
+
+        -- B. Preorder Fulfillment
+        SELECT COALESCE(SUM(preorder_quantity), 0) INTO v_total_preorder_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id;
+        
+        v_to_fulfill := LEAST(v_received_item.received_qty, v_total_preorder_qty);
+        v_remaining_received := v_received_item.received_qty - v_to_fulfill;
+
+        IF v_to_fulfill > 0 THEN
+            UPDATE branch_inventory
+            SET preorder_quantity = preorder_quantity - sub.fulfill_amt,
+                updated_at = NOW()
+            FROM (
+                SELECT id, LEAST(preorder_quantity, v_to_fulfill) as fulfill_amt
+                FROM branch_inventory
+                WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id AND preorder_quantity > 0
+                ORDER BY created_at ASC
+                LIMIT 1
+            ) sub
+            WHERE branch_inventory.id = sub.id;
+        END IF;
+
+        -- C. Upsert Inventory Batch
+        SELECT id, stock_quantity INTO v_batch_id, v_old_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id 
+          AND product_id = v_received_item.product_id
+          AND COALESCE(batch_no, '') = COALESCE(v_received_item.batch_no, '')
+        LIMIT 1;
+
+        IF v_batch_id IS NOT NULL THEN
+            UPDATE branch_inventory
+            SET stock_quantity = stock_quantity + v_remaining_received,
+                expiry_date = COALESCE(v_received_item.expiry_date, expiry_date),
+                cost_price = v_received_item.unit_cost,
+                selling_price = COALESCE(v_received_item.unit_price, selling_price),
+                product_name = COALESCE(v_po_item.product_name, product_name),
+                strength = COALESCE(v_po_item.strength, strength),
+                sku = COALESCE(v_po_item.sku, sku),
+                unit_of_measure = COALESCE(v_received_item.unit_of_measure, unit_of_measure),
+                updated_at = NOW()
+            WHERE id = v_batch_id;
+        ELSE
+            v_old_qty := 0;
+            INSERT INTO branch_inventory (
+                tenant_id, branch_id, product_id, stock_quantity, 
+                batch_no, expiry_date, cost_price, selling_price, 
+                purchase_invoice, added_by, is_active,
+                product_name, strength, sku, product_type, image_url, unit_of_measure
+            ) VALUES (
+                v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_remaining_received,
+                v_received_item.batch_no, v_received_item.expiry_date, v_received_item.unit_cost, 
+                COALESCE(v_received_item.unit_price, v_received_item.unit_cost * 1.3),
+                v_po.po_number, v_staff_id::text, TRUE,
+                v_po_item.product_name, v_po_item.strength, v_po_item.sku, v_po_item.product_type, v_po_item.image_url, 
+                COALESCE(v_received_item.unit_of_measure, 'unit')
+            ) RETURNING id INTO v_batch_id;
+        END IF;
+
+        -- D. Record Transaction
+        INSERT INTO inventory_transactions (
+            tenant_id, branch_id, product_id, branch_inventory_id,
+            transaction_type, quantity_delta, previous_quantity, new_quantity,
+            unit_cost, reference_id, reference_type, staff_id
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_batch_id,
+            'restock'::transaction_type, v_remaining_received, v_old_qty, v_old_qty + v_remaining_received,
+            v_received_item.unit_cost, v_po.id, 'purchase_order', v_staff_id
+        );
+    END LOOP;
+
+    -- Refresh PO status
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    RETURN v_po;
+END;
+$$;
+
+-- End of 20260508000002_simplified_po_receiving.sql
+
+
+-- File: 20260508000003_cleanup_redundant_functions.sql
+-- ============================================================
+-- Migration: Remove Redundant Database Functions
+-- ============================================================
+-- Description: Drops obsolete functions that have been replaced 
+--              by direct RPC logic or newer trigger functions.
+-- ============================================================
+
+-- 1. Drop the manual sync function (Replaced by real-time triggers)
+DROP FUNCTION IF EXISTS public.sync_purchase_order_quantities(UUID);
+
+-- 2. Drop intermediate trigger functions
+DROP FUNCTION IF EXISTS public.fn_sync_po_status();
+DROP FUNCTION IF EXISTS public.sync_po_item_received_qty();
+
+-- 3. Drop obsolete inventory population function
+-- (The trigger was dropped in a previous migration, now we remove the function)
+DROP FUNCTION IF EXISTS public.populate_branch_inventory_details();
+
+-- 4. Optional: Clean up any old versions of the receiving RPC 
+-- that might have had different signatures (if any existed)
+-- (CREATE OR REPLACE already handles the current one)
+
+COMMENT ON TABLE purchase_order_receipts IS 'Audit trail for stock receipts. Quantities are synced via triggers on receipt items.';
+
+-- End of 20260508000003_cleanup_redundant_functions.sql
+
+
+-- File: 20260508000004_enforce_stock_merge.sql
+-- ============================================================
+-- Migration: Enforce Product Stock Merging
+-- ============================================================
+-- Description: Refines the receiving RPC to strictly merge stock
+--              for the same product instead of creating new rows
+--              based on batch numbers.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.receive_purchase_order(
+    p_po_id UUID,
+    p_received_items JSONB,
+    p_notes TEXT DEFAULT NULL
+)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po purchase_orders;
+    v_received_item RECORD;
+    v_po_item RECORD;
+    v_total_preorder_qty INTEGER;
+    v_to_fulfill INTEGER;
+    v_remaining_received INTEGER;
+    v_batch_id UUID;
+    v_staff_id UUID;
+    v_receipt_id UUID;
+    v_old_qty INTEGER;
+BEGIN
+    v_staff_id := auth.uid();
+    
+    -- 1. Fetch and Lock PO
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id FOR UPDATE;
+    IF v_po.id IS NULL THEN RAISE EXCEPTION 'Purchase Order not found'; END IF;
+    
+    -- 2. Create the Receipt Group
+    INSERT INTO purchase_order_receipts (tenant_id, po_id, staff_id, notes)
+    VALUES (v_po.tenant_id, v_po.id, v_staff_id, p_notes)
+    RETURNING id INTO v_receipt_id;
+
+    -- 3. Process each received item
+    FOR v_received_item IN SELECT * FROM jsonb_to_recordset(p_received_items) AS x(
+        product_id UUID, 
+        received_qty INTEGER, 
+        batch_no TEXT, 
+        expiry_date DATE, 
+        unit_cost DECIMAL, 
+        unit_price DECIMAL, 
+        is_received BOOLEAN,
+        unit_of_measure TEXT
+    )
+    LOOP
+        -- Safely retrieve product details
+        SELECT 
+            COALESCE(poi.product_name, p.name) as product_name, 
+            COALESCE(poi.strength, p.strength) as strength, 
+            p.barcode as sku, 
+            p.product_type, 
+            p.image_url
+        INTO v_po_item
+        FROM products p
+        LEFT JOIN purchase_order_items poi ON poi.product_id = p.id AND poi.po_id = p_po_id
+        WHERE p.id = v_received_item.product_id;
+
+        -- A. Record Receipt History
+        INSERT INTO purchase_order_receipt_items (
+            receipt_id, product_id, quantity, unit_cost, batch_no, expiry_date, is_received
+        ) VALUES (
+            v_receipt_id, v_received_item.product_id, v_received_item.received_qty, 
+            v_received_item.unit_cost, v_received_item.batch_no, v_received_item.expiry_date,
+            COALESCE(v_received_item.is_received, TRUE)
+        );
+
+        -- B. Preorder Fulfillment
+        SELECT COALESCE(SUM(preorder_quantity), 0) INTO v_total_preorder_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id;
+        
+        v_to_fulfill := LEAST(v_received_item.received_qty, v_total_preorder_qty);
+        v_remaining_received := v_received_item.received_qty - v_to_fulfill;
+
+        IF v_to_fulfill > 0 THEN
+            UPDATE branch_inventory
+            SET preorder_quantity = preorder_quantity - sub.fulfill_amt,
+                updated_at = NOW()
+            FROM (
+                SELECT id, LEAST(preorder_quantity, v_to_fulfill) as fulfill_amt
+                FROM branch_inventory
+                WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id AND preorder_quantity > 0
+                ORDER BY created_at ASC
+                LIMIT 1
+            ) sub
+            WHERE branch_inventory.id = sub.id;
+        END IF;
+
+        -- C. Merge into Existing Inventory Row (Ignore Batch No for matching to enforce incrementing)
+        SELECT id, stock_quantity INTO v_batch_id, v_old_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id 
+          AND product_id = v_received_item.product_id
+        ORDER BY created_at DESC -- Update the most recent row if multiples exist
+        LIMIT 1;
+
+        IF v_batch_id IS NOT NULL THEN
+            UPDATE branch_inventory
+            SET stock_quantity = stock_quantity + v_remaining_received,
+                batch_no = COALESCE(v_received_item.batch_no, batch_no),
+                expiry_date = COALESCE(v_received_item.expiry_date, expiry_date),
+                cost_price = v_received_item.unit_cost,
+                selling_price = COALESCE(v_received_item.unit_price, selling_price),
+                product_name = COALESCE(v_po_item.product_name, product_name),
+                strength = COALESCE(v_po_item.strength, strength),
+                sku = COALESCE(v_po_item.sku, sku),
+                unit_of_measure = COALESCE(v_received_item.unit_of_measure, unit_of_measure),
+                updated_at = NOW()
+            WHERE id = v_batch_id;
+        ELSE
+            v_old_qty := 0;
+            INSERT INTO branch_inventory (
+                tenant_id, branch_id, product_id, stock_quantity, 
+                batch_no, expiry_date, cost_price, selling_price, 
+                purchase_invoice, added_by, is_active,
+                product_name, strength, sku, product_type, image_url, unit_of_measure
+            ) VALUES (
+                v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_remaining_received,
+                v_received_item.batch_no, v_received_item.expiry_date, v_received_item.unit_cost, 
+                COALESCE(v_received_item.unit_price, v_received_item.unit_cost * 1.3),
+                v_po.po_number, v_staff_id::text, TRUE,
+                v_po_item.product_name, v_po_item.strength, v_po_item.sku, v_po_item.product_type, v_po_item.image_url, 
+                COALESCE(v_received_item.unit_of_measure, 'unit')
+            ) RETURNING id INTO v_batch_id;
+        END IF;
+
+        -- D. Record Transaction
+        INSERT INTO inventory_transactions (
+            tenant_id, branch_id, product_id, branch_inventory_id,
+            transaction_type, quantity_delta, previous_quantity, new_quantity,
+            unit_cost, reference_id, reference_type, staff_id
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_batch_id,
+            'restock'::transaction_type, v_remaining_received, v_old_qty, v_old_qty + v_remaining_received,
+            v_received_item.unit_cost, v_po.id, 'purchase_order', v_staff_id
+        );
+    END LOOP;
+
+    -- Refresh PO status
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    RETURN v_po;
+END;
+$$;
+
+-- End of 20260508000004_enforce_stock_merge.sql
+
+
+-- File: 20260508000005_restore_batch_tracking.sql
+-- ============================================================
+-- Migration: Restore Batch-Level Tracking
+-- ============================================================
+-- Description: Reverts the receiving RPC to track stock per 
+--              Batch Number for regulatory and expiry compliance.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.receive_purchase_order(
+    p_po_id UUID,
+    p_received_items JSONB,
+    p_notes TEXT DEFAULT NULL
+)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po purchase_orders;
+    v_received_item RECORD;
+    v_po_item RECORD;
+    v_total_preorder_qty INTEGER;
+    v_to_fulfill INTEGER;
+    v_remaining_received INTEGER;
+    v_batch_id UUID;
+    v_staff_id UUID;
+    v_receipt_id UUID;
+    v_old_qty INTEGER;
+BEGIN
+    v_staff_id := auth.uid();
+    
+    -- 1. Fetch and Lock PO
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id FOR UPDATE;
+    IF v_po.id IS NULL THEN RAISE EXCEPTION 'Purchase Order not found'; END IF;
+    
+    -- 2. Create the Receipt Group
+    INSERT INTO purchase_order_receipts (tenant_id, po_id, staff_id, notes)
+    VALUES (v_po.tenant_id, v_po.id, v_staff_id, p_notes)
+    RETURNING id INTO v_receipt_id;
+
+    -- 3. Process each received item
+    FOR v_received_item IN SELECT * FROM jsonb_to_recordset(p_received_items) AS x(
+        product_id UUID, 
+        received_qty INTEGER, 
+        batch_no TEXT, 
+        expiry_date DATE, 
+        unit_cost DECIMAL, 
+        unit_price DECIMAL, 
+        is_received BOOLEAN,
+        unit_of_measure TEXT
+    )
+    LOOP
+        -- Safely retrieve product details
+        SELECT 
+            COALESCE(poi.product_name, p.name) as product_name, 
+            COALESCE(poi.strength, p.strength) as strength, 
+            p.barcode as sku, 
+            p.product_type, 
+            p.image_url
+        INTO v_po_item
+        FROM products p
+        LEFT JOIN purchase_order_items poi ON poi.product_id = p.id AND poi.po_id = p_po_id
+        WHERE p.id = v_received_item.product_id;
+
+        -- A. Record Receipt History
+        INSERT INTO purchase_order_receipt_items (
+            receipt_id, product_id, quantity, unit_cost, batch_no, expiry_date, is_received
+        ) VALUES (
+            v_receipt_id, v_received_item.product_id, v_received_item.received_qty, 
+            v_received_item.unit_cost, v_received_item.batch_no, v_received_item.expiry_date,
+            COALESCE(v_received_item.is_received, TRUE)
+        );
+
+        -- B. Preorder Fulfillment
+        SELECT COALESCE(SUM(preorder_quantity), 0) INTO v_total_preorder_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id;
+        
+        v_to_fulfill := LEAST(v_received_item.received_qty, v_total_preorder_qty);
+        v_remaining_received := v_received_item.received_qty - v_to_fulfill;
+
+        IF v_to_fulfill > 0 THEN
+            UPDATE branch_inventory
+            SET preorder_quantity = preorder_quantity - sub.fulfill_amt,
+                updated_at = NOW()
+            FROM (
+                SELECT id, LEAST(preorder_quantity, v_to_fulfill) as fulfill_amt
+                FROM branch_inventory
+                WHERE branch_id = v_po.branch_id AND product_id = v_received_item.product_id AND preorder_quantity > 0
+                ORDER BY created_at ASC
+                LIMIT 1
+            ) sub
+            WHERE branch_inventory.id = sub.id;
+        END IF;
+
+        -- C. Upsert Inventory Batch (Matches on Branch + Product + Batch Number)
+        -- This ensures regulatory traceability for each batch
+        SELECT id, stock_quantity INTO v_batch_id, v_old_qty
+        FROM branch_inventory
+        WHERE branch_id = v_po.branch_id 
+          AND product_id = v_received_item.product_id
+          AND COALESCE(batch_no, '') = COALESCE(v_received_item.batch_no, '')
+        LIMIT 1;
+
+        IF v_batch_id IS NOT NULL THEN
+            UPDATE branch_inventory
+            SET stock_quantity = stock_quantity + v_remaining_received,
+                expiry_date = COALESCE(v_received_item.expiry_date, expiry_date),
+                cost_price = v_received_item.unit_cost,
+                selling_price = COALESCE(v_received_item.unit_price, selling_price),
+                updated_at = NOW()
+            WHERE id = v_batch_id;
+        ELSE
+            v_old_qty := 0;
+            INSERT INTO branch_inventory (
+                tenant_id, branch_id, product_id, stock_quantity, 
+                batch_no, expiry_date, cost_price, selling_price, 
+                purchase_invoice, added_by, is_active,
+                product_name, strength, sku, product_type, image_url, unit_of_measure
+            ) VALUES (
+                v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_remaining_received,
+                v_received_item.batch_no, v_received_item.expiry_date, v_received_item.unit_cost, 
+                COALESCE(v_received_item.unit_price, v_received_item.unit_cost * 1.3),
+                v_po.po_number, v_staff_id::text, TRUE,
+                v_po_item.product_name, v_po_item.strength, v_po_item.sku, v_po_item.product_type, v_po_item.image_url, 
+                COALESCE(v_received_item.unit_of_measure, 'unit')
+            ) RETURNING id INTO v_batch_id;
+        END IF;
+
+        -- D. Record Transaction
+        INSERT INTO inventory_transactions (
+            tenant_id, branch_id, product_id, branch_inventory_id,
+            transaction_type, quantity_delta, previous_quantity, new_quantity,
+            unit_cost, reference_id, reference_type, staff_id
+        ) VALUES (
+            v_po.tenant_id, v_po.branch_id, v_received_item.product_id, v_batch_id,
+            'restock'::transaction_type, v_remaining_received, v_old_qty, v_old_qty + v_remaining_received,
+            v_received_item.unit_cost, v_po.id, 'purchase_order', v_staff_id
+        );
+    END LOOP;
+
+    -- Refresh PO status
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    RETURN v_po;
+END;
+$$;
+
+-- End of 20260508000005_restore_batch_tracking.sql
+
+
+-- File: 20260508000006_optimize_storefront_batches.sql
+-- ============================================================
+-- Migration: Optimize Storefront for Batch Tracking
+-- ============================================================
+-- Description: Updates the ecommerce_products view to aggregate 
+--              multiple inventory batches into a single customer 
+--              offering with the best price.
+-- ============================================================
+
+-- Drop the existing view first to allow changing the column structure
+DROP VIEW IF EXISTS ecommerce_products CASCADE;
+
+CREATE OR REPLACE VIEW ecommerce_products AS
+SELECT
+    p.id,
+    bi.tenant_id,
+    p.name,
+    p.description,
+    p.category,
+    
+    -- Display the lowest available selling price among all batches
+    MIN(bi.selling_price) as selling_price,
+    
+    -- Display the lowest sale price if available
+    MIN(COALESCE(sp.sale_price, bi.sale_price)) as sale_price,
+    
+    p.image_url,
+    p.is_active,
+
+    -- Aggregate total stock across all batches and all branches for this tenant
+    COALESCE(SUM(bi.stock_quantity), 0) as total_stock,
+
+    -- Count how many unique branches carry this product
+    COUNT(DISTINCT bi.branch_id) as branch_count,
+
+    -- Roll up branch details while summing stock per branch
+    COALESCE(
+        (
+            SELECT jsonb_agg(branch_data)
+            FROM (
+                SELECT 
+                    b.id as branch_id,
+                    b.name as branch_name,
+                    b.address as branch_address,
+                    SUM(bi2.stock_quantity) as stock_quantity,
+                    SUM(bi2.stock_quantity) > 0 as in_stock,
+                    MIN(bi2.selling_price) as selling_price,
+                    MIN(COALESCE(sp2.sale_price, bi2.sale_price)) as sale_price
+                FROM branches b
+                JOIN branch_inventory bi2 ON bi2.branch_id = b.id
+                LEFT JOIN sale_products sp2 ON sp2.product_id = p.id AND sp2.tenant_id = bi2.tenant_id
+                WHERE bi2.product_id = p.id AND bi2.is_active = true AND b.deleted_at IS NULL
+                GROUP BY b.id, b.name, b.address
+                ORDER BY b.name
+            ) branch_data
+        ),
+        '[]'::jsonb
+    ) as branches,
+
+    -- Global flags
+    EXISTS (SELECT 1 FROM sale_products sp3 WHERE sp3.product_id = p.id AND sp3.tenant_id = bi.tenant_id) as is_on_sale,
+    EXISTS (SELECT 1 FROM featured_products fp3 WHERE fp3.product_id = p.id AND fp3.tenant_id = bi.tenant_id) as is_featured,
+    bool_or(bi.is_new_arrival) as is_new_arrival,
+    p."isPOM" as is_pom,
+
+    p.created_at,
+    p.updated_at,
+    
+    -- Catalog metadata
+    p.unit_of_measure,
+    p.product_type,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer
+FROM products p
+JOIN branch_inventory bi ON bi.product_id = p.id AND bi.is_active = true
+LEFT JOIN sale_products sp ON sp.product_id = p.id AND sp.tenant_id = bi.tenant_id
+WHERE p._sync_is_deleted = false
+  AND p.is_active = TRUE
+GROUP BY
+    p.id,
+    bi.tenant_id,
+    p.name,
+    p.description,
+    p.category,
+    p.image_url,
+    p.is_active,
+    p.created_at,
+    p.updated_at,
+    p."isPOM",
+    p.unit_of_measure,
+    p.product_type,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer;
+
+-- End of 20260508000006_optimize_storefront_batches.sql
+
+
+-- File: 20260508000007_branch_level_storefront.sql
+-- ============================================================
+-- Migration: Branch-Level Storefront Aggregation
+-- ============================================================
+-- Description: Updates the ecommerce_products view to aggregate 
+--              batches PER BRANCH instead of per tenant.
+-- ============================================================
+
+DROP VIEW IF EXISTS ecommerce_products CASCADE;
+
+CREATE OR REPLACE VIEW ecommerce_products AS
+SELECT
+    -- Unique ID for the view (Product + Branch)
+    (p.id::text || '-' || bi.branch_id::text) as id,
+    p.id as product_id,
+    bi.tenant_id,
+    bi.branch_id,
+    b.name as branch_name,
+    b.address as branch_address,
+    p.name,
+    p.description,
+    p.category,
+    
+    -- Lowest price in THIS specific branch
+    MIN(bi.selling_price) as selling_price,
+    MIN(COALESCE(sp.sale_price, bi.sale_price)) as sale_price,
+    
+    p.image_url,
+    p.is_active,
+
+    -- Total stock in THIS specific branch
+    COALESCE(SUM(bi.stock_quantity), 0) as total_stock,
+
+    -- Flags
+    EXISTS (SELECT 1 FROM sale_products sp3 WHERE sp3.product_id = p.id AND sp3.tenant_id = bi.tenant_id) as is_on_sale,
+    EXISTS (SELECT 1 FROM featured_products fp3 WHERE fp3.product_id = p.id AND fp3.tenant_id = bi.tenant_id) as is_featured,
+    bool_or(bi.is_new_arrival) as is_new_arrival,
+    p."isPOM" as is_pom,
+
+    p.created_at,
+    p.updated_at,
+    
+    -- Catalog metadata
+    p.unit_of_measure,
+    p.product_type,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer
+FROM products p
+JOIN branch_inventory bi ON bi.product_id = p.id AND bi.is_active = true
+JOIN branches b ON bi.branch_id = b.id AND b.deleted_at IS NULL
+LEFT JOIN sale_products sp ON sp.product_id = p.id AND sp.tenant_id = bi.tenant_id
+WHERE p._sync_is_deleted = false
+  AND p.is_active = TRUE
+GROUP BY
+    p.id,
+    bi.tenant_id,
+    bi.branch_id,
+    b.name,
+    b.address,
+    p.name,
+    p.description,
+    p.category,
+    p.image_url,
+    p.is_active,
+    p.created_at,
+    p.updated_at,
+    p."isPOM",
+    p.unit_of_measure,
+    p.product_type,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer;
+
+-- End of 20260508000007_branch_level_storefront.sql
+
+
+-- File: 20260508000008_flexible_branch_receiving.sql
+-- ============================================================
+-- Migration: Flexible Branch Receiving (Part 2)
+-- ============================================================
+-- Description: Adds branch_id to receipts for better auditing
+--              and updates the RPC to support override.
+-- ============================================================
+
+-- 1. Ensure the column exists for auditing
+ALTER TABLE purchase_order_receipts ADD COLUMN IF NOT EXISTS branch_id UUID REFERENCES branches(id);
+
+-- 2. Update the RPC
+CREATE OR REPLACE FUNCTION public.receive_purchase_order(
+    p_po_id UUID,
+    p_received_items JSONB,
+    p_notes TEXT DEFAULT NULL,
+    p_branch_id UUID DEFAULT NULL
+)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po purchase_orders;
+    v_target_branch_id UUID;
+    v_received_item RECORD;
+    v_po_item RECORD;
+    v_total_preorder_qty INTEGER;
+    v_to_fulfill INTEGER;
+    v_remaining_received INTEGER;
+    v_batch_id UUID;
+    v_staff_id UUID;
+    v_receipt_id UUID;
+    v_old_qty INTEGER;
+BEGIN
+    v_staff_id := auth.uid();
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    v_target_branch_id := COALESCE(p_branch_id, v_po.branch_id);
+
+    INSERT INTO purchase_order_receipts (tenant_id, po_id, staff_id, notes, branch_id)
+    VALUES (v_po.tenant_id, v_po.id, v_staff_id, p_notes, v_target_branch_id)
+    RETURNING id INTO v_receipt_id;
+
+    FOR v_received_item IN SELECT * FROM jsonb_to_recordset(p_received_items) AS x(
+        product_id UUID, received_qty INTEGER, batch_no TEXT, expiry_date DATE, 
+        unit_cost DECIMAL, unit_price DECIMAL, is_received BOOLEAN, unit_of_measure TEXT
+    )
+    LOOP
+        SELECT COALESCE(poi.product_name, p.name) as product_name, COALESCE(poi.strength, p.strength) as strength, 
+               p.barcode as sku, p.product_type, p.image_url
+        INTO v_po_item FROM products p 
+        LEFT JOIN purchase_order_items poi ON poi.product_id = p.id AND poi.po_id = p_po_id
+        WHERE p.id = v_received_item.product_id;
+
+        INSERT INTO purchase_order_receipt_items (receipt_id, product_id, quantity, unit_cost, batch_no, expiry_date, is_received)
+        VALUES (v_receipt_id, v_received_item.product_id, v_received_item.received_qty, v_received_item.unit_cost, v_received_item.batch_no, v_received_item.expiry_date, COALESCE(v_received_item.is_received, TRUE));
+
+        SELECT COALESCE(SUM(preorder_quantity), 0) INTO v_total_preorder_qty FROM branch_inventory WHERE branch_id = v_target_branch_id AND product_id = v_received_item.product_id;
+        v_to_fulfill := LEAST(v_received_item.received_qty, v_total_preorder_qty);
+        v_remaining_received := v_received_item.received_qty - v_to_fulfill;
+
+        IF v_to_fulfill > 0 THEN
+            UPDATE branch_inventory SET preorder_quantity = preorder_quantity - sub.fulfill_amt, updated_at = NOW()
+            FROM (SELECT id, LEAST(preorder_quantity, v_to_fulfill) as fulfill_amt FROM branch_inventory WHERE branch_id = v_target_branch_id AND product_id = v_received_item.product_id AND preorder_quantity > 0 ORDER BY created_at ASC LIMIT 1) sub
+            WHERE branch_inventory.id = sub.id;
+        END IF;
+
+        SELECT id, stock_quantity INTO v_batch_id, v_old_qty FROM branch_inventory WHERE branch_id = v_target_branch_id AND product_id = v_received_item.product_id AND COALESCE(batch_no, '') = COALESCE(v_received_item.batch_no, '') LIMIT 1;
+
+        IF v_batch_id IS NOT NULL THEN
+            UPDATE branch_inventory SET stock_quantity = stock_quantity + v_remaining_received, expiry_date = COALESCE(v_received_item.expiry_date, expiry_date), cost_price = v_received_item.unit_cost, selling_price = COALESCE(v_received_item.unit_price, selling_price), updated_at = NOW() WHERE id = v_batch_id;
+        ELSE
+            v_old_qty := 0;
+            INSERT INTO branch_inventory (tenant_id, branch_id, product_id, stock_quantity, batch_no, expiry_date, cost_price, selling_price, purchase_invoice, added_by, is_active, product_name, strength, sku, product_type, image_url, unit_of_measure)
+            VALUES (v_po.tenant_id, v_target_branch_id, v_received_item.product_id, v_remaining_received, v_received_item.batch_no, v_received_item.expiry_date, v_received_item.unit_cost, COALESCE(v_received_item.unit_price, v_received_item.unit_cost * 1.3), v_po.po_number, v_staff_id::text, TRUE, v_po_item.product_name, v_po_item.strength, v_po_item.sku, v_po_item.product_type, v_po_item.image_url, COALESCE(v_received_item.unit_of_measure, 'unit'))
+            RETURNING id INTO v_batch_id;
+        END IF;
+
+        INSERT INTO inventory_transactions (tenant_id, branch_id, product_id, branch_inventory_id, transaction_type, quantity_delta, previous_quantity, new_quantity, unit_cost, reference_id, reference_type, staff_id)
+        VALUES (v_po.tenant_id, v_target_branch_id, v_received_item.product_id, v_batch_id, 'restock'::transaction_type, v_remaining_received, v_old_qty, v_old_qty + v_remaining_received, v_received_item.unit_cost, v_po.id, 'purchase_order', v_staff_id);
+    END LOOP;
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    RETURN v_po;
+END;
+$$;
+
+-- End of 20260508000008_flexible_branch_receiving.sql
+
+
+-- File: 20260508000009_final_cleanup.sql
+-- ============================================================
+-- Migration: Final Legacy Function Cleanup
+-- ============================================================
+-- Description: Removes the last remaining redundant functions 
+--              to ensure the new trigger-based architecture 
+--              is the sole source of truth.
+-- ============================================================
+
+-- 1. Remove manual sync function (Now handled by triggers)
+DROP FUNCTION IF EXISTS public.sync_purchase_order_quantities(UUID);
+
+-- 2. Remove legacy inventory detail function (Now handled by the Receiving RPC)
+DROP FUNCTION IF EXISTS public.populate_branch_inventory_details();
+
+-- 3. Cleanup: Ensure any old status triggers are also gone
+DROP TRIGGER IF EXISTS tr_sync_po_status ON purchase_order_receipt_items;
+DROP FUNCTION IF EXISTS public.fn_sync_po_status();
+
+-- 4. Audit Note
+COMMENT ON FUNCTION public.receive_purchase_order IS 'Primary RPC for receiving PO stock. Handles batch tracking, markup, UoM, and fulfillment.';
+
+-- End of 20260508000009_final_cleanup.sql
+
+
+-- File: 20260508000010_pharmacist_mode.sql
+-- Migration: Add Pharmacist Mode to Tenants
+-- Replaces freelance_pharmacist_enable with pharmacist_mode enum
+
+-- 1. Remove old boolean column if it exists
+ALTER TABLE public.tenants DROP COLUMN IF EXISTS freelance_pharmacist_enable;
+
+-- 2. Add pharmacist_mode column
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS pharmacist_mode TEXT NOT NULL DEFAULT 'Inhouse';
+
+-- 3. Add constraint for mode
+ALTER TABLE public.tenants DROP CONSTRAINT IF EXISTS tenants_pharmacist_mode_check;
+ALTER TABLE public.tenants ADD CONSTRAINT tenants_pharmacist_mode_check 
+CHECK (pharmacist_mode IN ('Inhouse', 'Freelance', 'Both'));
+
+-- 4. Set default for existing tenants based on doctor partnership
+UPDATE public.tenants SET pharmacist_mode = 'Both' WHERE "allowDoctorPartnerShip" = true;
+UPDATE public.tenants SET pharmacist_mode = 'Inhouse' WHERE "allowDoctorPartnerShip" = false;
+
+-- 5. Create a unified view for pharmacists (Staff + Partners)
+CREATE OR REPLACE VIEW public.available_pharmacists AS
+-- Staff Pharmacists
+SELECT 
+    u.id as id,
+    u.id as user_id,
+    u.full_name as display_name,
+    u.avatar_url as photo_url,
+    'Pharmacist' as specialization,
+    u.tenant_id,
+    'Inhouse' as provider_type,
+    NULL::uuid as provider_id,
+    5.0 as average_rating,
+    0 as total_reviews,
+    5 as years_of_experience,
+    true as is_verified,
+    (SELECT count(*)::int FROM public.chat_conversations WHERE service_provider = u.id AND status = 'active') as active_chats_count,
+    (u.deleted_at IS NULL) as is_active
+FROM public.users u
+WHERE u.role = 'pharmacist'
+
+UNION ALL
+
+-- Freelance Pharmacists
+SELECT 
+    da.id as id,
+    p.user_id,
+    da.alias as display_name,
+    p.profile_photo_url as photo_url,
+    p.specialization,
+    da.tenant_partner as tenant_id,
+    'Freelance' as provider_type,
+    p.id as provider_id,
+    COALESCE(p.average_rating, 0.0) as average_rating,
+    COALESCE(p.total_reviews, 0) as total_reviews,
+    COALESCE(p.years_of_experience, 0) as years_of_experience,
+    p.is_verified,
+    (SELECT count(*)::int FROM public.chat_conversations WHERE service_provider = p.user_id AND status = 'active') as active_chats_count,
+    da.is_active
+FROM public.doctor_aliases da
+JOIN public.healthcare_providers p ON da.doctor_id = p.id
+WHERE da.accepted = true AND p.type = 'pharmacist';
+
+GRANT SELECT ON public.available_pharmacists TO authenticated;
+GRANT SELECT ON public.available_pharmacists TO anon;
+
+COMMENT ON COLUMN public.tenants.pharmacist_mode IS 'Determines who handles pharmacy consultations: Inhouse staff, Freelance partners, or Both.';
+
+-- End of 20260508000010_pharmacist_mode.sql
+
+
+-- File: 20260508000011_prescription_commissions.sql
+-- Migration: Prescription Commissions
+-- Tracks fees for freelance pharmacist consultations
+
+ALTER TABLE public.prescriptions 
+ADD COLUMN IF NOT EXISTS is_freelance BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS commission_rate DECIMAL(5,4) DEFAULT 0.0550, -- 5.5%
+ADD COLUMN IF NOT EXISTS platform_fee_rate DECIMAL(5,4) DEFAULT 0.0100, -- 1.0%
+ADD COLUMN IF NOT EXISTS medic_payout_rate DECIMAL(5,4) DEFAULT 0.0450; -- 4.5%
+
+COMMENT ON COLUMN public.prescriptions.is_freelance IS 'True if issued by a freelance pharmacist, triggering the 5.5% fee.';
+COMMENT ON COLUMN public.prescriptions.commission_rate IS 'Total prescription fee rate (e.g., 0.0550 for 5.5%).';
+COMMENT ON COLUMN public.prescriptions.platform_fee_rate IS 'Platform share of the commission (e.g., 0.0100 for 1%).';
+COMMENT ON COLUMN public.prescriptions.medic_payout_rate IS 'Medic share of the commission (e.g., 0.0450 for 4.5%).';
+
+-- End of 20260508000011_prescription_commissions.sql
+
+
+-- File: 20260508000012_chat_queue_system.sql
+-- Migration: Chat Queue System
+-- Implements one-at-a-time consultation logic
+
+-- 1. Handle dependencies and alter status column
+DO $$
+BEGIN
+    -- Drop all dependencies first
+    DROP VIEW IF EXISTS public.available_pharmacists;
+    DROP INDEX IF EXISTS public.idx_chat_conversations_status;
+    DROP INDEX IF EXISTS public.idx_chat_status;
+
+    -- Remove default to avoid type mismatch during alter
+    ALTER TABLE public.chat_conversations ALTER COLUMN status DROP DEFAULT;
+
+    -- Alter column to TEXT with explicit cast
+    -- We use varchar first then text as a workaround for some PG versions if needed
+    ALTER TABLE public.chat_conversations 
+    ALTER COLUMN status TYPE TEXT USING status::text;
+    
+    -- Restore default
+    ALTER TABLE public.chat_conversations ALTER COLUMN status SET DEFAULT 'active';
+
+    -- Update/Add check constraints
+    ALTER TABLE public.chat_conversations DROP CONSTRAINT IF EXISTS chat_conversations_status_check;
+    ALTER TABLE public.chat_conversations DROP CONSTRAINT IF EXISTS chat_conversations_status_check1;
+    
+    -- Re-add the constraint as TEXT check
+    ALTER TABLE public.chat_conversations ADD CONSTRAINT chat_conversations_status_check 
+    CHECK (status IN ('active', 'waiting', 'completed', 'archived', 'deleted', 'escalated', 'abandoned', 'open'));
+
+    -- Re-create the index
+    CREATE INDEX idx_chat_conversations_status ON public.chat_conversations(status);
+END $$;
+
+-- 2. Recreate the available_pharmacists view
+CREATE OR REPLACE VIEW public.available_pharmacists AS
+-- Staff Pharmacists
+SELECT 
+    u.id as id,
+    u.id as user_id,
+    u.full_name as display_name,
+    u.avatar_url as photo_url,
+    'Pharmacist' as specialization,
+    u.tenant_id,
+    'Inhouse' as provider_type,
+    NULL::uuid as provider_id,
+    5.0 as average_rating,
+    0 as total_reviews,
+    5 as years_of_experience,
+    true as is_verified,
+    (SELECT count(*)::int FROM public.chat_conversations WHERE service_provider = u.id AND status = 'active') as active_chats_count,
+    (u.deleted_at IS NULL) as is_active
+FROM public.users u
+WHERE u.role = 'pharmacist'
+
+UNION ALL
+
+-- Freelance Pharmacists
+SELECT 
+    da.id as id,
+    p.user_id,
+    da.alias as display_name,
+    p.profile_photo_url as photo_url,
+    p.specialization,
+    da.tenant_partner as tenant_id,
+    'Freelance' as provider_type,
+    p.id as provider_id,
+    COALESCE(p.average_rating, 0.0) as average_rating,
+    COALESCE(p.total_reviews, 0) as total_reviews,
+    COALESCE(p.years_of_experience, 0) as years_of_experience,
+    p.is_verified,
+    (SELECT count(*)::int FROM public.chat_conversations WHERE service_provider = p.user_id AND status = 'active') as active_chats_count,
+    da.is_active
+FROM public.doctor_aliases da
+JOIN public.healthcare_providers p ON da.doctor_id = p.id
+WHERE da.accepted = true AND p.type = 'pharmacist';
+
+-- 3. Function to get queue position
+CREATE OR REPLACE FUNCTION public.get_chat_queue_position(p_conversation_id UUID)
+RETURNS INTEGER AS $$
+DECLARE
+    v_provider_id UUID;
+    v_created_at TIMESTAMPTZ;
+    v_pos INTEGER;
+BEGIN
+    -- Get conversation details
+    SELECT service_provider, created_at INTO v_provider_id, v_created_at
+    FROM public.chat_conversations
+    WHERE id = p_conversation_id;
+
+    IF v_provider_id IS NULL THEN RETURN 0; END IF;
+
+    -- Count how many 'waiting' chats for this provider were created before this one
+    SELECT count(*)::int + 1 INTO v_pos
+    FROM public.chat_conversations
+    WHERE service_provider = v_provider_id
+      AND status = 'waiting'
+      AND created_at <= v_created_at;
+
+    RETURN v_pos;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- 4. Trigger to automatically queue if provider is busy
+CREATE OR REPLACE FUNCTION public.handle_chat_queue_on_create()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_active_count INTEGER;
+BEGIN
+    -- Only apply if a specific service provider is assigned
+    IF NEW.service_provider IS NOT NULL THEN
+        -- Check if provider has any active chats
+        SELECT count(*)::int INTO v_active_count
+        FROM public.chat_conversations
+        WHERE service_provider = NEW.service_provider
+          AND status = 'active';
+
+        -- If busy, move to waiting
+        IF v_active_count > 0 AND NEW.status = 'active' THEN
+            NEW.status := 'waiting';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_handle_chat_queue_on_create ON public.chat_conversations;
+CREATE TRIGGER trigger_handle_chat_queue_on_create
+    BEFORE INSERT ON public.chat_conversations
+    FOR EACH ROW
+    EXECUTE FUNCTION handle_chat_queue_on_create();
+
+-- End of 20260508000012_chat_queue_system.sql
+
+
+-- File: 20260508000012_order_prescription_fee.sql
+-- Migration: Add Prescription Fee to Orders
+-- Tracks the 5.5% commission for freelance pharmacist consultations
+
+ALTER TABLE public.orders 
+ADD COLUMN IF NOT EXISTS prescription_fee DECIMAL(10,2) DEFAULT 0.00;
+
+COMMENT ON COLUMN public.orders.prescription_fee IS 'Total fee for freelance pharmacist prescriptions (5.5%).';
+
+-- End of 20260508000012_order_prescription_fee.sql
+
+
+-- File: 20260508000013_checkout_prescription_fee_logic.sql
+-- Migration: Update checkout_storefront_order with Prescription Fee Logic
+-- Automatically calculates and applies 5.5% fee for freelance pharmacist prescriptions
+
+CREATE OR REPLACE FUNCTION checkout_storefront_order(
+    p_tenant_id UUID,
+    p_branch_id UUID,
+    p_customer_id UUID,
+    p_order_type order_type,
+    p_fulfillment_type fulfillment_type,
+    p_subtotal DECIMAL,
+    p_delivery_fee DECIMAL,
+    p_tax_amount DECIMAL,
+    p_total_amount DECIMAL,
+    p_delivery_address_id UUID,
+    p_special_instructions TEXT,
+    p_items JSONB, -- Array of { product_id, product_name, quantity, unit_price, subtotal, prescription_id }
+    p_service_charge DECIMAL DEFAULT 0,
+    p_payment_reference TEXT DEFAULT NULL,
+    p_billing_address TEXT DEFAULT NULL,
+    p_shipping_address TEXT DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_order_id UUID;
+    v_item RECORD;
+    v_batch RECORD;
+    v_req_qty INTEGER;
+    v_available_qty INTEGER;
+    v_allocated_qty INTEGER;
+    v_allocations JSONB;
+    v_primary_batch_id UUID;
+    v_preorders_enabled BOOLEAN;
+    v_allow_preorder BOOLEAN;
+    v_prescription_fee DECIMAL := 0;
+    v_is_freelance_pres BOOLEAN;
+BEGIN
+    -- Check if preorders are enabled for the tenant
+    SELECT preorders_enabled INTO v_preorders_enabled FROM tenants WHERE id = p_tenant_id;
+
+    -- 1. Pre-calculate Prescription Fees from items
+    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(
+        product_id UUID, subtotal DECIMAL, prescription_id UUID
+    )
+    LOOP
+        IF v_item.prescription_id IS NOT NULL THEN
+            SELECT is_freelance INTO v_is_freelance_pres 
+            FROM prescriptions 
+            WHERE id = v_item.prescription_id;
+            
+            IF v_is_freelance_pres = TRUE THEN
+                v_prescription_fee := v_prescription_fee + (v_item.subtotal * 0.055);
+            END IF;
+        END IF;
+    END LOOP;
+
+    -- Validate totals (including prescription fee)
+    -- We allow a small epsilon for floating point rounding in fee calculation
+    IF ABS(p_total_amount - (p_subtotal + p_delivery_fee + p_tax_amount + p_service_charge + v_prescription_fee)) > 0.01 THEN
+        RAISE EXCEPTION 'Total amount % does not match subtotal % + fees % + tax % + service charge % + prescription fee %', 
+            p_total_amount, p_subtotal, p_delivery_fee, p_tax_amount, p_service_charge, v_prescription_fee;
+    END IF;
+
+    -- Create the order header
+    INSERT INTO orders (
+        tenant_id, branch_id, order_number, customer_id,
+        order_type, order_status, payment_status, payment_method, payment_reference,
+        subtotal, delivery_fee, tax_amount, service_charge, prescription_fee, total_amount,
+        fulfillment_type, delivery_address_id, special_instructions,
+        billing_address, shipping_address
+    ) VALUES (
+        p_tenant_id,
+        p_branch_id,
+        'ORD-' || FLOOR(EXTRACT(EPOCH FROM NOW()))::TEXT || '-' || SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 4),
+        p_customer_id,
+        p_order_type,
+        'pending'::order_status,
+        CASE WHEN p_payment_reference IS NOT NULL THEN 'paid'::payment_status ELSE 'unpaid'::payment_status END,
+        'card'::payment_method,
+        p_payment_reference,
+        p_subtotal, p_delivery_fee, p_tax_amount, p_service_charge, v_prescription_fee, p_total_amount,
+        p_fulfillment_type,
+        p_delivery_address_id,
+        p_special_instructions,
+        p_billing_address,
+        p_shipping_address
+    ) RETURNING id INTO v_order_id;
+
+    -- Process each item
+    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(
+        product_id UUID, product_name TEXT, quantity INTEGER, unit_price DECIMAL, subtotal DECIMAL, prescription_id UUID
+    )
+    LOOP
+        v_req_qty := v_item.quantity;
+        v_allocations := '[]'::jsonb;
+        v_primary_batch_id := NULL;
+
+        -- Allocation Logic (FIFO)
+        FOR v_batch IN 
+            SELECT id, (stock_quantity - COALESCE(reserved_quantity, 0)) AS available_balance
+            FROM branch_inventory
+            WHERE branch_id = p_branch_id 
+              AND product_id = v_item.product_id 
+              AND is_active = true
+              AND (stock_quantity - COALESCE(reserved_quantity, 0)) > 0
+            ORDER BY expiry_date ASC NULLS LAST, created_at ASC
+            FOR UPDATE
+        LOOP
+            IF v_req_qty <= 0 THEN EXIT; END IF;
+
+            v_available_qty := v_batch.available_balance;
+            v_allocated_qty := LEAST(v_available_qty, v_req_qty);
+
+            UPDATE branch_inventory
+            SET reserved_quantity = COALESCE(reserved_quantity, 0) + v_allocated_qty,
+                updated_at = NOW()
+            WHERE id = v_batch.id;
+
+            IF v_primary_batch_id IS NULL THEN
+                v_primary_batch_id := v_batch.id;
+            END IF;
+
+            v_allocations := v_allocations || jsonb_build_object(
+                'batch_id', v_batch.id,
+                'quantity', v_allocated_qty,
+                'is_preorder', false
+            );
+
+            v_req_qty := v_req_qty - v_allocated_qty;
+        END LOOP;
+
+        -- Preorder Logic
+        IF v_req_qty > 0 THEN
+            SELECT allow_preorder INTO v_allow_preorder 
+            FROM branch_inventory 
+            WHERE branch_id = p_branch_id AND product_id = v_item.product_id 
+            LIMIT 1;
+            
+            IF COALESCE(v_preorders_enabled, false) AND COALESCE(v_allow_preorder, false) THEN
+                SELECT id INTO v_primary_batch_id 
+                FROM branch_inventory 
+                WHERE branch_id = p_branch_id AND product_id = v_item.product_id 
+                LIMIT 1 FOR UPDATE;
+
+                IF v_primary_batch_id IS NULL THEN
+                    INSERT INTO branch_inventory (
+                        tenant_id, branch_id, product_id, stock_quantity, preorder_quantity, cost_price
+                    ) VALUES (
+                        p_tenant_id, p_branch_id, v_item.product_id, 0, v_req_qty, 0
+                    ) RETURNING id INTO v_primary_batch_id;
+                ELSE
+                    UPDATE branch_inventory 
+                    SET preorder_quantity = COALESCE(preorder_quantity, 0) + v_req_qty,
+                        updated_at = NOW()
+                    WHERE id = v_primary_batch_id;
+                END IF;
+
+                v_allocations := v_allocations || jsonb_build_object(
+                    'batch_id', v_primary_batch_id,
+                    'quantity', v_req_qty,
+                    'is_preorder', true
+                );
+                v_req_qty := 0;
+            ELSE
+                RAISE EXCEPTION 'Insufficient stock for product: % (short by %)', v_item.product_name, v_req_qty;
+            END IF;
+        END IF;
+
+        INSERT INTO public.sale_items (
+            tenant_id, order_id, branch_id, inventory_id,
+            product_id, product_name, quantity, unit_price, subtotal,
+            discount_amount, batch_allocations, prescription_id
+        ) VALUES (
+            p_tenant_id, v_order_id, p_branch_id, v_primary_batch_id,
+            v_item.product_id, v_item.product_name, v_item.quantity, v_item.unit_price, v_item.subtotal,
+            0, v_allocations, v_item.prescription_id
+        );
+    END LOOP;
+
+    RETURN v_order_id;
+END;
+$$;
+
+-- End of 20260508000013_checkout_prescription_fee_logic.sql
+
+
+-- File: 20260508000014_fix_doctor_aliases_schema.sql
+-- Migration: Fix Doctor Aliases Schema
+-- Adds tenant_partner and ensures created_at and other fields are in the view
+
+-- 1. Add tenant_partner to doctor_aliases table
+ALTER TABLE public.doctor_aliases ADD COLUMN IF NOT EXISTS tenant_partner UUID REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+-- 2. Backfill tenant_partner if possible (optional, but good for existing data)
+-- If we assume primary_doctor_id's tenant is the intended partner
+UPDATE public.doctor_aliases da
+SET tenant_partner = u.tenant_id
+FROM public.healthcare_providers hp
+JOIN public.users u ON hp.user_id = u.id
+WHERE da.primary_doctor_id = hp.id AND da.tenant_partner IS NULL;
+
+-- 3. Recreate the view to include all necessary fields
+CREATE OR REPLACE VIEW public.doctor_aliases_with_details AS
+SELECT
+  da.id,
+  da.doctor_id,
+  da.primary_doctor_id,
+  da.tenant_partner,
+  da.alias as display_name, -- renamed for consistency with other views
+  da.alias,
+  da.is_active,
+  da.created_at,
+  da.accepted,
+  -- Provider details from healthcare_providers
+  hp.full_name AS doctor_name,
+  hp.profile_photo_url,
+  hp.specialization,
+  hp.sub_specialty,
+  hp.years_of_experience,
+  hp.consultation_types,
+  hp.marked_up_fees AS consultation_fees,
+  hp.preferred_languages,
+  hp.average_rating,
+  hp.total_consultations,
+  hp.total_reviews,
+  hp.is_verified,
+  -- Primary doctor info
+  hp_primary.full_name AS primary_doctor_name,
+  COALESCE(hp_primary."clinic name", hp_primary.full_name) AS clinic_name
+FROM public.doctor_aliases da
+JOIN public.healthcare_providers hp ON da.doctor_id = hp.id
+LEFT JOIN public.healthcare_providers hp_primary ON da.primary_doctor_id = hp_primary.id;
+
+-- 4. Ensure RLS allows the tenant to see their aliases
+DROP POLICY IF EXISTS "Tenants can see their partners" ON public.doctor_aliases;
+CREATE POLICY "Tenants can see their partners" 
+ON public.doctor_aliases FOR SELECT 
+USING (
+  tenant_partner IN (
+    SELECT tenant_id FROM public.users 
+    WHERE id = auth.uid()
+  )
+);
+
+-- End of 20260508000014_fix_doctor_aliases_schema.sql
+
+
+-- File: 20260508000014_sale_items_prescription_link.sql
+-- Migration: Link Sale Items to Prescriptions
+-- Enables tracking which items in a sale were authorized by which prescription
+
+ALTER TABLE public.sale_items 
+ADD COLUMN IF NOT EXISTS prescription_id UUID REFERENCES public.prescriptions(id) ON DELETE SET NULL;
+
+COMMENT ON COLUMN public.sale_items.prescription_id IS 'Link to the prescription that authorized this drug sale.';
+
+-- End of 20260508000014_sale_items_prescription_link.sql
+
+
+-- File: 20260508000015_healthcare_commissions_v2.sql
+-- Migration: Healthcare Commissions V2
+-- Formalizes 5.5% prescription fee for all partners and 10% consultation fee for tenants
+
+-- 1. Update prescriptions to reflect all partners (not just pharmacists)
+COMMENT ON COLUMN public.prescriptions.is_freelance IS 'True if issued by a freelance partner (doctor or pharmacist), triggering the 5.5% fee.';
+
+-- 2. Add consultation commission tracking to consultations table
+ALTER TABLE public.consultations 
+ADD COLUMN IF NOT EXISTS tenant_commission_rate DECIMAL(5,4) DEFAULT 0.0000,
+ADD COLUMN IF NOT EXISTS tenant_commission_amount DECIMAL(10,2) DEFAULT 0.00;
+
+COMMENT ON COLUMN public.consultations.tenant_commission_rate IS 'Rate of consultation fee that goes to the tenant (e.g., 0.1000 for 10%).';
+COMMENT ON COLUMN public.consultations.tenant_commission_amount IS 'Calculated amount from the consultation fee that goes to the tenant.';
+
+-- 3. Trigger to automatically set commission rate for doctors
+CREATE OR REPLACE FUNCTION public.calculate_consultation_commissions()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_provider_type TEXT;
+BEGIN
+    -- Get provider type
+    SELECT type INTO v_provider_type
+    FROM public.healthcare_providers
+    WHERE id = NEW.provider_id;
+
+    -- If referred by storefront and provider is a doctor, set 10% commission
+    IF NEW.referral_source = 'storefront' AND v_provider_type = 'doctor' THEN
+        NEW.tenant_commission_rate := 0.1000;
+        NEW.tenant_commission_amount := NEW.consultation_fee * 0.1000;
+    ELSE
+        NEW.tenant_commission_rate := 0.0000;
+        NEW.tenant_commission_amount := 0.00;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_calculate_consultation_commissions ON public.consultations;
+CREATE TRIGGER trigger_calculate_consultation_commissions
+    BEFORE INSERT OR UPDATE OF consultation_fee, referral_source ON public.consultations
+    FOR EACH ROW
+    EXECUTE FUNCTION calculate_consultation_commissions();
+
+-- 4. ENSURE DOCTOR_ALIASES TABLE AND VIEW ARE UPDATED
+-- Safety check for the column
+ALTER TABLE public.doctor_aliases ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Drop view to refresh schema
+DROP VIEW IF EXISTS public.doctor_aliases_with_details;
+
+-- We use a dynamic approach for the view to handle potentially missing clinic_name column
+DO $$
+BEGIN
+    EXECUTE 'CREATE OR REPLACE VIEW public.doctor_aliases_with_details AS
+    SELECT
+      da.id,
+      da.doctor_id,
+      da.primary_doctor_id,
+      da.tenant_partner,
+      da.alias as display_name,
+      da.alias,
+      da.is_active,
+      da.created_at,
+      da.accepted,
+      -- Provider details
+      hp.full_name AS doctor_name,
+      hp.profile_photo_url,
+      hp.specialization,
+      hp.sub_specialty,
+      hp.years_of_experience,
+      hp.average_rating,
+      hp.is_verified,
+      -- Primary doctor info
+      hp_primary.full_name AS primary_doctor_name,
+      ' || 
+      CASE WHEN EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'healthcare_providers' AND column_name = 'clinic_name'
+      ) THEN 'COALESCE(hp_primary.clinic_name, hp_primary.full_name)'
+      ELSE 'hp_primary.full_name' 
+      END || ' AS clinic_name
+    FROM public.doctor_aliases da
+    JOIN public.healthcare_providers hp ON da.doctor_id = hp.id
+    LEFT JOIN public.healthcare_providers hp_primary ON da.primary_doctor_id = hp_primary.id';
+END $$;
+
+GRANT SELECT ON public.doctor_aliases_with_details TO authenticated;
+GRANT SELECT ON public.doctor_aliases_with_details TO anon;
+
+-- End of 20260508000015_healthcare_commissions_v2.sql
+
+
+-- File: 20260508000016_fix_po_receiving_calculations.sql
+-- ============================================================
+-- Migration: Simplified PO Receiving (No Pre-orders)
+-- ============================================================
+-- Description: 
+-- 1. Removes all pre-order fulfillment logic.
+-- 2. Strictly increments stock_quantity for received items.
+-- 3. Maintains batch tracking for regulatory compliance.
+-- ============================================================
+
+-- 1. Update the receiving RPC
+DO $$ 
+DECLARE 
+    r RECORD;
+BEGIN
+    FOR r IN (SELECT oid::regprocedure as sig FROM pg_proc WHERE proname = 'receive_purchase_order' AND pronamespace = 'public'::regnamespace) LOOP
+        EXECUTE 'DROP FUNCTION ' || r.sig || ' CASCADE';
+    END LOOP;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.receive_purchase_order(
+    p_po_id UUID,
+    p_received_items JSONB,
+    p_notes TEXT DEFAULT NULL,
+    p_branch_id UUID DEFAULT NULL
+)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po purchase_orders;
+    v_target_branch_id UUID;
+    v_received_item RECORD;
+    v_po_item RECORD;
+    v_batch_id UUID;
+    v_staff_id UUID;
+    v_receipt_id UUID;
+    v_old_qty INTEGER := 0;
+BEGIN
+    -- 1. Basic Setup
+    v_staff_id := auth.uid();
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id FOR UPDATE;
+    IF v_po.id IS NULL THEN RAISE EXCEPTION 'Purchase Order not found'; END IF;
+    
+    v_target_branch_id := COALESCE(p_branch_id, v_po.branch_id);
+
+    -- 2. Create the Receipt Group record
+    INSERT INTO purchase_order_receipts (tenant_id, po_id, staff_id, notes, branch_id)
+    VALUES (v_po.tenant_id, v_po.id, v_staff_id, p_notes, v_target_branch_id)
+    RETURNING id INTO v_receipt_id;
+
+    -- 3. Process each item
+    FOR v_received_item IN SELECT * FROM jsonb_to_recordset(p_received_items) AS x(
+        product_id UUID, received_qty INTEGER, batch_no TEXT, expiry_date DATE, 
+        unit_cost DECIMAL, unit_price DECIMAL, is_received BOOLEAN, unit_of_measure TEXT
+    )
+    LOOP
+        -- Skip items with zero quantity
+        IF COALESCE(v_received_item.received_qty, 0) = 0 THEN
+            CONTINUE;
+        END IF;
+
+        -- Reset loop variables
+        v_batch_id := NULL;
+        v_old_qty := 0;
+        v_po_item := NULL;
+
+        -- A. Fetch Product/PO Item Details
+        SELECT COALESCE(poi.product_name, p.name) as product_name, 
+               COALESCE(poi.strength, p.strength) as strength, 
+               p.barcode as sku, p.product_type, p.image_url
+        INTO v_po_item 
+        FROM products p 
+        LEFT JOIN purchase_order_items poi ON poi.product_id = p.id AND poi.po_id = p_po_id
+        WHERE p.id = v_received_item.product_id;
+
+        -- B. Record Receipt Item
+        INSERT INTO purchase_order_receipt_items (
+            receipt_id, product_id, quantity, unit_cost, batch_no, expiry_date, is_received
+        ) VALUES (
+            v_receipt_id, v_received_item.product_id, v_received_item.received_qty, 
+            v_received_item.unit_cost, v_received_item.batch_no, v_received_item.expiry_date,
+            COALESCE(v_received_item.is_received, TRUE)
+        );
+
+        -- C. Upsert Inventory Batch (Direct Stock Update)
+        SELECT id, stock_quantity INTO v_batch_id, v_old_qty 
+        FROM branch_inventory 
+        WHERE branch_id = v_target_branch_id 
+          AND product_id = v_received_item.product_id 
+          AND COALESCE(batch_no, '') = COALESCE(v_received_item.batch_no, '') 
+        LIMIT 1;
+
+        IF v_batch_id IS NOT NULL THEN
+            UPDATE branch_inventory 
+            SET stock_quantity = stock_quantity + v_received_item.received_qty,
+                expiry_date = COALESCE(v_received_item.expiry_date, expiry_date),
+                cost_price = COALESCE(v_received_item.unit_cost, cost_price),
+                updated_at = NOW()
+            WHERE id = v_batch_id;
+        ELSE
+            INSERT INTO branch_inventory (
+                tenant_id, branch_id, product_id, stock_quantity, batch_no, expiry_date, 
+                cost_price, selling_price, purchase_invoice, added_by, is_active, 
+                product_name, strength, sku, product_type, image_url, unit_of_measure
+            ) VALUES (
+                v_po.tenant_id, v_target_branch_id, v_received_item.product_id, v_received_item.received_qty, 
+                v_received_item.batch_no, v_received_item.expiry_date, v_received_item.unit_cost, 
+                COALESCE(v_received_item.unit_price, v_received_item.unit_cost * 1.3), 
+                v_po.po_number, v_staff_id::text, TRUE, 
+                v_po_item.product_name, v_po_item.strength, v_po_item.sku, v_po_item.product_type, v_po_item.image_url, 
+                COALESCE(v_received_item.unit_of_measure, 'unit')
+            ) RETURNING id INTO v_batch_id;
+        END IF;
+
+        -- D. Record Transaction
+        INSERT INTO inventory_transactions (
+            tenant_id, branch_id, product_id, branch_inventory_id, transaction_type, 
+            quantity_delta, previous_quantity, new_quantity, unit_cost, 
+            reference_id, reference_type, staff_id
+        ) VALUES (
+            v_po.tenant_id, v_target_branch_id, v_received_item.product_id, v_batch_id, 
+            'restock'::transaction_type, v_received_item.received_qty, COALESCE(v_old_qty, 0), COALESCE(v_old_qty, 0) + v_received_item.received_qty, 
+            v_received_item.unit_cost, v_po.id, 'purchase_order', v_staff_id
+        );
+    END LOOP;
+
+    -- 4. Sync PO status
+    UPDATE purchase_orders SET updated_at = NOW() WHERE id = p_po_id;
+    
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    RETURN v_po;
+END;
+$$;
+
+-- End of 20260508000016_fix_po_receiving_calculations.sql
+
+
+-- File: 20260508000017_modernize_inventory_cleanup.sql
+-- ============================================================
+-- Migration: Modernize Product Architecture & Cleanup Redundancy
+-- ============================================================
+-- Description: 
+-- 1. Drops redundant stock_quantity column from products table.
+-- 2. Drops legacy sync triggers and functions.
+-- 3. Modernizes the ecommerce_products view to use the new 
+--    multi-branch inventory architecture without grouping errors.
+-- ============================================================
+
+-- 1. Drop Legacy Triggers and Functions
+DROP TRIGGER IF EXISTS auto_sync_product_stock ON branch_inventory;
+DROP FUNCTION IF EXISTS public.sync_product_total_stock();
+DROP FUNCTION IF EXISTS public.trigger_sync_product_stock();
+
+-- Also drop the rogue trigger that fires on inventory_transactions INSERT and
+-- overwrites ALL batches for a product with the same stock_quantity (no batch filter).
+-- This conflicts with the multi-batch receive_purchase_order RPC.
+DROP TRIGGER IF EXISTS trg_update_branch_inventory_stock ON inventory_transactions;
+DROP FUNCTION IF EXISTS public.update_branch_inventory_stock();
+
+-- 2. Modernize the E-commerce View
+-- We drop the view first because CREATE OR REPLACE does not allow changing 
+-- the column structure (shape) of an existing view.
+DROP VIEW IF EXISTS public.ecommerce_products CASCADE;
+CREATE VIEW public.ecommerce_products AS
+SELECT
+    p.id,
+    -- Safely get tenant_id from related tables if it's missing on the master table
+    COALESCE(
+        (SELECT tenant_id FROM public.product_stock_balance WHERE product_id = p.id LIMIT 1),
+        (SELECT tenant_id FROM public.branches LIMIT 1)
+    ) as tenant_id,
+    p.name,
+    p.description,
+    p.category,
+    p.image_url,
+    p.is_active,
+
+    -- Aggregate stock via subquery
+    (SELECT COALESCE(SUM(stock_balance), 0)::BIGINT 
+     FROM public.product_stock_balance 
+     WHERE product_id = p.id) as total_stock,
+
+    -- Count branches via subquery
+    (SELECT COUNT(DISTINCT branch_id) 
+     FROM public.product_stock_balance 
+     WHERE product_id = p.id AND stock_balance > 0) as branch_count,
+
+    -- Collect detailed branch information
+    (SELECT COALESCE(
+        jsonb_agg(
+            jsonb_build_object(
+                'branch_id', b.id,
+                'branch_name', b.name,
+                'branch_address', b.address,
+                'branch_phone', b.phone,
+                'latitude', b.latitude,
+                'longitude', b.longitude,
+                'stock_quantity', psb.stock_balance,
+                'selling_price', (SELECT MIN(selling_price) FROM public.branch_inventory bi WHERE bi.product_id = p.id AND bi.branch_id = b.id),
+                'in_stock', psb.stock_balance > 0
+            ) ORDER BY b.name
+        ), 
+        '[]'::jsonb
+     )
+     FROM public.product_stock_balance psb
+     JOIN public.branches b ON psb.branch_id = b.id
+     WHERE psb.product_id = p.id AND b.deleted_at IS NULL
+    ) as branches,
+
+    -- Min and max price via subqueries
+    COALESCE((SELECT MIN(selling_price) FROM public.branch_inventory WHERE product_id = p.id AND is_active = true), 0) as min_price,
+    COALESCE((SELECT MAX(selling_price) FROM public.branch_inventory WHERE product_id = p.id AND is_active = true), 0) as max_price,
+
+    p.created_at,
+    p.updated_at
+FROM public.products p
+WHERE p.deleted_at IS NULL
+  AND p.is_active = TRUE;
+
+-- 3. Update the E-commerce helper function
+CREATE OR REPLACE FUNCTION public.get_ecommerce_products(
+    p_tenant_id UUID,
+    p_category VARCHAR DEFAULT NULL,
+    p_branch_id UUID DEFAULT NULL,
+    p_latitude DECIMAL DEFAULT NULL,
+    p_longitude DECIMAL DEFAULT NULL,
+    p_max_distance_km DECIMAL DEFAULT NULL,
+    p_in_stock_only BOOLEAN DEFAULT TRUE
+)
+RETURNS TABLE (
+    product_id UUID,
+    product_name VARCHAR,
+    description TEXT,
+    category VARCHAR,
+    unit_price DECIMAL,
+    image_url TEXT,
+    total_stock BIGINT,
+    branch_count BIGINT,
+    branches JSONB,
+    min_price DECIMAL,
+    max_price DECIMAL
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        ep.id,
+        ep.name,
+        ep.description,
+        ep.category,
+        ep.min_price as unit_price, -- Backward compatibility
+        ep.image_url,
+        ep.total_stock,
+        ep.branch_count,
+        ep.branches,
+        ep.min_price,
+        ep.max_price
+    FROM public.ecommerce_products ep
+    WHERE ep.tenant_id = p_tenant_id
+
+    -- Category filter
+    AND (p_category IS NULL OR ep.category = p_category)
+
+    -- Stock filter
+    AND (NOT p_in_stock_only OR ep.total_stock > 0)
+
+    -- Branch filter
+    AND (p_branch_id IS NULL OR EXISTS (
+        SELECT 1 FROM jsonb_array_elements(ep.branches) AS branch
+        WHERE (branch->>'branch_id')::UUID = p_branch_id
+    ))
+
+    -- Location filter
+    AND (
+        p_latitude IS NULL OR p_longitude IS NULL OR p_max_distance_km IS NULL
+        OR EXISTS (
+            SELECT 1 FROM jsonb_array_elements(ep.branches) AS branch
+            WHERE (branch->>'latitude') IS NOT NULL
+            AND (branch->>'longitude') IS NOT NULL
+            AND (
+                ST_DWithin(
+                    ST_MakePoint((branch->>'longitude')::DECIMAL, (branch->>'latitude')::DECIMAL)::geography,
+                    ST_MakePoint(p_longitude, p_latitude)::geography,
+                    p_max_distance_km * 1000
+                )
+            )
+        )
+    )
+
+    ORDER BY ep.name;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 4. Drop Redundant Columns from products table
+-- We do this LAST to ensure views have been updated first.
+ALTER TABLE public.products DROP COLUMN IF EXISTS stock_quantity;
+ALTER TABLE public.products DROP COLUMN IF EXISTS branch_id;
+ALTER TABLE public.products DROP COLUMN IF EXISTS low_stock_threshold;
+ALTER TABLE public.products DROP COLUMN IF EXISTS expiry_date;
+ALTER TABLE public.products DROP COLUMN IF EXISTS cost_price;
+ALTER TABLE public.products DROP COLUMN IF EXISTS unit_price;
+
+-- 5. Final Audit Note
+COMMENT ON VIEW ecommerce_products IS 'Aggregated product view for e-commerce storefront, modernized to use subqueries for maximum compatibility.';
+
+-- End of 20260508000017_modernize_inventory_cleanup.sql
+
+
+-- File: 20260508000018_recalculate_inventory_levels.sql
+-- ============================================================
+-- Migration: Recalculate Inventory Levels (Simplified)
+-- ============================================================
+
+DO $$
+DECLARE
+    v_row RECORD;
+    v_actual_in INTEGER;
+    v_actual_out INTEGER;
+    v_actual_stock INTEGER;
+BEGIN
+    RAISE NOTICE 'Starting simplified inventory audit...';
+
+    -- 1. Fix Stock Quantity Discrepancies
+    FOR v_row IN 
+        SELECT id, product_id, branch_id, batch_no, stock_quantity 
+        FROM branch_inventory
+    LOOP
+        -- Calculate Total Received
+        SELECT COALESCE(SUM(ri.quantity), 0) INTO v_actual_in
+        FROM purchase_order_receipt_items ri
+        JOIN purchase_order_receipts r ON ri.receipt_id = r.id
+        WHERE r.branch_id = v_row.branch_id 
+          AND ri.product_id = v_row.product_id
+          AND COALESCE(ri.batch_no, '') = COALESCE(v_row.batch_no, '')
+          AND COALESCE(ri.is_received, TRUE) = TRUE;
+
+        -- Calculate Total Sold
+        SELECT COALESCE(SUM(si.quantity), 0) INTO v_actual_out
+        FROM sale_items si
+        JOIN sales s ON si.sale_id = s.id
+        WHERE si.inventory_id = v_row.id
+          AND s.sale_status = 'completed';
+
+        v_actual_stock := v_actual_in - v_actual_out;
+        
+        -- Update the row, clearing preorder and reserved buckets
+        UPDATE branch_inventory 
+        SET stock_quantity = GREATEST(v_actual_stock, 0),
+            preorder_quantity = 0,
+            reserved_quantity = 0,
+            updated_at = NOW()
+        WHERE id = v_row.id;
+    END LOOP;
+
+    RAISE NOTICE 'Inventory audit completed. Pre-orders cleared.';
+END$$;
+
+-- End of 20260508000018_recalculate_inventory_levels.sql
+
+
+-- File: 20260508000019_repair_rpc.sql
+-- ============================================================
+-- Migration: Simplified Repair RPC (No Pre-orders)
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.repair_inventory_levels()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_row RECORD;
+    v_actual_in INTEGER;
+    v_actual_out INTEGER;
+    v_actual_stock INTEGER;
+    v_count INTEGER := 0;
+BEGIN
+    -- Fix Stock Quantity Discrepancies
+    FOR v_row IN 
+        SELECT id, product_id, branch_id, batch_no, stock_quantity 
+        FROM branch_inventory
+    LOOP
+        -- Calculate Total Received
+        SELECT COALESCE(SUM(ri.quantity), 0) INTO v_actual_in
+        FROM purchase_order_receipt_items ri
+        JOIN purchase_order_receipts r ON ri.receipt_id = r.id
+        WHERE r.branch_id = v_row.branch_id 
+          AND ri.product_id = v_row.product_id
+          AND COALESCE(ri.batch_no, '') = COALESCE(v_row.batch_no, '')
+          AND COALESCE(ri.is_received, TRUE) = TRUE;
+
+        -- Calculate Total Sold
+        SELECT COALESCE(SUM(si.quantity), 0) INTO v_actual_out
+        FROM sale_items si
+        JOIN sales s ON si.sale_id = s.id
+        WHERE si.inventory_id = v_row.id
+          AND s.sale_status = 'completed';
+
+        v_actual_stock := v_actual_in - v_actual_out;
+        
+        -- Update the row â€” physical stock only
+        UPDATE branch_inventory 
+        SET stock_quantity = GREATEST(v_actual_stock, 0),
+            updated_at = NOW()
+        WHERE id = v_row.id;
+        
+        v_count := v_count + 1;
+    END LOOP;
+
+    RETURN jsonb_build_object('success', true, 'repaired_rows', v_count, 'message', 'Inventory levels recalculated from physical receipts.');
+END;
+$$;
+
+-- End of 20260508000019_repair_rpc.sql
+
+
+-- File: 20260508000020_purge_preorders.sql
+-- ============================================================
+-- Migration: Purge Pre-order Feature
+-- ============================================================
+-- Description: 
+-- 1. Drops preorder-related columns from branch_inventory.
+-- 2. Drops preorder-related columns from products.
+-- 3. Removes preorder settings from tenants.
+-- ============================================================
+
+-- Drop views that depend on preorder columns FIRST to avoid dependency errors
+DROP VIEW IF EXISTS marketplace_products_with_stock;
+DROP VIEW IF EXISTS product_stock_summary;
+
+DO $$
+BEGIN
+    -- 1. Remove from branch_inventory
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'branch_inventory' AND column_name = 'preorder_quantity') THEN
+        ALTER TABLE branch_inventory DROP COLUMN preorder_quantity;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'branch_inventory' AND column_name = 'allow_preorder') THEN
+        ALTER TABLE branch_inventory DROP COLUMN allow_preorder;
+    END IF;
+
+    -- 2. Remove from products
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'allow_preorder') THEN
+        ALTER TABLE products DROP COLUMN allow_preorder;
+    END IF;
+
+    -- 3. Remove from tenants
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'tenants' AND column_name = 'preorders_enabled') THEN
+        ALTER TABLE tenants DROP COLUMN preorders_enabled;
+    END IF;
+END $$;
+
+-- Recreate v_branch_products view without any preorder columns
+CREATE OR REPLACE VIEW v_branch_products AS
+SELECT
+    p.*,
+    bi.branch_id,
+    bi.stock_quantity,
+    bi.low_stock_threshold,
+    bi.expiry_date,
+    bi.expiry_alert_days,
+    bi.is_active as inventory_active,
+    CASE
+        WHEN bi.stock_quantity <= bi.low_stock_threshold THEN true
+        ELSE false
+    END as is_low_stock,
+    CASE
+        WHEN bi.expiry_date IS NOT NULL
+        AND bi.expiry_date <= CURRENT_DATE + (bi.expiry_alert_days || ' days')::INTERVAL
+        THEN true
+        ELSE false
+    END as is_expiring_soon
+FROM products p
+INNER JOIN branch_inventory bi ON bi.product_id = p.id
+WHERE p._sync_is_deleted = false
+AND bi._sync_is_deleted = false;
+
+
+
+-- End of 20260508000020_purge_preorders.sql
+
+
+-- File: 20260508000021_purge_preorder_from_checkout_functions.sql
+-- ============================================================
+-- Migration: Purge Pre-order Logic from Checkout & POS Functions
+-- ============================================================
+-- Description:
+-- 1. Rewrites checkout_storefront_order to use physical stock only.
+--    No more preorders_enabled / allow_preorder checks.
+-- 2. Rewrites complete_sale_transaction (POS) identically.
+-- 3. Fixes search_products_for_pos â€” no longer exposes allow_preorder.
+-- 4. Drops the now-obsolete get_available_stock, reserve_inventory,
+--    release_reservation, confirm_reservation helpers if they exist.
+-- ============================================================
+
+-- â”€â”€ 1. CHECKOUT (Storefront) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+CREATE OR REPLACE FUNCTION checkout_storefront_order(
+    p_tenant_id UUID,
+    p_branch_id UUID,
+    p_customer_id UUID,
+    p_order_type order_type,
+    p_fulfillment_type fulfillment_type,
+    p_subtotal DECIMAL,
+    p_delivery_fee DECIMAL,
+    p_tax_amount DECIMAL,
+    p_total_amount DECIMAL,
+    p_delivery_address_id UUID,
+    p_special_instructions TEXT,
+    p_items JSONB,
+    p_service_charge DECIMAL DEFAULT 0,
+    p_payment_reference TEXT DEFAULT NULL,
+    p_billing_address TEXT DEFAULT NULL,
+    p_shipping_address TEXT DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_order_id UUID;
+    v_item RECORD;
+    v_batch RECORD;
+    v_req_qty INTEGER;
+    v_allocated_qty INTEGER;
+    v_allocations JSONB;
+    v_primary_batch_id UUID;
+BEGIN
+    -- Validate totals
+    IF p_total_amount != (p_subtotal + p_delivery_fee + p_tax_amount + p_service_charge) THEN
+        RAISE EXCEPTION 'Total amount does not match subtotal + fees + tax + service charge';
+    END IF;
+
+    -- Create the order header
+    INSERT INTO orders (
+        tenant_id, branch_id, order_number, customer_id,
+        order_type, order_status, payment_status, payment_method, payment_reference,
+        subtotal, delivery_fee, tax_amount, service_charge, total_amount,
+        fulfillment_type, delivery_address_id, special_instructions,
+        billing_address, shipping_address
+    ) VALUES (
+        p_tenant_id,
+        p_branch_id,
+        'ORD-' || FLOOR(EXTRACT(EPOCH FROM NOW()))::TEXT || '-' || SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 4),
+        p_customer_id,
+        p_order_type,
+        'pending'::order_status,
+        CASE WHEN p_payment_reference IS NOT NULL THEN 'paid'::payment_status ELSE 'unpaid'::payment_status END,
+        'card'::payment_method,
+        p_payment_reference,
+        p_subtotal, p_delivery_fee, p_tax_amount, p_service_charge, p_total_amount,
+        p_fulfillment_type,
+        p_delivery_address_id,
+        p_special_instructions,
+        p_billing_address,
+        p_shipping_address
+    ) RETURNING id INTO v_order_id;
+
+    -- Process each item
+    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(
+        product_id UUID, product_name TEXT, quantity INTEGER, unit_price DECIMAL, subtotal DECIMAL
+    )
+    LOOP
+        v_req_qty := v_item.quantity;
+        v_allocations := '[]'::jsonb;
+        v_primary_batch_id := NULL;
+
+        -- Allocate from physical stock (FIFO by expiry then age)
+        FOR v_batch IN 
+            SELECT id, stock_quantity AS available_balance
+            FROM branch_inventory
+            WHERE branch_id = p_branch_id 
+              AND product_id = v_item.product_id 
+              AND is_active = true
+              AND stock_quantity > 0
+            ORDER BY expiry_date ASC NULLS LAST, created_at ASC
+            FOR UPDATE
+        LOOP
+            IF v_req_qty <= 0 THEN EXIT; END IF;
+
+            v_allocated_qty := LEAST(v_batch.available_balance, v_req_qty);
+
+            IF v_primary_batch_id IS NULL THEN
+                v_primary_batch_id := v_batch.id;
+            END IF;
+
+            v_allocations := v_allocations || jsonb_build_object(
+                'batch_id', v_batch.id,
+                'quantity', v_allocated_qty,
+                'is_preorder', false
+            );
+
+            v_req_qty := v_req_qty - v_allocated_qty;
+        END LOOP;
+
+        -- Reject the order if stock is insufficient (no preorders)
+        IF v_req_qty > 0 THEN
+            RAISE EXCEPTION 'Insufficient stock for product: % (short by %)', v_item.product_name, v_req_qty;
+        END IF;
+
+        INSERT INTO public.sale_items (
+            tenant_id, order_id, branch_id, inventory_id,
+            product_id, product_name, quantity, unit_price, subtotal,
+            discount_amount, batch_allocations
+        ) VALUES (
+            p_tenant_id, v_order_id, p_branch_id, v_primary_batch_id,
+            v_item.product_id, v_item.product_name, v_item.quantity, v_item.unit_price, v_item.subtotal,
+            0, v_allocations
+        );
+    END LOOP;
+
+    RETURN v_order_id;
+END;
+$$;
+
+-- â”€â”€ 2. COMPLETE SALE (POS) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+CREATE OR REPLACE FUNCTION complete_sale_transaction(
+    p_tenant_id UUID,
+    p_branch_id UUID,
+    p_cashier_id UUID,
+    p_customer_id UUID,
+    p_cart_items JSONB,
+    p_subtotal DECIMAL,
+    p_tax_amount DECIMAL,
+    p_discount_amount DECIMAL,
+    p_total_amount DECIMAL,
+    p_payment_method payment_method,
+    p_payment_reference TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+    sale_id UUID,
+    sale_number VARCHAR,
+    success BOOLEAN,
+    error_message TEXT
+) AS $$
+DECLARE
+    v_sale_id UUID;
+    v_sale_number VARCHAR;
+    v_item JSONB;
+    v_product_id UUID;
+    v_quantity INTEGER;
+    v_available_stock INTEGER;
+    v_req_qty INTEGER;
+    v_deducted INTEGER;
+    v_batch RECORD;
+BEGIN
+    BEGIN
+        -- Verify physical stock availability for every item
+        FOR v_item IN SELECT * FROM jsonb_array_elements(p_cart_items)
+        LOOP
+            v_product_id := (v_item->>'product_id')::UUID;
+            v_quantity := (v_item->>'quantity')::INTEGER;
+
+            SELECT COALESCE(SUM(stock_quantity), 0)
+            INTO v_available_stock
+            FROM branch_inventory
+            WHERE branch_id = p_branch_id AND product_id = v_product_id AND is_active = true;
+
+            IF v_available_stock < v_quantity THEN
+                RETURN QUERY SELECT
+                    NULL::UUID, NULL::VARCHAR, FALSE,
+                    'Insufficient stock for product: ' || (v_item->>'product_name');
+                RETURN;
+            END IF;
+        END LOOP;
+
+        -- Create sale record
+        INSERT INTO sales (
+            tenant_id, branch_id, cashier_id, customer_id,
+            subtotal, tax_amount, discount_amount, total_amount,
+            payment_method, payment_reference, status
+        ) VALUES (
+            p_tenant_id, p_branch_id, p_cashier_id, p_customer_id,
+            p_subtotal, p_tax_amount, p_discount_amount, p_total_amount,
+            p_payment_method, p_payment_reference, 'completed'
+        )
+        RETURNING id, sale_number INTO v_sale_id, v_sale_number;
+
+        -- Insert sale items
+        INSERT INTO sale_items (
+            sale_id, tenant_id, product_id, product_name, quantity, unit_price, discount_amount, subtotal
+        )
+        SELECT
+            v_sale_id, p_tenant_id, (item->>'product_id')::UUID, item->>'product_name',
+            (item->>'quantity')::INTEGER, (item->>'unit_price')::DECIMAL,
+            COALESCE((item->>'discount_amount')::DECIMAL, 0), (item->>'subtotal')::DECIMAL
+        FROM jsonb_array_elements(p_cart_items) AS item;
+
+        -- Deduct physical stock (FIFO)
+        FOR v_item IN SELECT * FROM jsonb_array_elements(p_cart_items)
+        LOOP
+            v_product_id := (v_item->>'product_id')::UUID;
+            v_req_qty := (v_item->>'quantity')::INTEGER;
+
+            FOR v_batch IN 
+                SELECT id, stock_quantity 
+                FROM branch_inventory 
+                WHERE branch_id = p_branch_id AND product_id = v_product_id 
+                  AND is_active = true AND stock_quantity > 0
+                ORDER BY expiry_date ASC NULLS LAST, created_at ASC
+                FOR UPDATE
+            LOOP
+                IF v_req_qty <= 0 THEN EXIT; END IF;
+                v_deducted := LEAST(v_batch.stock_quantity, v_req_qty);
+                
+                UPDATE branch_inventory 
+                SET stock_quantity = stock_quantity - v_deducted, updated_at = NOW()
+                WHERE id = v_batch.id;
+
+                INSERT INTO inventory_transactions (
+                    tenant_id, branch_id, product_id, branch_inventory_id,
+                    transaction_type, quantity_delta, previous_quantity, new_quantity,
+                    reference_id, reference_type, staff_id
+                ) VALUES (
+                    p_tenant_id, p_branch_id, v_product_id, v_batch.id,
+                    'sale'::transaction_type, -v_deducted, v_batch.stock_quantity, v_batch.stock_quantity - v_deducted,
+                    v_sale_id, 'sale', p_cashier_id
+                );
+                
+                v_req_qty := v_req_qty - v_deducted;
+            END LOOP;
+        END LOOP;
+
+        RETURN QUERY SELECT v_sale_id, v_sale_number, TRUE, NULL::TEXT;
+    EXCEPTION WHEN OTHERS THEN
+        RETURN QUERY SELECT NULL::UUID, NULL::VARCHAR, FALSE, SQLERRM;
+    END;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- â”€â”€ 3. SEARCH PRODUCTS FOR POS (remove allow_preorder) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- Must DROP first because the OUT parameter list changed (removed reserved_quantity, allow_preorder)
+DROP FUNCTION IF EXISTS search_products_for_pos(UUID, UUID, TEXT, INTEGER);
+CREATE OR REPLACE FUNCTION search_products_for_pos(
+    p_tenant_id UUID,
+    p_branch_id UUID,
+    p_search_term TEXT,
+    p_limit INTEGER DEFAULT 20
+)
+RETURNS TABLE (
+    product_id UUID,
+    product_name VARCHAR,
+    sku VARCHAR,
+    barcode VARCHAR,
+    category VARCHAR,
+    unit_price DECIMAL,
+    cost_price DECIMAL,
+    image_url TEXT,
+    stock_quantity INTEGER,
+    available_quantity INTEGER,
+    low_stock_threshold INTEGER
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        bi.product_id,
+        bi.product_name,
+        bi.sku,
+        bi.barcode,
+        p.category,
+        bi.selling_price AS unit_price,
+        bi.cost_price,
+        bi.image_url,
+        COALESCE(SUM(bi.stock_quantity), 0)::INTEGER AS stock_quantity,
+        COALESCE(SUM(bi.stock_quantity), 0)::INTEGER AS available_quantity,
+        COALESCE(MAX(bi.low_stock_threshold), 10) AS low_stock_threshold
+    FROM branch_inventory bi
+    JOIN products p ON p.id = bi.product_id
+    WHERE bi.tenant_id = p_tenant_id
+        AND bi.branch_id = p_branch_id
+        AND p.is_active = TRUE
+        AND bi.is_active = TRUE
+        AND bi.stock_quantity > 0
+        AND (
+            bi.product_name ILIKE '%' || p_search_term || '%'
+            OR bi.sku ILIKE '%' || p_search_term || '%'
+            OR bi.barcode = p_search_term
+        )
+    GROUP BY bi.product_id, bi.product_name, bi.sku, bi.barcode, p.category,
+             bi.selling_price, bi.cost_price, bi.image_url
+    ORDER BY bi.product_name
+    LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- â”€â”€ 4. DROP LEGACY RESERVATION HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+DROP FUNCTION IF EXISTS get_available_stock(UUID, UUID);
+DROP FUNCTION IF EXISTS reserve_inventory(UUID, UUID, INTEGER);
+DROP FUNCTION IF EXISTS release_reservation(UUID, UUID, INTEGER);
+DROP FUNCTION IF EXISTS confirm_reservation(UUID, UUID, INTEGER);
+
+-- â”€â”€ 5. RESTORE CLEAN INVENTORY SYNC TRIGGER (no preorders) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- Overwrites the preorder-patched version from 20260506000002.
+CREATE OR REPLACE FUNCTION trigger_sync_inventory_on_sale()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_item RECORD;
+BEGIN
+    IF NEW.sale_status = 'completed' THEN
+        FOR v_item IN
+            SELECT product_id, quantity
+            FROM sale_items
+            WHERE sale_id = NEW.id
+        LOOP
+            -- Deduct from branch inventory (FIFO by oldest batch)
+            UPDATE branch_inventory
+            SET stock_quantity = stock_quantity - v_item.quantity,
+                updated_at = NOW()
+            WHERE id = (
+                SELECT id FROM branch_inventory
+                WHERE branch_id = NEW.branch_id
+                  AND product_id = v_item.product_id
+                  AND stock_quantity >= v_item.quantity
+                ORDER BY expiry_date ASC NULLS LAST, created_at ASC
+                LIMIT 1
+                FOR UPDATE
+            );
+
+            IF NOT FOUND THEN
+                RAISE WARNING 'Insufficient stock for product % in sale %. Inventory not deducted.',
+                    v_item.product_id, NEW.id;
+            END IF;
+        END LOOP;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- End of 20260508000021_purge_preorder_from_checkout_functions.sql
+
+
+-- File: 20260509000001_reintroduce_preorders.sql
+-- ============================================================
+-- Migration: Reintroduce Pre-order Schema (Clean Architecture)
+-- ============================================================
+-- Pre-orders are now:
+--   - Tenant-gated  : tenants.preorders_enabled
+--   - Per-product   : branch_inventory.allow_preorder
+--   - Limit-capped  : branch_inventory.preorder_limit (NULL = unlimited)
+--   - Demand-tracked: branch_inventory.preorder_quantity
+--   - Order-tagged  : orders.is_preorder_order, sale_items.is_preorder
+--   - Staff-notified: staff_notifications table
+-- ============================================================
+
+-- â”€â”€ 1. branch_inventory columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'branch_inventory' AND column_name = 'allow_preorder') THEN
+        ALTER TABLE branch_inventory ADD COLUMN allow_preorder BOOLEAN NOT NULL DEFAULT false;
+        COMMENT ON COLUMN branch_inventory.allow_preorder
+            IS 'When true, out-of-stock units can be pre-ordered by customers.';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'branch_inventory' AND column_name = 'preorder_quantity') THEN
+        ALTER TABLE branch_inventory ADD COLUMN preorder_quantity INTEGER NOT NULL DEFAULT 0;
+        COMMENT ON COLUMN branch_inventory.preorder_quantity
+            IS 'Live demand counter â€” units currently committed to pre-orders.';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'branch_inventory' AND column_name = 'preorder_limit') THEN
+        ALTER TABLE branch_inventory ADD COLUMN preorder_limit INTEGER DEFAULT NULL;
+        COMMENT ON COLUMN branch_inventory.preorder_limit
+            IS 'Max units that can be pre-ordered. NULL = unlimited.';
+    END IF;
+END $$;
+
+-- â”€â”€ 2. tenants column â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'tenants' AND column_name = 'preorders_enabled') THEN
+        ALTER TABLE tenants ADD COLUMN preorders_enabled BOOLEAN NOT NULL DEFAULT false;
+        COMMENT ON COLUMN tenants.preorders_enabled
+            IS 'Global on/off switch for the pre-order feature.';
+    END IF;
+END $$;
+
+-- â”€â”€ 3. orders column â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'orders' AND column_name = 'is_preorder_order') THEN
+        ALTER TABLE orders ADD COLUMN is_preorder_order BOOLEAN NOT NULL DEFAULT false;
+        COMMENT ON COLUMN orders.is_preorder_order
+            IS 'True when this order contains only pre-order items (split from a mixed cart).';
+    END IF;
+END $$;
+
+-- â”€â”€ 4. sale_items column â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'sale_items' AND column_name = 'is_preorder') THEN
+        ALTER TABLE sale_items ADD COLUMN is_preorder BOOLEAN NOT NULL DEFAULT false;
+        COMMENT ON COLUMN sale_items.is_preorder
+            IS 'True when this line item was placed as a pre-order (no physical stock deducted at order time).';
+    END IF;
+END $$;
+
+-- â”€â”€ 5. staff_notifications table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+CREATE TABLE IF NOT EXISTS public.staff_notifications (
+    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id   UUID        NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+    branch_id   UUID        REFERENCES public.branches(id) ON DELETE SET NULL,
+    type        TEXT        NOT NULL,          -- e.g. 'preorder_fulfilled', 'low_stock'
+    title       TEXT        NOT NULL,
+    body        TEXT        NOT NULL,
+    metadata    JSONB       NOT NULL DEFAULT '{}',
+    is_read     BOOLEAN     NOT NULL DEFAULT false,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_staff_notifications_tenant_unread
+    ON public.staff_notifications (tenant_id, is_read, created_at DESC);
+
+ALTER TABLE public.staff_notifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Staff can view own tenant notifications" ON public.staff_notifications;
+CREATE POLICY "Staff can view own tenant notifications"
+    ON public.staff_notifications FOR SELECT
+    USING (
+        tenant_id IN (
+            SELECT tenant_id FROM public.users WHERE id = auth.uid()
+        )
+    );
+
+DROP POLICY IF EXISTS "Staff can update own tenant notifications" ON public.staff_notifications;
+CREATE POLICY "Staff can update own tenant notifications"
+    ON public.staff_notifications FOR UPDATE
+    USING (
+        tenant_id IN (
+            SELECT tenant_id FROM public.users WHERE id = auth.uid()
+        )
+    );
+
+-- â”€â”€ 6. marketplace_products_with_stock view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+DROP VIEW IF EXISTS public.marketplace_products_with_stock;
+CREATE VIEW public.marketplace_products_with_stock AS
+SELECT
+    p.id                                                AS product_id,
+    p.name                                              AS product_name,
+    p.description,
+    p.category,
+    p.image_url,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer,
+    p.product_type,
+    p.is_active,
+    bi.tenant_id,
+    bi.branch_id,
+    bi.id                                               AS inventory_id,
+    bi.stock_quantity,
+    bi.selling_price,
+    bi.low_stock_threshold,
+    bi.expiry_date,
+    bi.unit_of_measure,
+    bi.allow_preorder,
+    bi.preorder_quantity,
+    bi.preorder_limit,
+    (bi.stock_quantity > 0 OR bi.allow_preorder = true) AS is_available,
+    CASE
+        WHEN bi.stock_quantity <= bi.low_stock_threshold THEN true
+        ELSE false
+    END AS is_low_stock
+FROM public.products p
+JOIN public.branch_inventory bi ON bi.product_id = p.id
+WHERE p._sync_is_deleted = false
+  AND p.is_active = true
+  AND bi._sync_is_deleted = false
+  AND bi.is_active = true;
+
+-- End of 20260509000001_reintroduce_preorders.sql
+
+
+-- File: 20260509000002_preorder_rpcs.sql
+-- ============================================================
+-- Migration: Pre-order RPCs
+-- ============================================================
+-- 1. checkout_storefront_order  â€” adds p_is_preorder_order mode
+-- 2. receive_purchase_order     â€” auto-fulfils pre-orders on receipt
+--                                 + inserts staff_notifications
+-- ============================================================
+
+-- â”€â”€ 1. CHECKOUT (Storefront) â€” with pre-order support â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- Must DROP first because we are changing the parameter list
+DROP FUNCTION IF EXISTS checkout_storefront_order(
+    UUID, UUID, UUID, order_type, fulfillment_type,
+    DECIMAL, DECIMAL, DECIMAL, DECIMAL,
+    UUID, TEXT, JSONB, DECIMAL, TEXT, TEXT, TEXT
+);
+
+CREATE OR REPLACE FUNCTION checkout_storefront_order(
+    p_tenant_id             UUID,
+    p_branch_id             UUID,
+    p_customer_id           UUID,
+    p_order_type            order_type,
+    p_fulfillment_type      fulfillment_type,
+    p_subtotal              DECIMAL,
+    p_delivery_fee          DECIMAL,
+    p_tax_amount            DECIMAL,
+    p_total_amount          DECIMAL,
+    p_delivery_address_id   UUID,
+    p_special_instructions  TEXT,
+    p_items                 JSONB,
+    p_service_charge        DECIMAL  DEFAULT 0,
+    p_payment_reference     TEXT     DEFAULT NULL,
+    p_billing_address       TEXT     DEFAULT NULL,
+    p_shipping_address      TEXT     DEFAULT NULL,
+    p_is_preorder_order     BOOLEAN  DEFAULT false   -- NEW: true = pre-order checkout
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_order_id          UUID;
+    v_item              RECORD;
+    v_batch             RECORD;
+    v_req_qty           INTEGER;
+    v_allocated_qty     INTEGER;
+    v_allocations       JSONB;
+    v_primary_batch_id  UUID;
+    -- pre-order guards
+    v_preorders_enabled BOOLEAN;
+    v_allow_preorder    BOOLEAN;
+    v_preorder_limit    INTEGER;
+    v_current_preorder  INTEGER;
+    v_bi_id             UUID;
+    v_product_name      TEXT;
+BEGIN
+    -- â”€â”€ Validate totals â”€â”€
+    IF p_total_amount != (p_subtotal + p_delivery_fee + p_tax_amount + p_service_charge) THEN
+        RAISE EXCEPTION 'Total amount does not match subtotal + fees + tax + service charge';
+    END IF;
+
+    -- â”€â”€ Create order header â”€â”€
+    INSERT INTO orders (
+        tenant_id, branch_id, order_number, customer_id,
+        order_type, order_status, payment_status, payment_method, payment_reference,
+        subtotal, delivery_fee, tax_amount, service_charge, total_amount,
+        fulfillment_type, delivery_address_id, special_instructions,
+        billing_address, shipping_address, is_preorder_order
+    ) VALUES (
+        p_tenant_id,
+        p_branch_id,
+        'ORD-' || FLOOR(EXTRACT(EPOCH FROM NOW()))::TEXT || '-' || SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 4),
+        p_customer_id,
+        p_order_type,
+        'pending'::order_status,
+        CASE WHEN p_payment_reference IS NOT NULL THEN 'paid'::payment_status ELSE 'unpaid'::payment_status END,
+        'card'::payment_method,
+        p_payment_reference,
+        p_subtotal, p_delivery_fee, p_tax_amount, p_service_charge, p_total_amount,
+        p_fulfillment_type,
+        p_delivery_address_id,
+        p_special_instructions,
+        p_billing_address,
+        p_shipping_address,
+        p_is_preorder_order
+    ) RETURNING id INTO v_order_id;
+
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    -- BRANCH A: Physical stock checkout (normal order)
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    IF NOT p_is_preorder_order THEN
+
+        FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(
+            product_id UUID, product_name TEXT, quantity INTEGER,
+            unit_price DECIMAL, subtotal DECIMAL
+        )
+        LOOP
+            v_req_qty          := v_item.quantity;
+            v_allocations      := '[]'::jsonb;
+            v_primary_batch_id := NULL;
+
+            -- FIFO allocation by expiry then insertion date
+            FOR v_batch IN
+                SELECT id, stock_quantity AS available_balance
+                FROM branch_inventory
+                WHERE branch_id = p_branch_id
+                  AND product_id = v_item.product_id
+                  AND is_active = true
+                  AND stock_quantity > 0
+                ORDER BY expiry_date ASC NULLS LAST, created_at ASC
+                FOR UPDATE
+            LOOP
+                IF v_req_qty <= 0 THEN EXIT; END IF;
+
+                v_allocated_qty := LEAST(v_batch.available_balance, v_req_qty);
+
+                IF v_primary_batch_id IS NULL THEN
+                    v_primary_batch_id := v_batch.id;
+                END IF;
+
+                UPDATE branch_inventory
+                   SET stock_quantity = stock_quantity - v_allocated_qty
+                 WHERE id = v_batch.id;
+
+                v_allocations := v_allocations || jsonb_build_object(
+                    'batch_id',    v_batch.id,
+                    'quantity',    v_allocated_qty,
+                    'is_preorder', false
+                );
+
+                v_req_qty := v_req_qty - v_allocated_qty;
+            END LOOP;
+
+            IF v_req_qty > 0 THEN
+                RAISE EXCEPTION 'Insufficient stock for product: % (short by %)',
+                      v_item.product_name, v_req_qty;
+            END IF;
+
+            INSERT INTO public.sale_items (
+                tenant_id, order_id, branch_id, inventory_id,
+                product_id, product_name, quantity, unit_price, subtotal,
+                discount_amount, batch_allocations, is_preorder
+            ) VALUES (
+                p_tenant_id, v_order_id, p_branch_id, v_primary_batch_id,
+                v_item.product_id, v_item.product_name,
+                v_item.quantity, v_item.unit_price, v_item.subtotal,
+                0, v_allocations, false
+            );
+        END LOOP;
+
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    -- BRANCH B: Pre-order checkout
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    ELSE
+
+        -- Load tenant global switch once
+        SELECT preorders_enabled INTO v_preorders_enabled
+          FROM tenants WHERE id = p_tenant_id;
+
+        IF NOT COALESCE(v_preorders_enabled, false) THEN
+            RAISE EXCEPTION 'Pre-orders are not enabled for this store.';
+        END IF;
+
+        FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(
+            product_id UUID, product_name TEXT, quantity INTEGER,
+            unit_price DECIMAL, subtotal DECIMAL
+        )
+        LOOP
+            -- Get the inventory row for this product in this branch
+            SELECT id, allow_preorder, preorder_quantity, preorder_limit
+              INTO v_bi_id, v_allow_preorder, v_current_preorder, v_preorder_limit
+              FROM branch_inventory
+             WHERE branch_id = p_branch_id AND product_id = v_item.product_id
+               AND is_active = true
+             LIMIT 1;
+
+            IF v_bi_id IS NULL THEN
+                RAISE EXCEPTION 'Product % is not listed in this branch.',
+                      v_item.product_name;
+            END IF;
+
+            IF NOT COALESCE(v_allow_preorder, false) THEN
+                RAISE EXCEPTION 'Pre-order is not enabled for product: %',
+                      v_item.product_name;
+            END IF;
+
+            -- Enforce preorder_limit if set
+            IF v_preorder_limit IS NOT NULL THEN
+                IF (v_current_preorder + v_item.quantity) > v_preorder_limit THEN
+                    RAISE EXCEPTION
+                        'Pre-order limit reached for %: only % more unit(s) can be pre-ordered.',
+                        v_item.product_name,
+                        GREATEST(v_preorder_limit - v_current_preorder, 0);
+                END IF;
+            END IF;
+
+            -- Increment demand counter
+            UPDATE branch_inventory
+               SET preorder_quantity = preorder_quantity + v_item.quantity
+             WHERE id = v_bi_id;
+
+            INSERT INTO public.sale_items (
+                tenant_id, order_id, branch_id, inventory_id,
+                product_id, product_name, quantity, unit_price, subtotal,
+                discount_amount, batch_allocations, is_preorder
+            ) VALUES (
+                p_tenant_id, v_order_id, p_branch_id, v_bi_id,
+                v_item.product_id, v_item.product_name,
+                v_item.quantity, v_item.unit_price, v_item.subtotal,
+                0, '[]'::jsonb, true
+            );
+        END LOOP;
+
+    END IF;
+
+    RETURN v_order_id;
+END;
+$$;
+
+
+-- â”€â”€ 2. RECEIVE PURCHASE ORDER â€” with pre-order auto-fulfilment â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+CREATE OR REPLACE FUNCTION public.receive_purchase_order(
+    p_po_id         UUID,
+    p_received_items JSONB,
+    p_notes         TEXT    DEFAULT NULL,
+    p_branch_id     UUID    DEFAULT NULL
+)
+RETURNS purchase_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_po            purchase_orders;
+    v_target_branch_id UUID;
+    v_received_item RECORD;
+    v_po_item       RECORD;
+    v_batch_id      UUID;
+    v_staff_id      UUID;
+    v_receipt_id    UUID;
+    v_old_qty       INTEGER;
+    -- pre-order fulfilment
+    v_preorder_qty  INTEGER;
+    v_to_fulfill    INTEGER;
+    v_product_name  TEXT;
+BEGIN
+    v_staff_id := auth.uid();
+
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id FOR UPDATE;
+    IF v_po.id IS NULL THEN
+        RAISE EXCEPTION 'Purchase Order not found';
+    END IF;
+
+    v_target_branch_id := COALESCE(p_branch_id, v_po.branch_id);
+
+    INSERT INTO purchase_order_receipts (tenant_id, po_id, staff_id, notes, branch_id)
+    VALUES (v_po.tenant_id, v_po.id, v_staff_id, p_notes, v_target_branch_id)
+    RETURNING id INTO v_receipt_id;
+
+    FOR v_received_item IN SELECT * FROM jsonb_to_recordset(p_received_items) AS x(
+        product_id UUID, received_qty INTEGER, batch_no TEXT, expiry_date DATE,
+        unit_cost DECIMAL, unit_price DECIMAL, is_received BOOLEAN, unit_of_measure TEXT
+    )
+    LOOP
+        IF COALESCE(v_received_item.received_qty, 0) = 0 THEN CONTINUE; END IF;
+
+        v_batch_id := NULL;
+        v_old_qty  := 0;
+
+        -- Fetch product meta from PO items
+        SELECT COALESCE(poi.product_name, p.name)       AS product_name,
+               COALESCE(poi.strength,     p.strength)   AS strength,
+               p.barcode                                AS sku,
+               p.product_type,
+               p.image_url
+          INTO v_po_item
+          FROM products p
+          LEFT JOIN purchase_order_items poi
+            ON poi.product_id = p.id AND poi.po_id = p_po_id
+         WHERE p.id = v_received_item.product_id;
+
+        v_product_name := v_po_item.product_name;
+
+        -- Record the receipt line
+        INSERT INTO purchase_order_receipt_items (
+            receipt_id, product_id, quantity, unit_cost, batch_no,
+            expiry_date, is_received
+        ) VALUES (
+            v_receipt_id, v_received_item.product_id,
+            v_received_item.received_qty, v_received_item.unit_cost,
+            v_received_item.batch_no, v_received_item.expiry_date,
+            COALESCE(v_received_item.is_received, TRUE)
+        );
+
+        -- â”€â”€ Upsert inventory batch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        SELECT id, stock_quantity INTO v_batch_id, v_old_qty
+          FROM branch_inventory
+         WHERE branch_id = v_target_branch_id
+           AND product_id = v_received_item.product_id
+           AND COALESCE(batch_no, '') = COALESCE(v_received_item.batch_no, '')
+         LIMIT 1;
+
+        IF v_batch_id IS NOT NULL THEN
+            UPDATE branch_inventory
+               SET stock_quantity = stock_quantity + v_received_item.received_qty,
+                   expiry_date    = COALESCE(v_received_item.expiry_date, expiry_date),
+                   cost_price     = COALESCE(v_received_item.unit_cost,   cost_price),
+                   updated_at     = NOW()
+             WHERE id = v_batch_id;
+        ELSE
+            INSERT INTO branch_inventory (
+                tenant_id, branch_id, product_id, stock_quantity, batch_no,
+                expiry_date, cost_price, selling_price, purchase_invoice,
+                added_by, is_active, product_name, strength, sku,
+                product_type, image_url, unit_of_measure
+            ) VALUES (
+                v_po.tenant_id, v_target_branch_id, v_received_item.product_id,
+                v_received_item.received_qty,
+                v_received_item.batch_no, v_received_item.expiry_date,
+                v_received_item.unit_cost,
+                COALESCE(v_received_item.unit_price, v_received_item.unit_cost * 1.3),
+                v_po.po_number, v_staff_id::text, TRUE,
+                v_po_item.product_name, v_po_item.strength, v_po_item.sku,
+                v_po_item.product_type, v_po_item.image_url,
+                COALESCE(v_received_item.unit_of_measure, 'unit')
+            ) RETURNING id INTO v_batch_id;
+        END IF;
+
+        -- â”€â”€ Log inventory transaction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        INSERT INTO inventory_transactions (
+            tenant_id, branch_id, product_id, branch_inventory_id,
+            transaction_type, quantity_delta, previous_quantity, new_quantity,
+            unit_cost, reference_id, reference_type, staff_id
+        ) VALUES (
+            v_po.tenant_id, v_target_branch_id, v_received_item.product_id, v_batch_id,
+            'restock'::transaction_type, v_received_item.received_qty,
+            COALESCE(v_old_qty, 0),
+            COALESCE(v_old_qty, 0) + v_received_item.received_qty,
+            v_received_item.unit_cost, v_po.id, 'purchase_order', v_staff_id
+        );
+
+        -- â”€â”€ Auto-fulfil outstanding pre-orders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        -- Sum ALL pre-order demand for this product in this branch
+        SELECT COALESCE(SUM(preorder_quantity), 0) INTO v_preorder_qty
+          FROM branch_inventory
+         WHERE branch_id = v_target_branch_id
+           AND product_id = v_received_item.product_id;
+
+        IF v_preorder_qty > 0 THEN
+            v_to_fulfill := LEAST(v_preorder_qty, v_received_item.received_qty);
+
+            -- Decrement demand counter proportionally across rows for this product
+            UPDATE branch_inventory
+               SET preorder_quantity = GREATEST(
+                       preorder_quantity - LEAST(preorder_quantity, v_to_fulfill),
+                       0
+                   )
+             WHERE branch_id = v_target_branch_id
+               AND product_id = v_received_item.product_id
+               AND preorder_quantity > 0;
+
+            -- Notify staff
+            INSERT INTO staff_notifications (
+                tenant_id, branch_id, type, title, body, metadata
+            ) VALUES (
+                v_po.tenant_id,
+                v_target_branch_id,
+                'preorder_fulfilled',
+                'Pre-orders Ready for Collection',
+                format(
+                    '%s unit(s) of "%s" are now in stock and satisfy outstanding pre-orders. Please contact the customers.',
+                    v_to_fulfill,
+                    v_product_name
+                ),
+                jsonb_build_object(
+                    'product_id',              v_received_item.product_id,
+                    'product_name',            v_product_name,
+                    'fulfilled_qty',           v_to_fulfill,
+                    'remaining_preorder_qty',  v_preorder_qty - v_to_fulfill,
+                    'po_id',                   v_po.id
+                )
+            );
+        END IF;
+
+    END LOOP;
+
+    -- Update PO timestamp
+    UPDATE purchase_orders SET updated_at = NOW() WHERE id = p_po_id;
+    SELECT * INTO v_po FROM purchase_orders WHERE id = p_po_id;
+    RETURN v_po;
+END;
+$$;
+
+-- End of 20260509000002_preorder_rpcs.sql
+
+
+-- File: 20260509000003_update_ecommerce_products_view.sql
+-- ============================================================
+-- Migration: Update ecommerce_products view for Pre-orders
+-- ============================================================
+-- Description: Adds allow_preorder, preorder_quantity, and 
+--              preorder_limit to the branch-level storefront view.
+--              Updated to use direct flags from branch_inventory.
+-- ============================================================
+
+DROP VIEW IF EXISTS ecommerce_products CASCADE;
+
+CREATE OR REPLACE VIEW ecommerce_products AS
+SELECT
+    -- Unique ID for the view (Product + Branch)
+    (p.id::text || '-' || bi.branch_id::text) as id,
+    p.id as product_id,
+    bi.tenant_id,
+    bi.branch_id,
+    b.name as branch_name,
+    b.address as branch_address,
+    p.name,
+    p.description,
+    p.category,
+    
+    -- Pricing from THIS specific branch
+    MIN(bi.selling_price) as selling_price,
+    MIN(bi.sale_price) as sale_price,
+    
+    p.image_url,
+    p.is_active,
+
+    -- Total stock in THIS specific branch
+    COALESCE(SUM(bi.stock_quantity), 0) as total_stock,
+
+    -- Pre-order fields aggregated across batches
+    bool_or(bi.allow_preorder) as allow_preorder,
+    COALESCE(SUM(bi.preorder_quantity), 0) as preorder_quantity,
+    MAX(bi.preorder_limit) as preorder_limit,
+
+    -- Promotional Flags (Direct from branch_inventory)
+    bool_or(bi.is_on_sale) as is_on_sale,
+    bool_or(bi.is_featured) as is_featured,
+    bool_or(bi.is_new_arrival) as is_new_arrival,
+    p."isPOM" as is_pom,
+
+    p.created_at,
+    p.updated_at,
+    
+    -- Catalog metadata
+    p.unit_of_measure,
+    p.product_type,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer
+FROM products p
+JOIN branch_inventory bi ON bi.product_id = p.id AND bi.is_active = true
+JOIN branches b ON bi.branch_id = b.id AND b.deleted_at IS NULL
+WHERE p._sync_is_deleted = false
+  AND p.is_active = TRUE
+GROUP BY
+    p.id,
+    bi.tenant_id,
+    bi.branch_id,
+    b.name,
+    b.address,
+    p.name,
+    p.description,
+    p.category,
+    p.image_url,
+    p.is_active,
+    p.created_at,
+    p.updated_at,
+    p."isPOM",
+    p.unit_of_measure,
+    p.product_type,
+    p.generic_name,
+    p.strength,
+    p.dosage_form,
+    p.manufacturer;
+
+-- End of 20260509000003_update_ecommerce_products_view.sql
+
+
+-- File: check_cols.sql
+DO $$
+DECLARE
+    col_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'branch_inventory' AND column_name = 'image_url'
+    ) INTO col_exists;
+    
+    IF NOT col_exists THEN
+        RAISE NOTICE 'image_url does not exist in branch_inventory';
+    ELSE
+        RAISE NOTICE 'image_url exists in branch_inventory';
+    END IF;
+END $$;
+
+-- End of check_cols.sql
 

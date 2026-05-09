@@ -242,6 +242,12 @@
 										Verified
 									</span>
 								{/if}
+								{#if (medic.active_chats_count || 0) > 0}
+									<span class="busy-badge">
+										<Clock class="w-2.5 h-2.5" />
+										Busy
+									</span>
+								{/if}
 							</div>
 
 							<!-- Card Body -->
@@ -284,7 +290,11 @@
 									Available
 								</div>
 								<div class="btn-row">
-									<a href="/medics/{medic.id}" class="btn btn--primary" style="background:{brandColor}">Book Now</a>
+									{#if medic.specialization === 'Pharmacist'}
+										<a href="/chat?serviceProvider={medic.user_id}" class="btn btn--primary" style="background:{brandColor}">Chat Now</a>
+									{:else}
+										<a href="/medics/{medic.id}" class="btn btn--primary" style="background:{brandColor}">Book Now</a>
+									{/if}
 								</div>
 							</div>
 						</article>
@@ -686,6 +696,20 @@
   padding: 2px 7px;
   border-radius: 999px;
   border: 1px solid #a7f3d0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.busy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid #fdba74;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }

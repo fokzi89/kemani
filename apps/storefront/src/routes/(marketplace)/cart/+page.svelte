@@ -4,7 +4,7 @@
 	import { ShoppingCart, Trash2, Plus, Minus, ArrowLeft, ShieldCheck, Truck, ArrowRight } from 'lucide-svelte';
 	import { isAuthenticated } from '$lib/stores/auth';
 	import { isAuthModalOpen } from '$lib/stores/ui';
-	import { cartStore, cartCount, cartSubtotal, cartServiceCharge } from '$lib/stores/cart.store';
+	import { cartStore, cartCount, cartSubtotal, cartServiceCharge, cartPrescriptionFee, isMixedCart, hasPreorderItems } from '$lib/stores/cart.store';
 
 	export let data;
 
@@ -31,7 +31,8 @@
 	$: tax = Math.round(subtotal * (taxRate / 100));
 
 	$: serviceCharge = $cartServiceCharge;
-	$: estimatedTotal = subtotal + tax + serviceCharge;
+	$: prescriptionFee = $cartPrescriptionFee;
+	$: estimatedTotal = subtotal + tax + serviceCharge + prescriptionFee;
 
 	async function proceedToCheckout() {
 		if ($cartStore.items.length === 0) return;
@@ -47,6 +48,7 @@
 			subtotal, 
 			tax, 
 			service_charge: serviceCharge,
+			prescription_fee: prescriptionFee,
 			delivery_fee: 0, 
 			total: estimatedTotal, 
 			order_type: 'delivery' 
@@ -84,6 +86,38 @@
 				<a href="/products" class="empty-cta">Start Shopping</a>
 			</div>
 		{:else}
+			{#if $hasPreorderItems}
+				<div class="mb-6 p-4 rounded-xl border flex items-start gap-3 {$isMixedCart ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200'}">
+					<div class="mt-0.5">
+						{#if $isMixedCart}
+							<div class="h-5 w-5 text-amber-500 bg-amber-100 rounded-full flex items-center justify-center">
+								<ShoppingCart class="w-3 h-3" />
+							</div>
+						{:else}
+							<div class="h-5 w-5 text-blue-500 bg-blue-100 rounded-full flex items-center justify-center">
+								<ShoppingCart class="w-3 h-3" />
+							</div>
+						{/if}
+					</div>
+					<div>
+						<h4 class="text-sm font-bold {$isMixedCart ? 'text-amber-800' : 'text-blue-800'}">
+							{#if $isMixedCart}
+								Mixed Cart Notice
+							{:else}
+								Pre-Order Notice
+							{/if}
+						</h4>
+						<p class="text-xs mt-1 {$isMixedCart ? 'text-amber-700' : 'text-blue-700'}">
+							{#if $isMixedCart}
+								Your cart contains both in-stock items and pre-orders. To ensure you receive available items quickly, we will split this into two separate orders during checkout.
+							{:else}
+								Your cart contains pre-order items. We will notify you when these items become available for fulfillment.
+							{/if}
+						</p>
+					</div>
+				</div>
+			{/if}
+
 			<div class="cart-layout">
 
 				<!-- LEFT: Items -->
@@ -116,7 +150,14 @@
 								<!-- Item info -->
 								<div class="item-body">
 									<div class="item-top">
-										<span class="item-name">{item.product_name}</span>
+										<span class="item-name">
+											{item.product_name}
+											{#if item.is_preorder}
+												<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 uppercase tracking-wider">
+													Pre-Order
+												</span>
+											{/if}
+										</span>
 										<span class="item-price" style="color:{brandColor};">
 											₦{(item.price * item.quantity).toLocaleString()}
 										</span>
@@ -173,6 +214,12 @@
 								<span class="row-label">Transaction Fee</span>
 								<span class="row-val">₦{serviceCharge.toLocaleString()}</span>
 							</div>
+							{#if prescriptionFee > 0}
+								<div class="summary-row">
+									<span class="row-label">Consultation Commission</span>
+									<span class="row-val">₦{prescriptionFee.toLocaleString()}</span>
+								</div>
+							{/if}
 						</div>
 
 						<div class="summary-divider"></div>

@@ -454,7 +454,7 @@
 			</div>
 		{/if}
 
-		<div class="bg-white rounded-xl border p-5">
+		<div class="bg-white rounded-xl border p-5 space-y-3">
 			<label class="flex items-center gap-3 cursor-pointer">
 				<input type="checkbox" bind:checked={form.is_active} class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" />
 				<span class="text-sm font-medium text-gray-700">Product is active and visible in catalog</span>

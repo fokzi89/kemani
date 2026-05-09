@@ -8,8 +8,10 @@
 
 	// ── State ─────────────────────────────────────────────────────────────────
 	let tenantId       = $state('');
+	let pharmacistMode = $state('Inhouse');
 	let loading        = $state(true);
-	let view           = $state<'list' | 'picker'>('list'); // slide panel state
+	let view           = $state<'list' | 'picker'>('list'); 
+	let activeTab      = $state<'pharmacist' | 'doctor'>('pharmacist');
 
 	// Alias list
 	let aliases        = $state<any[]>([]);
@@ -37,19 +39,38 @@
 		const { data: { session } } = await supabase.auth.getSession();
 		if (!session) { loading = false; return; }
 		const { data: user } = await supabase.from('users').select('tenant_id').eq('id', session.user.id).single();
+		const { data: tenant } = await supabase.from('tenants').select('pharmacist_mode').eq('id', user.tenant_id).single();
 		if (user?.tenant_id) {
 			tenantId = user.tenant_id;
+			pharmacistMode = tenant?.pharmacist_mode || 'Inhouse';
+			
+			// Default to doctor tab if pharmacist mode is Inhouse
+			if (pharmacistMode === 'Inhouse') {
+				activeTab = 'doctor';
+			}
+			
 			await loadAliases();
 		}
 		loading = false;
 	});
 
 	async function loadAliases() {
-		const { data, error } = await supabase
+		let query = supabase
 			.from('doctor_aliases_with_details')
 			.select('*')
-			.eq('tenant_partner', tenantId)
-			.order('alias_id', { ascending: false });
+			.eq('tenant_partner', tenantId);
+
+		// Try ordering by created_at, fallback to id if missing (though DB should have it now)
+		const { data, error } = await query.order('created_at', { ascending: false, nullsFirst: false });
+		
+		if (error && error.message.includes('created_at')) {
+			console.warn("created_at column missing in view, falling back to id sort");
+			const { data: fallbackData, error: fallbackError } = await query.order('id');
+			if (fallbackError) { aliasError = fallbackError.message; return; }
+			aliases = fallbackData ?? [];
+			return;
+		}
+
 		if (error) { aliasError = error.message; return; }
 		aliases = data ?? [];
 	}
@@ -64,12 +85,26 @@
 
 		// Fetch providers not already aliased for this tenant
 		const existingIds = aliases.map(a => a.doctor_id);
-		const { data, error } = await supabase
+		let query = supabase
 			.from('healthcare_providers')
-			.select('id, full_name, specialization, sub_specialty, profile_photo_url, average_rating, is_verified')
-			.order('full_name');
+			.select('id, full_name, specialization, sub_specialty, profile_photo_url, average_rating, is_verified');
+		
+		if (activeTab === 'pharmacist') {
+			query = query.eq('specialization', 'Pharmacist');
+		} else {
+			query = query.neq('specialization', 'Pharmacist');
+		}
+
+		const { data, error } = await query.order('full_name');
+			
 		if (!error) {
-			providers = (data ?? []).filter(p => !existingIds.includes(p.id));
+			let filtered = data ?? [];
+			if (activeTab === 'pharmacist') {
+				filtered = filtered.filter(p => p.specialization === 'Pharmacist');
+			} else {
+				filtered = filtered.filter(p => p.specialization !== 'Pharmacist');
+			}
+			providers = filtered.filter(p => !existingIds.includes(p.id));
 		}
 		providerLoading = false;
 	}
@@ -127,39 +162,61 @@
 		<!-- Header -->
 		<div class="mp-header">
 			<div>
-				<h1 class="mp-title"><Stethoscope class="h-5 w-5 text-indigo-500" /> Medic Partners</h1>
-				<p class="mp-sub">Healthcare providers partnered with your pharmacy</p>
+				<h1 class="mp-title"><Stethoscope class="h-5 w-5 text-indigo-500" /> {activeTab === 'pharmacist' ? 'Freelance Pharmacist' : 'Partner Doctors'}</h1>
+				{#if activeTab === 'pharmacist'}
+					<p class="mp-sub">Medic get 5.5% (4.5% payout + 1% platform) prescription fee</p>
+				{:else}
+					<p class="mp-sub">Medic get 5.5% (4.5% payout + 1% platform) prescription fee. <br/> <strong class="text-indigo-600">Tenant gets 10% of consultation fee.</strong></p>
+				{/if}
 			</div>
 			<button onclick={openPicker} class="mp-add-btn">
-				<Plus class="h-4 w-4" /> Add Doctor
+				<Plus class="h-4 w-4" /> Add {activeTab === 'pharmacist' ? 'Pharmacist' : 'Doctor'}
 			</button>
 		</div>
+
+		<!-- Tabs -->
+		{#if pharmacistMode !== 'Inhouse'}
+			<div class="mp-tabs">
+				<button 
+					class="mp-tab {activeTab === 'pharmacist' ? 'mp-tab--active' : ''}" 
+					onclick={() => { activeTab = 'pharmacist'; loadAliases(); }}
+				>
+					Freelance Pharmacist
+				</button>
+				<button 
+					class="mp-tab {activeTab === 'doctor' ? 'mp-tab--active' : ''}" 
+					onclick={() => { activeTab = 'doctor'; loadAliases(); }}
+				>
+					Doctors
+				</button>
+			</div>
+		{/if}
 
 		{#if loading}
 			<div class="mp-loader"><div class="mp-spinner"></div></div>
 		{:else if aliasError}
 			<div class="mp-alert-err"><AlertCircle class="h-4 w-4" /> {aliasError}</div>
-		{:else if aliases.length === 0}
+		{:else if aliases.filter(a => activeTab === 'pharmacist' ? a.specialization === 'Pharmacist' : a.specialization !== 'Pharmacist').length === 0}
 			<!-- Empty state -->
 			<div class="mp-empty">
 				<div class="mp-empty-icon"><Users class="h-10 w-10 text-indigo-300" /></div>
-				<h3 class="mp-empty-title">No partners yet</h3>
-				<p class="mp-empty-sub">Invite healthcare providers to partner with your pharmacy. They'll appear on your storefront once they accept.</p>
+				<h3 class="mp-empty-title">No {activeTab}s yet</h3>
+				<p class="mp-empty-sub">Invite {activeTab}s to partner with your pharmacy. They'll appear on your storefront once they accept.</p>
 				<button onclick={openPicker} class="mp-add-btn mt-4">
-					<Plus class="h-4 w-4" /> Invite your first partner
+					<Plus class="h-4 w-4" /> Invite your first {activeTab}
 				</button>
 			</div>
 		{:else}
 			<!-- Alias list -->
 			<div class="mp-list">
-				{#each aliases as alias}
+				{#each aliases.filter(a => activeTab === 'pharmacist' ? a.specialization === 'Pharmacist' : a.specialization !== 'Pharmacist') as alias}
 					<div class="mp-card">
 						<!-- Avatar -->
 						{#if alias.profile_photo_url}
-							<img src={alias.profile_photo_url} alt={alias.actual_name} class="mp-avatar-img" />
+							<img src={alias.profile_photo_url} alt={alias.doctor_name} class="mp-avatar-img" />
 						{:else}
-							<div class="mp-avatar {avatarColor(alias.actual_name ?? '')}">
-								{initials(alias.actual_name ?? alias.display_name ?? '?')}
+							<div class="mp-avatar {avatarColor(alias.doctor_name ?? '')}">
+								{initials(alias.doctor_name ?? alias.display_name ?? '?')}
 							</div>
 						{/if}
 						<!-- Info -->
@@ -332,7 +389,23 @@
 	font-size: 1.25rem; font-weight: 800; color: #111827;
 	display: flex; align-items: center; gap: 0.5rem;
 }
-.mp-sub { font-size: 0.8125rem; color: #6b7280; margin-top: 0.1rem; }
+.mp-sub { font-size: 0.8125rem; color: #6b7280; margin-top: 0.1rem; font-weight: 500; }
+
+/* Tabs */
+.mp-tabs {
+	display: flex; gap: 1rem; padding: 0.75rem 1.5rem;
+	background: #fff; border-bottom: 1px solid #e5e7eb;
+}
+.mp-tab {
+	padding: 0.5rem 1rem; border: none; background: transparent;
+	font-size: 0.875rem; font-weight: 600; color: #6b7280;
+	cursor: pointer; position: relative; transition: color 0.2s;
+}
+.mp-tab--active { color: #4f46e5; }
+.mp-tab--active::after {
+	content: ''; position: absolute; bottom: -0.75rem; left: 0; right: 0;
+	height: 2px; background: #4f46e5;
+}
 
 /* Buttons */
 .mp-add-btn {

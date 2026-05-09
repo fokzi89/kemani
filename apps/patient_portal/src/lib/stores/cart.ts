@@ -12,6 +12,7 @@ export interface CartItem {
     quantity: number;
     image_url?: string;
     unit_of_measure?: string;
+    is_preorder?: boolean;
 }
 
 interface CartStore {
@@ -63,7 +64,8 @@ export const cartStore = {
                     price: product.unit_price,
                     quantity: quantity,
                     image_url: product.image_url,
-                    unit_of_measure: product.unit_of_measure
+                    unit_of_measure: product.unit_of_measure,
+                    is_preorder: product.is_preorder || false
                 });
             }
 
@@ -106,4 +108,16 @@ export const cartStore = {
 
 // Derived stores
 export const cartTotalItems = derived(cart, $cart => $cart.items.length);
-export const cartTotalPrice = derived(cart, $cart => $cart.items.reduce((acc, item) => acc + (item.price * item.quantity), 0));
+export const cartSubtotal = derived(cart, $cart => {
+    return $cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+});
+
+export const hasPreorderItems = derived(cart, $cart => {
+    return $cart.items.some(item => item.is_preorder);
+});
+
+export const isMixedCart = derived(cart, $cart => {
+    const hasPreorder = $cart.items.some(item => item.is_preorder);
+    const hasPhysical = $cart.items.some(item => !item.is_preorder);
+    return hasPreorder && hasPhysical;
+});

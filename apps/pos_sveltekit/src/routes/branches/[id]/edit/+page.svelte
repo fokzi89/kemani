@@ -21,7 +21,9 @@
 		currency: 'NGN',
 		phone: '',
 		latitude: '',
-		longitude: ''
+		longitude: '',
+		drug_markup: 30,
+		supermarket_markup: 20
 	});
 
 	let countries = $state<any[]>([]);
@@ -84,7 +86,9 @@
 				currency: data.currency || 'NGN',
 				phone: data.phone || '',
 				latitude: data.latitude ? String(data.latitude) : '',
-				longitude: data.longitude ? String(data.longitude) : ''
+				longitude: data.longitude ? String(data.longitude) : '',
+				drug_markup: data.drug_markup || 30,
+				supermarket_markup: data.supermarket_markup || 20
 			};
 		}
 		loading = false;
@@ -124,6 +128,8 @@
 				latitude: form.latitude ? parseFloat(form.latitude) : null,
 				longitude: form.longitude ? parseFloat(form.longitude) : null,
 				phone: form.phone,
+				drug_markup: form.drug_markup,
+				supermarket_markup: form.supermarket_markup,
 				updated_at: new Date().toISOString()
 			}).eq('id', branchId);
 			if (dbErr) throw dbErr;

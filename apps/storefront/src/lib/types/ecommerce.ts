@@ -97,6 +97,9 @@ export interface MarketplaceProduct {
   image_url?: string;
   stock_quantity: number;
   is_available: boolean;
+  allow_preorder?: boolean;
+  preorder_quantity?: number;
+  preorder_limit?: number | null;
   business_name?: string;
   rating?: number; // Optional display rating (0–5), not stored in DB
   generic_name?: string;

@@ -10,6 +10,9 @@ export interface CartItem {
 	inventory_id?: string;
 	stock_available?: number;
 	sku?: string;
+	prescription_id?: string;
+	is_freelance_prescription?: boolean;
+	is_preorder?: boolean;
 }
 
 export interface Cart {
@@ -153,7 +156,31 @@ export const cartServiceCharge = derived(cartSubtotal, $subtotal =>
 	calculateServiceCharge($subtotal)
 );
 
-export const cartTotal = derived(
-	[cartSubtotal, cartTax, cartServiceCharge],
-	([$subtotal, $tax, $serviceCharge]) => $subtotal + $tax + $serviceCharge
+export const cartPrescriptionFee = derived(cartStore, $cart =>
+	$cart.items.reduce((sum, item) => {
+		if (item.prescription_id && item.is_freelance_prescription) {
+			return sum + (item.price * item.quantity * 0.055);
+		}
+		return sum;
+	}, 0)
 );
+
+export const cartTotal = derived(
+	[cartSubtotal, cartTax, cartServiceCharge, cartPrescriptionFee],
+	([$subtotal, $tax, $serviceCharge, $prescriptionFee]) => $subtotal + $tax + $serviceCharge + $prescriptionFee
+);
+
+// Pre-order helpers
+export const hasPreorderItems = derived(cartStore, $cart =>
+	$cart.items.some(i => i.is_preorder === true)
+);
+
+export const hasPhysicalItems = derived(cartStore, $cart =>
+	$cart.items.some(i => !i.is_preorder)
+);
+
+export const isMixedCart = derived(cartStore, $cart => {
+	const hasPhysical = $cart.items.some(i => !i.is_preorder);
+	const hasPreorder = $cart.items.some(i => i.is_preorder === true);
+	return hasPhysical && hasPreorder;
+});

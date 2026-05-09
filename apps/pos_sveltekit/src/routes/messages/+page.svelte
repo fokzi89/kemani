@@ -5,8 +5,10 @@
 	import {
 		ArrowLeft, Building2, ChevronDown, ChevronRight, Image, FileAudio, FileText,
 		MessageSquare, Mic, Package, Paperclip, RefreshCw, Search, Send,
-		ShoppingCart, Smile, Stethoscope, UserRound, Video, X
+		ShoppingCart, Smile, Stethoscope, UserRound, Video, X, Plus,
+		User as UserIcon, Send as SendIcon, CheckCircle2
 	} from 'lucide-svelte';
+	import StaffPickerModal from '$lib/components/StaffPickerModal.svelte';
 
 	// ── Real Data State ───────────────────────────────────────────────────────
 	let branches: any[] = $state([]);
@@ -31,6 +33,7 @@
 	let activeConvId: string | null = $state(null);
 	let messageText: string = $state('');
 	let sending: boolean = $state(false);
+	let showStaffPicker: boolean = $state(false);
 
 	// Mobile: 'list' | 'chat'
 	let mobileView: 'list'|'chat' = $state('list');
@@ -79,37 +82,66 @@
 
 	// Lifecycle
 	onMount(async () => {
-		const { data: { session } } = await supabase.auth.getSession();
-		if (!session) return;
-		
-		staffId = session.user.id;
-		
-		// Load user context (tenant/branch)
-		const { data: userData } = await supabase.from('users')
-			.select('tenant_id, branch_id, full_name, avatar_url, canCreatePrescription, canApplyDiscount, canReferDoctor')
-			.eq('id', staffId)
-			.single();
-			
-		if (userData) {
-			tenantId = userData.tenant_id;
-			currentBranchId = userData.branch_id;
-			staffName = userData.full_name;
-			staffPic = userData.avatar_url || '';
-			canPrescribe = userData.canCreatePrescription;
-			canApplyDiscount = userData.canApplyDiscount;
-			canReferDoctor = userData.canReferDoctor;
-		}
+		console.log('[Messages] Initializing...');
+		// Fail-safe: stop loading after 8 seconds no matter what
+		const loadingTimeout = setTimeout(() => {
+			if (loading) {
+				console.warn('[Messages] Initialization timed out. Forcing loading to false.');
+				loading = false;
+			}
+		}, 8000);
 
-		if (tenantId) {
-			await Promise.all([
-				loadBranches(),
-				loadConversations(),
-				loadProducts(),
-				loadDoctors()
-			]);
+		try {
+			const { data: { session } } = await supabase.auth.getSession();
+			if (!session) { 
+				console.warn('[Messages] No session found');
+				loading = false; 
+				return; 
+			}
+			
+			staffId = session.user.id;
+			console.log('[Messages] User ID:', staffId);
+			
+			// Load user context (tenant/branch)
+			const { data: userData, error: userError } = await supabase.from('users')
+				.select('tenant_id, branch_id, full_name, avatar_url, canCreatePrescription, canApplyDiscount, canReferDoctor')
+				.eq('id', staffId)
+				.single();
+			
+			if (userError) {
+				console.error('[Messages] User data fetch error:', userError);
+				throw userError;
+			}
+				
+			if (userData) {
+				tenantId = userData.tenant_id;
+				currentBranchId = userData.branch_id;
+				staffName = userData.full_name;
+				staffPic = userData.avatar_url || '';
+				canPrescribe = userData.canCreatePrescription;
+				canApplyDiscount = userData.canApplyDiscount;
+				canReferDoctor = userData.canReferDoctor;
+				console.log('[Messages] Tenant ID:', tenantId);
+			}
+
+			if (tenantId) {
+				console.log('[Messages] Loading background data...');
+				await Promise.all([
+					loadBranches().catch(e => console.error('loadBranches fail', e)),
+					loadConversations().catch(e => console.error('loadConversations fail', e)),
+					loadDoctors().catch(e => console.error('loadDoctors fail', e))
+				]);
+				console.log('[Messages] Background data loaded');
+			} else {
+				console.warn('[Messages] No tenant ID found for user');
+			}
+		} catch (err) {
+			console.error('[Messages] Init error:', err);
+		} finally {
+			clearTimeout(loadingTimeout);
+			loading = false;
+			console.log('[Messages] Init complete, loading = false');
 		}
-		
-		loading = false;
 	});
 
 	onDestroy(() => {
@@ -123,11 +155,9 @@
 	}
 
 	async function loadConversations() {
-		if (!tenantId) {
-			console.warn('[Messages] Cannot load conversations: tenantId is missing');
-			return;
-		}
+		if (!tenantId) return;
 		
+		console.log('[Messages] Loading conversations for tenant:', tenantId);
 		const { data, error } = await supabase.from('chat_conversations')
 			.select('*, branches(name)')
 			.eq('tenant_id', tenantId)
@@ -137,47 +167,166 @@
 			console.error('[Messages] Failed to load conversations:', error);
 			return;
 		}
+
+		// Collect unique user IDs we need to resolve (internal chat participants)
+		const userIds = new Set<string>();
+		(data || []).forEach(c => {
+			if (c.chatType === 'Internal') {
+				if (c.service_provider) userIds.add(c.service_provider);
+				if (c.recipient_id)     userIds.add(c.recipient_id);
+			}
+		});
+
+		// Batch-fetch user profiles if needed (filter out null/invalid IDs)
+		let userMap: Record<string, { full_name: string; avatar_url: string | null }> = {};
+		const validIds = [...userIds].filter(id => id && id.length > 10); // Simple UUID check
 		
-		conversations = (data || []).map(c => ({
-			...c,
-			customer_name: c.customer_name || 'Anonymous',
-			customer_pic: c.customer_pic || null,
-			branch_name: c.branches?.name || 'Unknown'
-		}));
+		if (validIds.length > 0) {
+			console.log('[Messages] Resolving internal participants:', validIds.length);
+			const { data: users, error: uError } = await supabase.from('users')
+				.select('id, full_name, avatar_url')
+				.in('id', validIds);
+			
+			if (!uError && users) {
+				users.forEach(u => { userMap[u.id] = u; });
+			}
+		}
+		
+		conversations = (data || []).map(c => {
+			let name = c.customer_name || 'Anonymous';
+			let pic = c.customer_pic || null;
+
+			if (c.chatType === 'Internal') {
+				const isMeProvider = c.service_provider === staffId;
+				const otherId = isMeProvider ? c.recipient_id : c.service_provider;
+				const other = otherId ? userMap[otherId] : null;
+				name = other?.full_name || 'Team Member';
+				pic = other?.avatar_url || null;
+			}
+
+			return {
+				...c,
+				customer_name: name,
+				customer_pic: pic,
+				branch_name: c.branches?.name || 'Tenant Wide'
+			};
+		});
+		console.log('[Messages] Loaded conversations:', conversations.length);
 	}
 
-	async function loadProducts() {
+	async function loadProducts(reset = false) {
 		if (!tenantId) return;
-		// Use branch_inventory which has everything pre-joined for POS
-		const { data } = await supabase.from('branch_inventory')
-			.select('id, product_id, product_name, category_name, selling_price, stock_quantity, sku')
-			.eq('tenant_id', tenantId)
-			.eq('branch_id', currentBranchId)
-			.gt('stock_quantity', 0);
 		
-		products = (data || []).map(row => ({
-			id: row.product_id,
-			name: row.product_name,
-			category: row.category_name || 'General',
-			price: row.selling_price || 0,
-			stock: row.stock_quantity || 0,
-			sku: row.sku,
-			isPOM: false // Simplified, could join with products if needed
-		}));
+		const branchToUse = currentBranchId || activeConv?.branch_id;
+		if (!branchToUse) return;
+
+		// Skip if already loading a background page
+		if (loadingProducts && !reset) return;
+
+		if (reset) {
+			productPage = 0;
+			isMoreProducts = true;
+		}
+
+		if (!isMoreProducts) return;
+
+		loadingProducts = true;
+		try {
+			const pageSize = 10;
+			const from = productPage * pageSize;
+			const to = from + pageSize - 1;
+
+			let query = supabase.from('branch_inventory')
+				.select('id, product_id, product_name, product_type, selling_price, stock_quantity, sku, isPOM')
+				.eq('tenant_id', tenantId)
+				.eq('branch_id', branchToUse)
+				.gt('stock_quantity', 0)
+				.eq('is_active', true)
+				.order('product_name', { ascending: true })
+				.range(from, to);
+
+			const s = productSearch.trim();
+			if (s) {
+				query = query.or(`product_name.ilike.%${s}%,product_type.ilike.%${s}%,sku.ilike.%${s}%`);
+			}
+			
+			const { data, error } = await query;
+			if (error) throw error;
+
+			const mapped = (data || []).map(row => ({
+				id: row.product_id,
+				inventory_id: row.id,
+				name: row.product_name || 'Unnamed Product',
+				category: row.product_type || 'General',
+				price: row.selling_price || 0,
+				stock: row.stock_quantity || 0,
+				sku: row.sku,
+				isPOM: row.isPOM || false
+			}));
+
+			if (reset) {
+				products = mapped;
+			} else {
+				const existingIds = new Set(products.map(p => p.id));
+				const newItems = mapped.filter(p => !existingIds.has(p.id));
+				products = [...products, ...newItems];
+			}
+
+			isMoreProducts = mapped.length === pageSize;
+			productPage++;
+		} catch (err) {
+			console.error('[Messages] loadProducts error:', err);
+		} finally {
+			loadingProducts = false;
+		}
+	}
+
+	async function openProductPicker() {
+		showProductPicker = true;
+		showAttachTray = false;
+		productSearch = '';
+		await loadProducts(true);
 	}
 
 	async function loadDoctors() {
 		if (!tenantId) return;
-		const { data } = await supabase.from('healthcare_providers')
-			.select('id, full_name, specialization, profile_photo_url')
-			.order('full_name');
-		
-		doctors = (data || []).map(d => ({
-			id: d.id,
-			name: d.full_name || 'Dr. Unknown',
-			specialization: d.specialization || 'General',
-			avatar: d.profile_photo_url
-		}));
+		try {
+			// Fetch from doctor_aliases which links this tenant to partner doctors
+			const { data, error } = await supabase.from('doctor_aliases')
+				.select(`
+					id,
+					alias,
+					doctor_id,
+					accepted,
+					healthcare_providers!doctor_id (
+						specialization,
+						profile_photo_url
+					)
+				`)
+				.eq('tenant_partner', tenantId)
+				.eq('is_active', true)
+				.eq('accepted', true)
+				.order('alias');
+			
+			if (error) throw error;
+
+			doctors = (data || []).map(da => ({
+				id: da.doctor_id,
+				alias_id: da.id,
+				name: da.alias,
+				specialization: da.healthcare_providers?.specialization || 'General',
+				avatar: da.healthcare_providers?.profile_photo_url
+			}));
+		} catch (err) {
+			console.error('[Messages] loadDoctors error:', err);
+		}
+	}
+
+	async function openDoctorPicker() {
+		showDoctorPicker = true;
+		showAttachTray = false;
+		doctorSearchQuery = '';
+		await loadDoctors();
 	}
 
 	// ── Rich composer state ────────────────────────────────────────────────────
@@ -188,7 +337,18 @@
 	// Product picker
 	let showProductPicker: boolean = $state(false);
 	let productSearch: string = $state('');
+	let searchTimeout: any = null;
+	function handleSearchInput() {
+		if (searchTimeout) clearTimeout(searchTimeout);
+		searchTimeout = setTimeout(() => {
+			loadProducts(true);
+		}, 400);
+	}
+	let productPage: number = $state(0);
+	let isMoreProducts: boolean = $state(true);
+	let loadingProducts: boolean = $state(false);
 	let pendingDiscounts: Record<string, number> = $state({});
+	let previewImageUrl: string | null = $state(null);
 
 	// Doctor Referral
 	let showDoctorPicker: boolean = $state(false);
@@ -202,19 +362,14 @@
 			: doctors
 	);
 
-	// Filter by POM access AND search query
+	// Filter by POM access
 	let visibleProducts = $derived(
 		canPrescribe
 			? products       // show all including POM
 			: products.filter(p => !p.isPOM)  // hide POM products
 	);
-	let filteredProducts = $derived(
-		productSearch
-			? visibleProducts.filter(p =>
-					p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-					p.category.toLowerCase().includes(productSearch.toLowerCase()))
-			: visibleProducts
-	);
+	// Search is handled server-side
+	let filteredProducts = $derived(visibleProducts);
 
 	function discountedPrice(price: number, discountPct: number): number {
 		return Math.round(price * (1 - discountPct / 100));
@@ -419,10 +574,45 @@
 		if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 	}
 
-	function referDoctor(doc: any) {
-		sendMessage({ doctor: { ...doc } });
+	async function referDoctor(doc: any) {
+		await sendMessage({
+			attachment_type: 'referral',
+			attachment_name: doc.name,
+			message_text: `Doctor Referral: ${doc.name}`,
+			doctor: { ...doc }
+		});
 		showDoctorPicker = false;
 		doctorSearchQuery = '';
+	}
+
+	async function closeChat() {
+		if (!activeConvId) return;
+		if (!confirm('Are you sure you want to close this conversation?')) return;
+
+		try {
+			sending = true;
+			// 1. Send system message first
+			await sendMessage({
+				attachment_type: 'system',
+				message_text: 'Conversation ended by staff.'
+			});
+
+			// 2. Update status in database
+			const { error } = await supabase
+				.from('conversations')
+				.update({ status: 'closed', updated_at: new Date().toISOString() })
+				.eq('id', activeConvId);
+
+			if (error) throw error;
+
+			// 3. UI feedback
+			activeConvId = null;
+		} catch (err) {
+			console.error('Failed to close chat:', err);
+			alert('Failed to close the conversation.');
+		} finally {
+			sending = false;
+		}
 	}
 
 	// ── Voice recording ────────────────────────────────────────────────────────
@@ -485,6 +675,8 @@
 						alert('Failed to send voice note.');
 					} finally {
 						sending = false;
+						// Stop all tracks to release the microphone
+						stream.getTracks().forEach(track => track.stop());
 					}
 				};
 				
@@ -547,7 +739,7 @@
 	// ── Product picker ─────────────────────────────────────────────────────────
 	async function shareProduct(product: any) {
 		const discPct = pendingDiscounts[product.id] ?? 0;
-		const finalPrice = discPct > 0 ? discountedPrice(product.unit_price, discPct) : product.unit_price;
+		const finalPrice = discPct > 0 ? discountedPrice(product.price, discPct) : product.price;
 		
 		await sendMessage({
 			attachment_type: 'product',
@@ -558,7 +750,7 @@
 
 		showProductPicker = false;
 		productSearch = '';
-		pendingDiscounts = {};  // clear discounts after sharing
+		pendingDiscounts = {}; 
 	}
 
 	// ── Helpers ────────────────────────────────────────────────────────────────
@@ -597,6 +789,40 @@
 			messagesEndEl.scrollIntoView({ behavior: 'smooth' });
 		}
 	}
+
+	async function startInternalChat(staff: any) {
+		// 1. Check if chat already exists
+		const existing = conversations.find(c => 
+			c.chatType === 'Internal' && 
+			((c.service_provider === staffId && c.recipient_id === staff.id) || 
+			 (c.service_provider === staff.id && c.recipient_id === staffId))
+		);
+
+		if (existing) {
+			await selectConv(existing.id);
+			showStaffPicker = false;
+			return;
+		}
+
+		// 2. Create new internal chat
+		const { data, error } = await supabase.from('chat_conversations')
+			.insert({
+				tenant_id: tenantId,
+				chatType: 'Internal',
+				service_provider: staffId,
+				recipient_id: staff.id,
+				status: 'active',
+				started_at: new Date().toISOString()
+			})
+			.select()
+			.single();
+
+		if (!error && data) {
+			await loadConversations();
+			await selectConv(data.id);
+		}
+		showStaffPicker = false;
+	}
 </script>
 
 <svelte:head><title>Messages – Kemani POS</title></svelte:head>
@@ -633,7 +859,16 @@
 					Messages
 					<span class="conv-badge">{conversations.filter(c => c.status === 'active' || c.status === 'open').length}</span>
 				</h1>
-				<button class="icon-btn" title="Refresh"><RefreshCw class="h-4 w-4" /></button>
+				<div class="flex items-center gap-2">
+					<button 
+						onclick={() => showStaffPicker = true}
+						class="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors"
+						title="New Team Chat"
+					>
+						<Plus class="h-4 w-4" />
+					</button>
+					<button class="icon-btn" title="Refresh" onclick={loadConversations}><RefreshCw class="h-4 w-4" /></button>
+				</div>
 			</div>
 
 			<!-- Search -->
@@ -696,7 +931,9 @@
 						<div class="conv-body">
 							<div class="conv-row">
 								<span class="conv-name">{conv.customer_name}</span>
-								<span class="conv-time">{relativeTime(conv.lastMsg?.created_at || conv.started_at)}</span>
+								<span class="conv-type {conv.chatType === 'Consultation' ? 'text-rose-600' : conv.chatType === 'Internal' ? 'text-indigo-600' : 'text-gray-500'}">
+									{conv.chatType === 'Internal' ? 'Team' : (conv.consultation_code || conv.chatType || 'Inquiry')}
+								</span>
 							</div>
 							<div class="conv-meta">
 								<span>{conv.branch_name}</span>
@@ -730,7 +967,7 @@
 						</div>
 
 						<div class="product-search-wrap">
-							<Search class="product-search-pill-icon" />
+							<Search class="product-search-icon" />
 							<input
 								bind:value={doctorSearchQuery}
 								placeholder="Search by specialty or name…"
@@ -738,23 +975,36 @@
 							/>
 						</div>
 
-						<div class="product-grid">
+						<div class="product-list">
 							{#each filteredDoctors as doc}
-								<button class="product-row-wrap" style="width: 100%; text-align: left;" onclick={() => referDoctor(doc)}>
-									<div class="product-row">
-										<div class="product-row-img-wrap" style="background: #f5f5ff">
-											<UserRound class="h-5 w-5 text-indigo-400" />
+								<div class="product-row-wrap">
+									<button class="product-row" onclick={() => referDoctor(doc)}>
+										<div class="product-row-icon">
+											<div class="ref-avatar small">
+												{#if doc.avatar}
+													<img src={doc.avatar} alt={doc.name} />
+												{:else}
+													<UserRound class="h-5 w-5 opacity-40" />
+												{/if}
+											</div>
 										</div>
 										<div class="product-row-body">
 											<p class="product-row-name">{doc.name}</p>
 											<p class="product-row-meta">{doc.specialization}</p>
 										</div>
-										<ChevronRight class="h-4 w-4 text-gray-300" />
-									</div>
-								</button>
+										<div class="product-add-btn-wrap">
+											<div class="product-add-btn ref-btn">
+												<Plus class="h-5 w-5" />
+											</div>
+										</div>
+									</button>
+								</div>
 							{/each}
 							{#if filteredDoctors.length === 0}
-								<div class="p-12 text-center text-gray-400 text-sm">No doctors found matching "{doctorSearchQuery}"</div>
+								<div class="empty-products">
+									<Stethoscope class="h-8 w-8 opacity-20 mb-2" />
+									<p>No doctors found matching "{doctorSearchQuery}"</p>
+								</div>
 							{/if}
 						</div>
 					</div>
@@ -807,8 +1057,8 @@
 					</div>
 				</div>
 
-				{#if activeConv.status === 'active'}
-					<button class="close-chat-btn">Close Chat</button>
+				{#if activeConv.status !== 'closed'}
+					<button onclick={closeChat} class="close-chat-btn">Close Chat</button>
 				{/if}
 			</div>
 
@@ -838,18 +1088,15 @@
 							</div>
 						{/if}
 						<div class="bubble-col {isStaff ? 'items-end' : 'items-start'}">
-							<!-- Voice note -->
-							{#if mediaType === 'voice' || (mediaType === 'audio' && msg.voice_duration)}
-								<div class="bubble bubble-voice {isStaff ? 'bubble--staff' : 'bubble--customer'}">
-									<div class="voice-bubble">
-										<div class="voice-play-btn">▶</div>
-										<div class="voice-waveform">
-											{#each Array(18) as _, wi}
-												<span class="voice-bar" style="height:{8 + Math.sin(wi * 1.3) * 10 + Math.random() * 6}px"></span>
-											{/each}
-										</div>
-										<span class="voice-dur">{mediaName?.match(/\((.+)\)/)?.[1] ?? '0:00'}</span>
+							<!-- Voice note / Audio -->
+							{#if mediaType === 'voice' || mediaType === 'audio'}
+								<div class="bubble {isStaff ? 'bubble--staff' : 'bubble--customer'}">
+									<div class="audio-player-wrap">
+										<audio controls src={mediaUrl} class="native-audio"></audio>
 									</div>
+									{#if msg.voice_duration}
+										<p class="audio-meta">Voice Note · {formatDuration(msg.voice_duration)}</p>
+									{/if}
 								</div>
 							<!-- Video -->
 							{:else if mediaType === 'video'}
@@ -860,15 +1107,10 @@
 							<!-- Image -->
 							{:else if mediaType === 'image'}
 								<div class="bubble bubble-media {isStaff ? 'bubble--staff' : 'bubble--customer'}">
-									<img src={mediaUrl} alt={mediaName} class="media-img" />
+									<button onclick={() => previewImageUrl = mediaUrl} class="image-preview-trigger">
+										<img src={mediaUrl} alt={mediaName} class="media-img" />
+									</button>
 									<p class="media-name">{mediaName}</p>
-								</div>
-							<!-- Audio file -->
-							{:else if mediaType === 'audio'}
-								<div class="bubble {isStaff ? 'bubble--staff' : 'bubble--customer'}">
-									<div class="audio-player mb-2">
-										<audio controls src={mediaUrl} class="max-w-[350px] h-10 outline-none rounded-full"></audio>
-									</div>
 								</div>
 							<!-- PDF -->
 							{:else if mediaType === 'pdf' || mediaType === 'file'}
@@ -898,7 +1140,7 @@
 											</div>
 										</div>
 									</div>
-									<button class="product-order-btn"><ShoppingCart class="h-3 w-3" /> Order Now</button>
+									<!-- Order button hidden for staff -->
 								</div>
 							<!-- Referral card -->
 							{:else if msg.attachment_type === 'referral'}
@@ -927,6 +1169,11 @@
 										</button>
 									</div>
 								</div>
+							<!-- System message -->
+							{:else if msg.attachment_type === 'system'}
+								<div class="system-message">
+									<span>{msg.message_text}</span>
+								</div>
 							<!-- Plain text -->
 							{:else}
 								<div class="bubble {isStaff ? 'bubble--staff' : 'bubble--customer'}">{msg.message_text}</div>
@@ -954,7 +1201,7 @@
 			</div>
 
 			<!-- ── Rich Composer ──────────────────────────────────────────── -->
-			{#if activeConv.status === 'active'}
+			{#if activeConv.status !== 'closed'}
 				<div class="composer">
 
 					<!-- Pending file previews -->
@@ -1017,16 +1264,17 @@
 								<span class="attach-opt-icon vid"><Video class="h-5 w-5" /></span>
 								<span>Video</span>
 							</button>
-							<button onclick={() => { showProductPicker = true; showAttachTray = false; }} class="attach-option">
+							<button onclick={openProductPicker} class="attach-option">
 								<span class="attach-opt-icon prod"><Package class="h-5 w-5" /></span>
 								<span>Product</span>
 							</button>
-							{#if canReferDoctor}
-								<button onclick={() => { showDoctorPicker = true; showAttachTray = false; }} class="attach-option">
+							<!-- Hiding doctor referral for now as requested -->
+							<!-- {#if canReferDoctor}
+								<button onclick={openDoctorPicker} class="attach-option">
 									<span class="attach-opt-icon ref"><Stethoscope class="h-5 w-5" /></span>
 									<span>Dr. Referral</span>
 								</button>
-							{/if}
+							{/if} -->
 						</div>
 					{/if}
 
@@ -1084,7 +1332,10 @@
 					<p class="input-hint">Enter to send · Shift+Enter for newline</p>
 				</div>
 			{:else}
-				<div class="closed-bar">This conversation is closed.</div>
+				<div class="closed-notice">
+					<Lock class="h-4 w-4" />
+					<span>This conversation is closed and can no longer be replied to.</span>
+				</div>
 			{/if}
 
 			<!-- ── Product Picker Modal ──────────────────────────────────── -->
@@ -1102,10 +1353,21 @@
 						</div>
 						<div class="product-search-wrap">
 							<Search class="product-search-icon" />
-							<input bind:value={productSearch} placeholder="Search products…" class="product-search-input" />
+							<input 
+								bind:value={productSearch} 
+								oninput={handleSearchInput}
+								placeholder="Search products…" 
+								class="product-search-input" 
+							/>
 						</div>
 						<div class="product-list">
-							{#each filteredProducts as product}
+							{#if loadingProducts && products.length === 0}
+								<div class="empty-products">
+									<RefreshCw class="h-8 w-8 animate-spin opacity-20 mb-2" />
+									<p>Loading inventory…</p>
+								</div>
+							{:else}
+								{#each filteredProducts as product}
 								{@const disc = pendingDiscounts[product.id] ?? 0}
 								{@const finalP = disc > 0 ? discountedPrice(product.price, disc) : product.price}
 								<div class="product-row-wrap">
@@ -1127,6 +1389,11 @@
 											{:else}
 												<span class="product-row-price">₦{product.price.toLocaleString()}</span>
 											{/if}
+										</div>
+										<div class="product-add-btn-wrap">
+											<div class="product-add-btn">
+												<Plus class="h-5 w-5" />
+											</div>
 										</div>
 									</button>
 									{#if canApplyDiscount}
@@ -1152,12 +1419,51 @@
 									{/if}
 								</div>
 							{/each}
+						{/if}
+
+						{#if isMoreProducts}
+								<button 
+									onclick={() => loadProducts(false)} 
+									disabled={loadingProducts}
+									class="load-more-btn"
+								>
+									{#if loadingProducts}
+										<RefreshCw class="h-4 w-4 animate-spin" />
+										Loading...
+									{:else}
+										Load More
+									{/if}
+								</button>
+							{/if}
+
+							{#if products.length === 0 && !loadingProducts}
+								<div class="empty-products">
+									<Package class="h-8 w-8 opacity-20 mb-2" />
+									<p>No products found</p>
+								</div>
+							{/if}
 						</div>
 					</div>
 				</div>
 			{/if}
 		{/if}
 	</main>
+
+	<!-- Image Preview Overlay -->
+	{#if previewImageUrl}
+		<div class="image-overlay" onclick={() => previewImageUrl = null}>
+			<button class="overlay-close"><X class="h-8 w-8" /></button>
+			<img src={previewImageUrl} alt="Preview" class="overlay-img" onclick={(e) => e.stopPropagation()} />
+		</div>
+	{/if}
+
+	{#if showStaffPicker}
+		<StaffPickerModal 
+			tenantId={tenantId}
+			onSelect={startInternalChat}
+			onClose={() => showStaffPicker = false}
+		/>
+	{/if}
 </div>
 
 
@@ -1339,16 +1645,31 @@
 	overflow: hidden;
 }
 .avatar-img { width: 100%; height: 100%; object-fit: cover; }
-.bubble-col { display: flex; flex-direction: column; max-width: 68%; }
+.bubble-col { display: flex; flex-direction: column; max-width: 85%; }
 .items-end   { align-items: flex-end; }
 .items-start { align-items: flex-start; }
 .bubble {
-	padding: 0.6rem 0.875rem; border-radius: 1.25rem;
-	font-size: 0.875rem; line-height: 1.5; box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+	max-width: 600px;
+	padding: 0.875rem 1.125rem; border-radius: 1.25rem;
+	font-size: 0.9375rem; line-height: 1.5; position: relative;
+	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 .bubble--staff    { background: #4f46e5; color: #fff; border-bottom-right-radius: 0.25rem; }
 .bubble--customer { background: #fff; color: #1f2937; border: 1px solid #e5e7eb; border-bottom-left-radius: 0.25rem; }
 .bubble-time { font-size: 0.6rem; color: #9ca3af; margin-top: 0.2rem; padding: 0 0.25rem; }
+
+.system-message {
+	align-self: center; background: #f3f4f6; color: #6b7280;
+	padding: 0.4rem 1rem; border-radius: 2rem; font-size: 0.75rem;
+	font-weight: 500; margin: 0.75rem 0; text-align: center;
+	border: 1px dashed #d1d5db; width: fit-content;
+}
+
+.closed-notice {
+	background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 1.5rem;
+	display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+	color: #6b7280; font-size: 0.875rem; font-weight: 500;
+}
 
 /* ── Composer ──────────────────────────────────────────────────────────── */
 .composer {
@@ -1469,8 +1790,8 @@
 
 /* Image / Video bubble */
 .bubble-media { padding: 0.4rem !important; }
-.media-img { max-width: 200px; max-height: 180px; border-radius: 0.75rem; object-fit: cover; display: block; }
-.media-video { max-width: 240px; width: 100%; border-radius: 0.75rem; display: block; background: #000; }
+.media-img { max-width: 560px; max-height: 500px; border-radius: 0.75rem; object-fit: cover; display: block; }
+.media-video { width: 100%; max-width: 560px; border-radius: 0.75rem; display: block; background: #000; }
 .media-name { font-size: 0.65rem; opacity: 0.7; margin-top: 0.25rem; padding: 0 0.25rem; }
 
 /* File chip */
@@ -1590,6 +1911,64 @@
 	font-size: 0.6rem; font-weight: 700; letter-spacing: 0.03em; border: 1px solid #bbf7d0;
 }
 
+.load-more-btn {
+	width: 100%; margin-top: 1rem; padding: 0.75rem;
+	background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 0.75rem;
+	color: #64748b; font-size: 0.8125rem; font-weight: 600;
+	display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+	cursor: pointer; transition: all 0.15s;
+}
+.load-more-btn:hover:not(:disabled) { background: #f1f5f9; border-color: #94a3b8; color: #475569; }
+.load-more-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.empty-products {
+	display: flex; flex-direction: column; align-items: center; justify-content: center;
+	padding: 3rem 1rem; color: #94a3b8; text-align: center; font-size: 0.875rem;
+}
+
+.product-add-btn-wrap {
+	padding-left: 0.75rem; border-left: 1px solid #f1f5f9; margin-left: 0.5rem;
+}
+.product-add-btn {
+	width: 2.25rem; height: 2.25rem; background: #000; color: #fff;
+	border-radius: 50%; display: flex; align-items: center; justify-content: center;
+	transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.product-row:hover .product-add-btn { transform: scale(1.1); background: #1f2937; }
+.product-row:active .product-add-btn { transform: scale(0.9); }
+
+.image-preview-trigger {
+	background: none; border: none; padding: 0; cursor: pointer; display: block; width: 100%;
+}
+.image-overlay {
+	position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000;
+	display: flex; align-items: center; justify-content: center; padding: 2rem;
+	animation: fade-in 0.2s ease-out;
+}
+.overlay-img {
+	max-width: 90vw; max-height: 90vh; object-fit: contain;
+	border-radius: 0.5rem; box-shadow: 0 0 40px rgba(0,0,0,0.5);
+	animation: zoom-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.overlay-close {
+	position: absolute; top: 1.5rem; right: 1.5rem; background: none; border: none;
+	color: #fff; cursor: pointer; padding: 0.5rem; opacity: 0.7; transition: opacity 0.2s;
+}
+.overlay-close:hover { opacity: 1; }
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes zoom-in { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.product-add-btn.ref-btn { background: #4f46e5; }
+.ref-avatar.small { width: 32px; height: 32px; font-size: 0.75rem; }
+
+.native-audio {
+	height: 36px; max-width: 100%; outline: none; border-radius: 18px; filter: grayscale(1) invert(1) brightness(2);
+}
+.bubble--customer .native-audio { filter: none; }
+.audio-player-wrap { min-width: 240px; padding: 0.25rem 0; }
+.audio-meta { font-size: 0.65rem; opacity: 0.7; margin-top: 0.4rem; padding-left: 0.5rem; }
+
 /* Product card pricing */
 .product-card-pricing { display: flex; align-items: center; gap: 0.35rem; margin-top: 0.2rem; flex-wrap: wrap; }
 .product-original-price { font-size: 0.7rem; color: #9ca3af; text-decoration: line-through; }
@@ -1603,9 +1982,10 @@
 	/* Empty since drawer styles are universal now */
 }
 
-.closed-bar {
-	background: #f9fafb; border-top: 1px solid #e5e7eb;
-	padding: 0.75rem; text-align: center; font-size: 0.8125rem; color: #9ca3af; flex-shrink: 0;
+.closed-notice {
+	background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 1.5rem;
+	display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+	color: #6b7280; font-size: 0.875rem; font-weight: 500;
 }
 .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; color: #9ca3af; padding: 3rem; }
 

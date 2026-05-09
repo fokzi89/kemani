@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { supabase } from '$lib/supabase';
-	import { Save, AlertCircle, CheckCircle, Store, Globe, DollarSign, Bell, Stethoscope, Sparkles, Upload } from 'lucide-svelte';
+	import { Save, AlertCircle, CheckCircle, Store, Globe, DollarSign, Bell, Stethoscope, Sparkles, Upload, PackageCheck, ShoppingBag } from 'lucide-svelte';
 	import FileUpload from '$lib/components/FileUpload.svelte';
 
 	let loading = $state(true);
@@ -14,7 +14,10 @@
 		address: '', currency: 'NGN', timezone: 'Africa/Lagos',
 		receipt_footer: '', low_stock_threshold: '10',
 		tax_rate: '0', tax_name: 'VAT',
-		logo_url: '', slogan: '', hero_title: '', hero_subtitle: '', about_us: ''
+		logo_url: '', slogan: '', hero_title: '', hero_subtitle: '', about_us: '',
+		po_enabled: false,
+		pharmacist_mode: 'Inhouse',
+		preorders_enabled: false
 	});
 	let allowPartnership = $state(true);
 	let logoFile = $state<File | null>(null);
@@ -44,7 +47,10 @@
 					slogan: tenant.slogan || '',
 					hero_title: tenant.hero_title || '',
 					hero_subtitle: tenant.hero_subtitle || '',
-					about_us: tenant.about_us || ''
+					about_us: tenant.about_us || '',
+					po_enabled: tenant.po_enabled || false,
+					pharmacist_mode: tenant.pharmacist_mode || 'Inhouse',
+					preorders_enabled: tenant.preorders_enabled || false
 				};
 				allowPartnership = tenant.allowDoctorPartnerShip ?? true;
 				logoPreviewUrl = tenant.logo_url || '';
@@ -86,7 +92,10 @@
 				hero_title: settings.hero_title || null,
 				hero_subtitle: settings.hero_subtitle || null,
 				about_us: settings.about_us || null,
-				allowDoctorPartnerShip: allowPartnership
+				allowDoctorPartnerShip: allowPartnership,
+				po_enabled: settings.po_enabled,
+				pharmacist_mode: settings.pharmacist_mode,
+				preorders_enabled: settings.preorders_enabled
 			}).eq('id', tenantId);
 			if (dbErr) throw dbErr;
 			success = true;
@@ -200,6 +209,33 @@
 				</div>
 			</div>
 
+			<!-- Advanced Features -->
+			<div class="bg-white rounded-xl border p-5 space-y-4">
+				<h2 class="font-semibold text-gray-900 flex items-center gap-2"><PackageCheck class="h-4 w-4 text-indigo-500" /> Advanced Features</h2>
+				<p class="text-xs text-gray-500">Enable premium features for your business</p>
+				
+				<div class="space-y-4">
+					<label class="flex items-center justify-between cursor-pointer select-none">
+						<div>
+							<p class="text-sm font-medium text-gray-800">Enable Purchase Orders</p>
+							<p class="text-xs text-gray-500 mt-0.5">Use the full PO workflow for restocking instead of simple batch entry.</p>
+						</div>
+						<button
+							type="button"
+							role="switch"
+							aria-checked={settings.po_enabled}
+							onclick={() => settings.po_enabled = !settings.po_enabled}
+							class="relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 {settings.po_enabled ? 'bg-indigo-600' : 'bg-gray-200'}"
+						>
+							<span
+								class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {settings.po_enabled ? 'translate-x-5' : 'translate-x-0'}"
+							></span>
+						</button>
+					</label>
+
+				</div>
+			</div>
+
 			<!-- Storefront Branding -->
 			<div class="bg-white rounded-xl border p-5 space-y-4">
 				<h2 class="font-semibold text-gray-900 flex items-center gap-2"><Sparkles class="h-4 w-4 text-indigo-500" /> Storefront Branding</h2>
@@ -239,21 +275,54 @@
 					<Stethoscope class="h-4 w-4 text-indigo-500" /> Medic Partnerships
 				</h2>
 				<p class="text-sm text-gray-500 mb-4">Allow healthcare providers to partner with your pharmacy. Enabling this shows the <strong>Medic Partners</strong> module in the sidebar.</p>
-				<label class="flex items-center justify-between cursor-pointer select-none">
+
+				<div class="mt-6 border-t pt-4">
+					<label class="block text-sm font-medium text-gray-700 mb-2">Pharmacist Mode</label>
+					<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+						{#each ['Inhouse', 'Freelance', 'Both'] as mode}
+							<button 
+								type="button"
+								onclick={() => settings.pharmacist_mode = mode}
+								class="px-4 py-3 border rounded-xl text-sm font-semibold transition-all {settings.pharmacist_mode === mode ? 'border-indigo-600 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-100' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'}"
+							>
+								{mode}
+							</button>
+						{/each}
+					</div>
+					<p class="text-[10px] text-gray-500 mt-2">
+						{#if settings.pharmacist_mode === 'Inhouse'}
+							Only your internal pharmacy staff can consult with customers.
+						{:else if settings.pharmacist_mode === 'Freelance'}
+							Only partnered freelance pharmacists can consult with customers.
+						{:else}
+							Both internal staff and freelance partners can consult with customers.
+						{/if}
+					</p>
+				</div>
+			</div>
+
+			<!-- Pre-order Settings -->
+			<div class="bg-white rounded-xl border p-5">
+				<h2 class="font-semibold text-gray-900 flex items-center gap-2 mb-1">
+					<ShoppingBag class="h-4 w-4 text-amber-500" /> Pre-order Settings
+				</h2>
+				<p class="text-sm text-gray-500 mb-4">
+					Allow customers to pre-order out-of-stock products on your storefront.
+					You can then enable pre-ordering per product in the product editor.
+				</p>
+				<label class="flex items-center justify-between cursor-pointer">
 					<div>
-						<p class="text-sm font-medium text-gray-800">Allow Doctor Partnerships</p>
-						<p class="text-xs text-gray-500 mt-0.5">Doctors you invite can accept requests and appear on your storefront.</p>
+						<p class="text-sm font-semibold text-gray-800">Enable Pre-orders Globally</p>
+						<p class="text-xs text-gray-500 mt-0.5">Master switch — individual products must also have pre-order enabled.</p>
 					</div>
 					<button
 						type="button"
+						onclick={() => settings.preorders_enabled = !settings.preorders_enabled}
+						class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {settings.preorders_enabled ? 'bg-amber-500' : 'bg-gray-200'}"
 						role="switch"
-						aria-checked={allowPartnership}
-						onclick={() => allowPartnership = !allowPartnership}
-						class="relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 {allowPartnership ? 'bg-indigo-600' : 'bg-gray-200'}"
+						aria-checked={settings.preorders_enabled}
 					>
-						<span
-							class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {allowPartnership ? 'translate-x-5' : 'translate-x-0'}"
-						></span>
+						<span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform {settings.preorders_enabled ? 'translate-x-6' : 'translate-x-1'}" />
 					</button>
 				</label>
 			</div>

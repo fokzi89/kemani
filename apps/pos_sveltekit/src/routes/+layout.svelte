@@ -6,6 +6,7 @@
 	import { supabase } from '$lib/supabase';
 	import { Menu, X } from 'lucide-svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
+	import NotificationBell from '$lib/components/NotificationBell.svelte';
 
 	// Core state
 	let user = $state(null);
@@ -18,6 +19,11 @@
 	let realtimeChannel = $state(null);
 	let lastProcessedId = $state('');
 	let lastSyncTime = 0; // Throttle fetches
+
+	// Inactivity timeout (5 mins)
+	const INACTIVITY_LIMIT = 5 * 60 * 1000;
+	let inactivityTimer: any = null;
+	let lastActivity = Date.now();
 
 	// Atomic check to prevent race conditions
 	let isSyncing = false;
@@ -98,10 +104,21 @@
 			user = session.user;
 			console.log('[Layout] Syncing profile for:', user.email);
 			
+			// Try to load from cache first to avoid infinite loading states
+			const cachedProfile = localStorage.getItem('pos_user_profile');
+			if (cachedProfile) {
+				try {
+					userDataCache = JSON.parse(cachedProfile);
+					console.log('[Layout] Loaded profile from cache');
+				} catch (e) {
+					console.error('[Layout] Failed to parse cached profile');
+				}
+			}
+
 			// Add a timeout to the profile fetch to prevent infinite loading if Supabase is slow
 			const profilePromise = supabase
 				.from('users')
-				.select('*, tenants:tenants!users_tenant_id_fkey(*), branches:branches!users_branch_id_fkey(*)')
+				.select('*, tenants!tenant_id(*), branches!branch_id(*)')
 				.eq('id', userId)
 				.maybeSingle();
 
@@ -117,22 +134,10 @@
 				console.error('[Layout] Profile error:', error);
 			} else {
 				userDataCache = data;
+				if (data) localStorage.setItem('pos_user_profile', JSON.stringify(data));
 				lastProcessedId = userId;
 				lastSyncTime = Date.now();
 				
-				// Fallback: If join failed (RLS) but we have a tenant_id, try fetching separately
-				if (data && !data.tenants && data.tenant_id) {
-					console.warn('[Layout] Tenant join returned null, attempting direct fetch...');
-					const { data: tnt } = await supabase.from('tenants').select('*').eq('id', data.tenant_id).maybeSingle();
-					if (tnt) data.tenants = tnt;
-				}
-
-				if (data && (!data.branches || data.branches.length === 0) && data.branch_id) {
-					console.warn('[Layout] Branch join returned null, attempting direct fetch...');
-					const { data: brch } = await supabase.from('branches').select('*').eq('id', data.branch_id).maybeSingle();
-					if (brch) data.branches = brch;
-				}
-
 				// Setup Realtime if not present
 				if (!realtimeChannel && data) {
 					realtimeChannel = supabase.channel(`user-${userId}`)
@@ -173,15 +178,18 @@
 				if (!isAuthPath && !isOnboardingPath) {
 					console.log('[Layout] Logged in but not onboarded, redirecting to onboarding');
 					redirecting = true;
-					if (window.location.pathname !== '/onboarding') goto('/onboarding');
+					const onboardingPath = userDataCache.role === 'pharmacist' ? '/onboarding/pharmacist' : '/onboarding';
+					if (window.location.pathname !== onboardingPath) goto(onboardingPath);
 				} else {
 					redirecting = false;
 				}
 			} else {
 				// Logged in but no profile data yet (or fetch failed/timed out)
-				// Allow them to stay where they are but log the issue
-				console.warn('[Layout] User logged in but no profile data found');
-				redirecting = false;
+				// Redirect to login to re-authenticate and fetch profile
+				console.warn('[Layout] User logged in but no profile data found, forcing re-login');
+				tenant = null;
+				redirecting = true;
+				if (window.location.pathname !== '/auth/login') goto('/auth/login');
 			}
 		} catch (err) {
 			console.error('[Layout] Sync fatal error:', err);
@@ -197,9 +205,36 @@
 		}
 	}
 
+	async function handleLogout() {
+		console.log('[Layout] Logging out...');
+		await supabase.auth.signOut();
+		goto('/auth/login');
+	}
+
+	function resetInactivityTimer() {
+		lastActivity = Date.now();
+	}
+
+	function checkInactivity() {
+		if (user && !redirecting && !loading) {
+			const now = Date.now();
+			if (now - lastActivity > INACTIVITY_LIMIT) {
+				console.warn('[Layout] Inactivity timeout reached, logging out');
+				handleLogout();
+			}
+		}
+	}
+
 	onMount(() => {
 		console.log('[Layout] onMount started');
 		
+		// Set up inactivity tracking
+		inactivityTimer = setInterval(checkInactivity, 10000); // Check every 10s
+		window.addEventListener('mousemove', resetInactivityTimer);
+		window.addEventListener('keydown', resetInactivityTimer);
+		window.addEventListener('click', resetInactivityTimer);
+		window.addEventListener('scroll', resetInactivityTimer);
+
 		// 0. Manual logout recovery
 		if ($page.url.searchParams.get('logout') === 'true') {
 			console.log('[Layout] Manual logout triggered');
@@ -242,15 +277,15 @@
 
 		return () => {
 			clearTimeout(safetyTimeout);
+			if (inactivityTimer) clearInterval(inactivityTimer);
+			window.removeEventListener('mousemove', resetInactivityTimer);
+			window.removeEventListener('keydown', resetInactivityTimer);
+			window.removeEventListener('click', resetInactivityTimer);
+			window.removeEventListener('scroll', resetInactivityTimer);
 			subscription.unsubscribe();
 			if (realtimeChannel) supabase.removeChannel(realtimeChannel);
 		};
 	});
-
-	async function handleLogout() {
-		await supabase.auth.signOut();
-		goto('/auth/login');
-	}
 
 	function toggleMobileMenu() {
 		mobileMenuOpen = !mobileMenuOpen;
@@ -276,9 +311,14 @@
 					<Menu class="h-6 w-6" />
 				{/if}
 			</button>
-			<h1 class="text-lg font-bold text-gray-900 ml-3">
-				{tenant.name || 'Kemani POS'}
-			</h1>
+			<div class="flex-1 ml-3">
+				<h1 class="text-lg font-bold text-gray-900 truncate">
+					{tenant.name || 'Kemani POS'}
+				</h1>
+			</div>
+			{#if tenant?.id}
+				<NotificationBell tenantId={tenant.id} />
+			{/if}
 		</div>
 
 		<!-- Mobile Menu Overlay -->
@@ -290,7 +330,7 @@
 		{/if}
 
 		<!-- Sidebar -->
-		<aside class="hidden lg:block w-64 flex-shrink-0 bg-white border-r border-gray-200 h-screen sticky top-0 overflow-hidden print:hidden">
+		<aside class="hidden lg:block w-64 flex-shrink-0 bg-white border-r border-gray-200 h-screen sticky top-0 z-40 print:hidden">
 			<Sidebar {tenant} userData={userDataCache} email={user.email} {handleLogout} />
 		</aside>
 

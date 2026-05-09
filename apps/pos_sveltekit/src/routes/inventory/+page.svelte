@@ -6,7 +6,7 @@
 		X, MoreHorizontal, ArrowRightLeft, 
 		ArrowRight, Building, AlertTriangle, Plus,
 		Eye, Save, ChevronLeft, ChevronRight,
-		FileText, Settings
+		FileText, Settings, AlertCircle, Clock
 	} from 'lucide-svelte';
 
 
@@ -75,7 +75,6 @@
 					branch_id,
 					product_id,
 					stock_quantity,
-					reserved_quantity,
 					batch_no,
 					product_name,
 					strength,
@@ -88,7 +87,10 @@
 					updated_at,
 					product_type,
 					isPOM,
-					unit_of_measure
+					unit_of_measure,
+					allow_preorder,
+					preorder_quantity,
+					preorder_limit
 				`, { count: 'exact' })
 				.eq('tenant_id', currentTenantId)
 				.gt('stock_quantity', 0);
@@ -118,8 +120,7 @@
 					branch_id: row.branch_id,
 					product_id: row.product_id,
 					stock_quantity: row.stock_quantity,
-					reserved_quantity: row.reserved_quantity || 0,
-					available_stock: row.stock_quantity - (row.reserved_quantity || 0),
+					available_stock: row.stock_quantity,
 					expiry_date: row.expiry_date,
 					batch_no: row.batch_no,
 					name: row.product_name,
@@ -132,7 +133,10 @@
 					is_expiring_soon: soon,
 					isPOM: row.isPOM,
 					product_type: row.product_type,
-					unit_of_measure: row.unit_of_measure || 'unit'
+					unit_of_measure: row.unit_of_measure || 'unit',
+				allow_preorder: row.allow_preorder ?? false,
+				preorder_quantity: row.preorder_quantity ?? 0,
+				preorder_limit: row.preorder_limit ?? null
 				};
 			});
 			totalCount = count || 0;
@@ -186,7 +190,9 @@
 					expiry_date: item.expiry_date,
 					low_stock_threshold: item.low_stock_threshold,
 					isPOM: item.isPOM,
-					unit_of_measure: item.unit_of_measure
+					unit_of_measure: item.unit_of_measure,
+					allow_preorder: item.allow_preorder,
+					preorder_limit: item.preorder_limit
 				}
 			};
 		}
@@ -213,6 +219,8 @@
 						low_stock_threshold: vals.low_stock_threshold,
 						isPOM: vals.isPOM,
 						unit_of_measure: vals.unit_of_measure,
+						allow_preorder: vals.allow_preorder,
+						preorder_limit: vals.preorder_limit ?? null,
 						updated_at: new Date().toISOString()
 					})
 					.eq('id', invId);
@@ -411,31 +419,50 @@
 	</div>
 
 	<!-- Filters -->
-	<div class="bg-white rounded-xl border p-4 flex flex-wrap gap-3 shadow-sm">
-		<div class="relative flex-1 min-w-48">
-			<Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-			<input 
-				type="text" 
-				bind:value={searchQuery}
-				placeholder="Search by name or SKU..."
-				class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none text-sm"
-			/>
+	<div class="bg-white rounded-xl border p-4 space-y-4 shadow-sm">
+		<div class="flex flex-wrap gap-3">
+			<div class="relative flex-1 min-w-48">
+				<Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+				<input 
+					type="text" 
+					bind:value={searchQuery}
+					placeholder="Search by name or SKU..."
+					class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none text-sm"
+				/>
+			</div>
+
+			<div class="relative group min-w-48">
+				<Building class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+				<select 
+					bind:value={selectedBranchId}
+					class="w-full pl-10 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl appearance-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium text-sm text-gray-700 cursor-pointer"
+				>
+					<option value="all">All Branches</option>
+					{#each branches as branch}
+						<option value={branch.id}>{branch.name}</option>
+					{/each}
+				</select>
+				<div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+					<ChevronRight class="h-4 w-4 rotate-90" />
+				</div>
+			</div>
 		</div>
 
-		<div class="relative group min-w-48">
-			<Building class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-			<select 
-				bind:value={selectedBranchId}
-				class="w-full pl-10 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl appearance-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium text-sm text-gray-700 cursor-pointer"
+		<div class="flex flex-wrap gap-3 pt-1">
+			<a 
+				href="/inventory/low-stock" 
+				class="inline-flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-black px-4 py-2.5 rounded-xl transition-all text-xs border border-rose-100 shadow-sm shadow-rose-50"
 			>
-				<option value="all">All Branches</option>
-				{#each branches as branch}
-					<option value={branch.id}>{branch.name}</option>
-				{/each}
-			</select>
-			<div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-				<ChevronRight class="h-4 w-4 rotate-90" />
-			</div>
+				<AlertCircle class="h-4 w-4" />
+				Low Stocks
+			</a>
+			<a 
+				href="/inventory/short-dated" 
+				class="inline-flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-700 font-black px-4 py-2.5 rounded-xl transition-all text-xs border border-amber-100 shadow-sm shadow-amber-50"
+			>
+				<Clock class="h-4 w-4" />
+				Short Dated Stock
+			</a>
 		</div>
 	</div>
 
@@ -465,12 +492,14 @@
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Product Information</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Location</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">In Stock</th>
+
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">UoM</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Low Stock Lvl</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l">Selling Price</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost Price</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l text-center">PoM</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l">Expiry</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l text-center">Pre-Order</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
 						</tr>
 					</thead>
@@ -512,7 +541,7 @@
 								</td>
 								<td class="px-4 py-3 whitespace-nowrap">
 									<div class="flex items-center gap-2">
-										<div class="h-2 w-2 rounded-full {item.available_stock > 10 ? 'bg-green-500' : 'bg-orange-500'}"></div>
+										<div class="h-2 w-2 rounded-full {item.stock_quantity > 10 ? 'bg-green-500' : 'bg-orange-500'}"></div>
 										<span class="text-xs font-bold text-gray-700 capitalize tracking-tight">
 											 {branches.find(b => b.id === item.branch_id)?.name || 'Central Branch'}
 										</span>
@@ -526,15 +555,14 @@
 												bind:value={editingValues[invId].stock_quantity}
 												class="w-20 px-2.5 py-1.5 bg-white border border-indigo-200 rounded-lg text-center font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 h-9 transition-all"
 											/>
-											<div class="text-[10px] text-gray-400">Reserved: {item.reserved_quantity}</div>
 										</div>
 									{:else}
 										<div class="font-bold text-gray-900 text-base">
-											{item.available_stock} <span class="text-[10px] font-medium text-gray-400 ml-0.5">avail</span>
+											{item.stock_quantity}
 										</div>
-										<div class="text-[10px] text-gray-500 uppercase tracking-tighter">Total: {item.stock_quantity}</div>
 									{/if}
 								</td>
+
 								<td class="px-4 py-3 text-center">
 									{#if isSelected}
 										<select 
@@ -627,6 +655,41 @@
 											</span>
 											{#if item.is_expiring_soon}
 												<AlertTriangle class="h-3 w-3 text-red-500" />
+											{/if}
+										</div>
+									{/if}
+								</td>
+								<!-- Pre-Order column -->
+								<td class="px-4 py-3 border-l text-center">
+									{#if isSelected}
+										<div class="flex flex-col items-center gap-1.5">
+											<button
+												type="button"
+												onclick={() => editingValues[invId].allow_preorder = !editingValues[invId].allow_preorder}
+												class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors {editingValues[invId].allow_preorder ? 'bg-amber-500' : 'bg-gray-200'}"
+												role="switch"
+												aria-checked={editingValues[invId].allow_preorder}
+											>
+												<span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform {editingValues[invId].allow_preorder ? 'translate-x-4' : 'translate-x-0.5'}" />
+											</button>
+											{#if editingValues[invId].allow_preorder}
+												<input
+													type="number"
+													bind:value={editingValues[invId].preorder_limit}
+													placeholder="∞"
+													min="1"
+													class="w-14 px-1 py-1 bg-white border border-amber-200 rounded text-center text-xs font-bold text-amber-700 outline-none focus:ring-2 focus:ring-amber-400"
+												/>
+												<span class="text-[9px] text-gray-400">limit</span>
+											{/if}
+										</div>
+									{:else}
+										<div class="flex flex-col items-center gap-1">
+											<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider {item.allow_preorder ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-400'}">
+												{item.allow_preorder ? 'On' : 'Off'}
+											</span>
+											{#if item.allow_preorder && item.preorder_quantity > 0}
+												<span class="text-[9px] font-bold text-amber-600">{item.preorder_quantity} pending</span>
 											{/if}
 										</div>
 									{/if}

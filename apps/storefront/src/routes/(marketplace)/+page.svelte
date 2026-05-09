@@ -21,6 +21,7 @@
 	$: brandColor      = storefront?.brand_color || '#4f46e5';
 	$: brandColorLight = brandColor + '18';
 	$: storeUrl = $page.url.origin;
+	$: preordersEnabled = storefront?.preorders_enabled ?? false;
 
 	export let data;
 
@@ -96,14 +97,15 @@
 		}
 	}
 
-	function addToCart(product: MarketplaceProduct, qty: number = 1) {
+	function addToCart(product: MarketplaceProduct, qty: number = 1, is_preorder: boolean = false) {
 		cartStore.addItem({
 			product_id:     product.id,
 			product_name:   product.name,
 			product_image:  product.image_url,
 			price:          product.price,
 			quantity:       qty,
-			stock_available: product.stock_quantity
+			stock_available: product.stock_quantity,
+			is_preorder
 		}, storefront.id);
 
 		// Show toast feedback
@@ -249,7 +251,11 @@
 							<a href={`/products/${product.id}`} class="product-img-wrap border-none outline-none text-left w-full cursor-pointer p-0 bg-transparent block">
 								{#if product.image_url}<img src={product.image_url} alt={product.name} class="product-img" />{:else}<div class="product-img-placeholder"><ShoppingCart /></div>{/if}
 								{#if product.percentage_discount > 0}<span class="badge badge-discount">{product.percentage_discount}% Off</span>{/if}
-								{#if !product.is_available}<div class="product-sold-out"><span>Sold Out</span></div>{/if}
+								{#if !product.is_available && !(product.allow_preorder && preordersEnabled)}
+									<div class="product-sold-out"><span>Sold Out</span></div>
+								{:else if product.allow_preorder && preordersEnabled && product.stock_quantity === 0}
+									<div class="product-preorder-badge"><span>Pre-Order</span></div>
+								{/if}
 							</a>
 							<div class="product-info">
 								<div class="product-category">{product.category?.name || (product as any).category_name || 'PRODUCT'}</div>
@@ -258,7 +264,15 @@
 									<span class="price-current font-black text-lg">₦{(product.sale_price > 0 ? product.sale_price : product.price)?.toLocaleString()}</span>
 									<div class="product-actions-flex">
 										<button class="action-icon-btn action-rx" onclick={(e) => { e.preventDefault(); handleRxChat(e, undefined, product.id); }} title="RX Chat"><MessageSquare class="w-4 h-4" /></button>
-										{#if product.is_available && product.stock_quantity > 0}<button class="action-icon-btn action-bag" onclick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product); }} title="Add to Bag"><ShoppingCart class="w-4 h-4" /></button>{/if}
+										{#if product.is_available && product.stock_quantity > 0}
+											<button class="action-icon-btn action-bag" onclick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product); }} title="Add to Bag">
+												<ShoppingCart class="w-4 h-4" />
+											</button>
+										{:else if product.allow_preorder && preordersEnabled && product.stock_quantity === 0}
+											<button class="action-icon-btn action-preorder" onclick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product, 1, true); }} title="Pre-Order">
+												<Clock class="w-4 h-4" />
+											</button>
+										{/if}
 									</div>
 								</div>
 							</div>
@@ -284,7 +298,7 @@
 						<a href={`/products/${product.id}`} class="product-img-wrap border-none outline-none text-left w-full cursor-pointer p-0 bg-transparent block">
 							{#if product.image_url}<img src={product.image_url} alt={product.name} class="product-img" />{:else}<div class="product-img-placeholder"><ShoppingCart /></div>{/if}
 							<span class="badge badge-discount">{product.percentage_discount || 10}% Off</span>
-							{#if !product.is_available}<div class="product-sold-out"><span>Sold Out</span></div>{/if}
+							{#if !product.is_available && !(product.allow_preorder && preordersEnabled)}<div class="product-sold-out"><span>Sold Out</span></div>{:else if product.allow_preorder && preordersEnabled && product.stock_quantity === 0}<div class="product-preorder-badge"><span>Pre-Order</span></div>{/if}
 						</a>
 						<div class="product-info">
 							<div class="product-category">{product.category?.name || (product as any).category_name || 'SALE'}</div>
@@ -298,7 +312,7 @@
 								</div>
 								<div class="product-actions-flex">
 									<button class="action-icon-btn action-rx" onclick={(e) => { e.preventDefault(); handleRxChat(e, undefined, product.id); }} title="RX Chat"><MessageSquare class="w-4 h-4" /></button>
-									{#if product.is_available && product.stock_quantity > 0}<button class="action-icon-btn action-bag" onclick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product); }} title="Add to Bag"><ShoppingCart class="w-4 h-4" /></button>{/if}
+									{#if product.is_available && product.stock_quantity > 0}<button class="action-icon-btn action-bag" onclick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product); }} title="Add to Bag"><ShoppingCart class="w-4 h-4" /></button>{:else if product.allow_preorder && preordersEnabled && product.stock_quantity === 0}<button class="action-icon-btn action-preorder" onclick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product, 1, true); }} title="Pre-Order"><Clock class="w-4 h-4" /></button>{/if}
 								</div>
 							</div>
 						</div>
@@ -340,7 +354,7 @@
 						<a href={`/products/${product.id}`} class="product-img-wrap border-none outline-none text-left w-full cursor-pointer p-0 bg-transparent block">
 							{#if product.image_url}<img src={product.image_url} alt={product.name} class="product-img" />{:else}<div class="product-img-placeholder"><ShoppingCart /></div>{/if}
 							<span class="badge badge-new">New</span>
-							{#if !product.is_available}<div class="product-sold-out"><span>Sold Out</span></div>{/if}
+							{#if !product.is_available && !(product.allow_preorder && preordersEnabled)}<div class="product-sold-out"><span>Sold Out</span></div>{:else if product.allow_preorder && preordersEnabled && product.stock_quantity === 0}<div class="product-preorder-badge"><span>Pre-Order</span></div>{/if}
 						</a>
 						<div class="product-info">
 							<div class="product-category">{product.category?.name || (product as any).category_name || 'PRODUCT'}</div>
@@ -349,7 +363,7 @@
 									<span class="price-current font-black text-lg">₦{(product.sale_price > 0 ? product.sale_price : product.price)?.toLocaleString()}</span>
 									<div class="product-actions-flex">
 										<button class="action-icon-btn action-rx" onclick={(e) => { e.preventDefault(); handleRxChat(e, undefined, product.id); }} title="RX Chat"><MessageSquare class="w-4 h-4" /></button>
-										{#if product.is_available && product.stock_quantity > 0}<button class="action-icon-btn action-bag" onclick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product); }} title="Add to Bag"><ShoppingCart class="w-4 h-4" /></button>{/if}
+										{#if product.is_available && product.stock_quantity > 0}<button class="action-icon-btn action-bag" onclick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product); }} title="Add to Bag"><ShoppingCart class="w-4 h-4" /></button>{:else if product.allow_preorder && preordersEnabled && product.stock_quantity === 0}<button class="action-icon-btn action-preorder" onclick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product, 1, true); }} title="Pre-Order"><Clock class="w-4 h-4" /></button>{/if}
 									</div>
 								</div>
 						</div>
@@ -725,15 +739,6 @@
 	}
 	.badge-discount { top: 1rem; left: 1rem; background: var(--brand); color: #fff; }
 
-	.product-sold-out { 
-		position: absolute; inset: 0; background: rgba(255,255,255,0.8); 
-		display: flex; align-items: center; justify-content: center; z-index: 20;
-	}
-	.product-sold-out span {
-		background: #0f172a; color: #fff;
-		padding: 6px 16px; border-radius: 8px;
-		font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
-	}
 
 	/* Product Info */
 	.product-info { padding: 16px; flex: 1; display: flex; flex-direction: column; }
@@ -772,6 +777,17 @@
 	.action-rx:hover { background: #dbeafe; }
 	.action-bag { background: #0b2559; color: #ffffff; }
 	.action-bag:hover { background: #0f357f; }
+	.action-preorder { background: #f59e0b; color: #ffffff; }
+	.action-preorder:hover { background: #d97706; }
+	.product-preorder-badge {
+		position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+		background: rgba(245, 158, 11, 0.82); backdrop-filter: blur(2px);
+	}
+	.product-preorder-badge span {
+		background: #f59e0b; color: #fff; font-size: 11px; font-weight: 800;
+		letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 14px; border-radius: 20px;
+		box-shadow: 0 2px 8px rgba(245,158,11,0.4);
+	}
 
 	/* Toast */
 	.cart-toast {

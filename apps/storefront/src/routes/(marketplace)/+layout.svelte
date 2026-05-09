@@ -57,6 +57,12 @@
 		const productId = get(chatProduct)?.id;
 		const chatUrl = productId ? `/chat?productId=${productId}&type=${type}` : `/chat?type=${type}`;
 
+		// REDIRECTION LOGIC: If Freelance or Both, go to selection page
+		if (type === 'Consultation' && storefront?.pharmacist_mode !== 'Inhouse') {
+			goto(`/medics/pharmacists${productId ? `?productId=${productId}` : ''}`);
+			return;
+		}
+
 		// Check for existing active conversation in global store
 		const existingId = get(activeConversationId);
 		if (existingId) {

@@ -70,14 +70,15 @@
             branch_id,
             selling_price,
             unit_of_measure,
-            products!inner(name, generic_name, manufacturer, category, description, image_url, product_type)
+            products!inner(name, generic_name, manufacturer, category, description, image_url, product_type),
+            allow_preorder
           `)
           .in('branch_id', validBranchIds.length ? validBranchIds : ['00000000-0000-0000-0000-000000000000'])
           .or(`name.ilike.%${searchQuery}%,generic_name.ilike.%${searchQuery}%,manufacturer.ilike.%${searchQuery}%`, { foreignTable: 'products' })
           .ilike('products.product_type', 'Drug')
           .eq('products.is_active', true)
           .eq('is_active', true)
-          .gt('stock_quantity', 0)
+          .or('stock_quantity.gt.0,allow_preorder.eq.true')
           .limit(100);
         
         if (!error && data) {
@@ -159,9 +160,9 @@
       .select(`
         id, 
         stock_quantity,
-        reserved_quantity,
         selling_price,
         unit_of_measure,
+        allow_preorder,
         products!inner(
           id, 
           name, 
@@ -179,7 +180,7 @@
       .ilike('products.product_type', 'Drug')
       .eq('products.is_active', true)
       .eq('is_active', true)
-      .gt('stock_quantity', 0)
+      .or('stock_quantity.gt.0,allow_preorder.eq.true')
       .limit(100);
     
     if (error) {
@@ -193,8 +194,10 @@
           unit_price: item.selling_price,
           unit_of_measure: item.unit_of_measure,
           inventory_id: item.id,
-          stock_quantity: item.stock_quantity - (item.reserved_quantity || 0),
-          raw_stock: item.stock_quantity
+          stock_quantity: item.stock_quantity,
+          raw_stock: item.stock_quantity,
+          allow_preorder: item.allow_preorder,
+          is_preorder: item.stock_quantity <= 0 && item.allow_preorder
         };
       }).filter(Boolean);
       // Extract unique categories
@@ -454,7 +457,11 @@
                     <div class="prod-icon"><Package class="w-8 h-8" /></div>
                   {/if}
                   {#if product.stock_quantity <= 0}
-                    <div class="out-of-stock">Out of Stock</div>
+                    {#if product.allow_preorder && selectedPharmacy.preorders_enabled}
+                      <div class="product-preorder-badge"><span>Pre-Order</span></div>
+                    {:else}
+                      <div class="out-of-stock">Out of Stock</div>
+                    {/if}
                   {/if}
                 </div>
                 <div class="product-info">
@@ -469,13 +476,22 @@
                   <p class="p-desc">{product.description || 'Verified pharmacy grade product.'}</p>
                   <div class="product-bottom">
                     <span class="price">₦{product.unit_price?.toLocaleString() || '0.00'}</span>
-                    <button 
-                      class="add-to-cart" 
-                      style="background: {selectedPharmacy.brand_color || brandColor};"
-                      on:click={(e) => handleAddToCart(product, e)}
-                    >
-                      <ShoppingBag class="w-4 h-4" />
-                    </button>
+                    {#if product.stock_quantity <= 0 && product.allow_preorder && selectedPharmacy.preorders_enabled}
+                      <button 
+                        class="add-to-cart pre-order-btn" 
+                        on:click={(e) => handleAddToCart({...product, is_preorder: true}, e)}
+                      >
+                        <ShoppingBag class="w-4 h-4" />
+                      </button>
+                    {:else if product.stock_quantity > 0}
+                      <button 
+                        class="add-to-cart" 
+                        style="background: {selectedPharmacy.brand_color || brandColor};"
+                        on:click={(e) => handleAddToCart(product, e)}
+                      >
+                        <ShoppingBag class="w-4 h-4" />
+                      </button>
+                    {/if}
                   </div>
                 </div>
               </div>
@@ -536,21 +552,25 @@
                     <div class="m-footer">
                         <div class="m-price-section">
                             <span class="m-price">₦{selectedProduct.unit_price?.toLocaleString()}</span>
-                            <span class="m-stock">In Stock: {selectedProduct.stock_quantity} {selectedProduct.unit_of_measure || 'units'}</span>
+                            {#if selectedProduct.stock_quantity > 0}
+                              <span class="m-stock">In Stock: {selectedProduct.stock_quantity} {selectedProduct.unit_of_measure || 'units'}</span>
+                              <span class="m-stock text-red-500">Out of Stock</span>
+                            {/if}
                         </div>
                         
                         <div class="m-qty-selector">
                             <button on:click={() => itemQuantity = Math.max(1, itemQuantity - 1)}><Minus class="w-4 h-4" /></button>
                             <span>{itemQuantity}</span>
-                            <button on:click={() => itemQuantity = Math.min(selectedProduct.stock_quantity, itemQuantity + 1)}><Plus class="w-4 h-4" /></button>
+                            <button on:click={() => itemQuantity = itemQuantity + 1}><Plus class="w-4 h-4" /></button>
                         </div>
                         
                         <button 
                             class="m-add-btn" 
+                            disabled={selectedProduct.stock_quantity <= 0}
                             style="background: {selectedPharmacy.brand_color || brandColor};"
                             on:click={() => { handleAddToCart(selectedProduct, undefined, itemQuantity); selectedProduct = null; }}
                         >
-                            Add to Cart
+                            {selectedProduct.stock_quantity > 0 ? 'Add to Cart' : 'Out of Stock'}
                         </button>
                     </div>
                 </div>
@@ -749,7 +769,11 @@
   .p-desc { font-size: 0.75rem; color: var(--on-surface-variant); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 1rem; }
   .product-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
   .price { font-size: 1rem; font-weight: 800; color: var(--on-surface); }
-  .add-to-cart { width: 36px; height: 36px; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; color: white; }
+  .add-to-cart { width: 36px; height: 36px; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; color: white; border: none; cursor: pointer; transition: transform 0.2s; }
+  .add-to-cart:hover { transform: scale(1.05); }
+  .pre-order-btn { background: #f59e0b !important; }
+  .pre-order-btn:hover { background: #d97706 !important; }
+  .product-preorder-badge { position: absolute; top: 0.75rem; right: 0.75rem; background: rgba(245, 158, 11, 0.9); color: white; font-size: 0.65rem; font-weight: 800; padding: 0.35rem 0.75rem; border-radius: 1rem; text-transform: uppercase; letter-spacing: 0.05em; backdrop-filter: blur(4px); box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4); }
 
   .pagination { display: flex; align-items: center; justify-content: center; gap: 1.5rem; margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--outline-variant); }
   .pag-btn { padding: 0.625rem 1.25rem; border-radius: 0.75rem; border: 1.5px solid var(--outline-variant); background: white; font-weight: 700; font-size: 0.875rem; color: var(--on-surface); cursor: pointer; transition: all 0.2s; }

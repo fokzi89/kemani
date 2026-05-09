@@ -80,50 +80,65 @@
                 deliveryAddressId = address.id;
             }
 
-            // 3. Create Order
-            const orderNumber = `ORD-${Math.floor(Date.now() / 1000)}`;
-            const { data: order, error: orderErr } = await supabase
-                .from('orders')
-                .insert({
-                    tenant_id: tenantId,
-                    branch_id: branchId,
-                    order_number: orderNumber,
-                    customer_id: userId,
-                    order_type: 'marketplace',
-                    fulfillment_type: fulfillmentType,
-                    delivery_address_id: deliveryAddressId,
-                    subtotal: subtotal,
-                    tax_amount: tax,
-                    delivery_fee: deliveryFee,
-                    total_amount: total,
-                    special_instructions: specialInstructions,
-                    order_status: 'pending',
-                    payment_status: 'unpaid'
-                })
-                .select()
-                .single();
+            // 3. Create Order via RPC (Split Cart Support)
+            const physicalItems = items.filter((i: any) => !i.is_preorder);
+            const preorderItems = items.filter((i: any) => i.is_preorder);
 
-            if (orderErr) throw orderErr;
+            let firstOrderId = null;
 
-            // 2. Create Order Items
-            const orderItems = items.map(item => ({
-                order_id: order.id,
-                product_id: item.id,
-                product_name: item.name,
-                quantity: item.quantity,
-                unit_price: item.price,
-                subtotal: item.price * item.quantity
-            }));
+            const submitOrderGroup = async (itemsToSubmit: any[], isPreorder: boolean) => {
+                if (itemsToSubmit.length === 0) return null;
 
-            const { error: itemsErr } = await supabase
-                .from('order_items')
-                .insert(orderItems);
+                const groupSubtotal = itemsToSubmit.reduce((sum: number, i: any) => sum + (i.price * i.quantity), 0);
+                const itemRatio = subtotal > 0 ? (groupSubtotal / subtotal) : 0;
 
-            if (itemsErr) throw itemsErr;
+                const groupTax = tax * itemRatio;
+                const groupDeliveryFee = deliveryFee * itemRatio;
+                const groupTotal = groupSubtotal + groupTax + groupDeliveryFee;
 
-            // 3. Clear cart and redirect
+                const formattedItems = itemsToSubmit.map((i: any) => ({
+                    product_id: i.id,
+                    product_name: i.name,
+                    quantity: i.quantity,
+                    unit_price: i.price,
+                    subtotal: i.price * i.quantity,
+                    is_preorder: i.is_preorder || false
+                }));
+
+                const { data: orderId, error: rpcError } = await supabase.rpc('checkout_storefront_order', {
+                    p_tenant_id: tenantId,
+                    p_branch_id: branchId,
+                    p_customer_id: userId,
+                    p_order_type: 'marketplace',
+                    p_fulfillment_type: fulfillmentType,
+                    p_subtotal: groupSubtotal,
+                    p_delivery_fee: groupDeliveryFee,
+                    p_tax_amount: groupTax,
+                    p_total_amount: groupTotal,
+                    p_delivery_address_id: deliveryAddressId,
+                    p_special_instructions: specialInstructions || null,
+                    p_items: formattedItems,
+                    p_service_charge: 0,
+                    p_payment_reference: null,
+                    p_is_preorder_order: isPreorder
+                });
+
+                if (rpcError) throw rpcError;
+                return orderId;
+            };
+
+            const physicalOrderId = await submitOrderGroup(physicalItems, false);
+            const preorderOrderId = await submitOrderGroup(preorderItems, true);
+
+            firstOrderId = physicalOrderId || preorderOrderId;
+
+            if (!firstOrderId) {
+                throw new Error("No order was created.");
+            }
+
+            // 4. Clear cart and redirect
             cartStore.clearCart();
-            goto(`/order-success/${order.id}`);
+            goto(`/order-success/${firstOrderId}`);
 
         } catch (err: any) {
             console.error('Order placement failed:', err);
@@ -249,6 +264,16 @@
                         </div>
                         <p class="pharmacy-source">Fulfilling Pharmacy: <strong>{pharmacyName}</strong></p>
                         
+                        {#if items.some((i: any) => i.is_preorder) && items.some((i: any) => !i.is_preorder)}
+                            <div class="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+                                <strong>Mixed Cart:</strong> Your order will be split. Pre-orders will be fulfilled separately when stock arrives.
+                            </div>
+                        {:else if items.some((i: any) => i.is_preorder)}
+                            <div class="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-xs">
+                                <strong>Pre-Order:</strong> You will be notified when your items are ready for fulfillment.
+                            </div>
+                        {/if}
+
                         <div class="order-items">
                             {#each items as item}
                                 <div class="order-item">
@@ -261,7 +286,14 @@
                                     </div>
                                     <div class="item-info">
                                         <div class="item-top">
-                                            <h4>{item.name}</h4>
+                                            <h4>
+                                                {item.name}
+                                                {#if item.is_preorder}
+                                                    <span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 uppercase tracking-wider">
+                                                        Pre-Order
+                                                    </span>
+                                                {/if}
+                                            </h4>
                                             <span>₦{(item.price * item.quantity).toLocaleString()}</span>
                                         </div>
                                         <div class="item-bottom">

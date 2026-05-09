@@ -77,12 +77,12 @@ export class MarketplaceService {
           category: data.product_type || 'General',
           price: finalPrice,
           image_url: data.image_url,
-          stock_quantity: (data.stock_quantity || 0) - (data.reserved_quantity || 0),
+          stock_quantity: data.stock_quantity || 0,
           isPOM: data.isPOM,
           is_on_sale: data.is_on_sale,
           is_featured: data.is_featured,
           is_new_arrival: data.is_new_arrival,
-          allow_preorder: data.allow_preorder
+          is_new_arrival: data.is_new_arrival
         }
       };
     } catch (error: any) {
@@ -193,7 +193,10 @@ export class MarketplaceService {
           sale_price: item.sale_price,
           image_url: item.image_url,
           stock_quantity: item.total_stock,
-          is_available: item.total_stock > 0,
+          is_available: item.total_stock > 0 || item.allow_preorder === true,
+          allow_preorder: item.allow_preorder,
+          preorder_quantity: item.preorder_quantity,
+          preorder_limit: item.preorder_limit,
           is_on_sale: item.is_on_sale,
           is_featured: item.is_featured,
           is_new_arrival: item.is_new_arrival,
@@ -271,7 +274,10 @@ export class MarketplaceService {
           sale_price: data.sale_price,
           image_url: data.image_url,
           stock_quantity: data.total_stock,
-          is_available: data.total_stock > 0,
+          is_available: data.total_stock > 0 || data.allow_preorder === true,
+          allow_preorder: data.allow_preorder,
+          preorder_quantity: data.preorder_quantity,
+          preorder_limit: data.preorder_limit,
           business_name: data.branch_name,
           generic_name: data.generic_name,
           strength: data.strength,
@@ -324,54 +330,8 @@ export class MarketplaceService {
     }
   }
 
-  // Promotional Table Management
-  async addToFeatured(productId: string, tenantId: string, inventoryId?: string) {
-    return this.supabase
-      .from('featured_products')
-      .insert({ product_id: productId, tenant_id: tenantId, inventory_id: inventoryId })
-      .select()
-      .single();
-  }
 
-  async removeFromFeatured(productId: string, tenantId: string) {
-    return this.supabase
-      .from('featured_products')
-      .delete()
-      .eq('product_id', productId)
-      .eq('tenant_id', tenantId);
-  }
-
-  async addToSale(productId: string, tenantId: string, inventoryId?: string, salePrice?: number) {
-    return this.supabase
-      .from('sale_products')
-      .insert({ 
-        product_id: productId, 
-        tenant_id: tenantId, 
-        inventory_id: inventoryId,
-        sale_price: salePrice 
-      })
-      .select()
-      .single();
-  }
-
-  async removeFromSale(productId: string, tenantId: string) {
-    return this.supabase
-      .from('sale_products')
-      .delete()
-      .eq('product_id', productId)
-      .eq('tenant_id', tenantId);
-  }
-
-  async checkPromotionStatus(productId: string, tenantId: string) {
-    const [featured, sale] = await Promise.all([
-      this.supabase.from('featured_products').select('id').eq('product_id', productId).eq('tenant_id', tenantId).maybeSingle(),
-      this.supabase.from('sale_products').select('id, sale_price').eq('product_id', productId).eq('tenant_id', tenantId).maybeSingle()
-    ]);
-
-    return {
-      isFeatured: !!featured.data,
-      isOnSale: !!sale.data,
-      salePrice: sale.data?.sale_price
-    };
-  }
+  // Note: Promotional Table Management (Featured/Sale) has been consolidated 
+  // directly into the branch_inventory table via boolean flags and the sale_price column.
+  // Use branch_inventory.update() to manage these statuses.
 }

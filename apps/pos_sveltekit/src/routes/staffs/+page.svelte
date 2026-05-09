@@ -35,7 +35,8 @@
 		{ key: 'canReturnProducts', label: 'Returns', description: 'Can process returns' },
 		{ key: 'canCreatePrescription', label: 'Prescribe', description: 'Can create prescriptions' },
 		{ key: 'canApplyDiscount', label: 'Discounts', description: 'Can apply manual discounts' },
-		{ key: 'canReferDoctor', label: 'Doctor Referrals', description: 'Can refer patients to doctors' }
+		{ key: 'canReferDoctor', label: 'Doctor Referrals', description: 'Can refer patients to doctors' },
+		{ key: 'canManageExpenses', label: 'Expenditure', description: 'Can manage expenses and approvals' }
 	];
 
 	let allPrivilegesSelected = $derived(privileges.every(p => privilegeForm[p.key]));
@@ -112,7 +113,8 @@
 			canReturnProducts: person.canReturnProducts ?? false,
 			canCreatePrescription: person.canCreatePrescription ?? false,
 			canApplyDiscount: person.canApplyDiscount ?? false,
-			canReferDoctor: person.canReferDoctor ?? true
+			canReferDoctor: person.canReferDoctor ?? true,
+			canManageExpenses: person.canManageExpenses ?? false
 		};
 		showPrivilegesModal = true;
 		activeDropdown = null;
@@ -151,7 +153,7 @@
 					canManageRoles: false,
 					canTransferProduct: false, canReturnProducts: false,
 					canCreatePrescription: false, canApplyDiscount: false,
-					canReferDoctor: false,
+					canReferDoctor: false, canManageExpenses: false,
 					deleted_at: new Date().toISOString()
 				})
 				.eq('id', person.id);

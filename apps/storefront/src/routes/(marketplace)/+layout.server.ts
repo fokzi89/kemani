@@ -61,6 +61,7 @@ export async function load({ locals, params }) {
 			allowDoctorPartnerShip, ai_is_enabled,
 			slogan, hero_title, hero_subtitle, about_us,
 			email, phone,
+			pharmacist_mode, preorders_enabled,
 			branches!tenant_id(id, name, address, tax_rate, delivery_enabled)
 		`)
 		.eq('id', tenantId)
@@ -98,7 +99,9 @@ export async function load({ locals, params }) {
 				address: b.address,
 				tax_rate: b.tax_rate || 0,
 				delivery_enabled: b.delivery_enabled ?? true
-			}))
+			})),
+			pharmacist_mode: tenant.pharmacist_mode || 'Inhouse',
+			preorders_enabled: tenant.preorders_enabled ?? false
 		}
 	};
 }

@@ -12,13 +12,15 @@
 	let loading = $state(true);
 	let saving = $state(false);
 	let deleting = $state(false);
-	let error = $state('');
+	let branchId = $state('');
 	
 	let form = $state({
 		product_type: 'Retail',
 		name: '', barcode: '', description: '', category: '', is_active: true,
 		generic_name: '', strength: '', dosage_form: '', 
-		treatment_class: '', manufacturer: '', sample_type: '', image_url: ''
+		treatment_class: '', manufacturer: '', sample_type: '', image_url: '',
+		allow_preorder: false,
+		preorder_limit: 0
 	});
 	let file = $state<File | null>(null);
 	let previewUrl = $state('');
@@ -103,6 +105,26 @@
 			categorySearch = form.category;
 			previewUrl = form.image_url;
 		}
+		
+		// Fetch current branch and its pre-order settings
+		const { data: { user: authUser } } = await supabase.auth.getUser();
+		if (authUser) {
+			const { data: profile } = await supabase.from('users').select('branch_id').eq('id', authUser.id).single();
+			if (profile?.branch_id) {
+				branchId = profile.branch_id;
+				const { data: inventory } = await supabase.from('branch_inventory')
+					.select('allow_preorder, preorder_limit')
+					.eq('product_id', productId)
+					.eq('branch_id', branchId)
+					.maybeSingle();
+				
+				if (inventory) {
+					form.allow_preorder = inventory.allow_preorder || false;
+					form.preorder_limit = inventory.preorder_limit || 0;
+				}
+			}
+		}
+		
 		await fetchCategories();
 		window.addEventListener('click', handleOutsideClick);
 		loading = false;
@@ -131,6 +153,15 @@
 				sample_type: form.sample_type || null
 			}).eq('id', productId);
 			if (dbErr) throw dbErr;
+			
+			// Update pre-order settings for this branch
+			if (branchId) {
+				const { error: invErr } = await supabase.from('branch_inventory').update({
+					allow_preorder: form.allow_preorder,
+					preorder_limit: form.preorder_limit
+				}).eq('product_id', productId).eq('branch_id', branchId);
+				if (invErr) throw invErr;
+			}
 
 			// Upload image if selected
 			if (file) {
@@ -332,13 +363,33 @@
 							<input id="manufacturer" type="text" bind:value={form.manufacturer} class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
 						</div>
 					</div>
-					<label class="flex items-center gap-3 cursor-pointer pt-2">
-						<input type="checkbox" bind:checked={form.is_active} class="w-4 h-4 text-indigo-600 rounded border-gray-300" />
-						<span class="text-sm font-medium text-gray-700">Product is active in catalog</span>
-					</label>
+					
+					<div class="pt-4 border-t border-gray-100">
+						<h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Pre-order Settings (Current Branch)</h3>
+						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+							<label class="flex items-center gap-3 cursor-pointer p-3 bg-amber-50 rounded-lg border border-amber-100 transition-colors hover:bg-amber-100/50">
+								<input type="checkbox" bind:checked={form.allow_preorder} class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500" />
+								<div>
+									<span class="block text-sm font-bold text-amber-900">Allow Pre-order</span>
+									<span class="block text-[10px] text-amber-700">Customers can order when out of stock</span>
+								</div>
+							</label>
+							<div>
+								<label for="preorder_limit" class="block text-sm font-medium text-gray-700 mb-1">Pre-order Limit</label>
+								<input id="preorder_limit" type="number" bind:value={form.preorder_limit} min="0" disabled={!form.allow_preorder} class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm disabled:bg-gray-100 disabled:text-gray-400" />
+								<p class="text-[10px] text-gray-500 mt-1">Max pre-orders allowed (0 for unlimited)</p>
+							</div>
+						</div>
+					</div>
+					<div class="space-y-3">
+						<label class="flex items-center gap-3 cursor-pointer">
+							<input type="checkbox" bind:checked={form.is_active} class="w-4 h-4 text-indigo-600 rounded border-gray-300" />
+							<span class="text-sm font-medium text-gray-700">Product is active in catalog</span>
+						</label>
+					</div>
 				</div>
 			{:else}
-				<div class="bg-white rounded-xl border p-5">
+				<div class="bg-white rounded-xl border p-5 space-y-3">
 					<label class="flex items-center gap-3 cursor-pointer">
 						<input type="checkbox" bind:checked={form.is_active} class="w-4 h-4 text-indigo-600 rounded border-gray-300" />
 						<span class="text-sm font-medium text-gray-700">Product is active in catalog</span>
