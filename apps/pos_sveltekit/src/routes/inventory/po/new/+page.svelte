@@ -67,14 +67,18 @@
 			const { data: { user } } = await supabase.auth.getUser();
 			if (!user) throw new Error('User not found');
 			
-			const { data: userData } = await supabase.from('users').select('tenant_id').eq('id', user.id).single();
-			if (!userData) throw new Error('Tenant data not found');
+			let activeTenantId = localStorage.getItem('active_tenant_id');
+			if (!activeTenantId) {
+				const { data: membership } = await supabase.from('user_tenants').select('tenant_id').eq('user_id', user.id).eq('is_active', true).limit(1).single();
+				activeTenantId = membership?.tenant_id;
+			}
+			if (!activeTenantId) throw new Error('Tenant data not found. Please refresh.');
 
 			// 1. Create PO header
 			const { data: po, error: poErr } = await supabase
 				.from('purchase_orders')
 				.insert({
-					tenant_id: userData.tenant_id,
+					tenant_id: activeTenantId,
 					branch_id: form.branch_id,
 					supplier_id: form.supplier_id,
 					total_cost: totalCost,

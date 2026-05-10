@@ -20,6 +20,7 @@
 		{ name: 'Medic Partners', href: '/medics', icon: Stethoscope, visible: tenant?.allowDoctorPartnerShip ?? true },
 		{ name: 'Customers', href: '/customers', icon: Users, visible: userData?.canManageCustomers ?? false },
 		{ name: 'Orders', href: '/orders', icon: ShoppingCart, visible: userData?.canManageOrders ?? false },
+		{ name: 'Rider Portal', href: '/rider-portal', icon: Bike, visible: userData?.role === 'rider' || (userData?.canManageOrders ?? false) },
 		{ name: 'Delivery', href: '/delivery', icon: Bike, visible: userData?.canManageOrders ?? false },
 		{ name: 'Returns', href: '/returns', icon: RotateCcw, visible: userData?.canReturnProducts ?? false },
 		{ name: 'Inventory', href: '/inventory', icon: ClipboardList, visible: userData?.canManageInventory ?? false },

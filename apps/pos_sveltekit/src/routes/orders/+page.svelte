@@ -8,6 +8,7 @@
 	} from 'lucide-svelte';
 	import { goto } from '$app/navigation';
 
+	let activeTab = $state('sales'); // 'sales' or 'online'
 	let orders = $state<any[]>([]);
 	let totalCount = $state(0);
 	let loading = $state(true);
@@ -17,6 +18,7 @@
 	let tenantId = $state('');
 	let lastSearch = '';
 	let lastStatus = 'all';
+	let lastTab = 'sales';
 	const PER_PAGE = 15;
 
 	let totalPages = $derived(Math.ceil(totalCount / PER_PAGE));
@@ -37,21 +39,42 @@
 		if (!tenantId) return;
 		loading = true;
 		try {
-			let query = supabase.from('sales')
-				.select(`
-					*,
-					customer:customers(full_name),
-					cashier:users!sales_cashier_id_fkey(full_name)
-				`, { count: 'exact' })
-				.eq('tenant_id', tenantId);
+			let query;
+			if (activeTab === 'sales') {
+				query = supabase.from('sales')
+					.select(`
+						*,
+						customer:customers(full_name),
+						cashier:users!sales_cashier_id_fkey(full_name)
+					`, { count: 'exact' })
+					.eq('tenant_id', tenantId);
 
-			if (statusFilter !== 'all') {
-				query = query.eq('sale_status', statusFilter);
-			}
+				if (statusFilter !== 'all') {
+					query = query.eq('status', statusFilter);
+				}
 
-			if (searchQuery) {
-				const q = `%${searchQuery}%`;
-				query = query.or(`sale_number.ilike.${q},customer_name.ilike.${q}`);
+				if (searchQuery) {
+					const q = `%${searchQuery}%`;
+					query = query.or(`sale_number.ilike.${q},customer_name.ilike.${q}`);
+				}
+			} else {
+				query = supabase.from('orders')
+					.select(`
+						*,
+						customer:customers(full_name),
+						processor:users!processed_by(full_name),
+						rider:riders!rider_id(id, phone)
+					`, { count: 'exact' })
+					.eq('tenant_id', tenantId);
+
+				if (statusFilter !== 'all') {
+					query = query.eq('order_status', statusFilter);
+				}
+
+				if (searchQuery) {
+					const q = `%${searchQuery}%`;
+					query = query.or(`order_number.ilike.${q},special_instructions.ilike.${q}`);
+				}
 			}
 
 			const { data, count, error } = await query
@@ -62,7 +85,7 @@
 			orders = data || [];
 			totalCount = count || 0;
 		} catch (err) {
-			console.error('Error fetching sales:', err);
+			console.error(`Error fetching ${activeTab}:`, err);
 		} finally {
 			loading = false;
 		}
@@ -75,11 +98,13 @@
 		const p = page;
 		const q = searchQuery;
 		const s = statusFilter;
+		const t = activeTab;
 
-		// If filters changed, reset to page 1
-		if (q !== lastSearch || s !== lastStatus) {
+		// If filters or tab changed, reset to page 1
+		if (q !== lastSearch || s !== lastStatus || t !== lastTab) {
 			lastSearch = q;
 			lastStatus = s;
+			lastTab = t;
 			if (page !== 1) {
 				page = 1;
 				return;
@@ -94,15 +119,19 @@
 
 	function statusBadge(status: string) {
 		switch (status) {
-			case 'completed': return 'bg-emerald-50 text-emerald-700 ring-emerald-600/20';
-			case 'pending': return 'bg-amber-50 text-amber-700 ring-amber-600/20';
+			case 'completed':
+			case 'delivered': return 'bg-emerald-50 text-emerald-700 ring-emerald-600/20';
+			case 'pending':
+			case 'confirmed':
+			case 'preparing': return 'bg-amber-50 text-amber-700 ring-amber-600/20';
 			case 'cancelled': return 'bg-rose-50 text-rose-700 ring-rose-600/20';
 			case 'refunded': return 'bg-indigo-50 text-indigo-700 ring-indigo-600/20';
 			default: return 'bg-slate-50 text-slate-700 ring-slate-600/20';
 		}
 	}
 
-	function channelIcon(channel: string) {
+	function channelIcon(channel: string | undefined, type: string | undefined) {
+		if (activeTab === 'online') return Monitor;
 		switch (channel?.toLowerCase()) {
 			case 'storefront':
 			case 'online': return Monitor;
@@ -137,13 +166,32 @@
 			<h1 class="text-2xl font-bold text-slate-900 tracking-tight">Orders & Transactions</h1>
 			<p class="text-slate-500 font-medium">{totalCount} total records found</p>
 		</div>
-		<div class="flex items-center gap-3">
-			<button class="inline-flex items-center gap-2 bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
-				<Download class="h-4 w-4" /> Export CSV
-			</button>
-			<a href="/pos" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-200 hover:-translate-y-0.5 active:translate-y-0">
-				New Sale <ArrowUpRight class="h-4 w-4" />
-			</a>
+
+		<div class="flex flex-col md:flex-row items-center gap-4">
+			<!-- Tab Switcher -->
+			<div class="bg-white p-1 rounded-2xl border border-slate-200 shadow-sm flex items-center">
+				<button 
+					onclick={() => activeTab = 'sales'}
+					class="px-5 py-2 rounded-xl text-xs font-bold transition-all {activeTab === 'sales' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}"
+				>
+					POS Sales
+				</button>
+				<button 
+					onclick={() => activeTab = 'online'}
+					class="px-5 py-2 rounded-xl text-xs font-bold transition-all {activeTab === 'online' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}"
+				>
+					Online Orders
+				</button>
+			</div>
+
+			<div class="flex items-center gap-3">
+				<button class="inline-flex items-center gap-2 bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
+					<Download class="h-4 w-4" /> Export CSV
+				</button>
+				<a href="/pos" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-200 hover:-translate-y-0.5 active:translate-y-0">
+					New Sale <ArrowUpRight class="h-4 w-4" />
+				</a>
+			</div>
 		</div>
 	</div>
 
@@ -215,15 +263,15 @@
 					</thead>
 					<tbody class="divide-y divide-slate-50">
 						{#each orders as order}
-							{@const Icon = channelIcon(order.channel)}
-							<tr class="group hover:bg-slate-50/80 transition-all cursor-pointer" onclick={() => goto(`/orders/${order.id}`)}>
+							{@const Icon = channelIcon(order.channel, order.order_type)}
+							<tr class="group hover:bg-slate-50/80 transition-all cursor-pointer" onclick={() => goto(`/orders/${order.id}?type=${activeTab}`)}>
 								<td class="px-6 py-5">
 									<div class="flex flex-col">
 										<span class="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-											{order.sale_number || `#${order.id?.slice(-8).toUpperCase()}`}
+											{order.sale_number || order.order_number || `#${order.id?.slice(-8).toUpperCase()}`}
 										</span>
 										<span class="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
-											{order.sale_type || 'Retail Sale'}
+											{activeTab === 'online' ? (order.order_type || 'Online Order') : (order.sale_type || 'Retail Sale')}
 										</span>
 									</div>
 								</td>
@@ -237,7 +285,7 @@
 												{order.customer_name || order.customer?.full_name || 'Walk-in Customer'}
 											</span>
 											<span class="text-[10px] font-bold text-slate-400 uppercase">
-												{order.customer_type || 'Retail'}
+												{activeTab === 'online' ? 'E-Commerce' : (order.customer_type || 'Retail')}
 											</span>
 										</div>
 									</div>
@@ -260,8 +308,8 @@
 									</div>
 								</td>
 								<td class="px-6 py-5 text-center">
-									<span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ring-1 ring-inset {statusBadge(order.sale_status)}">
-										{order.sale_status}
+									<span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ring-1 ring-inset {statusBadge(activeTab === 'online' ? order.order_status : order.status)}">
+										{activeTab === 'online' ? order.order_status : order.status}
 									</span>
 								</td>
 								<td class="px-6 py-5 text-right">

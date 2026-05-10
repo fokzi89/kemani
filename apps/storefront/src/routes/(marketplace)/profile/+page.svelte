@@ -314,10 +314,15 @@
 					{:else if activeTab === 'tracking'}
 						<div class="content-view">
 							<h2 class="view-title">Package Tracking</h2>
-							<div class="empty-list">
-								<div class="h-10 w-10 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4"><Truck class="w-5 h-5 text-gray-300" /></div>
-								<p>No active shipments currently in progress.</p>
-								<a href="/orders" class="btn-text" on:click={() => activeTab = 'orders'}>View Order History <ArrowRight class="w-3 h-3" /></a>
+							<div class="bg-white rounded-[2rem] border border-[#f0eeea] p-12 text-center shadow-sm">
+								<div class="h-16 w-16 bg-[#faf9f6] rounded-full flex items-center justify-center mx-auto mb-6 text-[#785a1a]">
+									<Truck class="w-8 h-8" />
+								</div>
+								<h3 class="text-xl font-serif mb-2">Live Status Updates</h3>
+								<p class="text-slate-500 mb-8 max-w-xs mx-auto font-light">Track your package in real-time with our high-fidelity tracking system.</p>
+								<a href="/track" class="bg-[#1a1c1a] text-white px-8 py-3 rounded-full font-bold text-[10px] uppercase tracking-widest inline-flex items-center gap-2">
+									Open Tracker <ArrowRight class="w-3 h-3" />
+								</a>
 							</div>
 						</div>
 

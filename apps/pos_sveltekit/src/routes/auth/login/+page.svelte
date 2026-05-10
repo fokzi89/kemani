@@ -24,33 +24,43 @@
 
 			if (!data.user) throw new Error('Failed to retrieve user data');
 
-			// Fetch full user profile to check onboarding status and cache data
-			const { data: userData, error: profileError } = await supabase
-				.from('users')
-				.select('*, tenants!tenant_id(*), branches!branch_id(*)')
-				.eq('id', data.user.id)
-				.maybeSingle();
+			// Fetch all tenant memberships for this user
+			const { data: memberships, error: membershipError } = await supabase
+				.from('user_tenants')
+				.select('*, tenants(*), branches(*)')
+				.eq('user_id', data.user.id)
+				.eq('is_active', true);
 
-			if (profileError) console.error('Failed to fetch profile during login:', profileError);
+			if (membershipError) console.error('Failed to fetch memberships:', membershipError);
 			
-			if (userData) {
-				localStorage.setItem(`pos_user_profile_${data.user.id}`, JSON.stringify(userData));
-				if (userData.tenant_id) {
-					localStorage.setItem('active_tenant_id', userData.tenant_id);
-				}
-				if (userData.onboarding_done) {
-					if (userData.role === 'cashier') {
-						goto('/pos');
-					} else if (userData.role === 'pharmacist') {
-						goto('/messages');
-					} else {
-						goto('/');
-					}
+			if (memberships && memberships.length > 0) {
+				if (memberships.length > 1) {
+					// Multiple organisations: Redirect to selection screen
+					localStorage.setItem('pending_tenant_memberships', JSON.stringify(memberships));
+					goto('/auth/select-tenant');
 				} else {
-					goto('/onboarding');
+					// Single organisation: Cache and proceed
+					const m = memberships[0];
+					localStorage.setItem('active_tenant_id', m.tenant_id);
+					localStorage.setItem(`pos_user_profile_${data.user.id}`, JSON.stringify({
+						...m,
+						full_name: m.user?.full_name // Fallback if needed, but we should probably fetch user profile separately if we need details like avatar
+					}));
+
+					if (m.onboarding_done) {
+						if (m.role === 'cashier') {
+							goto('/pos');
+						} else if (m.role === 'pharmacist') {
+							goto('/messages');
+						} else {
+							goto('/');
+						}
+					} else {
+						goto('/onboarding');
+					}
 				}
 			} else {
-				// No profile record found
+				// No memberships found: Likely needs onboarding or invite
 				goto('/onboarding');
 			}
 			

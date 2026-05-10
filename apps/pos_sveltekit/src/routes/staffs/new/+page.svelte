@@ -45,6 +45,7 @@
 		{ id: 'branch_manager', label: 'Manager' },
 		{ id: 'cashier', label: 'Cashier' },
 		{ id: 'pharmacist', label: 'Pharmacist' },
+		{ id: 'rider', label: 'Rider' },
 		{ id: 'accountant', label: 'Accountant' }
 	];
 
@@ -94,8 +95,8 @@
 			tenantId = activeTenantId;
 		} else {
 			// Ultimate fallback: Fetch from DB
-			const { data: user } = await supabase.from('users').select('tenant_id').eq('id', session.user.id).single();
-			if (user?.tenant_id) tenantId = user.tenant_id;
+			const { data: membership } = await supabase.from('user_tenants').select('tenant_id').eq('user_id', session.user.id).eq('is_active', true).limit(1).single();
+			if (membership?.tenant_id) tenantId = membership.tenant_id;
 		}
 
 		if (!tenantId) return;

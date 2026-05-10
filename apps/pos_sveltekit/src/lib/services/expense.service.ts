@@ -88,12 +88,12 @@ export class ExpenseService {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) throw new Error('Not authenticated');
 
-            const { data: user } = await supabase.from('users').select('tenant_id').eq('id', session.user.id).single();
-            if (!user) throw new Error('User not found');
+            const activeTenantId = localStorage.getItem('active_tenant_id');
+            if (!activeTenantId) throw new Error('No active workspace selected');
 
             const fileExt = receiptFile.name.split('.').pop();
             const fileName = `${Math.random()}.${fileExt}`;
-            const filePath = `${user.tenant_id}/${session.user.id}/${fileName}`;
+            const filePath = `${activeTenantId}/${session.user.id}/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('expense-documents')
@@ -134,12 +134,12 @@ export class ExpenseService {
             updates.payment_collected_by = details.payment_collected_by;
 
             if (details.payment_evidence_file) {
-                const { data: user } = await supabase.from('users').select('tenant_id').eq('id', session.user.id).single();
-                if (!user) throw new Error('User not found');
+                const activeTenantId = localStorage.getItem('active_tenant_id');
+                if (!activeTenantId) throw new Error('No active workspace selected');
 
                 const fileExt = details.payment_evidence_file.name.split('.').pop();
                 const fileName = `pay-evidence-${Math.random()}.${fileExt}`;
-                const filePath = `${user.tenant_id}/${session.user.id}/${fileName}`;
+                const filePath = `${activeTenantId}/${session.user.id}/${fileName}`;
 
                 const { error: uploadError } = await supabase.storage
                     .from('expense-documents')

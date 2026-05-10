@@ -1,0 +1,148 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - generic [ref=e7]:
+            - heading "Ade Ventures" [level=1] [ref=e8]
+            - paragraph [ref=e9]: Business Dashboard
+          - button "Notifications" [ref=e11]:
+            - img [ref=e12]
+        - navigation [ref=e13]:
+          - link "Dashboard" [ref=e14] [cursor=pointer]:
+            - /url: /
+            - img [ref=e15]
+            - text: Dashboard
+          - link "AI Assistant" [ref=e16] [cursor=pointer]:
+            - /url: /ai-assistant
+            - img [ref=e17]
+            - text: AI Assistant
+          - link "POS" [ref=e18] [cursor=pointer]:
+            - /url: /pos
+            - img [ref=e19]
+            - text: POS
+          - link "Products" [ref=e20] [cursor=pointer]:
+            - /url: /products
+            - img [ref=e21]
+            - text: Products
+          - link "Suppliers" [ref=e22] [cursor=pointer]:
+            - /url: /suppliers
+            - img [ref=e23]
+            - text: Suppliers
+          - link "Medic Partners" [ref=e24] [cursor=pointer]:
+            - /url: /medics
+            - img [ref=e25]
+            - text: Medic Partners
+          - link "Customers" [ref=e26] [cursor=pointer]:
+            - /url: /customers
+            - img [ref=e27]
+            - text: Customers
+          - link "Orders" [ref=e28] [cursor=pointer]:
+            - /url: /orders
+            - img [ref=e29]
+            - text: Orders
+          - link "Delivery" [ref=e30] [cursor=pointer]:
+            - /url: /delivery
+            - img [ref=e31]
+            - text: Delivery
+          - link "Returns" [ref=e32] [cursor=pointer]:
+            - /url: /returns
+            - img [ref=e33]
+            - text: Returns
+          - link "Inventory" [ref=e34] [cursor=pointer]:
+            - /url: /inventory
+            - img [ref=e35]
+            - text: Inventory
+          - link "Purchase Orders" [ref=e36] [cursor=pointer]:
+            - /url: /inventory/po
+            - img [ref=e37]
+            - text: Purchase Orders
+          - link "Expenses" [ref=e38] [cursor=pointer]:
+            - /url: /expenses
+            - img [ref=e39]
+            - text: Expenses
+          - link "Staffs" [ref=e40] [cursor=pointer]:
+            - /url: /staffs
+            - img [ref=e41]
+            - text: Staffs
+          - link "Attendance" [ref=e42] [cursor=pointer]:
+            - /url: /attendance
+            - img [ref=e43]
+            - text: Attendance
+          - link "Tasks" [ref=e44] [cursor=pointer]:
+            - /url: /tasks
+            - img [ref=e45]
+            - text: Tasks
+          - link "Messages" [ref=e46] [cursor=pointer]:
+            - /url: /messages
+            - img [ref=e47]
+            - text: Messages
+          - link "Commissions" [ref=e48] [cursor=pointer]:
+            - /url: /commissions
+            - img [ref=e49]
+            - text: Commissions
+          - link "Branches" [ref=e50] [cursor=pointer]:
+            - /url: /branches
+            - img [ref=e51]
+            - text: Branches
+          - link "Settings" [ref=e52] [cursor=pointer]:
+            - /url: /settings
+            - img [ref=e53]
+            - text: Settings
+        - generic [ref=e54]:
+          - generic [ref=e55]:
+            - generic [ref=e56]: A
+            - generic [ref=e57]:
+              - paragraph [ref=e58]: Ade Ola
+              - paragraph [ref=e59]: adeola@gmail.com
+          - button "Logout" [ref=e60]:
+            - img [ref=e61]
+            - text: Logout
+    - main [ref=e62]:
+      - generic [ref=e64]:
+        - generic [ref=e65]:
+          - heading "Dashboard" [level=2] [ref=e66]
+          - paragraph [ref=e67]: Welcome back! Here's your business overview.
+        - generic [ref=e68]:
+          - generic [ref=e71]:
+            - paragraph [ref=e73]: Total Products
+            - img [ref=e76]
+          - generic [ref=e79]:
+            - paragraph [ref=e81]: Total Customers
+            - img [ref=e84]
+          - generic [ref=e87]:
+            - paragraph [ref=e89]: Today's Sales
+            - img [ref=e92]
+          - generic [ref=e95]:
+            - paragraph [ref=e97]: Monthly Revenue
+            - img [ref=e100]
+          - generic [ref=e103]:
+            - paragraph [ref=e105]: Low Stock Alert
+            - img [ref=e108]
+          - generic [ref=e111]:
+            - paragraph [ref=e113]: Pending Orders
+            - img [ref=e116]
+        - generic [ref=e117]:
+          - heading "Quick Actions" [level=3] [ref=e118]
+          - generic [ref=e119]:
+            - link "New Sale" [ref=e120] [cursor=pointer]:
+              - /url: /pos
+              - img [ref=e121]
+              - generic [ref=e122]: New Sale
+            - link "Manage Products" [ref=e123] [cursor=pointer]:
+              - /url: /products
+              - img [ref=e124]
+              - generic [ref=e125]: Manage Products
+            - link "View Customers" [ref=e126] [cursor=pointer]:
+              - /url: /customers
+              - img [ref=e127]
+              - generic [ref=e128]: View Customers
+            - link "View Orders" [ref=e129] [cursor=pointer]:
+              - /url: /orders
+              - img [ref=e130]
+              - generic [ref=e131]: View Orders
+  - generic [ref=e132]: untitled page
+```

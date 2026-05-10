@@ -250,7 +250,7 @@
 						{#if storefront?.allowDoctorPartnerShip ?? true}
 							<a href="/medics" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 {$page.url.pathname === '/medics' ? 'text-gray-900' : 'text-gray-500'}">Medics</a>
 						{/if}
-						<a href="/tracking" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 text-gray-500">Track Order</a>
+						<a href="/track" class="text-[10px] font-semibold uppercase tracking-[0.2em] transition-all hover:text-gray-400 text-gray-500">Track Order</a>
 						{#if storefront?.ai_is_enabled}
 							<a href="/chat/ai" class="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-600 hover:text-blue-700 flex items-center gap-1.5">
 								<Sparkles class="w-3.5 h-3.5" /> AI Shopper

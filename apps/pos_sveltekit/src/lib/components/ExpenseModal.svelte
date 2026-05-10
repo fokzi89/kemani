@@ -43,8 +43,8 @@
 			const { data: { session } } = await supabase.auth.getSession();
 			if (!session) return;
 
-			const { data: user } = await supabase.from('users').select('tenant_id').eq('id', session.user.id).single();
-			const tenantId = user?.tenant_id;
+			const tenantId = localStorage.getItem('active_tenant_id');
+			if (!tenantId) throw new Error('No active workspace selected');
 
 			const [types, supData, brData, poData] = await Promise.all([
 				ExpenseService.getExpenseTypes(),
@@ -80,7 +80,7 @@
 			const newExpense = {
 				...form,
 				raised_by: session?.user?.id,
-				tenant_id: (await supabase.from('users').select('tenant_id').eq('id', session?.user?.id).single()).data?.tenant_id
+				tenant_id: localStorage.getItem('active_tenant_id')
 			};
 
 			if (form.is_recurring && !form.next_recur_date) {

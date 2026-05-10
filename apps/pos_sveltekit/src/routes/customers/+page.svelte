@@ -16,9 +16,14 @@
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
 		if (!session) return;
-		const { data: user } = await supabase.from('users').select('tenant_id').eq('id', session.user.id).single();
-		if (user?.tenant_id) {
-			const { data } = await supabase.from('customers').select('*').eq('tenant_id', user.tenant_id).order('first_name');
+		let activeTenantId = localStorage.getItem('active_tenant_id');
+		if (!activeTenantId) {
+			const { data: membership } = await supabase.from('user_tenants').select('tenant_id').eq('user_id', session.user.id).eq('is_active', true).limit(1).single();
+			activeTenantId = membership?.tenant_id;
+		}
+
+		if (activeTenantId) {
+			const { data } = await supabase.from('customers').select('*').eq('tenant_id', activeTenantId).order('first_name');
 			customers = data || [];
 			filtered = customers;
 		}
