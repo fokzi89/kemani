@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { supabase } from '$lib/supabase';
 	import {
-		UserPlus, MoreVertical, Edit2, ShieldOff, Shield,
+		UserPlus, Eye, Edit2, ShieldOff, Shield,
 		X, Building2, Mail, Phone, User, Search
 	} from 'lucide-svelte';
 
@@ -60,24 +60,68 @@
 			const { data: { session } } = await supabase.auth.getSession();
 			if (!session) return;
 
-			const { data: me } = await supabase
-				.from('users')
-				.select('tenant_id')
-				.eq('id', session.user.id)
-				.single();
+			// Get active tenant from localStorage
+			tenantId = localStorage.getItem('active_tenant_id');
+			if (!tenantId) {
+				// Fallback: look up from user_tenants
+				const { data: membership } = await supabase
+					.from('user_tenants')
+					.select('tenant_id')
+					.eq('user_id', session.user.id)
+					.eq('is_active', true)
+					.is('deleted_at', null)
+					.limit(1)
+					.single();
+				if (!membership) return;
+				tenantId = membership.tenant_id;
+			}
 
-			if (!me) return;
-			tenantId = me.tenant_id;
-
-			const { data: staffData, error: staffErr } = await supabase
-				.from('users')
-				.select(`*, branches!branch_id(name)`)
+			// Fetch staff via user_tenants joined with users
+			const { data: memberData, error: staffErr } = await supabase
+				.from('user_tenants')
+				.select(`
+					*,
+					users!user_id(id, email, phone, full_name, avatar_url, profile_picture_url, created_at),
+					branches!branch_id(name)
+				`)
 				.eq('tenant_id', tenantId)
+				.eq('is_active', true)
 				.is('deleted_at', null)
-				.order('created_at', { ascending: false });
+				.order('joined_at', { ascending: false });
 
 			if (staffErr) console.error('Staff error:', staffErr);
-			staff = staffData || [];
+
+			// Flatten into the shape the template expects
+			staff = (memberData || []).map((m: any) => ({
+				id: m.users?.id || m.user_id,
+				email: m.users?.email,
+				phone: m.users?.phone,
+				full_name: m.users?.full_name,
+				avatar_url: m.users?.avatar_url,
+				profile_picture_url: m.users?.profile_picture_url,
+				created_at: m.users?.created_at || m.joined_at,
+				role: m.role,
+				branches: m.branches,
+				// Privileges from user_tenants
+				canManagePOS: m.canManagePOS,
+				canManageProducts: m.canManageProducts,
+				canManageCustomers: m.canManageCustomers,
+				canManageOrders: m.canManageOrders,
+				canViewMessages: m.canViewMessages,
+				canViewAnalytics: m.canViewAnalytics,
+				canManageStaff: m.canManageStaff,
+				canManageInventory: m.canManageInventory,
+				canManageTransfer: m.canManageTransfer,
+				canManageBranches: m.canManageBranches,
+				canManageRoles: m.canManageRoles,
+				canTransferProduct: m.canTransferProduct,
+				canReturnProducts: m.canReturnProducts,
+				canCreatePrescription: m.canCreatePrescription,
+				canApplyDiscount: m.canApplyDiscount,
+				canReferDoctor: m.canReferDoctor,
+				canManageExpenses: m.canManageExpenses,
+				_membership_id: m.id // for updating user_tenants row
+			}));
 
 			const { data: branchData } = await supabase
 				.from('branches')
@@ -92,6 +136,7 @@
 			loading = false;
 		}
 	}
+
 
 	onMount(fetchData);
 
@@ -126,9 +171,9 @@
 		savingPrivileges = true;
 		try {
 			const { error } = await supabase
-				.from('users')
+				.from('user_tenants')
 				.update({ ...privilegeForm, updated_at: new Date().toISOString() })
-				.eq('id', editingStaff.id);
+				.eq('id', editingStaff._membership_id);
 			if (error) throw error;
 			showPrivilegesModal = false;
 			await fetchData();
@@ -143,20 +188,13 @@
 		if (!confirm(`Remove all access for ${person.full_name}? They will no longer be able to log in.`)) return;
 		try {
 			const { error } = await supabase
-				.from('users')
+				.from('user_tenants')
 				.update({
-					canManagePOS: false, canManageProducts: false,
-					canManageCustomers: false, canManageOrders: false,
-					canViewMessages: false, canViewAnalytics: false,
-					canManageStaff: false, canManageInventory: false,
-					canManageTransfer: false, canManageBranches: false,
-					canManageRoles: false,
-					canTransferProduct: false, canReturnProducts: false,
-					canCreatePrescription: false, canApplyDiscount: false,
-					canReferDoctor: false, canManageExpenses: false,
-					deleted_at: new Date().toISOString()
+					is_active: false,
+					deleted_at: new Date().toISOString(),
+					updated_at: new Date().toISOString()
 				})
-				.eq('id', person.id);
+				.eq('id', person._membership_id);
 			if (error) throw error;
 			staff = staff.filter(s => s.id !== person.id);
 			activeDropdown = null;
@@ -171,6 +209,7 @@
 			manager: 'bg-blue-50 text-blue-700 border-blue-100',
 			cashier: 'bg-green-50 text-green-700 border-green-100',
 			pharmacist: 'bg-amber-50 text-amber-700 border-amber-100',
+			accountant: 'bg-rose-50 text-rose-700 border-rose-100',
 			staff: 'bg-gray-50 text-gray-600 border-gray-200'
 		};
 		return map[role] || map.staff;
@@ -307,53 +346,14 @@
 									</div>
 								</td>
 
-								<!-- Actions -->
-								<td class="px-6 py-4 whitespace-nowrap text-right relative">
-									<div class="relative inline-block text-left">
-										<button
-											onclick={() => activeDropdown = activeDropdown === person.id ? null : person.id}
-											class="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-											aria-label="Actions"
-										>
-											<MoreVertical class="h-5 w-5" />
-										</button>
-
-										{#if activeDropdown === person.id}
-											<button
-												class="fixed inset-0 z-10 bg-transparent cursor-default"
-												onclick={() => activeDropdown = null}
-												aria-label="Close menu"
-											></button>
-
-											<div class="absolute right-0 mt-1 w-52 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.12)] border border-gray-100 overflow-hidden z-20">
-												<div class="py-1.5">
-													<div class="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</div>
-													<button
-														onclick={() => { activeDropdown = null; }}
-														class="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-3"
-													>
-														<Edit2 class="h-4 w-4 text-blue-500" />
-														Edit Profile
-													</button>
-													<button
-														onclick={() => openPrivilegesModal(person)}
-														class="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-3"
-													>
-														<Shield class="h-4 w-4 text-emerald-500" />
-														Edit Privileges
-													</button>
-													<div class="h-px bg-gray-100 my-1 mx-3"></div>
-													<button
-														onclick={() => revokeAccess(person)}
-														class="w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 flex items-center gap-3"
-													>
-														<ShieldOff class="h-4 w-4 text-red-500" />
-														Revoke Access
-													</button>
-												</div>
-											</div>
-										{/if}
-									</div>
+								<td class="px-6 py-4 whitespace-nowrap text-right">
+									<a
+										href="/staffs/{person.id}"
+										class="inline-flex p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+										aria-label="View Profile"
+									>
+										<Eye class="h-5 w-5" />
+									</a>
 								</td>
 							</tr>
 						{/each}

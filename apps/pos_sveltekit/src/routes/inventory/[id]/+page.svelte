@@ -573,18 +573,18 @@
 										{#each supplyHistory as log}
 											<tr class="hover:bg-gray-50/50 transition-colors">
 												<td class="px-6 py-4">
-													<p class="text-sm font-bold text-gray-900">{new Date(log.created_at).toLocaleDateString()}</p>
-													<p class="text-[10px] text-gray-400 font-medium">{new Date(log.created_at).toLocaleTimeString()}</p>
+													<p class="text-xs font-bold text-gray-900">{new Date(log.created_at).toLocaleDateString()}</p>
+													<p class="text-[9px] text-gray-400 font-medium">{new Date(log.created_at).toLocaleTimeString()}</p>
 												</td>
-												<td class="px-4 py-4 text-sm font-black text-emerald-600">+{log.quantity_delta} <span class="text-[10px] font-medium text-gray-400 ml-1">units</span></td>
-												<td class="px-4 py-4 text-sm font-bold text-indigo-600">{formatCurrency(log.unit_cost)}</td>
-												<td class="px-4 py-4 text-xs font-medium text-gray-500 max-w-xs truncate">{log.notes || log.reference_id || 'Direct Entry'}</td>
+												<td class="px-4 py-4 text-xs font-black text-emerald-600">+{log.quantity_delta} <span class="text-[9px] font-medium text-gray-400 ml-1">units</span></td>
+												<td class="px-4 py-4 text-xs font-bold text-indigo-600">{formatCurrency(log.unit_cost)}</td>
+												<td class="px-4 py-4 text-[10px] font-medium text-gray-500 max-w-xs truncate">{log.notes || log.reference_id || 'Direct Entry'}</td>
 												<td class="px-6 py-4">
 													<div class="flex items-center gap-2">
-														<div class="h-6 w-6 bg-blue-50 text-blue-600 rounded-full flex justify-center items-center text-[10px] font-black">
+														<div class="h-6 w-6 bg-blue-50 text-blue-600 rounded-full flex justify-center items-center text-[9px] font-black">
 															{(log.users?.full_name || 'Sys').charAt(0)}
 														</div>
-														<span class="text-xs font-bold text-gray-700">{log.users?.full_name || 'System Operator'}</span>
+														<span class="text-[11px] font-bold text-gray-700">{log.users?.full_name || 'System Operator'}</span>
 													</div>
 												</td>
 											</tr>

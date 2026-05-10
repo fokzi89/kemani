@@ -41,7 +41,7 @@
 
 	// ── Checkout state ────────────────────────────────────────────────────────
 	let checkoutOpen      = $state(false);
-	let paymentMethod     = $state<'cash' | 'card' | 'transfer'>('cash');
+	let paymentMethod     = $state<'cash' | 'card' | 'bank_transfer'>('cash');
 	let cashReceived      = $state('');
 	let saleSuccess       = $state(false);
 	let lastSale          = $state<any>(null);
@@ -62,12 +62,15 @@
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
 		if (!session) return;
-		const { data: user } = await supabase
-			.from('users').select('tenant_id, branch_id').eq('id', session.user.id).single();
-		if (user) {
-			tenantId = user.tenant_id;
-			userBranchId = user.branch_id;
-			
+		
+		tenantId = localStorage.getItem('active_tenant_id') || '';
+		const cachedProfile = localStorage.getItem(`pos_user_profile_${session.user.id}`);
+		if (cachedProfile) {
+			const profile = JSON.parse(cachedProfile);
+			userBranchId = profile.branch_id;
+		}
+
+		if (tenantId) {
 			// Fetch business name
 			const { data: tData } = await supabase.from('tenants').select('name').eq('id', tenantId).single();
 			if (tData) tenantName = tData.name;
@@ -581,7 +584,7 @@
 				<div>
 					<p class="text-sm font-medium text-gray-700 mb-2">Payment Method</p>
 					<div class="grid grid-cols-3 gap-2">
-						{#each [{ id: 'cash', label: 'Cash', icon: Banknote }, { id: 'card', label: 'Card', icon: CreditCard }, { id: 'transfer', label: 'Transfer', icon: Smartphone }] as method}
+						{#each [{ id: 'cash', label: 'Cash', icon: Banknote }, { id: 'card', label: 'Card', icon: CreditCard }, { id: 'bank_transfer', label: 'Transfer', icon: Smartphone }] as method}
 							{@const Icon = method.icon}
 							<button onclick={() => paymentMethod = method.id as any}
 								class="flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-all {paymentMethod === method.id ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}">

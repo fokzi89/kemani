@@ -27,8 +27,11 @@
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
 		if (session) {
-			const { data: user } = await supabase.from('users').select('branch_id').eq('id', session.user.id).single();
-			currentBranchId = user?.branch_id;
+			const cachedProfile = localStorage.getItem(`pos_user_profile_${session.user.id}`);
+			if (cachedProfile) {
+				const user = JSON.parse(cachedProfile);
+				currentBranchId = user.branch_id;
+			}
 		}
 		await fetchData();
 	});

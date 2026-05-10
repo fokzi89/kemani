@@ -11,8 +11,8 @@
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
 		if (!session) return;
-		const { data: user } = await supabase.from('users').select('tenant_id').eq('id', session.user.id).single();
-		if (user?.tenant_id) { tenantId = user.tenant_id; await loadStats(); }
+		tenantId = localStorage.getItem('active_tenant_id') || '';
+		if (tenantId) { await loadStats(); }
 		loading = false;
 	});
 

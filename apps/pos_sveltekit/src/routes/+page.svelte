@@ -23,19 +23,9 @@
 			return;
 		}
 
-		// Get user and tenant info with explicit join
-		const { data: userData, error: userError } = await supabase
-			.from('users')
-			.select('*, tenants!tenant_id(*)')
-			.eq('id', session.user.id)
-			.single();
-
-		if (userError) {
-			console.error('Error fetching user for dashboard:', userError);
-			loading = false;
-			return;
-		}
-
+		const cachedProfile = localStorage.getItem(`pos_user_profile_${session.user.id}`);
+		const userData = cachedProfile ? JSON.parse(cachedProfile) : null;
+		
 		if (userData?.tenants) {
 			tenant = Array.isArray(userData.tenants) ? userData.tenants[0] : userData.tenants;
 			if (tenant?.id) {

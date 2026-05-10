@@ -39,7 +39,7 @@ BEGIN
     UPDATE staff_attendance
     SET 
         clock_out_at = NOW(),
-        total_hours = EXTRACT(EPOCH FROM (NOW() - clock_in_at)) / 3600
+        total_hours = ROUND((EXTRACT(EPOCH FROM (NOW() - clock_in_at)) / 3600)::numeric, 2)
     WHERE id = p_attendance_id
       AND clock_out_at IS NULL
     RETURNING * INTO v_attendance;

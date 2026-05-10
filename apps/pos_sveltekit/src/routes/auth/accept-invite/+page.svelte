@@ -68,7 +68,6 @@
 			const invEmail = invitation.email.trim().toLowerCase();
 			const authEmail = session.user.email.trim().toLowerCase();
 
-			// Email must match
 			if (authEmail !== invEmail) {
 				googleEmail = authEmail;
 				stage = 'mismatch';
@@ -77,89 +76,74 @@
 
 			const userId = session.user.id;
 
-			// Check if user row already exists in users table
+			// 1. Ensure user identity row exists (create if first time)
 			const { data: existingUser } = await supabase
 				.from('users')
 				.select('id')
-				.eq('email', invEmail)
+				.eq('id', userId)
 				.maybeSingle();
 
-			if (existingUser) {
-				// Update existing user: attach to this tenant and branch
-				const { error: updateErr } = await supabase
-					.from('users')
-					.update({
-						tenant_id: invitation.tenant_id,
-						branch_id: invitation.branch_id,
-						role: invitation.role,
-						onboarding_done: invitation.role === 'pharmacist' ? false : true,
-						canManagePOS: invitation.canManagePOS,
-						canManageProducts: invitation.canManageProducts,
-						canManageCustomers: invitation.canManageCustomers,
-						canManageOrders: invitation.canManageOrders,
-						canViewMessages: invitation.canViewMessages,
-						canViewAnalytics: invitation.canViewAnalytics,
-						canManageStaff: invitation.canManageStaff,
-						canManageInventory: invitation.canManageInventory,
-						canManageTransfer: invitation.canManageTransfer,
-						canManageBranches: invitation.canManageBranches,
-						canManageRoles: invitation.canManageRoles,
-						canTransferProduct: invitation.canTransferProduct,
-						canReturnProducts: invitation.canReturnProducts,
-						canCreatePrescription: invitation.canCreatePrescription,
-						canApplyDiscount: invitation.canApplyDiscount,
-						canReferDoctor: invitation.canReferDoctor,
-						updated_at: new Date().toISOString()
-					})
-					.eq('email', invEmail);
-
-				if (updateErr) throw updateErr;
-			} else {
-				// Insert new user row
+			if (!existingUser) {
 				const { error: insertErr } = await supabase
 					.from('users')
 					.insert({
 						id: userId,
 						email: invEmail,
 						full_name: invitation.full_name,
-						role: invitation.role,
-						tenant_id: invitation.tenant_id,
-						branch_id: invitation.branch_id,
-						onboarding_done: invitation.role === 'pharmacist' ? false : true,
-						canManagePOS: invitation.canManagePOS,
-						canManageProducts: invitation.canManageProducts,
-						canManageCustomers: invitation.canManageCustomers,
-						canManageOrders: invitation.canManageOrders,
-						canViewMessages: invitation.canViewMessages,
-						canViewAnalytics: invitation.canViewAnalytics,
-						canManageStaff: invitation.canManageStaff,
-						canManageInventory: invitation.canManageInventory,
-						canManageTransfer: invitation.canManageTransfer,
-						canManageBranches: invitation.canManageBranches,
-						canManageRoles: invitation.canManageRoles,
-						canTransferProduct: invitation.canTransferProduct,
-						canReturnProducts: invitation.canReturnProducts,
-						canCreatePrescription: invitation.canCreatePrescription,
-						canApplyDiscount: invitation.canApplyDiscount,
-						canReferDoctor: invitation.canReferDoctor
+						role: invitation.role  // kept for backwards-compat, will be on user_tenants
 					});
-
 				if (insertErr) throw insertErr;
 			}
 
-			// Mark invitation as accepted
+			// 2. Upsert into user_tenants — safe for re-invitations or multi-tenant
+			const { error: memberErr } = await supabase
+				.from('user_tenants')
+				.upsert({
+					user_id: userId,
+					tenant_id: invitation.tenant_id,
+					branch_id: invitation.branch_id,
+					role: invitation.role,
+					onboarding_done: invitation.role === 'pharmacist' ? false : true,
+					is_active: true,
+					canManagePOS: invitation.canManagePOS,
+					canManageProducts: invitation.canManageProducts,
+					canManageCustomers: invitation.canManageCustomers,
+					canManageOrders: invitation.canManageOrders,
+					canViewMessages: invitation.canViewMessages,
+					canViewAnalytics: invitation.canViewAnalytics,
+					canManageStaff: invitation.canManageStaff,
+					canManageInventory: invitation.canManageInventory,
+					canManageTransfer: invitation.canManageTransfer,
+					canManageBranches: invitation.canManageBranches,
+					canManageRoles: invitation.canManageRoles,
+					canTransferProduct: invitation.canTransferProduct,
+					canReturnProducts: invitation.canReturnProducts,
+					canCreatePrescription: invitation.canCreatePrescription,
+					canApplyDiscount: invitation.canApplyDiscount,
+					canReferDoctor: invitation.canReferDoctor,
+					canManageExpenses: invitation.canManageExpenses ?? false
+				}, { onConflict: 'user_id,tenant_id' });
+
+			if (memberErr) throw memberErr;
+
+			// 3. Set this tenant as the active one for seamless redirect
+			localStorage.setItem('active_tenant_id', invitation.tenant_id);
+
+			// 4. Mark invitation accepted
 			await supabase
 				.from('staff_invitations')
 				.update({ status: 'accepted', accepted_at: new Date().toISOString() })
 				.eq('invitation_token', token);
 
 			stage = 'success';
-			setTimeout(() => goto('/'), 3000);
+			const onboardingPath = invitation.role === 'pharmacist' ? '/onboarding/pharmacist' : '/';
+			setTimeout(() => goto(onboardingPath), 2500);
 		} catch (err: any) {
 			errorMessage = err.message || 'Something went wrong.';
 			stage = 'confirm';
 		}
 	}
+
 
 	async function signOutAndRetry() {
 		await supabase.auth.signOut();

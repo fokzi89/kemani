@@ -120,9 +120,9 @@
 
 						<div class="p-6">
 							<div class="overflow-x-auto">
-								<table class="w-full text-xs text-left border-separate border-spacing-0">
+								<table class="w-full text-[11px] text-left border-separate border-spacing-0">
 									<thead>
-										<tr class="text-gray-400 font-black uppercase tracking-widest text-[9px]">
+										<tr class="text-gray-400 font-black uppercase tracking-widest text-[8px]">
 											<th class="pb-4 border-b">Product</th>
 											<th class="pb-4 border-b text-center">Qty</th>
 											<th class="pb-4 border-b text-right">Unit Cost</th>
@@ -136,23 +136,23 @@
 											<tr class="group">
 												<td class="py-4 font-bold text-gray-800">
 													<div class="flex flex-col">
-														<span class="uppercase tracking-tight">{item.products?.name}</span>
-														<span class="text-[9px] text-gray-400 font-medium mt-0.5">Batch: {item.batch_no || 'N/A'}</span>
+														<span class="uppercase tracking-tight text-[11px]">{item.products?.name}</span>
+														<span class="text-[8px] text-gray-400 font-medium mt-0.5">Batch: {item.batch_no || 'N/A'}</span>
 													</div>
 												</td>
 												<td class="py-4 text-center">
-													<span class="inline-flex items-center px-2 py-1 rounded-lg bg-green-50 text-green-700 font-black">
+													<span class="inline-flex items-center px-2 py-1 rounded-lg bg-green-50 text-green-700 font-black text-[11px]">
 														+{item.quantity}
 													</span>
 												</td>
 												<td class="py-4 text-right text-gray-600 font-mono font-medium">₦{item.unit_cost.toLocaleString()}</td>
 												<td class="py-4 text-right">
 													<div class="flex flex-col items-end">
-														<span class="text-[10px] font-bold {expiry.color}">{item.expiry_date ? new Date(item.expiry_date).toLocaleDateString() : 'N/A'}</span>
-														<span class="text-[8px] font-black uppercase tracking-tighter opacity-80 {expiry.color}">{expiry.label}</span>
+														<span class="text-[9px] font-bold {expiry.color}">{item.expiry_date ? new Date(item.expiry_date).toLocaleDateString() : 'N/A'}</span>
+														<span class="text-[7px] font-black uppercase tracking-tighter opacity-80 {expiry.color}">{expiry.label}</span>
 													</div>
 												</td>
-												<td class="py-4 text-right font-black text-gray-900 tabular-nums">₦{(item.quantity * item.unit_cost).toLocaleString()}</td>
+												<td class="py-4 text-right font-black text-gray-900 tabular-nums text-[11px]">₦{(item.quantity * item.unit_cost).toLocaleString()}</td>
 											</tr>
 										{/each}
 									</tbody>
@@ -162,11 +162,11 @@
 												<td colspan="5" class="pt-5 mt-4">
 													<div class="bg-amber-50/50 border border-amber-100 rounded-2xl p-4 flex items-start gap-3">
 														<div class="bg-amber-100 p-1.5 rounded-lg text-amber-600">
-															<Clock class="h-3.5 w-3.5" />
+															<Clock class="h-3 w-3" />
 														</div>
 														<div>
-															<p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-1">Reception Notes</p>
-															<p class="text-[11px] text-amber-800 italic leading-relaxed">{receipt.notes}</p>
+															<p class="text-[8px] font-black text-amber-500 uppercase tracking-widest mb-1">Reception Notes</p>
+															<p class="text-[10px] text-amber-800 italic leading-relaxed">{receipt.notes}</p>
 														</div>
 													</div>
 												</td>
@@ -178,8 +178,8 @@
 						</div>
 						
 						<div class="px-6 py-4 bg-gray-50/30 border-t flex items-center justify-between">
-							<span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Receipt Value</span>
-							<span class="text-sm font-black text-gray-900 tabular-nums">₦{receipt.items.reduce((sum, i) => sum + (i.quantity * i.unit_cost), 0).toLocaleString()}</span>
+							<span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Total Receipt Value</span>
+							<span class="text-xs font-black text-gray-900 tabular-nums">₦{receipt.items.reduce((sum, i) => sum + (i.quantity * i.unit_cost), 0).toLocaleString()}</span>
 						</div>
 					</div>
 				{/each}

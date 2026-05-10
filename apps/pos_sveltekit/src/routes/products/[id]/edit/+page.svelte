@@ -109,8 +109,9 @@
 		// Fetch current branch and its pre-order settings
 		const { data: { user: authUser } } = await supabase.auth.getUser();
 		if (authUser) {
-			const { data: profile } = await supabase.from('users').select('branch_id').eq('id', authUser.id).single();
-			if (profile?.branch_id) {
+			const cachedProfile = localStorage.getItem(`pos_user_profile_${authUser.id}`);
+			if (cachedProfile) {
+				const profile = JSON.parse(cachedProfile);
 				branchId = profile.branch_id;
 				const { data: inventory } = await supabase.from('branch_inventory')
 					.select('allow_preorder, preorder_limit')

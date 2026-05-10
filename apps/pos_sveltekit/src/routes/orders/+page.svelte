@@ -25,14 +25,8 @@
 		const { data: { session } } = await supabase.auth.getSession();
 		if (!session) return;
 		
-		const { data: userProfile } = await supabase
-			.from('users')
-			.select('tenant_id')
-			.eq('id', session.user.id)
-			.single();
-			
-		if (userProfile?.tenant_id) {
-			tenantId = userProfile.tenant_id;
+		tenantId = localStorage.getItem('active_tenant_id') || '';
+		if (tenantId) {
 			// Initial load is handled by the effect
 		} else {
 			loading = false;

@@ -39,10 +39,8 @@
 		const { data: { session } } = await supabase.auth.getSession();
 		if (!session) return;
 		
-		const { data: user } = await supabase.from('users')
-			.select('tenant_id, branch_id, role')
-			.eq('id', session.user.id)
-			.single();
+		const cachedProfile = localStorage.getItem(`pos_user_profile_${session.user.id}`);
+		const user = cachedProfile ? JSON.parse(cachedProfile) : null;
 			
 		if (user) {
 			currentTenantId = user.tenant_id;

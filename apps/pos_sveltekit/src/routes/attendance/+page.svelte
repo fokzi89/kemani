@@ -56,15 +56,14 @@
 				return;
 			}
 			
-			const { data: userData, error: userError } = await supabase
-				.from('users')
-				.select('*, branches:branches!users_branch_id_fkey(*)')
-				.eq('id', sessionData.session.user.id)
-				.single();
-				
-			if (userError) throw userError;
-			user = userData;
-			branch = Array.isArray(userData.branches) ? userData.branches[0] : userData.branches;
+			const cachedProfile = localStorage.getItem(`pos_user_profile_${sessionData.session.user.id}`);
+			if (cachedProfile) {
+				user = JSON.parse(cachedProfile);
+				const { data: bData } = await supabase.from('branches').select('*').eq('id', user.branch_id).single();
+				branch = bData;
+			} else {
+				throw new Error('Profile not found. Please log in again.');
+			}
 
 			await checkLocation();
 			await fetchAvailableShifts();
@@ -522,7 +521,7 @@
 										<th class="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b">Date / Shift</th>
 										<th class="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b">Status</th>
 										<th class="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b">Clock In/Out</th>
-										<th class="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b text-right">Hours</th>
+										<th class="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b text-right">Total / OT</th>
 									</tr>
 								</thead>
 								<tbody class="divide-y divide-gray-100">
@@ -559,11 +558,14 @@
 												</p>
 											</td>
 											<td class="py-3 px-4 text-sm font-medium text-gray-900 text-right">
-												{#if record.total_hours}
-													{record.total_hours.toFixed(2)}h
-												{:else if record.clock_in_at && !record.clock_out_at}
-													<span class="text-gray-400 font-normal">--</span>
-												{/if}
+												<div class="flex flex-col items-end">
+													<span>{#if record.total_hours}{record.total_hours.toFixed(2)}h{:else}--{/if}</span>
+													{#if record.overtime_minutes > 0}
+														<span class="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+															+{record.overtime_minutes}m OT
+														</span>
+													{/if}
+												</div>
 											</td>
 										</tr>
 									{:else}

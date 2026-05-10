@@ -16,13 +16,12 @@
 		try {
 			const { data: { session } } = await supabase.auth.getSession();
 			if (!session) return;
-			const { data: user } = await supabase.from('users').select('tenant_id').eq('id', session.user.id).single();
-			if (!user) return;
-			tenantId = user.tenant_id;
+			tenantId = localStorage.getItem('active_tenant_id');
+			if (!tenantId) return;
 
 			const { data, error } = await supabase
 				.from('branches')
-				.select(`*, users!branch_id (count)`)
+				.select(`*, user_tenants!branch_id (count)`)
 				.eq('tenant_id', tenantId)
 				.is('deleted_at', null)
 				.order('created_at', { ascending: false });
@@ -30,7 +29,7 @@
 			if (error) throw error;
 			branches = (data || []).map(b => ({
 				...b,
-				staff_count: Array.isArray(b.users) ? b.users[0]?.count || 0 : (b.users?.count || 0)
+				staff_count: Array.isArray(b.user_tenants) ? b.user_tenants[0]?.count || 0 : (b.user_tenants?.count || 0)
 			}));
 		} catch (e) {
 			console.error('Error fetching branches', e);

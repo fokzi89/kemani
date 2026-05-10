@@ -45,7 +45,7 @@
 		{ id: 'branch_manager', label: 'Manager' },
 		{ id: 'cashier', label: 'Cashier' },
 		{ id: 'pharmacist', label: 'Pharmacist' },
-		{ id: 'doctor', label: 'Doctor' }
+		{ id: 'accountant', label: 'Accountant' }
 	];
 
 	const privileges = [
@@ -77,13 +77,32 @@
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
 		if (!session) return;
-		const { data: user } = await supabase.from('users').select('tenant_id').eq('id', session.user.id).single();
-		if (user?.tenant_id) tenantId = user.tenant_id;
+		
+		let activeTenantId = localStorage.getItem('active_tenant_id');
+		
+		if (!activeTenantId) {
+			const cached = localStorage.getItem(`pos_user_profile_${session.user.id}`);
+			if (cached) {
+				try {
+					const profile = JSON.parse(cached);
+					activeTenantId = profile.tenant_id;
+				} catch (e) {}
+			}
+		}
+		
+		if (activeTenantId) {
+			tenantId = activeTenantId;
+		} else {
+			// Ultimate fallback: Fetch from DB
+			const { data: user } = await supabase.from('users').select('tenant_id').eq('id', session.user.id).single();
+			if (user?.tenant_id) tenantId = user.tenant_id;
+		}
 
+		if (!tenantId) return;
 		const { data: branchData } = await supabase
 			.from('branches')
 			.select('id, name')
-			.eq('tenant_id', user?.tenant_id)
+			.eq('tenant_id', tenantId)
 			.is('deleted_at', null);
 		branches = branchData || [];
 	});

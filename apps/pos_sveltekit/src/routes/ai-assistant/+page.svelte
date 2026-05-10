@@ -1,225 +1,80 @@
 <script lang="ts">
-    import { Chat } from '@ai-sdk/svelte';
-    import { HttpChatTransport } from 'ai';
-    import { Sparkles, Send, Loader2, BarChart3, TrendingUp, AlertCircle, Bot, User, ArrowRight } from 'lucide-svelte';
-    import { fade, fly } from 'svelte/transition';
-    import { page } from '$app/stores';
-    import { onMount } from 'svelte';
-    import { supabase } from '$lib/supabase';
-
-    let input = $state('');
-    let tenantId = $state('');
-    let branchId = $state('');
-    let staffId = $state('');
-    
-    const chat = new Chat({
-        transport: new HttpChatTransport({
-            api: '/api/chat/ai',
-            body: () => ({
-                tenantId,
-                branchId,
-                staffId
-            })
-        }),
-        initialMessages: [
-            { id: 'welcome', role: 'assistant', content: 'Hello! I am your Kemani POS Assistant. How can I help you analyze your business today? I can provide sales summaries, stock alerts, and growth tips.' }
-        ]
-    });
-
-    onMount(async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
-        
-        staffId = session.user.id;
-        const { data: profile } = await supabase
-            .from('users')
-            .select('tenant_id, branch_id')
-            .eq('id', staffId)
-            .single();
-            
-        if (profile) {
-            tenantId = profile.tenant_id;
-            branchId = profile.branch_id;
-        }
-    });
-
-    let chatContainer: HTMLElement;
-    
-    // Auto-scroll to bottom
-    $effect(() => {
-        if (chat.messages.length > 0) {
-            setTimeout(() => {
-                if (chatContainer) {
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                }
-            }, 50);
-        }
-    });
-
-    const suggestions = [
-        "What are today's total sales?",
-        "Show me low stock alerts",
-        "Which products are best sellers?",
-        "How can I grow my business?"
-    ];
-
-    function applySuggestion(text: string) {
-        input = text;
-    }
-
-    async function handleSubmit(e: Event) {
-        e.preventDefault();
-        if (!input.trim() || chat.status !== 'ready') return;
-        
-        const message = input;
-        input = ''; // Clear input immediately for better UX
-        
-        try {
-            await chat.sendMessage({ text: message });
-        } catch (err) {
-            console.error('Failed to send message:', err);
-            // Input is already cleared, but we could restore it on error if desired
-        }
-    }
+    import { Sparkles, Bot, Clock, ArrowRight, Star } from 'lucide-svelte';
+    import { fade, fly, scale } from 'svelte/transition';
 </script>
 
-<div class="flex flex-col h-full bg-slate-50 overflow-hidden">
-    <!-- Header -->
-    <header class="bg-white border-b px-6 py-4 flex items-center justify-between shrink-0 shadow-sm">
-        <div class="flex items-center gap-3">
-            <div class="p-2 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-100">
-                <Sparkles class="h-5 w-5" />
-            </div>
-            <div>
-                <h1 class="text-lg font-bold text-slate-900">AI Business Assistant</h1>
-                <p class="text-xs text-slate-500 font-medium flex items-center gap-1">
-                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                    Ready for analytics
-                </p>
-            </div>
-        </div>
-        <div class="flex items-center gap-4 text-xs font-semibold text-slate-400">
-            <span class="px-2 py-1 bg-slate-100 rounded-md">Gemini 1.5 Flash</span>
-        </div>
-    </header>
+<div class="min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden">
+    <!-- Decorative background elements -->
+    <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-100 rounded-full blur-[120px] opacity-40 -translate-y-1/2 translate-x-1/2"></div>
+    <div class="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-100 rounded-full blur-[120px] opacity-40 translate-y-1/2 -translate-x-1/2"></div>
 
-    <!-- Chat Area -->
-    <main 
-        bind:this={chatContainer}
-        class="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth"
-    >
-        {#each chat.messages as message}
-            <div 
-                class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'}"
-                in:fly={{ y: 10, duration: 300 }}
-            >
-                <div class="flex gap-3 max-w-[80%] {message.role === 'user' ? 'flex-row-reverse' : ''}">
-                    <div class="h-8 w-8 rounded-full flex items-center justify-center shrink-0 shadow-sm
-                        {message.role === 'user' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-900 text-white'}">
-                        {#if message.role === 'user'}
-                            <User class="h-4 w-4" />
-                        {:else}
-                            <Bot class="h-4 w-4" />
-                        {/if}
-                    </div>
-                    
-                    <div class="space-y-2">
-                        <div class="p-4 rounded-2xl shadow-sm text-sm leading-relaxed
-                            {message.role === 'user' 
-                                ? 'bg-indigo-600 text-white rounded-tr-none' 
-                                : 'bg-white border border-slate-100 text-slate-700 rounded-tl-none'}">
-                            {message.content}
-                            
-                            {#if message.toolInvocations}
-                                <div class="mt-3 space-y-2 pt-3 border-t border-slate-100/10">
-                                    {#each message.toolInvocations as tool}
-                                        <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider opacity-60">
-                                            <Loader2 class="h-3 w-3 animate-spin" />
-                                            Running {tool.toolName}...
-                                        </div>
-                                    {/each}
-                                </div>
-                            {/if}
-                        </div>
-                    </div>
+    <div class="max-w-2xl w-full text-center relative z-10" in:fly={{ y: 20, duration: 800 }}>
+        <!-- Icon Container -->
+        <div class="relative inline-block mb-8">
+            <div class="p-5 bg-white rounded-3xl shadow-2xl shadow-indigo-100 relative z-10 border border-slate-50" in:scale={{ duration: 600, delay: 200 }}>
+                <div class="p-4 bg-indigo-600 rounded-2xl text-white shadow-lg shadow-indigo-200">
+                    <Sparkles class="h-10 w-10 animate-pulse" />
                 </div>
             </div>
-        {/each}
-
-        {#if chat.status !== 'ready' && chat.messages[chat.messages.length - 1]?.role === 'user'}
-            <div class="flex justify-start" in:fade>
-                <div class="flex gap-3">
-                    <div class="h-8 w-8 rounded-full bg-slate-900 text-white flex items-center justify-center">
-                        <Bot class="h-4 w-4 animate-pulse" />
-                    </div>
-                    <div class="bg-white border border-slate-100 p-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
-                        <div class="flex gap-1">
-                            <span class="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce"></span>
-                            <span class="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                            <span class="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:0.4s]"></span>
-                        </div>
-                    </div>
+            <!-- Floating particles -->
+            <div class="absolute -top-4 -right-4 animate-bounce">
+                <div class="p-2 bg-amber-400 rounded-xl text-white shadow-lg">
+                    <Star class="h-4 w-4" />
                 </div>
             </div>
-        {/if}
-    </main>
-
-    <!-- Footer -->
-    <footer class="p-6 bg-white border-t shrink-0">
-        {#if chat.messages.length < 3}
-            <div class="flex flex-wrap gap-2 mb-4" in:fade>
-                {#each suggestions as suggestion}
-                    <button 
-                        onclick={() => applySuggestion(suggestion)}
-                        class="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-medium text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all flex items-center gap-2 group"
-                    >
-                        {suggestion}
-                        <ArrowRight class="h-3 w-3 opacity-0 group-hover:opacity-100 transition-all" />
-                    </button>
-                {/each}
+            <div class="absolute -bottom-2 -left-6 animate-pulse [animation-delay:0.5s]">
+                <div class="p-2 bg-emerald-400 rounded-xl text-white shadow-lg">
+                    <Bot class="h-5 w-5" />
+                </div>
             </div>
-        {/if}
+        </div>
 
-        <form 
-            onsubmit={handleSubmit}
-            class="relative flex items-center gap-2"
-        >
-            <input 
-                bind:value={input}
-                placeholder="Ask me anything about your business..."
-                class="flex-1 bg-slate-100 border-none rounded-2xl px-5 py-3.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
-            />
-            <button 
-                type="submit"
-                disabled={chat.status !== 'ready' || !input.trim()}
-                class="bg-slate-900 text-white p-3.5 rounded-2xl hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
-            >
-                {#if chat.status !== 'ready'}
-                    <Loader2 class="h-5 w-5 animate-spin" />
-                {:else}
-                    <Send class="h-5 w-5" />
-                {/if}
-            </button>
-        </form>
-        <p class="mt-3 text-[10px] text-center text-slate-400 font-medium uppercase tracking-widest">
-            Powered by Kemani Intelligence • AI can make mistakes
-        </p>
-    </footer>
+        <!-- Text Content -->
+        <div class="space-y-4">
+            <h1 class="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
+                AI Assistant is <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-600">Coming Soon</span>
+            </h1>
+            <p class="text-lg text-slate-500 font-medium max-w-lg mx-auto leading-relaxed">
+                We're building a powerful AI companion to help you analyze sales, manage inventory, and grow your business with intelligent insights.
+            </p>
+        </div>
+
+        <!-- Features Preview -->
+        <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+            {#each [
+                { icon: 'BarChart3', title: 'Sales Insights', desc: 'Real-time analysis' },
+                { icon: 'ClipboardList', title: 'Stock Alerts', desc: 'Predictive restocking' },
+                { icon: 'TrendingUp', title: 'Growth Tips', desc: 'Data-driven advice' }
+            ] as feature, i}
+                <div 
+                    class="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-1 group"
+                    in:fly={{ y: 20, duration: 600, delay: 400 + (i * 100) }}
+                >
+                    <div class="h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center mb-3 group-hover:bg-indigo-50 transition-colors">
+                        <ArrowRight class="h-5 w-5 text-slate-400 group-hover:text-indigo-600" />
+                    </div>
+                    <h3 class="font-bold text-slate-800 text-sm">{feature.title}</h3>
+                    <p class="text-xs text-slate-400 font-medium">{feature.desc}</p>
+                </div>
+            {/each}
+        </div>
+
+        <!-- Status Indicator -->
+        <div class="mt-12 flex flex-col items-center gap-4">
+            <div class="px-4 py-2 bg-white rounded-full border border-slate-100 shadow-sm flex items-center gap-2" in:fade={{ delay: 1000 }}>
+                <Clock class="h-4 w-4 text-indigo-600" />
+                <span class="text-xs font-bold text-slate-600 uppercase tracking-widest">In Development</span>
+            </div>
+            
+            <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">
+                Kemani POS Intelligence Engine v1.0
+            </p>
+        </div>
+    </div>
 </div>
 
 <style>
-    /* Custom scrollbar */
-    main::-webkit-scrollbar {
-        width: 4px;
-    }
-    main::-webkit-scrollbar-track {
-        background: transparent;
-    }
-    main::-webkit-scrollbar-thumb {
-        background: #e2e8f0;
-        border-radius: 10px;
-    }
-    main::-webkit-scrollbar-thumb:hover {
-        background: #cbd5e1;
+    :global(body) {
+        background-color: #f8fafc;
     }
 </style>

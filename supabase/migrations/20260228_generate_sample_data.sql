@@ -194,8 +194,8 @@ BEGIN
           CASE FLOOR(RANDOM() * 4)::int
             WHEN 0 THEN 'cash'
             WHEN 1 THEN 'card'
-            WHEN 2 THEN 'transfer'
-            ELSE 'mobile'
+            WHEN 2 THEN 'bank_transfer'
+            ELSE 'mobile_money'
           END,
           'completed',
           sale_date,

@@ -15,19 +15,38 @@
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
 		if (!session) return;
-		const { data: user } = await supabase.from('users').select('tenant_id').eq('id', session.user.id).single();
-		if (user?.tenant_id) tenantId = user.tenant_id;
+		
+		let activeTenantId = localStorage.getItem('active_tenant_id');
+		
+		if (!activeTenantId) {
+			const cached = localStorage.getItem(`pos_user_profile_${session.user.id}`);
+			if (cached) {
+				try {
+					const profile = JSON.parse(cached);
+					activeTenantId = profile.tenant_id;
+				} catch (e) {}
+			}
+		}
+		
+		if (activeTenantId) {
+			tenantId = activeTenantId;
+		} else {
+			// Ultimate fallback: Fetch from DB
+			const { data: user } = await supabase.from('users').select('tenant_id').eq('id', session.user.id).single();
+			if (user?.tenant_id) tenantId = user.tenant_id;
+		}
 	});
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		if (!form.first_name) { error = 'First name is required'; return; }
+		if (!form.phone) { error = 'Phone number is required'; return; }
 		loading = true; error = '';
 		try {
 			const { error: dbErr } = await supabase.from('customers').insert({
 				tenant_id: tenantId,
 				first_name: form.first_name, last_name: form.last_name || null,
-				email: form.email || null, phone: form.phone || null,
+				email: form.email || null, phone: form.phone,
 				address: form.address || null,
 				date_of_birth: form.date_of_birth || null,
 				notes: form.notes || null,
@@ -36,7 +55,11 @@
 			if (dbErr) throw dbErr;
 			goto('/customers');
 		} catch (err: any) {
-			error = err.message || 'Failed to create customer';
+			if (err.code === '23505') {
+				error = 'A customer with this phone number already exists in your records.';
+			} else {
+				error = err.message || 'Failed to create customer';
+			}
 		} finally { loading = false; }
 	}
 </script>
@@ -71,8 +94,8 @@
 					<input type="text" bind:value={form.last_name} placeholder="Doe" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
 				</div>
 				<div>
-					<label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-					<input type="tel" bind:value={form.phone} placeholder="+234 800 000 0000" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
+					<label class="block text-sm font-medium text-gray-700 mb-1">Phone Number <span class="text-red-500">*</span></label>
+					<input type="tel" bind:value={form.phone} required placeholder="+234 800 000 0000" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
 				</div>
 				<div>
 					<label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>

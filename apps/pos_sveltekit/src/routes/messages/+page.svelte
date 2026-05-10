@@ -839,12 +839,6 @@
 -->
 
 <div class="messages-root">
-	{#if loading}
-		<div class="loading-overlay">
-			<RefreshCw class="h-8 w-8 animate-spin text-indigo-600" />
-			<p class="mt-4 text-sm font-medium text-gray-500">Loading messages…</p>
-		</div>
-	{/if}
 
 	<!-- ══════════════════════════════════════════════════════════
 		 PANEL A — Conversation List
@@ -902,6 +896,12 @@
 
 		<!-- List -->
 		<div class="conv-list">
+			{#if loading}
+				<div class="loading-overlay">
+					<RefreshCw class="h-6 w-6 animate-spin text-indigo-600" />
+					<p class="mt-2 text-xs font-medium text-gray-400">Loading chats…</p>
+				</div>
+			{/if}
 			{#if filteredConvs.length === 0}
 				<div class="empty-state">
 					<MessageSquare class="h-10 w-10 opacity-30" />
@@ -1545,7 +1545,7 @@
 .status-pill--active { background: #4f46e5; color: #fff; }
 
 /* List */
-.conv-list { flex: 1; overflow-y: auto; }
+.conv-list { flex: 1; overflow-y: auto; position: relative; }
 .conv-item {
 	width: 100%; text-align: left;
 	padding: 0.75rem 1rem; display: flex; align-items: flex-start; gap: 0.75rem;

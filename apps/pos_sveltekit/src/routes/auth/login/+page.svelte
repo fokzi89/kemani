@@ -34,9 +34,18 @@
 			if (profileError) console.error('Failed to fetch profile during login:', profileError);
 			
 			if (userData) {
-				localStorage.setItem('pos_user_profile', JSON.stringify(userData));
+				localStorage.setItem(`pos_user_profile_${data.user.id}`, JSON.stringify(userData));
+				if (userData.tenant_id) {
+					localStorage.setItem('active_tenant_id', userData.tenant_id);
+				}
 				if (userData.onboarding_done) {
-					goto('/');
+					if (userData.role === 'cashier') {
+						goto('/pos');
+					} else if (userData.role === 'pharmacist') {
+						goto('/messages');
+					} else {
+						goto('/');
+					}
 				} else {
 					goto('/onboarding');
 				}

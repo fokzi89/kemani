@@ -44,12 +44,17 @@
 
 			// 2. Fetch Staff
 			const { data: sData, error: sError } = await supabase
-				.from('users')
-				.select('*')
+				.from('user_tenants')
+				.select('*, users!user_id(*)')
 				.eq('branch_id', branchId)
 				.is('deleted_at', null);
 			if (sError) console.error('Staff fetch error:', sError);
-			staff = sData || [];
+			staff = (sData || []).map((m: any) => ({
+				...m.users,
+				role: m.role,
+				joined_at: m.joined_at,
+				_membership_id: m.id
+			}));
 			stats.staffCount = staff.length;
 
 			// 3. Fetch Products / Stock from branch_inventory

@@ -48,8 +48,10 @@
 		const { data: { session } } = await supabase.auth.getSession();
 		if (!session) return;
 
-		const { data: user } = await supabase.from('users').select('*').eq('id', session.user.id).single();
-		currentUser = user;
+		const cachedProfile = localStorage.getItem(`pos_user_profile_${session.user.id}`);
+		if (cachedProfile) {
+			currentUser = JSON.parse(cachedProfile);
+		}
 
 		if (canApprove) {
 			await supabase.rpc('generate_recurring_expenses');
