@@ -501,7 +501,10 @@
 		
 		const text = messageText.trim();
 		const hasFiles = pendingFiles.length > 0;
-		if (!text && !hasFiles && !meta || sending || !activeConvId) return;
+		// Special case: if we are already sending (e.g. uploading voice), 
+		// but this call IS the voice note (meta is present), we allow it to bypass the check
+		// OR we handle it outside. For safety, we'll just check if meta is present.
+		if (!text && !hasFiles && !meta || (sending && !meta) || !activeConvId) return;
 		sending = true;
 
 		try {
@@ -657,13 +660,19 @@
 				};
 				
 				mediaRecorder.onstop = async () => {
+					if (audioChunks.length === 0) {
+						console.error('No audio data captured');
+						sending = false;
+						return;
+					}
+					
 					const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
 					const file = new File([audioBlob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
 					
 					sending = true;
 					try {
 						const url = await uploadFile(file, 'audio');
-						sending = false; // Reset so sendMessage can proceed
+						// No need to set sending = false here, sendMessage will handle its own state
 						await sendMessage({
 							attachment_type: 'audio',
 							attachment_url: url,
@@ -673,14 +682,16 @@
 					} catch (err) {
 						console.error('Failed to upload voice note:', err);
 						alert('Failed to send voice note.');
-					} finally {
 						sending = false;
+					} finally {
 						// Stop all tracks to release the microphone
-						stream.getTracks().forEach(track => track.stop());
+						if (stream) {
+							stream.getTracks().forEach(track => track.stop());
+						}
 					}
 				};
 				
-				mediaRecorder.start();
+				mediaRecorder.start(1000); // Collect data every second
 				isRecording = true;
 				recordSeconds = 0;
 				showAttachTray = false;
@@ -706,6 +717,19 @@
 			recordInterval = null;
 		}
 		isRecording = false;
+	}
+
+	function cancelRecording() {
+		if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+			mediaRecorder.onstop = null; // Prevent sending
+			mediaRecorder.stop();
+		}
+		if (recordInterval) {
+			clearInterval(recordInterval);
+			recordInterval = null;
+		}
+		isRecording = false;
+		audioChunks = [];
 	}
 
 	// ── File attachment ────────────────────────────────────────────────────────
@@ -1287,7 +1311,13 @@
 								<span class="rec-label">Recording…</span>
 								<span class="rec-timer">{formatDuration(recordSeconds)}</span>
 							</div>
-							<button onclick={toggleRecording} class="rec-send"><Send class="h-4 w-4" /> Send</button>
+							<button onclick={toggleRecording} class="rec-send" disabled={sending}>
+								{#if sending}
+									<div class="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+								{:else}
+									<Send class="h-4 w-4" /> Send
+								{/if}
+							</button>
 						</div>
 					{:else}
 						<!-- Normal input row -->

@@ -386,52 +386,59 @@
 			};
 			
 			mediaRecorder.onstop = async () => {
-				stream.getTracks().forEach(track => track.stop());
-				if (audioChunks.length > 0 && conversation) {
-					const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-					const audioFile = new File([audioBlob], `voice_note_${Date.now()}.webm`, { type: 'audio/webm' });
-					
-					isUploading = true;
-					try {
-						const filePath = `chat/${conversation.id}/${audioFile.name}`;
-						const { error: uploadError } = await supabase.storage
-							.from('chat-attachments')
-							.upload(filePath, audioFile);
+				if (audioChunks.length === 0) {
+					console.error('No audio data captured');
+					isUploading = false;
+					return;
+				}
+				
+				const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+				const audioFile = new File([audioBlob], `voice_note_${Date.now()}.webm`, { type: 'audio/webm' });
+				
+				isUploading = true;
+				try {
+					const filePath = `chat/${conversation.id}/${audioFile.name}`;
+					const { error: uploadError } = await supabase.storage
+						.from('chat-attachments')
+						.upload(filePath, audioFile);
 
-						if (uploadError) throw uploadError;
+					if (uploadError) throw uploadError;
 
-						const { data: { publicUrl } } = supabase.storage
-							.from('chat-attachments')
-							.getPublicUrl(filePath);
+					const { data: { publicUrl } } = supabase.storage
+						.from('chat-attachments')
+						.getPublicUrl(filePath);
 
-						const { error: msgError } = await supabase
-							.from('chat_messages')
-							.insert({
-								conversation_id: conversation.id,
-								sender_id: $currentUser.id,
-								sender_type: 'customer',
-								message_text: 'Voice Note',
-								message_type: 'image', // using image as fallback to avoid enum error
-								media_url: publicUrl,
-								metadata: { 
-									original_upload_type: 'audio',
-									file_name: audioFile.name,
-									file_size: audioFile.size,
-									file_type: audioFile.type,
-									duration: recordingTime
-								}
-							});
-						if (msgError) throw msgError;
-					} catch (err: any) {
-						console.error('Audio upload failed:', err);
-						alert(`Debug Error: ${err.message} | ${JSON.stringify(err)}`);
-					} finally {
-						isUploading = false;
+					const { error: msgError } = await supabase
+						.from('chat_messages')
+						.insert({
+							conversation_id: conversation.id,
+							sender_id: $currentUser.id,
+							sender_type: 'customer',
+							message_text: 'Voice Note',
+							message_type: 'image', // using image as fallback to avoid enum error
+							media_url: publicUrl,
+							metadata: { 
+								original_upload_type: 'audio',
+								file_name: audioFile.name,
+								file_size: audioFile.size,
+								file_type: audioFile.type,
+								duration: recordingTime
+							}
+						});
+					if (msgError) throw msgError;
+				} catch (err: any) {
+					console.error('Audio upload failed:', err);
+					alert(`Audio upload failed. Please try again.`);
+				} finally {
+					isUploading = false;
+					// Stop tracks
+					if (stream) {
+						stream.getTracks().forEach(track => track.stop());
 					}
 				}
 			};
 
-			mediaRecorder.start();
+			mediaRecorder.start(1000); // Collect data every second
 			isRecording = true;
 			recordingTime = 0;
 			recordingInterval = setInterval(() => {
@@ -447,11 +454,21 @@
 	}
 
 	function stopRecording() {
-		if (mediaRecorder && mediaRecorder.state === 'recording') {
+		if (mediaRecorder && mediaRecorder.state !== 'inactive') {
 			mediaRecorder.stop();
 		}
 		isRecording = false;
 		if (recordingInterval) clearInterval(recordingInterval);
+	}
+
+	function cancelRecording() {
+		if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+			mediaRecorder.onstop = null; // Prevent sending
+			mediaRecorder.stop();
+		}
+		isRecording = false;
+		if (recordingInterval) clearInterval(recordingInterval);
+		audioChunks = [];
 	}
 
 	async function scrollToBottom() {
@@ -735,9 +752,11 @@
 				<button 
 					class="send-btn {isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-black hover:bg-gray-800'} text-white p-3 rounded-xl transition-all flex items-center gap-2" 
 					onclick={newMessage.trim() ? sendMessage : toggleRecording}
-					disabled={sending}
+					disabled={sending || isUploading}
 				>
-					{#if isRecording}
+					{#if isUploading}
+						<Loader2 class="h-4 w-4 animate-spin" />
+					{:else if isRecording}
 						<span class="text-xs font-bold w-8 text-center">{formatRecordingTime(recordingTime)}</span>
 						<div class="w-2 h-2 bg-white rounded-sm animate-pulse"></div>
 					{:else if newMessage.trim()}
