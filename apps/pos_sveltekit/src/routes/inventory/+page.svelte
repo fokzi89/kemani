@@ -6,7 +6,7 @@
 		X, MoreHorizontal, ArrowRightLeft, 
 		ArrowRight, Building, AlertTriangle, Plus,
 		Eye, Save, ChevronLeft, ChevronRight,
-		FileText, Settings, AlertCircle, Clock
+		FileText, Settings, AlertCircle, Clock, Info
 	} from 'lucide-svelte';
 
 
@@ -14,6 +14,7 @@
 	let branches = $state<any[]>([]);
 	let totalCount = $state(0);
 	let loading = $state(true);
+	let error = $state('');
 	let searchQuery = $state('');
 	let selectedBranchId = $state('all');
 	let selectedIds = $state<string[]>([]);
@@ -33,7 +34,24 @@
 	let targetBranchId = $state('');
 	let transferLoading = $state(false);
 
+	// Scroll Sync
+	let topScrollEl = $state<HTMLDivElement>();
+	let tableScrollEl = $state<HTMLDivElement>();
+	let showQtyTooltip = $state(false);
+
+	function syncScroll(from: 'top' | 'table') {
+		if (from === 'top' && topScrollEl && tableScrollEl) {
+			tableScrollEl.scrollLeft = topScrollEl.scrollLeft;
+		} else if (from === 'table' && topScrollEl && tableScrollEl) {
+			topScrollEl.scrollLeft = tableScrollEl.scrollLeft;
+		}
+	}
+
 	let totalPages = $derived(Math.ceil(totalCount / PER_PAGE));
+	let savingIds = $state<string[]>([]);
+
+	// Shimmer animation
+	const shimmerClass = "animate-pulse bg-indigo-50/50 relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent";
 
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
@@ -65,6 +83,7 @@
 	async function loadInventory() {
 		if (!currentTenantId) return;
 		loading = true;
+		error = '';
 		try {
 			let query = supabase
 				.from('branch_inventory')
@@ -86,12 +105,12 @@
 					product_type,
 					isPOM,
 					unit_of_measure,
+					dispense_qty,
 					allow_preorder,
 					preorder_quantity,
 					preorder_limit
 				`, { count: 'exact' })
-				.eq('tenant_id', currentTenantId)
-				.gt('stock_quantity', 0);
+				.eq('tenant_id', currentTenantId);
 
 			if (selectedBranchId !== 'all') {
 				query = query.eq('branch_id', selectedBranchId);
@@ -132,14 +151,16 @@
 					isPOM: row.isPOM,
 					product_type: row.product_type,
 					unit_of_measure: row.unit_of_measure || 'unit',
+					dispense_qty: row.dispense_qty || 1,
 				allow_preorder: row.allow_preorder ?? false,
 				preorder_quantity: row.preorder_quantity ?? 0,
 				preorder_limit: row.preorder_limit ?? null
 				};
 			});
 			totalCount = count || 0;
-		} catch (err) {
+		} catch (err: any) {
 			console.error('Inventory fetch error:', err);
+			error = err.message || 'Failed to load inventory. Please check if database migrations are applied.';
 		} finally {
 			loading = false;
 		}
@@ -189,6 +210,7 @@
 					low_stock_threshold: item.low_stock_threshold,
 					isPOM: item.isPOM,
 					unit_of_measure: item.unit_of_measure,
+					dispense_qty: item.dispense_qty,
 					allow_preorder: item.allow_preorder,
 					preorder_limit: item.preorder_limit
 				}
@@ -198,25 +220,28 @@
 
 	async function handleBatchUpdate() {
 		if (selectedIds.length === 0) return;
-		if (selectedIds.length > 20) {
-			alert('Maximum 20 items per batch update.');
-			return;
-		}
+		
+		const idsToUpdate = [...selectedIds];
+		savingIds = [...savingIds, ...idsToUpdate];
 
-		loading = true;
 		try {
-			for (const invId of selectedIds) {
+			for (const invId of idsToUpdate) {
 				const vals = editingValues[invId];
-				const item = inventory.find(i => i.inv_id === invId);
-				if (!item) continue;
+				const itemIndex = inventory.findIndex(i => i.inv_id === invId);
+				if (itemIndex === -1) continue;
+				const item = inventory[itemIndex];
 				
-				// 1. Update branch_inventory (stock & expiry)
+				// 1. Update branch_inventory for the specific batch
 				const { error: biErr } = await supabase.from('branch_inventory')
 					.update({
 						stock_quantity: vals.stock_quantity,
 						low_stock_threshold: vals.low_stock_threshold,
 						isPOM: vals.isPOM,
 						unit_of_measure: vals.unit_of_measure,
+						dispense_qty: vals.dispense_qty,
+						selling_price: vals.unit_price,
+						cost_price: vals.cost_price,
+						expiry_date: vals.expiry_date,
 						allow_preorder: vals.allow_preorder,
 						preorder_limit: vals.preorder_limit ?? null,
 						updated_at: new Date().toISOString()
@@ -225,19 +250,16 @@
 
 				if (biErr) throw biErr;
 
-				// 2. We skip updating products directly since unit price is mapped to unit_cost in branch_inventory
-				// or we just update the branch_inventory selling_price here
-				const { error: biErr2 } = await supabase.from('branch_inventory')
-					.update({
-						selling_price: vals.unit_price,
-						cost_price: vals.cost_price,
-						updated_at: new Date().toISOString()
-					})
-					.eq('id', invId);
+				// 1b. Sync dispense_qty across all active batches of the SAME product in this branch
+				const { error: syncErr } = await supabase.from('branch_inventory')
+					.update({ dispense_qty: vals.dispense_qty })
+					.eq('product_id', item.product_id)
+					.eq('branch_id', item.branch_id)
+					.gt('stock_quantity', 0);
+				
+				if (syncErr) console.error('Failed to sync dispense_qty across batches:', syncErr);
 
-				if (biErr2) throw biErr2;
-
-				// 3. Audit transaction
+				// 2. Audit transaction for the specific batch
 				await supabase.from('inventory_transactions').insert({
 					tenant_id: currentTenantId,
 					branch_id: item.branch_id,
@@ -247,19 +269,46 @@
 					previous_quantity: item.stock_quantity,
 					new_quantity: vals.stock_quantity,
 					staff_id: (await supabase.auth.getUser()).data.user?.id,
-					notes: 'Manual adjustment from Inventory page'
+					notes: `Manual adjustment. Dispense Qty synced to ${vals.dispense_qty}`
 				});
+
+				// 3. Update local state for all batches of this product
+				inventory = inventory.map((inv, idx) => {
+					if (inv.product_id === item.product_id && inv.branch_id === item.branch_id && inv.stock_quantity > 0) {
+						return {
+							...inv,
+							// Always sync dispense_qty
+							dispense_qty: vals.dispense_qty,
+							// Only update other fields if it's the exact row being processed
+							...(inv.inv_id === invId ? {
+								stock_quantity: vals.stock_quantity,
+								unit_price: vals.unit_price,
+								cost_price: vals.cost_price,
+								expiry_date: vals.expiry_date,
+								low_stock_threshold: vals.low_stock_threshold,
+								isPOM: vals.isPOM,
+								unit_of_measure: vals.unit_of_measure,
+								allow_preorder: vals.allow_preorder,
+								preorder_limit: vals.preorder_limit
+							} : {})
+						};
+					}
+					return inv;
+				});
+				
+				// Remove from selection and editing
+				selectedIds = selectedIds.filter(id => id !== invId);
+				const newEditing = { ...editingValues };
+				delete newEditing[invId];
+				editingValues = newEditing;
+				savingIds = savingIds.filter(id => id !== invId);
 			}
 			
-			selectedIds = [];
-			editingValues = {};
-			await loadInventory();
 			alert('Inventory updated successfully.');
 		} catch (err: any) {
 			console.error('Update failed:', err);
 			alert(`Update error: ${err.message}`);
-		} finally {
-			loading = false;
+			savingIds = [];
 		}
 	}
 
@@ -466,10 +515,53 @@
 
 	<!-- Inventory Table -->
 	<div class="bg-white rounded-xl border shadow-sm overflow-hidden">
-		{#if loading}
-			<div class="p-12 text-center">
-				<div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto"></div>
-				<p class="text-xs text-gray-500 mt-4 font-medium italic tracking-wide">Syncing product levels...</p>
+		{#if error}
+			<div class="p-16 text-center text-red-600 bg-red-50">
+				<AlertTriangle class="h-10 w-10 mx-auto mb-4" />
+				<h3 class="text-lg font-bold">Error Loading Inventory</h3>
+				<p class="text-sm mt-1">{error}</p>
+				<button onclick={loadInventory} class="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg font-bold">Retry</button>
+			</div>
+		{:else if loading && inventory.length === 0}
+			<div class="overflow-x-auto">
+				<table class="w-full text-sm text-left min-w-[1400px]">
+					<thead class="bg-gray-50 border-b">
+						<tr>
+							<th class="px-6 py-4 w-10"></th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Product Information</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">In Stock</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">UoM</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">D. Qty</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Low Stock Lvl</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l">Selling Price</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost Price</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l text-center">PoM</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l">Expiry</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l text-center">Pre-Order</th>
+							<th class="px-4 py-3 text-right"></th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-gray-100">
+						{#each Array(5) as _}
+							<tr class="animate-pulse">
+								<td class="px-6 py-4"><div class="h-4 w-4 bg-gray-100 rounded mx-auto"></div></td>
+								<td class="px-4 py-3">
+									<div class="flex items-center gap-3">
+										<div class="w-10 h-10 bg-gray-100 rounded-xl"></div>
+										<div class="space-y-2">
+											<div class="h-4 w-32 bg-gray-100 rounded"></div>
+											<div class="h-3 w-20 bg-gray-50 rounded"></div>
+										</div>
+									</div>
+								</td>
+								{#each Array(9) as __}
+									<td class="px-4 py-3"><div class="h-8 w-full bg-gray-50 rounded-lg {shimmerClass}"></div></td>
+								{/each}
+								<td class="px-4 py-3"><div class="h-8 w-8 bg-gray-50 rounded-lg ml-auto"></div></td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
 			</div>
 		{:else if totalCount === 0}
 			<div class="p-16 text-center">
@@ -480,18 +572,52 @@
 				<p class="text-gray-500 text-sm mt-1 max-w-xs mx-auto">Try adjusting your location filter or search query.</p>
 			</div>
 		{:else}
-			<div class="overflow-x-auto">
-				<table class="w-full text-sm text-left min-w-[1200px]">
+			<!-- Top Scrollbar -->
+			<div 
+				bind:this={topScrollEl}
+				onscroll={() => syncScroll('top')}
+				class="overflow-x-auto overflow-y-hidden border-b bg-gray-50/50"
+				style="height: 12px;"
+			>
+				<div style="width: 1400px; height: 1px;"></div>
+			</div>
+
+			<div 
+				bind:this={tableScrollEl}
+				onscroll={() => syncScroll('table')}
+				class="overflow-x-auto"
+			>
+				<table class="w-full text-sm text-left min-w-[1400px]">
 					<thead class="bg-gray-50 border-b">
 						<tr>
 							<th class="px-6 py-4 w-10 text-center">
 								<Check class="h-4 w-4 text-gray-400 mx-auto" />
 							</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Product Information</th>
-							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Location</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">In Stock</th>
 
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">UoM</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center relative">
+								<button 
+									type="button"
+									onmouseenter={() => showQtyTooltip = true}
+									onmouseleave={() => showQtyTooltip = false}
+									class="flex items-center justify-center gap-1 mx-auto focus:outline-none"
+								>
+									D. Qty
+									<Info class="h-3 w-3 text-indigo-400 cursor-help" />
+								</button>
+								<!-- Tooltip -->
+								{#if showQtyTooltip}
+									<div class="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 w-48 p-3 bg-gray-900 text-white text-[10px] rounded-xl shadow-2xl z-[100] normal-case font-medium leading-relaxed animate-in fade-in zoom-in duration-200">
+										<p class="relative z-10">
+											<span class="text-indigo-400 font-bold block mb-1 text-[11px]">Dispensing Quantity</span>
+											Quantity of items in a single unit of measure (e.g., 12 tablets in a sachet).
+										</p>
+										<div class="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-gray-900"></div>
+									</div>
+								{/if}
+							</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Low Stock Lvl</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider border-l">Selling Price</th>
 							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost Price</th>
@@ -505,14 +631,19 @@
 						{#each inventory as item}
 							{@const invId = item.inv_id}
 							{@const isSelected = selectedIds.includes(invId)}
-							<tr class="hover:bg-gray-50 transition-colors {isSelected ? 'bg-indigo-50/30' : ''}">
+							{@const isSaving = savingIds.includes(invId)}
+							<tr class="hover:bg-gray-50 transition-colors {isSelected ? 'bg-indigo-50/30' : ''} {isSaving ? 'opacity-70 grayscale-[0.5]' : ''}">
 								<td class="px-6 py-4 text-center">
-									<input 
-										type="checkbox" 
-										checked={isSelected}
-										onchange={() => handleSelectRow(invId)}
-										class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer"
-									/>
+									{#if isSaving}
+										<div class="h-4 w-4 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin mx-auto"></div>
+									{:else}
+										<input 
+											type="checkbox" 
+											checked={isSelected}
+											onchange={() => handleSelectRow(invId)}
+											class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer"
+										/>
+									{/if}
 								</td>
 								<td class="px-4 py-3">
 									<div class="flex items-center gap-3">
@@ -537,21 +668,14 @@
 										</div>
 									</div>
 								</td>
-								<td class="px-4 py-3 whitespace-nowrap">
-									<div class="flex items-center gap-2">
-										<div class="h-2 w-2 rounded-full {item.stock_quantity > 10 ? 'bg-green-500' : 'bg-orange-500'}"></div>
-										<span class="text-xs font-bold text-gray-700 capitalize tracking-tight">
-											 {branches.find(b => b.id === item.branch_id)?.name || 'Central Branch'}
-										</span>
-									</div>
-								</td>
-								<td class="px-4 py-3 text-center">
+								<td class="px-4 py-3 text-center {isSaving ? shimmerClass : ''}">
 									{#if isSelected}
 										<div class="space-y-1">
 											<input 
 												type="number" 
 												bind:value={editingValues[invId].stock_quantity}
-												class="w-20 px-2.5 py-1.5 bg-white border border-indigo-200 rounded-lg text-center font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 h-9 transition-all"
+												disabled={isSaving}
+												class="w-20 px-2.5 py-1.5 bg-white border border-indigo-200 rounded-lg text-center font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 h-9 transition-all disabled:bg-gray-50"
 											/>
 										</div>
 									{:else}
@@ -561,11 +685,12 @@
 									{/if}
 								</td>
 
-								<td class="px-4 py-3 text-center">
+								<td class="px-4 py-3 text-center {isSaving ? shimmerClass : ''}">
 									{#if isSelected}
 										<select 
 											bind:value={editingValues[invId].unit_of_measure}
-											class="w-20 px-1 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 h-9 transition-all"
+											disabled={isSaving}
+											class="w-20 px-1 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 h-9 transition-all disabled:bg-gray-50"
 										>
 											<option value="unit">Unit</option>
 											<option value="pack">Pack</option>
@@ -577,12 +702,29 @@
 										</span>
 									{/if}
 								</td>
-								<td class="px-4 py-3 text-center border-l bg-gray-50/30">
+
+								<td class="px-4 py-3 text-center border-l bg-indigo-50/10 {isSaving ? shimmerClass : ''}">
+									{#if isSelected}
+										<input 
+											type="number" 
+											bind:value={editingValues[invId].dispense_qty}
+											min="1"
+											required
+											disabled={isSaving}
+											class="w-16 px-2 py-1.5 bg-white border border-indigo-200 rounded-lg text-center font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 h-9 transition-all disabled:bg-gray-50"
+										/>
+									{:else}
+										<span class="font-bold text-gray-700">{item.dispense_qty}</span>
+									{/if}
+								</td>
+
+								<td class="px-4 py-3 text-center border-l bg-gray-50/30 {isSaving ? shimmerClass : ''}">
 									{#if isSelected}
 										<input 
 											type="number" 
 											bind:value={editingValues[invId].low_stock_threshold}
-											class="w-16 px-2 py-1.5 bg-white border border-indigo-200 rounded-lg text-center font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 h-9 transition-all"
+											disabled={isSaving}
+											class="w-16 px-2 py-1.5 bg-white border border-indigo-200 rounded-lg text-center font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 h-9 transition-all disabled:bg-gray-50"
 										/>
 									{:else}
 										<div class="flex flex-col items-center">
@@ -593,41 +735,44 @@
 										</div>
 									{/if}
 								</td>
-								<td class="px-4 py-3 border-l">
+								<td class="px-4 py-3 border-l {isSaving ? shimmerClass : ''}">
 									{#if isSelected}
 										<div class="relative">
 											<span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">₦</span>
 											<input 
 												type="number" 
 												bind:value={editingValues[invId].unit_price}
-												class="w-full pl-5 pr-2 py-1.5 bg-white border border-indigo-200 rounded-lg font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 h-9 transition-all"
+												disabled={isSaving}
+												class="w-full pl-5 pr-2 py-1.5 bg-white border border-indigo-200 rounded-lg font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 h-9 transition-all disabled:bg-gray-50"
 											/>
 										</div>
 									{:else}
 										<span class="font-bold text-gray-900">₦{Number(item.unit_price).toLocaleString()}</span>
 									{/if}
-								<td class="px-4 py-3">
+								<td class="px-4 py-3 {isSaving ? shimmerClass : ''}">
 									{#if isSelected}
 										<div class="relative">
 											<span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">₦</span>
 											<input 
 												type="number" 
 												bind:value={editingValues[invId].cost_price}
-												class="w-full pl-5 pr-2 py-1.5 bg-white border border-indigo-200 rounded-lg font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 h-9 transition-all"
+												disabled={isSaving}
+												class="w-full pl-5 pr-2 py-1.5 bg-white border border-indigo-200 rounded-lg font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 h-9 transition-all disabled:bg-gray-50"
 											/>
 										</div>
 									{:else}
 										<span class="font-medium text-gray-500 italic">₦{Number(item.cost_price || 0).toLocaleString()}</span>
 									{/if}
 								</td>
-								<td class="px-4 py-3 border-l text-center">
+								<td class="px-4 py-3 border-l text-center {isSaving ? shimmerClass : ''}">
 									{#if item.product_type === 'Drug'}
 										{#if isSelected}
 											<div class="flex items-center justify-center h-9">
 												<input 
 													type="checkbox" 
 													bind:checked={editingValues[invId].isPOM}
-													class="h-5 w-5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer transition-all"
+													disabled={isSaving}
+													class="h-5 w-5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer transition-all disabled:opacity-50"
 												/>
 											</div>
 										{:else}
@@ -639,12 +784,13 @@
 										<span class="text-gray-300 text-xs">—</span>
 									{/if}
 								</td>
-								<td class="px-4 py-3 border-l">
+								<td class="px-4 py-3 border-l {isSaving ? shimmerClass : ''}">
 									{#if isSelected}
 										<input 
 											type="date" 
 											bind:value={editingValues[invId].expiry_date}
-											class="w-full px-2.5 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 h-9 transition-all"
+											disabled={isSaving}
+											class="w-full px-2.5 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 h-9 transition-all disabled:bg-gray-50"
 										/>
 									{:else}
 										<div class="flex items-center gap-2">
@@ -658,13 +804,14 @@
 									{/if}
 								</td>
 								<!-- Pre-Order column -->
-								<td class="px-4 py-3 border-l text-center">
+								<td class="px-4 py-3 border-l text-center {isSaving ? shimmerClass : ''}">
 									{#if isSelected}
 										<div class="flex flex-col items-center gap-1.5">
 											<button
 												type="button"
-												onclick={() => editingValues[invId].allow_preorder = !editingValues[invId].allow_preorder}
-												class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors {editingValues[invId].allow_preorder ? 'bg-amber-500' : 'bg-gray-200'}"
+												onclick={() => !isSaving && (editingValues[invId].allow_preorder = !editingValues[invId].allow_preorder)}
+												disabled={isSaving}
+												class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors {editingValues[invId].allow_preorder ? 'bg-amber-500' : 'bg-gray-200'} {isSaving ? 'opacity-50 cursor-not-allowed' : ''}"
 												role="switch"
 												aria-checked={editingValues[invId].allow_preorder}
 											>
@@ -676,7 +823,8 @@
 													bind:value={editingValues[invId].preorder_limit}
 													placeholder="∞"
 													min="1"
-													class="w-14 px-1 py-1 bg-white border border-amber-200 rounded text-center text-xs font-bold text-amber-700 outline-none focus:ring-2 focus:ring-amber-400"
+													disabled={isSaving}
+													class="w-14 px-1 py-1 bg-white border border-amber-200 rounded text-center text-xs font-bold text-amber-700 outline-none focus:ring-2 focus:ring-amber-400 disabled:bg-gray-50"
 												/>
 												<span class="text-[9px] text-gray-400">limit</span>
 											{/if}
@@ -830,5 +978,11 @@
 	input[type="number"]::-webkit-outer-spin-button {
 		-webkit-appearance: none;
 		margin: 0;
+	}
+
+	@keyframes shimmer {
+		100% {
+			transform: translateX(100%);
+		}
 	}
 </style>

@@ -23,9 +23,14 @@
 	let lastSearch = '';
 	let lastCategory = 'all';
 	let lastType = 'all';
+	let savingIds = $state<string[]>([]);
+
+	// Shimmer animation
+	const shimmerClass = "animate-pulse bg-indigo-50/50 relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent";
 
 	// Persistent store for inputs (persists across searches/pagination)
 	let provisioningState = $state<Record<string, any>>({});
+	let showQtyTooltip = $state(false);
 
 	let userRole = $state('');
 	let branches = $state<any[]>([]);
@@ -136,7 +141,8 @@
 						selling: 0, 
 						expiry: '', 
 						supplier_id: null, 
-						unit_of_measure: p.unit_of_measure || 'unit' 
+						unit_of_measure: p.unit_of_measure || 'unit',
+						dispense_qty: 1
 					};
 				}
 				return {
@@ -233,59 +239,78 @@
 		if (!invoiceForm.targetBranchId) { alert('No branch selected'); return; }
 		
 		showInvoiceModal = false;
-		loading = true;
+		const idsToUpload = [...selectedIds];
+		savingIds = [...savingIds, ...idsToUpload];
+
 		try {
-			// 1. Prepare batch inserts
-			const inserts = selectedIds.map(id => {
-				const product = products.find(p => p.id === id) || {};
+			const successNames: string[] = [];
+
+			for (const id of idsToUpload) {
+				const product = products.find(p => p.id === id);
+				if (!product) continue;
 				
-				if ((product.provisioning?.qty || 0) <= 0 || (product.provisioning?.cost || 0) <= 0 || (product.provisioning?.selling || 0) <= 0) {
-					throw new Error(`Incomplete details for ${product.name}. Qty, Cost and Selling price must be greater than 0.`);
+				const prov = product.provisioning;
+				if ((prov.qty || 0) <= 0 || (prov.cost || 0) <= 0 || (prov.selling || 0) <= 0) {
+					console.warn(`Skipping ${product.name}: Incomplete details`);
+					savingIds = savingIds.filter(sid => sid !== id);
+					continue;
 				}
 
-				return {
+				const insertData = {
 					tenant_id: tenantId,
 					branch_id: invoiceForm.targetBranchId,
 					product_id: id,
 					product_name: product.name,
 					image_url: product.image_url || null,
-					stock_quantity: product.provisioning?.qty || 0,
-					batch_no: product.provisioning?.batch || '',
-					expiry_date: product.provisioning?.expiry || null,
-					cost_price: product.provisioning?.cost || 0,
-					selling_price: product.provisioning?.selling || 0,
-					supplier_id: product.provisioning?.supplier_id || null,
-					unit_of_measure: product.provisioning?.unit_of_measure || 'unit',
+					stock_quantity: prov.qty || 0,
+					batch_no: prov.batch || '',
+					expiry_date: prov.expiry || null,
+					cost_price: prov.cost || 0,
+					selling_price: prov.selling || 0,
+					supplier_id: prov.supplier_id || null,
+					unit_of_measure: prov.unit_of_measure || 'unit',
 					product_type: product.product_type || null,
 					barcode: product.barcode || null,
-					sku: product.provisioning?.batch || null,
+					sku: prov.batch || null,
 					purchase_invoice: invoiceForm.invoiceNum,
 					purchase_code: invoiceForm.purchaseOrderNum,
 					added_by: invoiceForm.addedBy
 				};
-			});
+
+				const { error: err } = await supabase.from('branch_inventory').insert(insertData);
+				if (err) {
+					console.error(`Failed to upload ${product.name}:`, err);
+					continue;
+				}
+
+				successNames.push(product.name);
+				
+				// Update local state: remove from selection and clear persistent input state
+				selectedIds = selectedIds.filter(sid => sid !== id);
+				delete provisioningState[id];
+				savingIds = savingIds.filter(sid => sid !== id);
+			}
 			
-			// 2. Perform insert
-			const { error: err } = await supabase.from('branch_inventory').insert(inserts);
-			if (err) throw err;
-			
-			// 3. Increment sequence
+			// Update sequence
 			const currentSerialStr = invoiceForm.purchaseOrderNum.split('-').pop() || '1';
 			const currentSerial = parseInt(currentSerialStr);
 			await supabase.from('purchase_sequences')
 				.update({ last_serial: currentSerial })
 				.eq('branch_id', invoiceForm.targetBranchId);
 
-			lastResult = { 
-				names: inserts.map(i => i.product_name), 
-				count: inserts.length 
-			};
-			selectedIds = [];
+			if (successNames.length > 0) {
+				lastResult = { 
+					names: successNames, 
+					count: successNames.length 
+				};
+				alert(`Successfully added ${successNames.length} products to stock.`);
+			}
+			
 			invoiceForm.invoiceNum = '';
 		} catch (err: any) {
+			console.error('Batch add error:', err);
 			alert(err.message || 'Failed to add products to stock');
-		} finally {
-			loading = false;
+			savingIds = [];
 		}
 	}
 
@@ -391,7 +416,7 @@
 	}
 </script>
 
-<svelte:head><title>Products – Kemani POS</title></svelte:head>
+<svelte:head><title>Products – Mokexa POS</title></svelte:head>
 
 <div class="p-6 space-y-5 max-w-7xl mx-auto">
 	<!-- Bulk Upload Info -->
@@ -490,8 +515,46 @@
 			</div>
 		{/if}
 
-		{#if loading}
-			<div class="p-12 text-center"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto"></div></div>
+		{#if loading && products.length === 0}
+			<div class="overflow-x-auto">
+				<table class="w-full text-sm min-w-[1200px]">
+					<thead class="bg-gray-50 border-b">
+						<tr>
+							<th class="px-4 py-3 w-10"><div class="h-4 w-4 bg-gray-100 rounded"></div></th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Product</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Stock Qty</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Batch No</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Exp Date</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">UOM</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">D. Qty</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost Price</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Selling</th>
+							<th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Type/Actions</th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-gray-100">
+						{#each Array(5) as _}
+							<tr class="animate-pulse">
+								<td class="px-4 py-3"><div class="h-4 w-4 bg-gray-100 rounded"></div></td>
+								<td class="px-4 py-3">
+									<div class="flex items-center gap-3">
+										<div class="w-10 h-10 bg-gray-100 rounded-xl"></div>
+										<div class="space-y-2">
+											<div class="h-4 w-32 bg-gray-100 rounded"></div>
+											<div class="h-3 w-20 bg-gray-50 rounded"></div>
+										</div>
+									</div>
+								</td>
+								{#each Array(8) as __}
+									<td class="px-2 py-3"><div class="h-8 w-full bg-gray-50 rounded-lg {shimmerClass}"></div></td>
+								{/each}
+								<td class="px-4 py-3"><div class="h-8 w-16 bg-gray-50 rounded-full ml-auto"></div></td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
 		{:else if products.length === 0}
 			<div class="p-12 text-center text-gray-400">
 				<Package class="h-12 w-12 mx-auto mb-3 opacity-30" />
@@ -516,7 +579,27 @@
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Batch No</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Exp Date</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</th>
-							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">UOM</th>
+							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">UOM</th>
+							<th class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center relative">
+								<button 
+									type="button"
+									onmouseenter={() => showQtyTooltip = true}
+									onmouseleave={() => showQtyTooltip = false}
+									class="flex items-center justify-center gap-1 mx-auto focus:outline-none uppercase tracking-wider"
+								>
+									D. Qty
+									<Info class="h-3 w-3 text-indigo-400 cursor-help" />
+								</button>
+								{#if showQtyTooltip}
+									<div class="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 w-48 p-3 bg-gray-900 text-white text-[10px] rounded-xl shadow-2xl z-[100] normal-case font-medium leading-relaxed animate-in fade-in zoom-in duration-200 text-left">
+										<p class="relative z-10">
+											<span class="text-indigo-400 font-bold block mb-1 text-[11px]">Dispensing Quantity</span>
+											Quantity of items in a single unit of measure (e.g., 12 tablets in a sachet).
+										</p>
+										<div class="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-gray-900"></div>
+									</div>
+								{/if}
+							</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost Price</th>
 							<th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Selling</th>
 							<th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider uppercase tracking-wider">Type/Actions</th>
@@ -524,14 +607,20 @@
 					</thead>
 					<tbody class="divide-y divide-gray-100">
 						{#each products as product}
-							<tr class="hover:bg-gray-50 transition-colors {selectedIds.includes(product.id) ? 'bg-indigo-50/30' : ''}">
+							{@const isSelected = selectedIds.includes(product.id)}
+							{@const isSaving = savingIds.includes(product.id)}
+							<tr class="hover:bg-gray-50 transition-colors {isSelected ? 'bg-indigo-50/30' : ''} {isSaving ? 'opacity-70 grayscale-[0.5]' : ''}">
 								<td class="px-4 py-3">
-									<input 
-										type="checkbox" 
-										checked={selectedIds.includes(product.id)}
-										onchange={() => toggleSelect(product.id)}
-										class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer" 
-									/>
+									{#if isSaving}
+										<div class="h-4 w-4 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin"></div>
+									{:else}
+										<input 
+											type="checkbox" 
+											checked={isSelected}
+											onchange={() => toggleSelect(product.id)}
+											class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer" 
+										/>
+									{/if}
 								</td>
 								<td class="px-4 py-3">
 									<div class="flex items-center gap-3">
@@ -548,41 +637,45 @@
 										</div>
 									</div>
 								</td>
-								<td class="px-2 py-3">
-									<input type="number" bind:value={product.provisioning.qty} disabled={!selectedIds.includes(product.id)} placeholder="Qty"
-										class="w-20 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium" />
+								<td class="px-2 py-3 {isSaving ? shimmerClass : ''}">
+									<input type="number" bind:value={product.provisioning.qty} disabled={!isSelected || isSaving} placeholder="Qty"
+										class="w-20 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium disabled:bg-gray-100" />
 								</td>
-								<td class="px-2 py-3">
-									<input type="text" bind:value={product.provisioning.batch} disabled={!selectedIds.includes(product.id)} placeholder="Batch"
-										class="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium" />
+								<td class="px-2 py-3 {isSaving ? shimmerClass : ''}">
+									<input type="text" bind:value={product.provisioning.batch} disabled={!isSelected || isSaving} placeholder="Batch"
+										class="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium disabled:bg-gray-100" />
 								</td>
-								<td class="px-2 py-3">
-									<input type="date" bind:value={product.provisioning.expiry} disabled={!selectedIds.includes(product.id)} 
-										class="w-32 px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium {getExpiryClass(product.provisioning.expiry)}" />
+								<td class="px-2 py-3 {isSaving ? shimmerClass : ''}">
+									<input type="date" bind:value={product.provisioning.expiry} disabled={!isSelected || isSaving} 
+										class="w-32 px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium {getExpiryClass(product.provisioning.expiry)} disabled:bg-gray-100" />
 								</td>
-								<td class="px-2 py-3">
-									<select bind:value={product.provisioning.supplier_id} disabled={!selectedIds.includes(product.id)}
-										class="w-40 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium">
+								<td class="px-2 py-3 {isSaving ? shimmerClass : ''}">
+									<select bind:value={product.provisioning.supplier_id} disabled={!isSelected || isSaving}
+										class="w-40 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium disabled:bg-gray-100">
 										<option value={null}>No Supplier</option>
 										{#each suppliers as s}<option value={s.id}>{s.name}</option>{/each}
 									</select>
 								</td>
-								<td class="px-2 py-3">
-									<select bind:value={product.provisioning.unit_of_measure} disabled={!selectedIds.includes(product.id)}
-										class="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium">
+								<td class="px-2 py-3 {isSaving ? shimmerClass : ''}">
+									<select bind:value={product.provisioning.unit_of_measure} disabled={!isSelected || isSaving}
+										class="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium disabled:bg-gray-100">
 										<option value="unit">Unit</option>
 										<option value="sachet">Sachet</option>
 										<option value="pack">Pack</option>
 										<option value="bottle">Bottle</option>
 									</select>
 								</td>
-								<td class="px-2 py-3">
-									<input type="number" bind:value={product.provisioning.cost} disabled={!selectedIds.includes(product.id)} placeholder="Cost"
-										class="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium" />
+								<td class="px-2 py-3 {isSaving ? shimmerClass : ''}">
+									<input type="number" bind:value={product.provisioning.dispense_qty} disabled={!isSelected || isSaving} min="1"
+										class="w-16 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium text-center disabled:bg-gray-100" />
 								</td>
-								<td class="px-2 py-3">
-									<input type="number" bind:value={product.provisioning.selling} disabled={!selectedIds.includes(product.id)} placeholder="Price"
-										class="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium" />
+								<td class="px-2 py-3 {isSaving ? shimmerClass : ''}">
+									<input type="number" bind:value={product.provisioning.cost} disabled={!isSelected || isSaving} placeholder="Cost"
+										class="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium disabled:bg-gray-100" />
+								</td>
+								<td class="px-2 py-3 {isSaving ? shimmerClass : ''}">
+									<input type="number" bind:value={product.provisioning.selling} disabled={!isSelected || isSaving} placeholder="Price"
+										class="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:opacity-30 transition-all font-medium disabled:bg-gray-100" />
 								</td>
 								<td class="px-4 py-3">
 									<div class="flex items-center justify-end gap-2">
@@ -709,3 +802,11 @@
 		</div>
 	</div>
 {/if}
+
+<style>
+	@keyframes shimmer {
+		100% {
+			transform: translateX(100%);
+		}
+	}
+</style>
